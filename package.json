@@ -1,9 +1,9 @@
 {
-	"name": "infinite-legends",
+	"name": "infinite-legends-rpg",
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "vite dev --force",
 		"build": "vite build",
 		"preview": "vite preview",
 		"test": "npm run test:integration && npm run test:unit",
