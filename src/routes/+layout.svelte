@@ -19,25 +19,25 @@
 </script>
 
 <style>
-    main :global(.custom-main){
+    main :global(.custom-main) {
         max-height: 85vh;
         overflow-y: auto;
     }
 </style>
 
 <nav class="btm-nav bg-base-300">
-    <ul class="menu menu-horizontal justify-around">
+    <ul class="menu text-lg">
         <li>
-            <a href="/" class:active={activeUrl==='/'} >Game</a>
+            <a href="/" class:active={activeUrl==='/'}>Game</a>
         </li>
         <li>
             <a href="/gamestate" class:active={activeUrl==='/gamestate'} >Game State</a>
         </li>
         <li class="b">
-            <a  href="/character" class:active={activeUrl==='/character'}>Character</a>
+            <a href="/character" class:active={activeUrl==='/character'} >Character</a>
         </li>
         <li>
-            <a href="/settings/ai" class:active={activeUrl==='/settings/ai'}>Menu</a>
+            <a href="/settings/ai" class:active={activeUrl==='/settings/ai'} >Menu</a>
         </li>
     </ul>
 </nav>
