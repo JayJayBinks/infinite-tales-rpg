@@ -9,16 +9,15 @@
     });
 </script>
 
-<style>
-    label{
-        margin-top: 10px;
-    }
-
-</style>
-
-<div class="menu-content" id="ai-settings">
-    <label for="apikey">Gemini API Key</label>
-    <input type="text" id="apikey" bind:value={aiState.apiKey}/>
-    <label for="temperature">Temperature: {aiState.temperature}</label>
-    <input type="range" min="0" max="2" step="0.05" id="temperature" bind:value={aiState.temperature}/>
-</div>
+<form class="m-6">
+    <label class="form-control w-full">
+        Gemini API Key
+        <input type="text" id="apikey" bind:value={aiState.apiKey}
+               class="mt-2 input input-bordered"/>
+    </label>
+    <label class="form-control w-full mt-3">
+        Temperature: {aiState.temperature}
+        <input type="range" min="0" max="2" step="0.05" id="temperature" bind:value={aiState.temperature}
+               class="mt-2 range"/>
+    </label>
+</form>
