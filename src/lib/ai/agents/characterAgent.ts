@@ -1,4 +1,4 @@
-import {stringifyPretty} from "../../util";
+import {stringifyPretty} from "../../util.svelte";
 import {sendToAI} from "../llm";
 import {characterState} from "../../state/characterState.svelte";
 
@@ -31,5 +31,7 @@ export async function generateCharacterStats(storyState) {
             "parts": [{"text": "Create the character: " + stringifyPretty(preset)}]
         }
     );
-    characterState.value = JSON.parse(jsonText);
+    if (jsonText) {
+        characterState.value = JSON.parse(jsonText);
+    }
 }

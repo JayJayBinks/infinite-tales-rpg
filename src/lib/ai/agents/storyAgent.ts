@@ -1,5 +1,5 @@
 import {storyState, storyStateForPrompt} from "../../state/storyState.svelte";
-import {stringifyPretty} from "../../util";
+import {handleError, stringifyPretty} from "../../util.svelte";
 import {sendToAI} from "../llm";
 import {generateCharacterStats} from "./characterAgent";
 
@@ -18,8 +18,16 @@ export async function generateRandomStorySettings() {
             "parts": [{"text": "Create a new randomized story setting with following already set: " + stringifyPretty(preset)}]
         }
     );
-    let newStoryState = JSON.parse(jsonText);
-    storyState.value = newStoryState;
+    try {
 
-    await generateCharacterStats(storyState)
+
+        if (jsonText) {
+            let newStoryState = JSON.parse(jsonText);
+            storyState.value = newStoryState;
+
+            await generateCharacterStats(storyState)
+        }
+    } catch (e) {
+        handleError(e);
+    }
 }

@@ -1,7 +1,9 @@
-<script lang="ts">
+<script lang="ts" xmlns="http://www.w3.org/1999/html">
     import {storyStateForPrompt} from "$lib/state/storyState.svelte.ts";
     import {storyState} from "$lib/state/storyState.svelte.ts";
     import {generateRandomStorySettings} from "$lib/ai/agents/storyAgent.ts";
+    import LoadingModal from "$lib/components/LoadingModal.svelte";
+
 
     let isGenerating: boolean = $state(false);
 
@@ -11,6 +13,9 @@
         isGenerating = false;
     }
 </script>
+{#if isGenerating}
+    <LoadingModal />
+{/if}
 <form class="custom-main grid gap-2 m-6">
     <p>Customize or randomize the story settings. <br/> For suggestions see
         <a href="https://www.rpgprompts.com/" target="_blank" class="link">
@@ -31,7 +36,9 @@
             <textarea bind:value={storyState.value[stateValue]}
                       placeholder="{storyStateForPrompt[stateValue]}"
                       onblur="{(evt) => {storyState.overwrites[stateValue] = evt.currentTarget.value}}"
-                      class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
+                      class="mt-2 textarea textarea-bordered textarea-md w-full">
+
+            </textarea>
         </label>
     {/each}
 </form>

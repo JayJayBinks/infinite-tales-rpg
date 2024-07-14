@@ -3,11 +3,22 @@
     import {browser} from '$app/environment';
     import {aiState} from '$lib/state/aiState.svelte.ts';
     import {page} from "$app/stores";
+    import {errorState} from "$lib/state/errorState.svelte.ts";
+    import ErrorModal from "$lib/components/ErrorModal.svelte";
+    import {handleError} from "$lib/util.svelte.ts";
 
     $: activeUrl = $page.url.pathname;
     if (browser) {
-        let apiKey = localStorage.getItem('geminiApiKey');
+        window.onerror = (event, source, lineno, colno, error)  => {
+            handleError(JSON.stringify({event, source, lineno, colno, error}));
+            return false;
+        };
+        window.onunhandledrejection = (a) => {
+            handleError(a.reason);
+            return false;
+        };
 
+        let apiKey = localStorage.getItem('geminiApiKey');
         if (!apiKey) {
             alert('Set Gemini API Key in Menu first!');
         } else {
@@ -18,26 +29,24 @@
     }
 </script>
 
-<style>
-    main :global(.custom-main) {
-        max-height: 85vh;
-        overflow-y: auto;
-    }
-</style>
+{#if errorState.userMessage}
+    <ErrorModal/>
+{/if}
 
-<nav class="btm-nav bg-base-300">
+
+<nav class="btm-nav bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
     <ul class="menu text-lg">
         <li>
             <a href="/" class:active={activeUrl==='/'}>Game</a>
         </li>
         <li>
-            <a href="/gamestate" class:active={activeUrl==='/gamestate'} >Game State</a>
+            <a href="/gamestate" class:active={activeUrl==='/gamestate'}>Game State</a>
         </li>
         <li class="b">
-            <a href="/character" class:active={activeUrl==='/character'} >Character</a>
+            <a href="/character" class:active={activeUrl==='/character'}>Character</a>
         </li>
         <li>
-            <a href="/settings/ai" class:active={activeUrl==='/settings/ai'} >Menu</a>
+            <a href="/settings/ai" class:active={activeUrl==='/settings/ai'}>Menu</a>
         </li>
     </ul>
 </nav>
@@ -50,7 +59,7 @@
 <!--	<a href="/settings/ai" class="menu-tab" data-tab="ai-settings">AI Settings</a>-->
 <!--	<a href="/settings/game" class="menu-tab" data-tab="game-settings">Game Settings</a>-->
 <!--</nav>-->
-<main>
+<main class="max-w-7xl max-h-[93vh] ml-auto mr-auto overflow-auto">
     <slot></slot>
 </main>
 

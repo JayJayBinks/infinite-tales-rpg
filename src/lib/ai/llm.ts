@@ -1,5 +1,6 @@
-import {stringifyPretty} from '$lib/util.ts'
+import {stringifyPretty} from '$lib/util.svelte.ts'
 import {aiState} from "../state/aiState.svelte";
+import {handleError} from "../util.svelte";
 
 const safetySettings = [
     {
@@ -37,7 +38,7 @@ export async function sendToAI(systemInstruction, contents, useGenerationConfig 
     try {
         const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
             + "?key=" + aiState.apiKey;
-        const response = await fetch(url, {
+        const response: Response = await fetch(url, {
             method: 'POST',
             body: stringifyPretty({
                 systemInstruction: systemInstruction,
@@ -46,12 +47,14 @@ export async function sendToAI(systemInstruction, contents, useGenerationConfig 
                 safety_settings: safetySettings
             })
         });
+        if (response.status >= 400 && response.status < 600) {
+            throw new Error(await response.text());
+        }
         const data = await response.json();
         const jsonText = data["candidates"][0]["content"]["parts"][0]["text"]
         return jsonText;
     } catch (e) {
-        console.log(e)
-        alert(e);
+        handleError(e)
     }
-    return '';
+    return undefined;
 }
