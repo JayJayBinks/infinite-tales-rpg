@@ -1,16 +1,16 @@
 export const initialCharacterState = {
-    name: undefined,
-    appearance: undefined,
-    race: undefined,
-    personality: undefined,
-    background: undefined,
-    alignment: undefined,
-    motivation: undefined,
-    class: undefined,
-    traits: undefined,
-    abilities: undefined,
-    expertise: undefined,
-    disadvantages: undefined,
+    name: '',
+    appearance: '',
+    race: '',
+    personality: '',
+    background: '',
+    alignment: '',
+    motivation: '',
+    class: '',
+    traits: '',
+    abilities: '',
+    expertise: '',
+    disadvantages: '',
 }
 
 

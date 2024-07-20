@@ -8,6 +8,7 @@
     import {GeminiProvider} from "../../../lib/ai/llmProvider";
     import {initialStoryState} from "../../../lib/state/storyState.svelte";
     import debounce from 'lodash/debounce'
+    import {initialCharacterState} from "../../../lib/state/characterState.svelte";
 
     const apiKey = useLocalStorage('apiKey');
     let storyAgent: StoryAgent;
@@ -19,12 +20,14 @@
 
     const storyState = useLocalStorage('storyState', {...initialStoryState});
     let storyStateOverwrites = $state({});
-
+    const characterState = useLocalStorage('characterState', {...initialCharacterState});
     const onRandomize = async (evt) => {
         aiState.isGenerating = true;
         const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites);
         if (newState) {
             storyState.value = newState;
+            //TODO better way to reset?
+            characterState.reset();
         }
         aiState.isGenerating = false;
     }

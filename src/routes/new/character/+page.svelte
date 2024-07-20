@@ -20,7 +20,6 @@
     });
     const storyState = useLocalStorage('storyState', initialStoryState);
     const characterState = useLocalStorage('characterState', initialCharacterState);
-    const characterImageState = useLocalStorage('characterImageState');
 
     let characterStateOverwrites = $state({});
 
@@ -50,7 +49,7 @@
         Randomize
     </button>
     <button class="btn btn-neutral"
-            onclick={() => {characterState.clear()}}>
+            onclick={() => {characterState.reset();}}>
         Clear All
     </button>
     <a class="btn btn-primary" href="/new/story">Previous</a>
@@ -69,13 +68,14 @@
         </label>
         <button class="btn btn-neutral mt-2"
                 onclick={() => {
-                    characterState.clearSingle(stateValue);
+                    characterState.resetProperty(stateValue);
                 }}>
             Clear
         </button>
         {#if stateValue === 'appearance'}
             <AIGeneratedImage
-                    characterImageState={characterImageState}
+                    storageKey='characterImageState'
+                    showGenerateButton={true}
                     prompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"/>
         {/if}
 
