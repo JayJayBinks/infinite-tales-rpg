@@ -1,16 +1,33 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
-    import {generateCharacterStats} from "$lib/ai/agents/characterAgent";
     import {aiState} from "$lib/state/aiState.svelte.ts";
-    import {characterState} from "$lib/state/characterState.svelte.ts";
+    import {onMount} from "svelte";
+    import {CharacterAgent} from "$lib/ai/agents/characterAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
+    import {characterStateForPrompt} from "$lib/ai/agents/characterAgent.ts";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
-    import {characterStateForPrompt} from "$lib/ai/agents/characterAgent.js";
-    import {storyState} from "$lib/state/storyState.svelte.js";
+    import useLocalStorage from "../../../lib/state/useLocalStorage.svelte";
+    import {StoryAgent} from "../../../lib/ai/agents/storyAgent";
+    import {GeminiProvider} from "../../../lib/ai/llmProvider";
+    import {initialStoryState} from "../../../lib/state/storyState.svelte";
+    import {initialCharacterState} from "../../../lib/state/characterState.svelte";
+
+    const apiKey = useLocalStorage('apiKey');
+    let characterAgent: CharacterAgent;
+    onMount(() => {
+        if (apiKey.value) {
+            characterAgent = new CharacterAgent(new GeminiProvider(apiKey.value));
+        }
+    });
+    const storyState = useLocalStorage('storyState', initialStoryState);
+    const characterState = useLocalStorage('characterState', initialCharacterState);
+    const characterImageState = useLocalStorage('characterImageState');
+
+    let characterStateOverwrites = $state({});
 
     const onRandomize = async (evt) => {
         aiState.isGenerating = true;
-        const newState = await generateCharacterStats(storyState.value, characterState.overwrites);
-        if(newState){
+        const newState = await characterAgent.generateCharacterStats(storyState.value, characterStateOverwrites);
+        if (newState) {
             characterState.value = newState;
         }
         aiState.isGenerating = false;
@@ -40,13 +57,12 @@
     <a class="btn btn-primary" href="/">Start Game</a>
 
 
-
     {#each Object.keys(characterState.value) as stateValue, i}
         <label class="form-control w-full mt-3">
             {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
             <textarea bind:value={characterState.value[stateValue]}
                       placeholder="{characterStateForPrompt[stateValue]}"
-                      onblur="{(evt) => {characterState.overwrites[stateValue] = evt.currentTarget.value}}"
+                      onblur="{(evt) => {characterStateOverwrites[stateValue] = evt.currentTarget.value}}"
                       class="mt-2 textarea textarea-bordered textarea-md w-full">
 
             </textarea>
@@ -58,9 +74,11 @@
             Clear
         </button>
         {#if stateValue === 'appearance'}
-            <AIGeneratedImage prompt="${characterState.value.appearance} ${storyState.value.general_image_prompt}"/>
+            <AIGeneratedImage
+                    characterImageState={characterImageState}
+                    prompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"/>
         {/if}
 
     {/each}
-
+    <a class="btn btn-primary" href="/">Start Game</a>
 </form>

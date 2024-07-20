@@ -1,15 +1,20 @@
 <script>
     import '../app.css';
-    import {browser} from '$app/environment';
-    import {aiState} from '$lib/state/aiState.svelte.ts';
     import {page} from "$app/stores";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import ErrorModal from "$lib/components/ErrorModal.svelte";
     import {handleError} from "$lib/util.svelte.ts";
+    import {onMount} from "svelte";
+    import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
+    import {goto} from "$app/navigation";
 
-    $: activeUrl = $page.url.pathname;
-    if (browser) {
-        window.onerror = (event, source, lineno, colno, error)  => {
+    let activeUrl = $state('');
+    $effect(() => {
+        activeUrl = $page.url.pathname;
+    })
+    const apiKey = useLocalStorage('apiKey');
+    onMount(() => {
+        window.onerror = (event, source, lineno, colno, error) => {
             handleError(JSON.stringify({event, source, lineno, colno, error}));
             return false;
         };
@@ -18,17 +23,16 @@
             return false;
         };
 
-        let apiKey = localStorage.getItem('geminiApiKey');
-        if (!apiKey) {
-            alert('Set Gemini API Key in Menu first!');
-        } else {
-            aiState.apiKey = apiKey;
+        if (!apiKey.value) {
+            if (activeUrl !== '/settings/ai') {
+                goto('/settings/ai').then(() => {
+                    alert('Set the API key first!')
+                });
+            }
         }
+    });
 
-        aiState.temperature = localStorage.getItem('temperature') || aiState.temperature;
-    }
 </script>
-
 {#if errorState.userMessage}
     <ErrorModal/>
 {/if}

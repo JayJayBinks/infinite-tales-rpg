@@ -1,15 +1,40 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
-    import {storyState} from "$lib/state/storyState.svelte.ts";
-    import {generateRandomStorySettings, storyStateForPrompt} from "$lib/ai/agents/storyAgent.ts";
     import {aiState} from "$lib/state/aiState.svelte.js";
+    import {getContext, onMount, setContext} from "svelte";
+    import {StoryAgent} from "../../../lib/ai/agents/storyAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
+    import {storyStateForPrompt} from "$lib/ai/agents/storyAgent.ts";
+    import useLocalStorage from "../../../lib/state/useLocalStorage.svelte";
+    import {GeminiProvider} from "../../../lib/ai/llmProvider";
+    import {initialStoryState} from "../../../lib/state/storyState.svelte";
+    import debounce from 'lodash/debounce'
+
+    const apiKey = useLocalStorage('apiKey');
+    let storyAgent: StoryAgent;
+    onMount(() => {
+        if (apiKey.value) {
+            storyAgent = new StoryAgent(new GeminiProvider(apiKey.value));
+        }
+    });
+
+    const storyState = useLocalStorage('storyState', {...initialStoryState});
+    let storyStateOverwrites = $state({});
 
     const onRandomize = async (evt) => {
         aiState.isGenerating = true;
-        storyState.value = await generateRandomStorySettings(storyState.overwrites);
+        const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites);
+        if (newState) {
+            storyState.value = newState;
+        }
         aiState.isGenerating = false;
     }
+
+    function handleInput(evt, stateValue) {
+        storyStateOverwrites[stateValue] = evt.target.value;
+    }
+    const debounceHandleInput = debounce(handleInput, 300);
 </script>
+
 {#if aiState.isGenerating}
     <LoadingModal/>
 {/if}
@@ -31,30 +56,34 @@
         Randomize
     </button>
     <button class="btn btn-neutral"
-            onclick={() => {storyState.clear()}}>
+            onclick={() => {storyState.reset(); storyStateOverwrites = {}}}>
         Clear All
     </button>
     <a class="btn btn-primary" href="/new/character">Next</a>
-    {#each Object.keys(storyStateForPrompt) as stateValue, i}
-        <label class="form-control w-full mt-3">
-            <div class=" lex-row">
-                {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
-                {#if storyState.overwrites[stateValue]}
-                    <span class="badge badge-accent">overwritten</span>
-                {/if}
-            </div>
+    {#if storyState.value}
+        {#each Object.keys(storyStateForPrompt) as stateValue, i}
+            <label class="form-control w-full mt-3">
+                <div class=" lex-row">
+                    {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
+                    {#if storyStateOverwrites[stateValue]}
+                        <span class="badge badge-accent">overwritten</span>
+                    {/if}
+                </div>
 
-            <textarea bind:value={storyState.value[stateValue]}
-                      placeholder="{storyStateForPrompt[stateValue]}"
-                      oninput="{(evt) => {storyState.overwrites[stateValue] = evt.currentTarget.value}}"
-                      class="mt-2 textarea textarea-bordered textarea-md w-full">
-            </textarea>
-        </label>
-        <button class="btn btn-neutral mt-2"
-                onclick={() => {
-                    storyState.clearSingle(stateValue);
+                <textarea bind:value={storyState.value[stateValue]}
+                        oninput="{(evt) => debounceHandleInput(evt, stateValue)}"
+                        placeholder="{storyStateForPrompt[stateValue]}"
+                        class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
+
+            </label>
+            <button class="btn btn-neutral mt-2"
+                    onclick={() => {
+                    storyState.resetProperty(stateValue);
+                    delete storyStateOverwrites[stateValue];
                 }}>
-            Clear
-        </button>
-    {/each}
+                Clear
+            </button>
+        {/each}
+        <a class="btn btn-primary" href="/new/character">Next</a>
+    {/if}
 </form>
