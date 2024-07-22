@@ -1,9 +1,9 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
     import useLocalStorage from "../state/useLocalStorage.svelte";
-
-    let {storageKey, showGenerateButton, prompt} = $props();
+    let {storageKey, showGenerateButton, resetImage, onClickGenerate, imagePrompt} = $props();
 
     let initialImageState = {
+        prompt: '',
         isGenerating: false,
         link: {
             className: "m-auto",
@@ -19,15 +19,23 @@
     let imageState = useLocalStorage(storageKey, initialImageState);
     let imageToReplace;
 
+    $effect(() => {
+        if(resetImage){
+            console.log(resetImage)
+            imageState.value = {...initialImageState};
+            resetImage = false;
+        }
+    })
 
 
     function replaceWithAiGenerated() {
-        if (prompt) {
+        if (imagePrompt) {
             imageState.value.isGenerating = true;
             const aiGeneratedImage = new Image();
             //wait till ai has generated image
             aiGeneratedImage.onload = function () {
                 const newImgState = {
+                    prompt: imagePrompt,
                     isGenerating: false,
                     link: {
                         ...initialImageState.link,
@@ -37,12 +45,12 @@
                     image: {
                         ...initialImageState.image,
                         src: aiGeneratedImage.src,
-                        alt: prompt
+                        alt: imagePrompt
                     }
                 }
                 imageState.value = newImgState;
             }
-            aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt)
+            aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(imagePrompt)
                 + "?width=256&height=256";
         }
     }
@@ -61,7 +69,10 @@
 </a>
 {#if showGenerateButton}
     <button class="btn btn-accent m-auto"
-            onclick="{replaceWithAiGenerated}"
+            onclick={(e) => {
+		replaceWithAiGenerated();
+		onClickGenerate(e);
+	}}
     >
         Generate Image
     </button>

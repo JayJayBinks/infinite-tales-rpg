@@ -23,11 +23,14 @@
 
     let characterStateOverwrites = $state({});
 
+    let resetImage = $state(false);
+
     const onRandomize = async (evt) => {
         aiState.isGenerating = true;
         const newState = await characterAgent.generateCharacterStats(storyState.value, characterStateOverwrites);
         if (newState) {
             characterState.value = newState;
+            resetImage = true;
         }
         aiState.isGenerating = false;
     }
@@ -49,7 +52,7 @@
         Randomize
     </button>
     <button class="btn btn-neutral"
-            onclick={() => {characterState.reset();}}>
+            onclick={() => {characterState.reset(); resetImage = true;}}>
         Clear All
     </button>
     <a class="btn btn-primary" href="/new/story">Previous</a>
@@ -69,6 +72,9 @@
         <button class="btn btn-neutral mt-2"
                 onclick={() => {
                     characterState.resetProperty(stateValue);
+                    if(stateValue === 'appearance'){
+                        resetImage = true;
+                    }
                 }}>
             Clear
         </button>
@@ -76,7 +82,9 @@
             <AIGeneratedImage
                     storageKey='characterImageState'
                     showGenerateButton={true}
-                    prompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"/>
+                    {resetImage}
+                    onClickGenerate="{() => {resetImage = false;}}"
+                    imagePrompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"/>
         {/if}
 
     {/each}
