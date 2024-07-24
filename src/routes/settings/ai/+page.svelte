@@ -1,10 +1,26 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import debounce from 'lodash/debounce'
     import {goto} from "$app/navigation";
+    import {initialGameState} from "$lib/ai/agents/gameAgent.ts";
+    import {initialCharacterState} from "$lib/state/characterState.svelte.ts";
+    import {initialStoryState} from "$lib/state/storyState.svelte.ts";
+    import {navigate} from "$lib/util.svelte.ts";
 
     const apiKey = useLocalStorage('apiKey');
     const temperature = useLocalStorage('temperature', 2);
+
+    const gameState = useLocalStorage('gameState', initialGameState);
+    const historyMessages = useLocalStorage('historyMessages', []);
+    const characterState = useLocalStorage('characterState', initialCharacterState);
+    const storyState = useLocalStorage('storyState', initialStoryState);
+
+    function onStartNew() {
+        historyMessages.reset();
+        gameState.reset();
+        characterState.reset();
+        storyState.reset();
+        navigate('/new/story')
+    }
 </script>
 
 <form class="m-6 grid">
@@ -24,14 +40,8 @@
     <!--   // TODO for some reason goto('/new/story') does not work with existing pages -->
     <button class="btn btn-neutral mt-5 m-auto"
             disabled="{!apiKey.value}"
-            onclick="{() => {
-    const a = document.createElement('a');
-    a.href = '/new/story';
-    a.click();
-}}"
-
-    >
-
-        Start Game
+            onclick="{onStartNew}">
+        Start New Game
     </button>
+    <small class="text-red-800 m-auto">Beware! This will delete your current game!</small>
 </form>

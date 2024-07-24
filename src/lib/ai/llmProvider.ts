@@ -1,6 +1,6 @@
 
 import {handleError} from "../util.svelte";
-import {GoogleGenerativeAI,} from "@google/generative-ai";
+import {GoogleGenerativeAI} from "@google/generative-ai";
 
 const safetySettings = [
     {
@@ -45,7 +45,7 @@ export interface LLMProvider {
 
 export class GeminiProvider implements LLMProvider {
     apiKey: string;
-    systemInstruction: string;
+    systemInstruction: any; // TODO The requested module '@google/generative-ai' does not provide an export named 'Part'
     temperature: number;
     generationConfig;
     safetySettings;

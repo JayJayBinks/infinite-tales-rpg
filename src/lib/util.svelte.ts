@@ -9,3 +9,9 @@ export function handleError(e) {
     errorState.exception = e;
     errorState.userMessage = e;
 }
+
+export function navigate(path){
+    const a = document.createElement('a');
+    a.href = path;
+    a.click();
+}

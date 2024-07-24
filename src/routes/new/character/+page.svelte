@@ -10,6 +10,8 @@
     import {GeminiProvider} from "../../../lib/ai/llmProvider";
     import {initialStoryState} from "../../../lib/state/storyState.svelte";
     import {initialCharacterState} from "../../../lib/state/characterState.svelte";
+    import {navigate} from "$lib/util.svelte.ts";
+    import isEqual from 'lodash.isequal';
 
     const apiKey = useLocalStorage('apiKey');
     let characterAgent: CharacterAgent;
@@ -46,6 +48,7 @@
     <li class="step">Start Game</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
+    <p>When randomized, the Character will be created based on the story.</p>
     <button class="btn btn-accent"
             disabled={aiState.isGenerating}
             onclick={onRandomize}>
@@ -55,8 +58,17 @@
             onclick={() => {characterState.reset(); resetImage = true;}}>
         Clear All
     </button>
-    <a class="btn btn-primary" href="/new/story">Previous</a>
-    <a class="btn btn-primary" href="/">Start Game</a>
+    <button class="btn btn-primary"
+        onclick="{() => {navigate('/new/story')}}"
+    >
+        Previous
+    </button>
+    <button class="btn btn-primary"
+            onclick="{() => {navigate('/')}}"
+            disabled={isEqual(characterState.value, initialCharacterState)}
+    >
+        Start Game
+    </button>
 
 
     {#each Object.keys(characterState.value) as stateValue, i}
@@ -80,6 +92,7 @@
         </button>
         {#if stateValue === 'appearance'}
             <AIGeneratedImage
+                    className="m-auto mt-3 flex flex-col"
                     storageKey='characterImageState'
                     showGenerateButton={true}
                     {resetImage}
@@ -88,5 +101,4 @@
         {/if}
 
     {/each}
-    <a class="btn btn-primary" href="/">Start Game</a>
 </form>

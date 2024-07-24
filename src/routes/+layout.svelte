@@ -38,8 +38,8 @@
 {/if}
 
 
-<nav class="btm-nav bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
-    <ul class="menu text-lg">
+<nav class="btm-nav h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
+    <ul class="menu">
         <li>
             <a href="/" class:active={activeUrl==='/'}>Game</a>
         </li>

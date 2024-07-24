@@ -1,17 +1,18 @@
-<script lang="ts" xmlns="http://www.w3.org/1999/html">
-    import {aiState} from "$lib/state/aiState.svelte.js";
-    import {getContext, onMount, setContext} from "svelte";
-    import {StoryAgent} from "../../../lib/ai/agents/storyAgent";
+<script>
+    import {aiState} from "$lib/state/aiState.svelte.ts";
+    import {onMount} from "svelte";
+    import {StoryAgent} from "$lib/ai/agents/storyAgent.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import {storyStateForPrompt} from "$lib/ai/agents/storyAgent.ts";
-    import useLocalStorage from "../../../lib/state/useLocalStorage.svelte";
-    import {GeminiProvider} from "../../../lib/ai/llmProvider";
-    import {initialStoryState} from "../../../lib/state/storyState.svelte";
-    import debounce from 'lodash/debounce'
-    import {initialCharacterState} from "../../../lib/state/characterState.svelte";
+    import useLocalStorage from "$lib/state/useLocalStorage.svelte";
+    import {GeminiProvider} from "$lib/ai/llmProvider.ts";
+    import {initialStoryState} from "$lib/state/storyState.svelte.ts";
+    import {initialCharacterState} from "$lib/state/characterState.svelte.ts";
+    import {navigate} from "$lib/util.svelte.ts";
+    import isEqual from 'lodash.isequal';
 
     const apiKey = useLocalStorage('apiKey');
-    let storyAgent: StoryAgent;
+    let storyAgent;
     onMount(() => {
         if (apiKey.value) {
             storyAgent = new StoryAgent(new GeminiProvider(apiKey.value));
@@ -35,7 +36,6 @@
     function handleInput(evt, stateValue) {
         storyStateOverwrites[stateValue] = evt.target.value;
     }
-    const debounceHandleInput = debounce(handleInput, 300);
 </script>
 
 {#if aiState.isGenerating}
@@ -50,8 +50,8 @@
     <p>Customize or randomize the story settings. For suggestions see
         <a href="https://www.rpgprompts.com/" target="_blank" class="link">
             https://www.rpgprompts.com/</a>
-        <br/>
-        You can also let the AI decide at game start and just click "Next"
+        <br>
+        You can also just enter certain elements to be considered for Randomize.
     </p>
     <button class="btn btn-accent"
             disabled={aiState.isGenerating}
@@ -62,7 +62,11 @@
             onclick={() => {storyState.reset(); storyStateOverwrites = {}}}>
         Clear All
     </button>
-    <a class="btn btn-primary" href="/new/character">Next</a>
+    <button class="btn btn-primary"
+            onclick={() => {navigate('/new/character')}}
+            disabled="{isEqual(storyState.value , initialStoryState)}">
+        Next
+    </button>
     {#if storyState.value}
         {#each Object.keys(storyStateForPrompt) as stateValue, i}
             <label class="form-control w-full mt-3">
@@ -74,9 +78,9 @@
                 </div>
 
                 <textarea bind:value={storyState.value[stateValue]}
-                        oninput="{(evt) => debounceHandleInput(evt, stateValue)}"
-                        placeholder="{storyStateForPrompt[stateValue]}"
-                        class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
+                          oninput="{(evt) => handleInput(evt, stateValue)}"
+                          placeholder="{storyStateForPrompt[stateValue]}"
+                          class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
 
             </label>
             <button class="btn btn-neutral mt-2"
@@ -87,6 +91,5 @@
                 Clear
             </button>
         {/each}
-        <a class="btn btn-primary" href="/new/character">Next</a>
     {/if}
 </form>

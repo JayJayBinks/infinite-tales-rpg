@@ -7,7 +7,7 @@ export default {
 		extend: {}
 	},
 	daisyui: {
-		themes: ["forest"],
+		themes: ["business"],
 	},
 
 	plugins: [

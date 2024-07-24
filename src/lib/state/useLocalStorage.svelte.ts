@@ -3,7 +3,7 @@ import {onMount} from 'svelte';
 const useLocalStorage = (key, initialValue = undefined) => {
 
     function getInitial() {
-        return typeof initialValue === 'object' ? {...initialValue} : initialValue;
+        return typeof initialValue === 'object' && !Array.isArray(initialValue) ? {...initialValue} : initialValue;
     }
     let value = $state(getInitial());
     let isMounted = false;
