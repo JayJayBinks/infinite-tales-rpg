@@ -1,14 +1,13 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import {GameAgent, initialGameState} from "$lib/ai/agents/gameAgent.ts";
-    import {onMount} from "svelte";
+    import {onMount, tick} from "svelte";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
     import {initialStoryState} from "$lib/state/storyState.svelte.ts";
     import {initialCharacterState} from "$lib/state/characterState.svelte.ts";
     import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
-    import {goto} from "$app/navigation";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
@@ -17,8 +16,8 @@
         return Math.floor(Math.random() * (max - min)) + min;
     }
 
-    const gameState = useLocalStorage('gameState', initialGameState);
-    const renderedStoryProgressions = $state([]);
+    const gameState = useLocalStorage('gameState', {...initialGameState});
+    const renderedStoryProgressions = useLocalStorage('renderedStoryProgressions', []);
     const historyMessages = useLocalStorage('historyMessages', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const storyState = useLocalStorage('storyState', initialStoryState);
@@ -39,9 +38,11 @@
                     text: 'With you as the Dungeon Master, start the ADVENTURE_AND_MAIN_EVENT ' +
                         'with introducing the adventure background, characters and circumstances. Then describe the starting scene.'
                 });
-            }else{
-                updateGameState(gameState.value);
+            } else {
+                renderGameState(gameState.value);
             }
+            tick().then(() => customActionInput.scrollIntoView(false));
+
         }
     });
 
@@ -90,11 +91,14 @@
 
     function updateGameState(state) {
         gameState.value = {...state};
-        renderedStoryProgressions.push({story: state.story, imagePrompt: state.image_prompt + " " + storyState.value.general_image_prompt});
-        //TODO document.getElementById('gameStateOut').value = stringifyPretty(state, null, 2);
-
-
+        renderedStoryProgressions.value = [...renderedStoryProgressions.value,
+            ({story: state.story, imagePrompt: state.image_prompt + " " + storyState.value.general_image_prompt})
+        ];
         // TODO inventoryStore.set(state?.inventory_update || []);
+        renderGameState(gameState.value);
+    }
+
+    function renderGameState(state) {
         if (actionsDiv) {
             actionsDiv.innerHTML = '';
             state.actions = state?.actions || [];
@@ -108,14 +112,14 @@
 
     function addActionButton(action, is_character_in_combat = false) {
         const button = document.createElement('button');
-        button.className = 'btn btn-neutral mb-3 w-full';
+        button.className = 'btn btn-neutral mb-3 w-full text-md ';
         button.textContent = action.text;
 
         let rollDice = false
         if (action.text !== 'Continue the story' && (is_character_in_combat || (action.action_difficulty !== 'none' && action.action_difficulty !== 'simple') || action.type === 'Social_Manipulation')) {
             rollDice = true;
         }
-        button.addEventListener('click', () => sendAction(action, rollDice));
+        button.addEventListener('click', () => sendAction({...action}, rollDice));
         actionsDiv.appendChild(button);
     }
 </script>
@@ -156,11 +160,11 @@
         </div>
     </dialog>
     <ul class="sticky top-0 z-50 menu menu-horizontal bg-base-200 flex justify-between">
-        <output id="hp" class="ml-1 font-semibold text-md text-red-500">HP: {gameState.value.hp}</output>
-        <output id="mp" class="ml-1 font-semibold text-md text-blue-500">MP: {gameState.value.mp}</output>
+        <output id="hp" class="ml-1 font-semibold text-lg text-red-500">HP: {gameState.value.hp}</output>
+        <output id="mp" class="ml-1 font-semibold text-lg text-blue-500">MP: {gameState.value.mp}</output>
     </ul>
     <div id="story" bind:this={storyDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md">
-        {#each renderedStoryProgressions as renderedStoryProgression}
+        {#each renderedStoryProgressions.value as renderedStoryProgression}
             <StoryProgressionWithImage {...renderedStoryProgression}></StoryProgressionWithImage>
         {/each}
     </div>
@@ -172,11 +176,12 @@
                placeholder="Enter your action">
         <button type="submit"
                 onclick="{(evt) => {sendAction({text: customActionInput.value}); customActionInput.value = '';}}"
-                class="btn btn-neutral" id="submit-button">Submit</button>
+                class="btn btn-neutral" id="submit-button">Submit
+        </button>
     </form>
 
     <style>
-        .btn{
+        .btn {
             height: fit-content;
             padding: 1rem;
         }

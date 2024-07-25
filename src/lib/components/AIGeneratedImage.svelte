@@ -1,5 +1,7 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
     import useLocalStorage from "../state/useLocalStorage.svelte";
+    import isEqual from "lodash.isequal";
+    import {onMount } from 'svelte';
 
     let {className, storageKey, showGenerateButton = true,
         showLoadingSpinner = true,
@@ -61,10 +63,11 @@
         }
     }
 
-    if (!showGenerateButton) {
-        replaceWithAiGenerated();
-    }
-
+    onMount(() => {
+        if (!showGenerateButton && isEqual(initialImageState, imageState.value)) {
+            replaceWithAiGenerated();
+        }
+    })
 </script>
 
 
@@ -77,7 +80,6 @@
        title={imageState.value.link.title}
        href={imageState.value.link.href}>
         <img bind:this={imageToReplace}
-             class={imageState.value.image.className}
              alt={imageState.value.image.alt}
              src={imageState.value.image.src}>
     </a>

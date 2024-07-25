@@ -39,7 +39,7 @@
 
 
 <nav class="btm-nav h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
-    <ul class="menu">
+    <ul class="menu gap-0 text-lg">
         <li>
             <a href="/" class:active={activeUrl==='/'}>Game</a>
         </li>
