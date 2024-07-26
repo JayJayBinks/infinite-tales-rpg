@@ -126,60 +126,62 @@ Ongoing Tracking:
 Make sure that the response is always valid JSON.`;
 
 const jsonSystemInstruction = `You must always respond with valid JSON in the following format:
-    {"is_dice_roll_required_for_chosen_action": value is the variable with the same name from the last user input,
-        "dice_roll_for_chosen_action":{
-        #only include this if is_dice_roll_required_for_chosen_action is true
-        "trait": "the trait the value was rolled for",
-            "rolled_value": value rolled by the system
-            "required_value": number between 1-20 depending on difficulty for chosen action,
-        },
-        "is_chosen_action_successfull": true if is_dice_roll_required_for_chosen_action is false or dice_roll_for_chosen_action is rolled_value >= required_value,
-        "story":"<DEPENDING ON is_chosen_action_successfull is true or false PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES>",
-        "image_prompt": "Create a prompt for an image generating ai that describes the scene of the chosen action outcome and story progression, do not use character names but appearance description. Use max 10 words.",
-   "inventory_update":[
+{
+  "is_dice_roll_required_for_chosen_action": "value is the variable with the same name from the last user input",
+  "dice_roll_for_chosen_action": {
+    #only include this if is_dice_roll_required_for_chosen_action is true
+    "trait": "the trait the value was rolled for",
+    "rolled_value": "value rolled by the system",
+    "required_value": "number between 1-20 depending on difficulty for chosen action"
+  },
+  "is_chosen_action_successfull": "true if is_dice_roll_required_for_chosen_action is false or dice_roll_for_chosen_action is rolled_value >= required_value",
+  "story": "<DEPENDING ON is_chosen_action_successfull is true or false PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES>",
+  "image_prompt": "Create a prompt for an image generating ai that describes the scene of the chosen action outcome and story progression, do not use character names but appearance description including the gender. Use max 10 words.",
+  "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
         #For each item addition or removal this object is added once, the whole inventory does not need to be tracked here
         #The starting items are also listed here as add_item
-        {
-            "type" : "add_item",
-            "item_id": "unique id of the item to identify it",
-            "item_added": {
-            #only include this JSON object if action is add_item
-            "description": "A description of the item"
-            "effect": "The effect the item"
-            "action": {
-                "text":"Description of the action",
-                "type":"Type of the action Misc.|Attack|Spell|Conversation|Social_Manipulation",
-                "required_trait":"the skill the dice is rolled for",
-                "action_difficulty": "Depending on difficulty of the action and character proficiency can be any of none|simple|medium|difficult|almost_impossible",
-                "dice_roll":{
-                    "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
-                    "modifier": "one of none|bonus|penalty"
-                    "modifier_value": Positive or negative value (-5 to +5).
-                    "required_value": depending on action_difficulty,  none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20
-                }
-            }
-        },
-        {
-            "type" : "remove_item",
-            "item_id": "unique id of the item to identify it"
+    {
+      "type": "add_item",
+      "item_id": "unique id of the item to identify it",
+      "item_added": {
+        #only include this JSON object if action is add_item
+        "description": "A description of the item",
+        "effect": "The effect the item",
+        "action": {
+          "text": "Description of the action",
+          "type": "Misc.|Attack|Spell|Conversation|Social_Manipulation",
+          "required_trait": "the skill the dice is rolled for",
+          "action_difficulty": "none|simple|medium|difficult|almost_impossible",
+          "dice_roll": {
+            "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
+            "modifier": "none|bonus|penalty",
+            "modifier_value": "Positive or negative value (-5 to +5)",
+            "required_value": "none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20"
+          }
         }
-    ],
-        "hp":"<PUT my character's HP here>",
-        "mp":"<PUT my character's MP here>",
-        "is_character_in_combat": true if CHARACTER is in active combat, else false
-        "actions":[
-        {
-            "text":"Description of the action",
-            "type":"Type of the action Misc.|Attack|Spell|Conversation|Social_Manipulation",
-            "required_trait":"the skill the dice is rolled for",
-            "action_difficulty": "Depending on difficulty of the action and character proficiency can be any of none|simple|medium|difficult|almost_impossible",
-            "dice_roll":{
-                "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
-                "modifier": "one of none|bonus|penalty",
-                "modifier_value": Positive or negative value (-5 to +5),
-                "required_value": depending on action_difficulty,  none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20
-            }
-        }
-    ]
-    }`;
+      }
+    },
+    {
+      "type": "remove_item",
+      "item_id": "unique id of the item to identify it"
+    }
+  ],
+  "hp": "<PUT my character's HP here>",
+  "mp": "<PUT my character's MP here>",
+  "is_character_in_combat": "true if CHARACTER is in active combat else false",
+  "actions": [
+    {
+      "text": "Description of the action",
+      "type": "Misc.|Attack|Spell|Conversation|Social_Manipulation",
+      "required_trait": "the skill the dice is rolled for",
+      "action_difficulty": "none|simple|medium|difficult|almost_impossible",
+      "dice_roll": {
+        "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
+        "modifier": "none|bonus|penalty",
+        "modifier_value": "Positive or negative value (-5 to +5)",
+        "required_value": "none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20"
+      }
+    }
+  ]
+}`;

@@ -12,10 +12,10 @@ export const characterStateForPrompt = {
     alignment: "",
     motivation: "",
     class: "",
-    traits: "list of the beginning traits of the character in following format: {trait1: startingValue1, trait2: startingValue2, ...}",
+    traits: 'list of the beginning traits of the character in following format: {"trait1": startingValue1, "trait2": startingValue2, ...}',
     abilities: "Abilities and spells of the character",
-    expertise: "Traits where CHARACTER has a high value and a positive dice roll modifier format: {trait1: value between 1-5, trait2: 1-5, ...}",
-    disadvantages: "Traits where CHARACTER has a low value and a negative dice roll modifier format: {trait1: value between -1 to -5, trait2: -1 to -5, ...}",
+    expertise: 'Traits where CHARACTER has a high value and a positive dice roll modifier format: {"trait1": value between 1-5, "trait2": 1-5, ...}',
+    disadvantages: 'Traits where CHARACTER has a low value and a negative dice roll modifier format: {"trait1": value between -1 to -5, "trait2": -1 to -5, ...}',
 }
 
 export class CharacterAgent {

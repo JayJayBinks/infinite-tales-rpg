@@ -47,13 +47,11 @@
         chosenActionState = action;
         try {
             if (rollDice) {
-                document.querySelector('#dice-roll-title').value = action.text;
-                document.querySelector('#dice-roll-difficulty').value = action.dice_roll.required_value;
-
                 rolledValueState = '?';
-                modifierState = Number.parseInt(action.dice_roll.modifier_value) || 0;
+                const isPenalty = action.dice_roll.modifier === 'penalty'
+                const value = Number.parseInt(action.dice_roll.modifier_value) || 0;
+                modifierState = isPenalty && value > 0 ? value * -1 : value;
                 modifierReasonState = action.dice_roll.modifier_explanation;
-                document.querySelector('#roll-dice-button').disabled = false;
 
                 diceRollDialog.showModal();
                 diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
@@ -98,9 +96,11 @@
             state.actions = state?.actions || [];
             state.actions.push();
             state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
-            addActionButton({
-                text: 'Continue the story'
-            });
+            if(state.hp > 0){
+                addActionButton({
+                    text: 'Continue the story'
+                });
+            }
         }
     }
 
@@ -143,6 +143,7 @@
             <div class="flex justify-center flex-col mt-2">
                 <button id="roll-dice-button"
                         class="btn btn-neutral mb-3"
+                        disabled={rolledValueState !== '?'}
                         onclick={(evt) => {evt.target.disabled = true; rolledValueState = getRndInteger(1,20);}}>
                     Roll
                 </button>

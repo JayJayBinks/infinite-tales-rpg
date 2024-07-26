@@ -3,6 +3,7 @@
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
 
     const characterState = useLocalStorage('characterState');
+    const storyState = useLocalStorage('storyState');
 </script>
 
 {#if characterState.value}
@@ -10,10 +11,11 @@
         <div class="character-profile p-6 rounded-lg shadow-lg w-full max-w-md text-white">
             <h1 id="name"
                 class="text-3xl font-bold text-center mb-4 class border-b border-gray-600">{characterState.value.name}</h1>
-            <AIGeneratedImage className="w-auto max-w-[37vh] h-[37vh] m-auto mt-3"
-                    showGenerateButton={false} storageKey="characterImageState"></AIGeneratedImage>
+            <AIGeneratedImage className="w-auto  m-auto mt-3 flex flex-col"
+                              imagePrompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"
+                              storageKey="characterImageState"></AIGeneratedImage>
             <div class="section mb-6">
-                <h2 class="text-xl font-semibold  border-b border-gray-600 pb-1 mb-2">Basic Information</h2>
+                <h2 class="text-xl font-semibold mt-2 border-b border-gray-600 pb-1 mb-2">Basic Information</h2>
                 <div class="flex flex-col space-y-1">
                     <p><strong>Race:</strong> <span id="race">{characterState.value.race}</span></p>
                     <p><strong>Class:</strong> <span id="class">{characterState.value.class}</span></p>

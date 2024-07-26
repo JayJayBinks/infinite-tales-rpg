@@ -23,7 +23,7 @@
     };
     let imageState = $state({value: {...initialImageState}});
     if (storageKey) {
-        imageState = useLocalStorage(storageKey, initialImageState);
+        imageState = useLocalStorage(storageKey, {...initialImageState, prompt: imagePrompt});
     }
     let imageToReplace;
 
@@ -59,7 +59,7 @@
             aiGeneratedImage.onerror = aiGeneratedImage.onload;
 
             aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(imagePrompt)
-                + "?width=256&height=256";
+                + "?width=512&height=512";
         }
     }
 
@@ -73,19 +73,22 @@
 
 <div class={className}>
     {#if showLoadingSpinner && imageState.value.isGenerating}
-        <span class={"block m-auto loading loading-infinity loading-lg"}></span>
+        <!--TODO make responsive-->
+        <span class={"h-[512px] block m-auto loading loading-infinity loading-lg"}></span>
     {/if}
     <a target="_blank"
        class:hidden={showLoadingSpinner && imageState.value.isGenerating}
        title={imageState.value.link.title}
        href={imageState.value.link.href}>
         <img bind:this={imageToReplace}
+             class="w-[512px] m-auto"
              alt={imageState.value.image.alt}
              src={imageState.value.image.src}>
     </a>
 
     {#if showGenerateButton}
         <button class="btn btn-accent mt-3"
+                disabled={imageState.value.isGenerating}
                 onclick={(e) => {
 		replaceWithAiGenerated();
 		onClickGenerate(e);

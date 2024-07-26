@@ -3,10 +3,10 @@
 
     let {story, imagePrompt} = $props();
 </script>
-<article class="m-auto prose prose-neutral" style="color: unset">
+<article class="m-auto prose prose-neutral mt-2" style="color: unset">
     {@html story}
 </article>
-<AIGeneratedImage className="w-auto max-w-[37vh] h-[37vh] m-auto mt-3"
+<AIGeneratedImage className="m-auto mt-3"
                   showLoadingSpinner={false}
                   imagePrompt="{imagePrompt}" showGenerateButton={false}
 />
