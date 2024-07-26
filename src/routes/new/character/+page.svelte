@@ -1,23 +1,22 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
-    import {aiState} from "$lib/state/aiState.svelte.ts";
     import {onMount} from "svelte";
-    import {CharacterAgent} from "$lib/ai/agents/characterAgent";
+    import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import {characterStateForPrompt} from "$lib/ai/agents/characterAgent.ts";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import useLocalStorage from "../../../lib/state/useLocalStorage.svelte";
     import {StoryAgent} from "../../../lib/ai/agents/storyAgent";
     import {GeminiProvider} from "../../../lib/ai/llmProvider";
-    import {initialStoryState} from "../../../lib/state/storyState.svelte";
-    import {initialCharacterState} from "../../../lib/state/characterState.svelte";
     import {navigate} from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
+    import {initialCharacterState, initialStoryState} from "../../../lib/state/initialStates";
 
-    const apiKey = useLocalStorage('apiKey');
+    let isGeneratingState = $state(false);
+    const apiKeyState = useLocalStorage('apiKeyState');
     let characterAgent: CharacterAgent;
     onMount(() => {
-        if (apiKey.value) {
-            characterAgent = new CharacterAgent(new GeminiProvider(apiKey.value));
+        if (apiKeyState.value) {
+            characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value));
         }
     });
     const storyState = useLocalStorage('storyState', initialStoryState);
@@ -25,21 +24,21 @@
 
     let characterStateOverwrites = $state({});
 
-    let resetImage = $state(false);
+    let resetImageState = $state(false);
 
     const onRandomize = async (evt) => {
-        aiState.isGenerating = true;
+        isGeneratingState = true;
         const newState = await characterAgent.generateCharacterStats(storyState.value, characterStateOverwrites);
         if (newState) {
             characterState.value = newState;
-            resetImage = true;
+            resetImageState = true;
         }
-        aiState.isGenerating = false;
+        isGeneratingState = false;
     }
 
 </script>
 
-{#if aiState.isGenerating}
+{#if isGeneratingState}
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
@@ -50,12 +49,12 @@
 <form class="custom-main grid gap-2 m-6">
     <p>When randomized, the Character will be created based on the story.</p>
     <button class="btn btn-accent"
-            disabled={aiState.isGenerating}
+            disabled={isGeneratingState}
             onclick={onRandomize}>
         Randomize
     </button>
     <button class="btn btn-neutral"
-            onclick={() => {characterState.reset(); resetImage = true;}}>
+            onclick={() => {characterState.reset(); resetImageState = true;}}>
         Clear All
     </button>
     <button class="btn btn-primary"
@@ -85,7 +84,7 @@
                 onclick={() => {
                     characterState.resetProperty(stateValue);
                     if(stateValue === 'appearance'){
-                        resetImage = true;
+                        resetImageState = true;
                     }
                 }}>
             Clear
@@ -95,8 +94,8 @@
                     className="m-auto mt-3 flex flex-col"
                     storageKey='characterImageState'
                     showGenerateButton={true}
-                    {resetImage}
-                    onClickGenerate="{() => {resetImage = false;}}"
+                    {resetImageState}
+                    onClickGenerate="{() => {resetImageState = false;}}"
                     imagePrompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"/>
         {/if}
 

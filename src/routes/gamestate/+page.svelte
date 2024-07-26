@@ -1,6 +1,7 @@
 <script>
     import {stringifyPretty} from "$lib/util.svelte.ts";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    const gameState = useLocalStorage('gameState');
+
+    const gameActionsState = useLocalStorage('gameActionsState');
 </script>
-<output style="white-space: pre-wrap">{stringifyPretty(gameState.value)}</output>
+<output style="white-space: pre-wrap">{stringifyPretty(gameActionsState.value ? gameActionsState.value[gameActionsState.value.length - 1] : {})}</output>

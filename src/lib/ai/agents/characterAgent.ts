@@ -1,6 +1,8 @@
 import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
 import {GeminiProvider} from "../llmProvider";
 
+
+
 export const characterStateForPrompt = {
     name: "",
     appearance: "",

@@ -1,6 +1,8 @@
 import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
 import {GeminiProvider} from "../llmProvider";
 
+
+
 export const storyStateForPrompt = {
     game: "Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons",
     adventure_and_main_event: "Generate a random adventure with a random main story line. It does not have to be a quest, it can also be an event. It should be extraordinary and not cliche.",

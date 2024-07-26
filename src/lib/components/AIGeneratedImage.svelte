@@ -6,7 +6,7 @@
     let {className, storageKey, showGenerateButton = true,
         showLoadingSpinner = true,
         onClickGenerate = () => {},
-        resetImage,
+        resetImageState,
         imagePrompt} = $props();
 
     const initialImageState = {
@@ -28,9 +28,9 @@
     let imageToReplace;
 
     $effect(() => {
-        if (resetImage) {
+        if (resetImageState) {
             imageState.value = {...initialImageState};
-            resetImage = false;
+            resetImageState = false;
         }
     })
 

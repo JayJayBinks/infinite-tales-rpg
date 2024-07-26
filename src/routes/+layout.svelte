@@ -12,7 +12,7 @@
     $effect(() => {
         activeUrl = $page.url.pathname;
     })
-    const apiKey = useLocalStorage('apiKey');
+    const apiKeyState = useLocalStorage('apiKeyState');
     onMount(() => {
         window.onerror = (event, source, lineno, colno, error) => {
             handleError(JSON.stringify({event, source, lineno, colno, error}));
@@ -23,7 +23,7 @@
             return false;
         };
 
-        if (!apiKey.value) {
+        if (!apiKeyState.value) {
             if (activeUrl !== '/settings/ai') {
                 goto('/settings/ai').then(() => {
                     alert('Set the API key first!')

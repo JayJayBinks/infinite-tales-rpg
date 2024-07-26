@@ -1,14 +1,13 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import {GameAgent, initialGameState} from "$lib/ai/agents/gameAgent.ts";
+    import {GameAgent} from "$lib/ai/agents/gameAgent.ts";
     import {onMount, tick} from "svelte";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
-    import {initialStoryState} from "$lib/state/storyState.svelte.ts";
-    import {initialCharacterState} from "$lib/state/characterState.svelte.ts";
     import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
+    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
 
@@ -16,12 +15,11 @@
         return Math.floor(Math.random() * (max - min)) + min;
     }
 
-    const gameState = useLocalStorage('gameState', {...initialGameState});
-    const renderedStoryProgressions = useLocalStorage('renderedStoryProgressions', []);
-    const historyMessages = useLocalStorage('historyMessages', []);
+    const gameActionsState = useLocalStorage('gameActionsState', []);
+    const historyMessagesState = useLocalStorage('historyMessagesState', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const storyState = useLocalStorage('storyState', initialStoryState);
-    const apiKey = useLocalStorage('apiKey');
+    const apiKeyState = useLocalStorage('apiKeyState');
     let isAiGeneratingState = $state(false);
     let modifierReasonState = $state();
     let modifierState = $state();
@@ -30,19 +28,18 @@
 
     let gameAgent;
     onMount(async () => {
-        if (apiKey.value) {
-            gameAgent = new GameAgent(new GeminiProvider(apiKey.value));
+        if (apiKeyState.value) {
+            gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value));
             //Start game when not already started
-            if (gameState.value.story === initialGameState.story) {
+            if (gameActionsState.value.length === 0) {
                 await sendAction({
                     text: 'With you as the Dungeon Master, start the ADVENTURE_AND_MAIN_EVENT ' +
                         'with introducing the adventure background, characters and circumstances. Then describe the starting scene.'
                 });
             } else {
-                renderGameState(gameState.value);
+                renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
+                tick().then(() => customActionInput.scrollIntoView(false));
             }
-            tick().then(() => customActionInput.scrollIntoView(false));
-
         }
     });
 
@@ -69,14 +66,14 @@
                 });
             } else {
                 isAiGeneratingState = true;
-                const newState = await gameAgent.generateStoryProgression(chosenActionState, historyMessages.value, storyState.value, characterState.value);
+                const newState = await gameAgent.generateStoryProgression(chosenActionState, historyMessagesState.value, storyState.value, characterState.value);
                 if (newState) {
                     const newStateJson = stringifyPretty(newState);
                     console.log(newStateJson)
                     const message = {"role": "model", "content": JSON.stringify(newStateJson)}
-                    historyMessages.value.push(message);
+                    historyMessagesState.value.push(message);
                     updateGameState(newState);
-                    if (historyMessages.value.length > 25) {
+                    if (historyMessagesState.value.length > 25) {
                         //prevents undesired generated writing style, action values etc...
                         //TODO await summarizeHistoryMessages()
                     }
@@ -90,12 +87,9 @@
     }
 
     function updateGameState(state) {
-        gameState.value = {...state};
-        renderedStoryProgressions.value = [...renderedStoryProgressions.value,
-            ({story: state.story, imagePrompt: state.image_prompt + " " + storyState.value.general_image_prompt})
-        ];
+        gameActionsState.value = [...gameActionsState.value, {...state}];
         // TODO inventoryStore.set(state?.inventory_update || []);
-        renderGameState(gameState.value);
+        renderGameState(state);
     }
 
     function renderGameState(state) {
@@ -103,7 +97,7 @@
             actionsDiv.innerHTML = '';
             state.actions = state?.actions || [];
             state.actions.push();
-            state.actions.forEach((action, index) => addActionButton(action, state.is_character_in_combat));
+            state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
             addActionButton({
                 text: 'Continue the story'
             });
@@ -160,12 +154,15 @@
         </div>
     </dialog>
     <ul class="sticky top-0 z-50 menu menu-horizontal bg-base-200 flex justify-between">
-        <output id="hp" class="ml-1 font-semibold text-lg text-red-500">HP: {gameState.value.hp}</output>
-        <output id="mp" class="ml-1 font-semibold text-lg text-blue-500">MP: {gameState.value.mp}</output>
+        <output id="hp" class="ml-1 font-semibold text-lg text-red-500">
+            HP: {gameActionsState.value[gameActionsState.value.length - 1]?.hp}</output>
+        <output id="mp" class="ml-1 font-semibold text-lg text-blue-500">
+            MP: {gameActionsState.value[gameActionsState.value.length - 1]?.mp}</output>
     </ul>
     <div id="story" bind:this={storyDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md">
-        {#each renderedStoryProgressions.value as renderedStoryProgression}
-            <StoryProgressionWithImage {...renderedStoryProgression}></StoryProgressionWithImage>
+        {#each gameActionsState.value as gameActionsState}
+            <StoryProgressionWithImage story={gameActionsState.story}
+                                       imagePrompt="{gameActionsState.image_prompt} {storyState.value.general_image_prompt}"/>
         {/each}
     </div>
     <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md"></div>
@@ -185,6 +182,5 @@
             height: fit-content;
             padding: 1rem;
         }
-
     </style>
 </div>

@@ -1,16 +1,6 @@
 import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
 import {GeminiProvider} from "../llmProvider";
 
-export const initialGameState = {
-    story: "",
-    image_prompt: undefined,
-    inventory_update: [],
-    is_character_in_combat: false, //true if CHARACTER is in active combat, else false
-    actions: [],
-    hp: "?",
-    mp: "?"
-}
-
 export class GameAgent {
 
     llmProvider: GeminiProvider;
@@ -35,6 +25,7 @@ export class GameAgent {
         const jsonText = await this.llmProvider.sendToAI(contents, gameAgent);
         try {
             if (jsonText) {
+                console.log('aatempt to parse', jsonText)
                 return JSON.parse(jsonText);
             }
         } catch (e) {

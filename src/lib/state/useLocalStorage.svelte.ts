@@ -5,13 +5,18 @@ const useLocalStorage = (key, initialValue = undefined) => {
     function getInitial() {
         return typeof initialValue === 'object' && !Array.isArray(initialValue) ? {...initialValue} : initialValue;
     }
+
     let value = $state(getInitial());
     let isMounted = false;
 
     $effect(() => {
         value; //needed for triggering effect
         if (isMounted) {
-            localStorage.setItem(key, JSON.stringify(value));
+            if (value !== undefined) {
+                localStorage.setItem(key, JSON.stringify(value));
+            } else {
+                localStorage.removeItem(key);
+            }
         }
     });
     onMount(() => {

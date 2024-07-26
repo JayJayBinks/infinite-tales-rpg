@@ -1,36 +1,37 @@
 <script>
-    import {aiState} from "$lib/state/aiState.svelte.ts";
     import {onMount} from "svelte";
     import {StoryAgent} from "$lib/ai/agents/storyAgent.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import {storyStateForPrompt} from "$lib/ai/agents/storyAgent.ts";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
-    import {initialStoryState} from "$lib/state/storyState.svelte.ts";
-    import {initialCharacterState} from "$lib/state/characterState.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
+    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
 
-    const apiKey = useLocalStorage('apiKey');
+    let isGeneratingState = $state(false);
+    const apiKeyState = useLocalStorage('apiKeyState');
     let storyAgent;
     onMount(() => {
-        if (apiKey.value) {
-            storyAgent = new StoryAgent(new GeminiProvider(apiKey.value));
+        if (apiKeyState.value) {
+            storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value));
         }
     });
 
     const storyState = useLocalStorage('storyState', {...initialStoryState});
     let storyStateOverwrites = $state({});
     const characterState = useLocalStorage('characterState', {...initialCharacterState});
+    const characterImageState = useLocalStorage('characterImageState');
     const onRandomize = async (evt) => {
-        aiState.isGenerating = true;
+        isGeneratingState = true;
         const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites);
         if (newState) {
             storyState.value = newState;
             //TODO better way to reset?
             characterState.reset();
+            characterImageState.reset();
         }
-        aiState.isGenerating = false;
+        isGeneratingState = false;
     }
 
     function handleInput(evt, stateValue) {
@@ -38,7 +39,7 @@
     }
 </script>
 
-{#if aiState.isGenerating}
+{#if isGeneratingState}
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
@@ -54,12 +55,18 @@
         You can also just enter certain elements to be considered for Randomize.
     </p>
     <button class="btn btn-accent"
-            disabled={aiState.isGenerating}
+            disabled={isGeneratingState}
             onclick={onRandomize}>
         Randomize
     </button>
     <button class="btn btn-neutral"
-            onclick={() => {storyState.reset(); storyStateOverwrites = {}}}>
+            onclick={() => {
+                storyState.reset();
+                storyStateOverwrites = {};
+                characterState.reset();
+                characterImageState.reset();
+                }
+            }>
         Clear All
     </button>
     <button class="btn btn-primary"
