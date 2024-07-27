@@ -14,6 +14,7 @@
     })
     const apiKeyState = useLocalStorage('apiKeyState');
     onMount(() => {
+        window.scrollTo(0,1)
         window.onerror = (event, source, lineno, colno, error) => {
             handleError(JSON.stringify({event, source, lineno, colno, error}));
             return false;
