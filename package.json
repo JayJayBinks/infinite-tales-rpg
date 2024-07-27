@@ -1,6 +1,7 @@
 {
 	"name": "infinite-tales-rpg",
 	"version": "0.0.1",
+	"homepage": "https://github.com/JayJayBinks/infinite-tales-rpg",
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",
