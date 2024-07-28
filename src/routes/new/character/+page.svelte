@@ -91,7 +91,7 @@
         </button>
         {#if stateValue === 'appearance'}
             <AIGeneratedImage
-                    className="m-auto flex flex-col "
+                    className="m-auto w-full flex flex-col "
                     storageKey='characterImageState'
                     showGenerateButton={true}
                     {resetImageState}

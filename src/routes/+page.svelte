@@ -154,12 +154,12 @@
             </div>
         </div>
     </dialog>
-    <ul class="sticky top-0 z-50 menu menu-horizontal bg-base-200 flex justify-between">
+    <div class="sticky top-0 z-50 menu menu-horizontal bg-base-200 flex justify-between">
         <output id="hp" class="ml-1 font-semibold text-lg text-red-500">
             HP: {gameActionsState.value[gameActionsState.value.length - 1]?.hp}</output>
         <output id="mp" class="ml-1 font-semibold text-lg text-blue-500">
             MP: {gameActionsState.value[gameActionsState.value.length - 1]?.mp}</output>
-    </ul>
+    </div>
     <div id="story" bind:this={storyDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md">
         {#each gameActionsState.value as gameActionsState}
             <StoryProgressionWithImage story={gameActionsState.story}

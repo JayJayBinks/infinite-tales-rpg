@@ -59,7 +59,7 @@
             aiGeneratedImage.onerror = aiGeneratedImage.onload;
 
             aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(imagePrompt)
-                + "?width=512&height=512";
+                + "?width=296&height=296";
         }
     }
 
@@ -72,16 +72,15 @@
 
 
 <div class={className}>
-    {#if showLoadingSpinner && imageState.value.isGenerating}
-        <!--TODO make responsive-->
-        <span class={"h-[512px] block m-auto loading loading-infinity loading-lg"}></span>
+    {#if showLoadingSpinner && imageState.value.isGenerating}>
+        <span class={"h-[296px] sm:h-[512px] m-auto loading loading-infinity loading-lg"}></span>
     {/if}
     <a target="_blank"
        class:hidden={showLoadingSpinner && imageState.value.isGenerating}
        title={imageState.value.link.title}
        href={imageState.value.link.href}>
         <img bind:this={imageToReplace}
-             class="w-[512px] m-auto"
+             class="w-[296px] sm:w-[512px] m-auto"
              alt={imageState.value.image.alt}
              src={imageState.value.image.src}>
     </a>

@@ -11,7 +11,7 @@
         <div class="character-profile p-6 rounded-lg shadow-lg w-full max-w-md text-white">
             <h1 id="name"
                 class="text-3xl font-bold text-center mb-4 class border-b border-gray-600">{characterState.value.name}</h1>
-            <AIGeneratedImage className="w-auto  m-auto mt-3 flex flex-col"
+            <AIGeneratedImage className="w-full m-auto mt-3 flex flex-col"
                               imagePrompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"
                               storageKey="characterImageState"></AIGeneratedImage>
             <div class="section mb-6">

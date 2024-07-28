@@ -12,7 +12,9 @@
     $effect(() => {
         activeUrl = $page.url.pathname;
     })
+
     const apiKeyState = useLocalStorage('apiKeyState');
+    let mainContainer;
     onMount(() => {
         window.onerror = (event, source, lineno, colno, error) => {
             handleError(JSON.stringify({event, source, lineno, colno, error}));
@@ -31,15 +33,14 @@
             }
         }
     });
-
 </script>
 {#if errorState.userMessage}
     <ErrorModal/>
 {/if}
 
 
-<nav class="btm-nav h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
-    <ul class="menu gap-0 text-lg">
+<nav class="btm-nav h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto ">
+    <ul class="menu gap-0 sm:text-lg">
         <li>
             <a href="/" class:active={activeUrl==='/'}>Game</a>
         </li>
@@ -63,7 +64,10 @@
 <!--	<a href="/settings/ai" class="menu-tab" data-tab="ai-settings">AI Settings</a>-->
 <!--	<a href="/settings/game" class="menu-tab" data-tab="game-settings">Game Settings</a>-->
 <!--</nav>-->
-<main class="max-w-7xl max-h-[93vh] ml-auto mr-auto overflow-auto">
+
+<!--TODO max-h-[85vh] is just a workaround because the mobile browser address bar makes 93vh higher than it should...
+-->
+<main bind:this='{mainContainer}' class="max-h-[85vh] md:max-h-[93vh] max-w-7xl ml-auto mr-auto overflow-auto">
     <slot></slot>
 </main>
 
