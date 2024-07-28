@@ -42,5 +42,5 @@
             onclick="{onStartNew}">
         Start New Game
     </button>
-    <small class="text-red-800 m-auto">Beware! This will delete your current game!</small>
+    <small class="text-red-800 m-auto">This will delete your current game!</small>
 </form>
