@@ -1,5 +1,5 @@
 <script>
-    import '../app.css';
+    import '../../app.css';
     import {page} from "$app/stores";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import ErrorModal from "$lib/components/ErrorModal.svelte";
@@ -42,16 +42,16 @@
 <nav class="btm-nav h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto ">
     <ul class="menu gap-0 sm:text-lg">
         <li>
-            <a href="/" class:active={activeUrl==='/'}>Game</a>
+            <a href="/game" class:active={activeUrl==='/game'}>Game</a>
         </li>
         <li>
-            <a href="/gamestate" class:active={activeUrl==='/gamestate'}>Game State</a>
+            <a href="/game/gamestate" class:active={activeUrl==='/game/gamestate'}>Game State</a>
         </li>
         <li class="b">
-            <a href="/character" class:active={activeUrl==='/character'}>Character</a>
+            <a href="/game/character" class:active={activeUrl==='/game/character'}>Character</a>
         </li>
         <li>
-            <a href="/settings/ai" class:active={activeUrl==='/settings/ai'}>Menu</a>
+            <a href="/game/settings/ai" class:active={activeUrl==='/game/settings/ai'}>Menu</a>
         </li>
     </ul>
 </nav>

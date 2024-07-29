@@ -20,7 +20,7 @@ I appreciate your feedback to improve the game experience!
 
 To play **Infinite Tales RPG**, you'll need to set up your own Google Gemini API Key. Don't worry, it is free!
 
-Create it easily at https://aistudio.google.com/ and click "Get API key".
+Create it easily at https://aistudio.google.com/ and generate your API key.
 
 You can access the game with following link and enter the API Key in the settings. It will only be saved in your browser!
 

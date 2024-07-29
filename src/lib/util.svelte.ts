@@ -12,6 +12,6 @@ export function handleError(e) {
 
 export function navigate(path){
     const a = document.createElement('a');
-    a.href = path;
+    a.href = '/game' + path;
     a.click();
 }

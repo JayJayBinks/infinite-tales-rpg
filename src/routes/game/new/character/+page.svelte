@@ -4,12 +4,12 @@
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import {characterStateForPrompt} from "$lib/ai/agents/characterAgent.ts";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
-    import useLocalStorage from "../../../lib/state/useLocalStorage.svelte";
-    import {StoryAgent} from "../../../lib/ai/agents/storyAgent";
-    import {GeminiProvider} from "../../../lib/ai/llmProvider";
+    import useLocalStorage from "$lib/state/useLocalStorage.svelte";
+    import {StoryAgent} from "$lib/ai/agents/storyAgent";
+    import {GeminiProvider} from "$lib/ai/llmProvider";
     import {navigate} from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
-    import {initialCharacterState, initialStoryState} from "../../../lib/state/initialStates";
+    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
