@@ -24,6 +24,8 @@ Create it easily at https://aistudio.google.com/ and click "Get API key".
 
 You can access the game with following link and enter the API Key in the settings. It will only be saved in your browser!
 
+https://infinite-tales-rpg.vercel.app/
+
 
 ## 📝 License
 
@@ -56,7 +58,7 @@ To develop **Infinite Tales RPG**, you'll need to set up a few things:
 
 1. **Clone the repository**:
     ```bash
-    git clone https://github.com/yourusername/infinite-tales-rpg.git
+    git clone https://github.com/JayJayBinks/infinite-tales-rpg
     cd infinite-tales-rpg
     ```
 
@@ -73,3 +75,4 @@ To develop **Infinite Tales RPG**, you'll need to set up a few things:
 ## 🎉 Acknowledgements
 
 - Special thanks to the developers of Svelte, Tailwind CSS, and DaisyUI for their amazing tools.
+- <a href="https://www.vecteezy.com/free-png/infinity-symbol">Infinity Symbol PNGs by Vecteezy</a>

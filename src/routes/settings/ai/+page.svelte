@@ -22,7 +22,7 @@
     }
 </script>
 
-<form class="m-6 grid">
+<form class="m-6 flex flex-col items-center">
     <label class="form-control w-full">
         Gemini API Key
         <input type="text" id="apikey" bind:value={apiKeyState.value}
@@ -43,4 +43,13 @@
         Start New Game
     </button>
     <small class="text-red-800 m-auto">This will delete your current game!</small>
+
+    <a target="_blank" class="link m-auto mt-10 flex flex-col items-center "
+       href="https://github.com/JayJayBinks/infinite-tales-rpg">
+        <span>Source Code & Contact at Github</span>
+        <img width="30%" class="m-auto" src="https://icones.pro/wp-content/uploads/2021/06/icone-github-jaune.png"
+             alt="Github Logo"/>
+    </a>
+
+
 </form>
