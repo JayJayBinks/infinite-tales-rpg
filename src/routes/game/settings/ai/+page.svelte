@@ -2,6 +2,9 @@
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
+    import discord from '$lib/assets/socials/discord-logo-blue.png';
+    import github from '$lib/assets/socials/icone-github-jaune.png';
+    import logo from '$lib/assets/logo-removebg.png';
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 2);
@@ -22,6 +25,8 @@
     }
 </script>
 
+<img src="{logo}" alt="Infinite Tales Logo"
+     class="w-1/2 sm:w-1/4 mt-3 m-auto"/>
 <form class="m-6 flex flex-col items-center">
     <label class="form-control w-full">
         Gemini API Key
@@ -36,20 +41,23 @@
         <small class="m-auto">Higher temperature means more random output</small>
     </label>
 
-    <!--   // TODO for some reason goto('/new/story') does not work with existing pages -->
     <button class="btn btn-neutral mt-5 m-auto"
-            disabled="{!apiKeyState.value}"
+            disabled={!apiKeyState.value}
             onclick="{onStartNew}">
         Start New Game
     </button>
     <small class="text-red-800 m-auto">This will delete your current game!</small>
 
-    <a target="_blank" class="link m-auto mt-10 flex flex-col items-center "
-       href="https://github.com/JayJayBinks/infinite-tales-rpg">
-        <span>Source Code & Contact at Github</span>
-        <img width="30%" class="m-auto" src="https://icones.pro/wp-content/uploads/2021/06/icone-github-jaune.png"
-             alt="Github Logo"/>
-    </a>
-
-
+    <div class="mt-32">
+        <a target="_blank" href="https://discord.gg/CUvgRQR77y" class="link m-auto flex flex-col items-center ">
+            <span>Community Discussion at Discord</span>
+            <img class="w-2/3 sm:w-1/4 mt-3 m-auto" src="{discord}" alt="Discord invite"/>
+        </a>
+        <a target="_blank" class="link m-auto mt-3 flex flex-col items-center "
+           href="https://github.com/JayJayBinks/infinite-tales-rpg">
+            <span>Source Code at Github</span>
+            <img class="w-1/4 sm:w-1/12 mt-3 m-auto" src="{github}"
+                 alt="Github Logo"/>
+        </a>
+    </div>
 </form>

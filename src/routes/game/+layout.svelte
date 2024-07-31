@@ -5,16 +5,12 @@
     import ErrorModal from "$lib/components/ErrorModal.svelte";
     import {handleError} from "$lib/util.svelte.ts";
     import {onMount} from "svelte";
-    import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import {goto} from "$app/navigation";
 
     let activeUrl = $state('');
     $effect(() => {
         activeUrl = $page.url.pathname;
     })
 
-    const apiKeyState = useLocalStorage('apiKeyState');
-    let mainContainer;
     onMount(() => {
         window.onerror = (event, source, lineno, colno, error) => {
             handleError(JSON.stringify({event, source, lineno, colno, error}));
@@ -24,14 +20,6 @@
             handleError(a.reason);
             return false;
         };
-
-        if (!apiKeyState.value) {
-            if (activeUrl !== '/settings/ai') {
-                goto('/settings/ai').then(() => {
-                    alert('Set the API key first!')
-                });
-            }
-        }
     });
 </script>
 {#if errorState.userMessage}
@@ -67,7 +55,7 @@
 
 <!--TODO max-h-[85vh] is just a workaround because the mobile browser address bar makes 93vh higher than it should...
 -->
-<main bind:this='{mainContainer}' class="max-h-[85vh] md:max-h-[93vh] max-w-7xl ml-auto mr-auto overflow-auto">
+<main class="max-h-[85vh] md:max-h-[93vh] max-w-7xl ml-auto mr-auto overflow-auto">
     <slot></slot>
 </main>
 

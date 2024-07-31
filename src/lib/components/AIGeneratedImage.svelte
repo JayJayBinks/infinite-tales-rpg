@@ -2,6 +2,7 @@
     import useLocalStorage from "../state/useLocalStorage.svelte";
     import isEqual from "lodash.isequal";
     import {onMount } from 'svelte';
+    import LoadingIcon from "$lib/components/LoadingIcon.svelte";
 
     let {className, storageKey, showGenerateButton = true,
         showLoadingSpinner = true,
@@ -13,7 +14,7 @@
         prompt: '',
         isGenerating: false,
         link: {
-            title: "Vegas Bleeds Neon, CC BY-SA 3.0 <https://creativecommons.org/licenses/by-sa/3.0>, via Wikimedia Commons",
+            title: "Vegas Bleeds Neon, CC BY-SA 3.0 https://creativecommons.org/licenses/by-sa/3.0>, via Wikimedia Commons",
             href: "https://commons.wikimedia.org/wiki/File:Placeholder_female_superhero_c.png"
         },
         image: {
@@ -72,8 +73,8 @@
 
 
 <div class={className}>
-    {#if showLoadingSpinner && imageState.value.isGenerating}>
-        <span class={"h-[296px] sm:h-[512px] m-auto loading loading-infinity loading-lg"}></span>
+    {#if showLoadingSpinner && imageState.value.isGenerating}
+        <LoadingIcon additionalClass="h-[296px] sm:h-[512px] m-auto"/>
     {/if}
     <a target="_blank"
        class:hidden={showLoadingSpinner && imageState.value.isGenerating}
