@@ -48,9 +48,9 @@
         try {
             if (rollDice) {
                 rolledValueState = '?';
-                const isPenalty = action.dice_roll.modifier === 'penalty'
+                const isMalus = action.dice_roll.modifier === 'malus'
                 const value = Number.parseInt(action.dice_roll.modifier_value) || 0;
-                modifierState = isPenalty && value > 0 ? value * -1 : value;
+                modifierState = isMalus && value > 0 ? value * -1 : value;
                 modifierReasonState = action.dice_roll.modifier_explanation;
 
                 diceRollDialog.showModal();

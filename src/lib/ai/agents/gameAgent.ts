@@ -155,7 +155,7 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
           "action_difficulty": "none|simple|medium|difficult|almost_impossible",
           "dice_roll": {
             "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
-            "modifier": "none|bonus|penalty",
+            "modifier": "none|bonus|malus",
             "modifier_value": "Positive or negative value (-5 to +5)",
             "required_value": "none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20"
           }
@@ -178,7 +178,7 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
       "action_difficulty": "none|simple|medium|difficult|almost_impossible",
       "dice_roll": {
         "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
-        "modifier": "none|bonus|penalty",
+        "modifier": "none|bonus|malus",
         "modifier_value": "Positive or negative value (-5 to +5)",
         "required_value": "none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20"
       }
