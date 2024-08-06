@@ -43,6 +43,38 @@
         }
     });
 
+
+    function determineDiceRollResult(action) {
+        const rolledValue = Number.parseInt(rolledValueState) + Number.parseInt(modifierState)
+        if (rolledValue === 1) {
+            return 'The action is a critical failure!';
+        }
+        if (rolledValue === 20) {
+            return 'The action is a critical success!';
+        }
+        const diff = rolledValue - action.dice_roll.required_value;
+        if (diff >= -6) {
+            return 'The action is a major failure.';
+        }
+        if (diff >= -3) {
+            return 'The action is a regular failure.';
+        }
+        if (diff >= -1) {
+            return 'The action is a partial failure.';
+        }
+        if (diff >= 0) {
+            return 'The action is a partial success.';
+        }
+        if (diff >= 3) {
+            return 'The action is a regular success.';
+        }
+        if (diff >= 6) {
+            return 'The action is a major success.';
+        }
+        //Error fallback (e.g. '10 to 14')
+        return `Determine the action outcome with a rolled value of ${rolledValue} and required value of ${action.dice_roll.required_value}`
+    }
+
     async function sendAction(action, rollDice = false) {
         chosenActionState = action;
         try {
@@ -56,11 +88,7 @@
                 diceRollDialog.showModal();
                 diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
                     this.removeEventListener('close', sendWithManuallyRolled);
-                    chosenActionState.dice_roll = {
-                        required_value: action.dice_roll.required_value,
-                        rolled_value: Number.parseInt(rolledValueState) + Number.parseInt(modifierState)
-                    };
-                    sendAction(chosenActionState)
+                    sendAction({text: chosenActionState.text + '\n ' + determineDiceRollResult(chosenActionState)})
                 });
             } else {
                 isAiGeneratingState = true;
@@ -96,7 +124,7 @@
             state.actions = state?.actions || [];
             state.actions.push();
             state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
-            if(state.hp > 0){
+            if (state.hp > 0) {
                 addActionButton({
                     text: 'Continue the story'
                 });
