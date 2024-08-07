@@ -25,6 +25,8 @@
     let modifierState = $state();
     let rolledValueState = $state();
     let chosenActionState = $state({});
+    let diceRollResultState = $derived(determineDiceRollResult(chosenActionState, rolledValueState, modifierState))
+
 
     let gameAgent;
     onMount(async () => {
@@ -44,35 +46,40 @@
     });
 
 
-    function determineDiceRollResult(action) {
-        const rolledValue = Number.parseInt(rolledValueState) + Number.parseInt(modifierState)
-        if (rolledValue === 1) {
+    function determineDiceRollResult(action, rolledValue, modifier) {
+        if(!action.dice_roll || rolledValue === '?'){
+            return undefined;
+        }
+        const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
+        const evaluatedRolledValue = isNaN(Number.parseInt(rolledValue)) ? 0 : Number.parseInt(rolledValue);
+        const evaluatedValue = evaluatedRolledValue + evaluatedModifier;
+        if (evaluatedValue === 1) {
             return 'The action is a critical failure!';
         }
-        if (rolledValue === 20) {
+        if (evaluatedValue === 20) {
             return 'The action is a critical success!';
         }
-        const diff = rolledValue - action.dice_roll.required_value;
-        if (diff >= -6) {
+        const diff = evaluatedValue - action.dice_roll.required_value;
+        if (diff <= -6) {
             return 'The action is a major failure.';
         }
-        if (diff >= -3) {
+        if (diff <= -3) {
             return 'The action is a regular failure.';
         }
-        if (diff >= -1) {
+        if (diff <= -1) {
             return 'The action is a partial failure.';
-        }
-        if (diff >= 0) {
-            return 'The action is a partial success.';
-        }
-        if (diff >= 3) {
-            return 'The action is a regular success.';
         }
         if (diff >= 6) {
             return 'The action is a major success.';
         }
+        if (diff >= 3) {
+            return 'The action is a regular success.';
+        }
+        if (diff >= 0) {
+            return 'The action is a partial success.';
+        }
         //Error fallback (e.g. '10 to 14')
-        return `Determine the action outcome with a rolled value of ${rolledValue} and required value of ${action.dice_roll.required_value}`
+        return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${action.dice_roll.required_value}`
     }
 
     async function sendAction(action, rollDice = false) {
@@ -88,7 +95,7 @@
                 diceRollDialog.showModal();
                 diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
                     this.removeEventListener('close', sendWithManuallyRolled);
-                    sendAction({text: chosenActionState.text + '\n ' + determineDiceRollResult(chosenActionState)})
+                    sendAction({text: chosenActionState.text + '\n ' + diceRollResultState})
                 });
             } else {
                 isAiGeneratingState = true;
@@ -138,7 +145,11 @@
         button.textContent = action.text;
 
         let rollDice = false
-        if (action.text !== 'Continue the story' && (is_character_in_combat || (action.action_difficulty !== 'none' && action.action_difficulty !== 'simple') || action.type === 'Social_Manipulation')) {
+        //TODO implement parsing to enums
+        if (action.text.toLowerCase() !== 'continue the story' && (JSON.parse(is_character_in_combat) ||
+            (action.action_difficulty.toLowerCase() !== 'none' && action.action_difficulty.toLowerCase() !== 'simple')
+            || action.type.toLowerCase() === 'social_manipulation')) {
+
             rollDice = true;
         }
         button.addEventListener('click', () => sendAction({...action}, rollDice));
@@ -175,6 +186,9 @@
                         onclick={(evt) => {evt.target.disabled = true; rolledValueState = getRndInteger(1,20);}}>
                     Roll
                 </button>
+                {#if diceRollResultState}
+                    <output>{diceRollResultState}</output>
+                {/if}
                 <button onclick={() => (diceRollDialog.close())} id="dice-rolling-dialog-continue"
                         disabled={rolledValueState === '?'}
                         class="btn btn-neutral">Continue
