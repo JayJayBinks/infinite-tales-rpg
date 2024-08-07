@@ -8,6 +8,7 @@
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
+    import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
 
@@ -27,11 +28,12 @@
     let chosenActionState = $state({});
     let diceRollResultState = $derived(determineDiceRollResult(chosenActionState, rolledValueState, modifierState))
 
-
     let gameAgent;
+    let summaryAgent;
     onMount(async () => {
         if (apiKeyState.value) {
             gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value));
+            summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value));
             //Start game when not already started
             if (gameActionsState.value.length === 0) {
                 await sendAction({
@@ -99,16 +101,16 @@
                 });
             } else {
                 isAiGeneratingState = true;
-                const newState = await gameAgent.generateStoryProgression(chosenActionState, historyMessagesState.value, storyState.value, characterState.value);
+                const newState = await gameAgent.generateStoryProgression(chosenActionState.text, historyMessagesState.value, storyState.value, characterState.value);
                 if (newState) {
                     const newStateJson = stringifyPretty(newState);
                     console.log(newStateJson)
                     const message = {"role": "model", "content": JSON.stringify(newStateJson)}
-                    historyMessagesState.value.push(message);
+                    historyMessagesState.value = [...historyMessagesState.value, message];
                     updateGameState(newState);
-                    if (historyMessagesState.value.length > 25) {
-                        //prevents undesired generated writing style, action values etc...
-                        //TODO await summarizeHistoryMessages()
+                    if (historyMessagesState.value.length > 21) {
+                        //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
+                        historyMessagesState.value = await summaryAgent.summarizeHistoryMessages(historyMessagesState.value);
                     }
                 }
                 isAiGeneratingState = false;

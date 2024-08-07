@@ -159,17 +159,17 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
       "item_id": "unique id of the item to identify it"
     }
   ],
-  "hp": "<PUT my character's HP here>",
-  "mp": "<PUT my character's MP here>",
+  "hp": Integer value of the character's current HP,
+  "mp": Integer value of the character's current MP,
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "actions": [
     {
-      "text": "Description of the action to display to the player, do not include modifier or difficulty here.",
+      "text": "Description of the action to display to the player, do not include modifier or difficulty here. Keep it max 50 words.",
       "type": "Misc.|Attack|Spell|Conversation|Social_Manipulation",
       "required_trait": "the skill the dice is rolled for",
       "action_difficulty": "none|simple|medium|difficult|almost_impossible",
       "dice_roll": {
-        "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
+        "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that. Keep it max 30 words.",
         "modifier": "none|bonus|malus",
         "modifier_value": positive or negative value (-5 to +5),
         "required_value": a single integer for difficulty none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20
