@@ -21,15 +21,16 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const storyState = useLocalStorage('storyState', initialStoryState);
     const apiKeyState = useLocalStorage('apiKeyState');
+    let rolledValueState = useLocalStorage('rolledValueState');
+    let chosenActionState = useLocalStorage('chosenActionState', {});
+    let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
+    let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
+    let diceRollResultState = $derived(determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState))
     let isAiGeneratingState = $state(false);
-    let modifierReasonState = $state();
-    let modifierState = $state();
-    let rolledValueState = $state();
-    let chosenActionState = $state({});
-    let diceRollResultState = $derived(determineDiceRollResult(chosenActionState, rolledValueState, modifierState))
 
     let gameAgent;
     let summaryAgent;
+
     onMount(async () => {
         if (apiKeyState.value) {
             gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value));
@@ -44,12 +45,24 @@
                 renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
             }
+            if (rolledValueState.value) {
+                openDiceRollDialog();
+            }
         }
     });
 
 
+    function openDiceRollDialog() {
+        diceRollDialog.showModal();
+        diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
+            this.removeEventListener('close', sendWithManuallyRolled);
+            const actionSnap = $state.snapshot(chosenActionState.value);
+            sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
+        });
+    }
+
     function determineDiceRollResult(action, rolledValue, modifier) {
-        if(!action.dice_roll || rolledValue === '?'){
+        if (!action.dice_roll || rolledValue === '?') {
             return undefined;
         }
         const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
@@ -85,23 +98,21 @@
     }
 
     async function sendAction(action, rollDice = false) {
-        chosenActionState = action;
+        //TODO this dialog is above the error dialog despite lower z-index, user does not know error ocurred
+        function handleAIError() {
+            if (rolledValueState.value) {
+                openDiceRollDialog();
+            }
+        }
+
         try {
             if (rollDice) {
-                rolledValueState = '?';
-                const isMalus = action.dice_roll.modifier === 'malus'
-                const value = Number.parseInt(action.dice_roll.modifier_value) || 0;
-                modifierState = isMalus && value > 0 ? value * -1 : value;
-                modifierReasonState = action.dice_roll.modifier_explanation;
-
-                diceRollDialog.showModal();
-                diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
-                    this.removeEventListener('close', sendWithManuallyRolled);
-                    sendAction({text: chosenActionState.text + '\n ' + diceRollResultState})
-                });
+                rolledValueState.value = '?';
+                openDiceRollDialog();
             } else {
                 isAiGeneratingState = true;
-                const newState = await gameAgent.generateStoryProgression(chosenActionState.text, historyMessagesState.value, storyState.value, characterState.value);
+                const newState = await gameAgent.generateStoryProgression(chosenActionState.value.text, historyMessagesState.value, storyState.value, characterState.value);
+                isAiGeneratingState = false;
                 if (newState) {
                     const newStateJson = stringifyPretty(newState);
                     console.log(newStateJson)
@@ -112,8 +123,11 @@
                         //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
                         historyMessagesState.value = await summaryAgent.summarizeHistoryMessages(historyMessagesState.value);
                     }
+                    chosenActionState.reset();
+                    rolledValueState.reset();
+                } else {
+                    handleAIError();
                 }
-                isAiGeneratingState = false;
             }
         } catch (e) {
             isAiGeneratingState = false;
@@ -127,13 +141,13 @@
         renderGameState(state);
     }
 
-    function renderGameState(state) {
+    function renderGameState(state, addContinueStory = true) {
         if (actionsDiv) {
             actionsDiv.innerHTML = '';
             state.actions = state?.actions || [];
             state.actions.push();
             state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
-            if (state.hp > 0) {
+            if (addContinueStory && state.hp > 0) {
                 addActionButton({
                     text: 'Continue the story'
                 });
@@ -154,7 +168,10 @@
 
             rollDice = true;
         }
-        button.addEventListener('click', () => sendAction({...action}, rollDice));
+        button.addEventListener('click', () => {
+            chosenActionState.value = {...action};
+            sendAction({...action}, rollDice)
+        });
         actionsDiv.appendChild(button);
     }
 </script>
@@ -164,18 +181,18 @@
         <LoadingModal></LoadingModal>
     {/if}
 
-    <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-0"
+    <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-10"
             style="background: rgba(0, 0, 0, 0.3);">
         <div class="modal-box flex flex-col items-center">
-            <output id="dice-roll-title" class=" font-bold">{chosenActionState.text}</output>
+            <output id="dice-roll-title" class=" font-bold">{chosenActionState.value.text}</output>
             <br>
             <p class="mt-2">Roll a d20!</p>
             <p class="mt-1">Difficulty class: </p>
             <output id="dice-roll-difficulty"
-                    class="font-semibold">{chosenActionState.dice_roll?.required_value}</output>
+                    class="font-semibold">{chosenActionState.value.dice_roll?.required_value}</output>
 
             <p>Rolled:</p>
-            <output id="dice-roll-result" class="mt-2">{rolledValueState}</output>
+            <output id="dice-roll-result" class="mt-2">{rolledValueState.value}</output>
             <p>Modifier:</p>
             <output id="modifier" class="mt-2">{modifierState}</output>
             <p>Reason:</p>
@@ -184,15 +201,15 @@
             <div class="flex justify-center flex-col mt-2">
                 <button id="roll-dice-button"
                         class="btn btn-neutral mb-3"
-                        disabled={rolledValueState !== '?'}
-                        onclick={(evt) => {evt.target.disabled = true; rolledValueState = getRndInteger(1,20);}}>
+                        disabled={rolledValueState.value !== '?'}
+                        onclick={(evt) => {evt.target.disabled = true; rolledValueState.value = getRndInteger(1,20);}}>
                     Roll
                 </button>
                 {#if diceRollResultState}
                     <output>{diceRollResultState}</output>
                 {/if}
                 <button onclick={() => (diceRollDialog.close())} id="dice-rolling-dialog-continue"
-                        disabled={rolledValueState === '?'}
+                        disabled={rolledValueState.value === '?'}
                         class="btn btn-neutral">Continue
                 </button>
             </div>
