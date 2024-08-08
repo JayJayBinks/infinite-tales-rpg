@@ -4,17 +4,13 @@
     import {onMount, tick} from "svelte";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
     import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
-    import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
     import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
+    import {determineDiceRollResult, mustRollDice, getRndInteger} from "./gameLogic.ts";
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
-
-    function getRndInteger(min, max) {
-        return Math.floor(Math.random() * (max - min)) + min;
-    }
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -58,39 +54,6 @@
             this.removeEventListener('close', sendWithManuallyRolled);
             sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
         });
-    }
-
-    function determineDiceRollResult(action, rolledValue, modifier) {
-        if (!action.dice_roll || rolledValue === '?') {
-            return undefined;
-        }
-        const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
-        const evaluatedRolledValue = isNaN(Number.parseInt(rolledValue)) ? 0 : Number.parseInt(rolledValue);
-        const evaluatedValue = evaluatedRolledValue + evaluatedModifier;
-        if (rolledValue === 1) {
-            return 'The action is a critical failure!';
-        }
-        if (rolledValue === 20) {
-            return 'The action is a critical success!';
-        }
-        const diff = evaluatedValue - action.dice_roll.required_value;
-        if (diff <= -6) {
-            return 'The action is a major failure.';
-        }
-        if (diff <= -3) {
-            return 'The action is a regular failure.';
-        }
-        if (diff <= -1) {
-            return 'The action is a partial failure.';
-        }
-        if (diff >= 6) {
-            return 'The action is a major success.';
-        }
-        if (diff >= 0) {
-            return 'The action is a regular success.';
-        }
-        //Error fallback (e.g. '10 to 14')
-        return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${action.dice_roll.required_value}`
     }
 
     async function sendAction(action, rollDice = false) {
@@ -154,18 +117,9 @@
         const button = document.createElement('button');
         button.className = 'btn btn-neutral mb-3 w-full text-md ';
         button.textContent = action.text;
-
-        let rollDice = false
-        //TODO implement parsing to enums
-        if (action.text.toLowerCase() !== 'continue the story' && (JSON.parse(is_character_in_combat) ||
-            (action.action_difficulty.toLowerCase() !== 'none' && action.action_difficulty.toLowerCase() !== 'simple')
-            || action.type.toLowerCase() === 'social_manipulation')) {
-
-            rollDice = true;
-        }
         button.addEventListener('click', () => {
             chosenActionState.value = {...action};
-            sendAction({...action}, rollDice)
+            sendAction({...action}, mustRollDice(action, is_character_in_combat))
         });
         actionsDiv.appendChild(button);
     }
@@ -179,9 +133,7 @@
     <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-10"
             style="background: rgba(0, 0, 0, 0.3);">
         <div class="modal-box flex flex-col items-center">
-            <output id="dice-roll-title" class=" font-bold">{chosenActionState.value.text}</output>
-            <br>
-            <p class="mt-2">Roll a d20!</p>
+            <h1 class="mt-2 text-xl">Roll a d20!</h1>
             <p class="mt-1">Difficulty class: </p>
             <output id="dice-roll-difficulty"
                     class="font-semibold">{chosenActionState.value.dice_roll?.required_value}</output>
