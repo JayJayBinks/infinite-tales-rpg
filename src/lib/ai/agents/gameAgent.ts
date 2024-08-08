@@ -30,14 +30,7 @@ export class GameAgent {
                 return JSON.parse(jsonText);
             }
         } catch (e) {
-            //TODO current gemini error missing leading bracket
-            try {
-                console.log(e);
-                console.log('fixed json');
-                return JSON.parse("{" + jsonText);
-            } catch (e) {
-                handleError(e);
-            }
+            handleError(e);
         }
         return undefined;
     }

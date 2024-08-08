@@ -1,10 +1,10 @@
 <script>
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
-
+    import {marked} from "marked";
     let {story, imagePrompt} = $props();
 </script>
 <article class="m-auto prose prose-neutral mt-2" style="color: unset">
-    {@html story}
+    {@html marked(story)}
 </article>
 <AIGeneratedImage className="m-auto mt-3"
                   showLoadingSpinner={false}

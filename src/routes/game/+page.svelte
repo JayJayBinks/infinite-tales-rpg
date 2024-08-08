@@ -56,7 +56,6 @@
         diceRollDialog.showModal();
         diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
             this.removeEventListener('close', sendWithManuallyRolled);
-            const actionSnap = $state.snapshot(chosenActionState.value);
             sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
         });
     }
@@ -87,11 +86,8 @@
         if (diff >= 6) {
             return 'The action is a major success.';
         }
-        if (diff >= 3) {
-            return 'The action is a regular success.';
-        }
         if (diff >= 0) {
-            return 'The action is a partial success.';
+            return 'The action is a regular success.';
         }
         //Error fallback (e.g. '10 to 14')
         return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${action.dice_roll.required_value}`
@@ -111,18 +107,17 @@
                 openDiceRollDialog();
             } else {
                 isAiGeneratingState = true;
-                const newState = await gameAgent.generateStoryProgression(chosenActionState.value.text, historyMessagesState.value, storyState.value, characterState.value);
+                const newState = await gameAgent.generateStoryProgression(action.text, historyMessagesState.value, storyState.value, characterState.value);
                 isAiGeneratingState = false;
                 if (newState) {
                     const newStateJson = stringifyPretty(newState);
                     console.log(newStateJson)
-                    const message = {"role": "model", "content": JSON.stringify(newStateJson)}
-                    historyMessagesState.value = [...historyMessagesState.value, message];
+                    const userMessage = {"role": "user", "content": action.text}
+                    const modelMessage = {"role": "model", "content": JSON.stringify(newStateJson)}
+                    historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
                     updateGameState(newState);
-                    if (historyMessagesState.value.length > 25) {
-                        //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
-                        historyMessagesState.value = await summaryAgent.summarizeHistoryMessages(historyMessagesState.value);
-                    }
+                    //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
+                    historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
                     chosenActionState.reset();
                     rolledValueState.reset();
                 } else {

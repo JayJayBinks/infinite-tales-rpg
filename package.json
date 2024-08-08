@@ -44,6 +44,7 @@
 	"type": "module",
 	"dependencies": {
 		"@google/generative-ai": "^0.15.0",
-		"lodash.isequal": "^4.5.0"
+		"lodash.isequal": "^4.5.0",
+		"marked": "^14.0.0"
 	}
 }
