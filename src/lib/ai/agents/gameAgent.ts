@@ -10,6 +10,7 @@ export class GameAgent {
     }
 
     async generateStoryProgression(chosenAction, historyMessages, storyState, characterState) {
+        const messages = [...historyMessages];
         let gameAgent = {
             parts: [{"text": systemBehaviour},
                 {"text": stringifyPretty(storyState)},
@@ -21,11 +22,11 @@ export class GameAgent {
             ]
         }
 
-        let contents = this.buildAIContentsFormat(chosenAction, historyMessages);
+        let contents = this.buildAIContentsFormat(chosenAction, messages);
         const jsonText = await this.llmProvider.sendToAI(contents, gameAgent);
         try {
             if (jsonText) {
-                console.log('aatempt to parse', jsonText)
+                console.log('atempt to parse', jsonText)
                 return JSON.parse(jsonText);
             }
         } catch (e) {
@@ -45,7 +46,10 @@ export class GameAgent {
         let contents = []
         let content = stringifyPretty(chosenAction);
         let message = {"role": "user", "content": content}
-        historyMessages.push(message);
+        contents.push({
+            "role": message["role"],
+            "parts": [{"text": message["content"]}]
+        })
         historyMessages.forEach(message => {
             contents.push({
                 "role": message["role"],

@@ -55,10 +55,10 @@
         const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
         const evaluatedRolledValue = isNaN(Number.parseInt(rolledValue)) ? 0 : Number.parseInt(rolledValue);
         const evaluatedValue = evaluatedRolledValue + evaluatedModifier;
-        if (evaluatedValue === 1) {
+        if (rolledValue === 1) {
             return 'The action is a critical failure!';
         }
-        if (evaluatedValue === 20) {
+        if (rolledValue === 20) {
             return 'The action is a critical success!';
         }
         const diff = evaluatedValue - action.dice_roll.required_value;
@@ -108,7 +108,7 @@
                     const message = {"role": "model", "content": JSON.stringify(newStateJson)}
                     historyMessagesState.value = [...historyMessagesState.value, message];
                     updateGameState(newState);
-                    if (historyMessagesState.value.length > 21) {
+                    if (historyMessagesState.value.length > 25) {
                         //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
                         historyMessagesState.value = await summaryAgent.summarizeHistoryMessages(historyMessagesState.value);
                     }

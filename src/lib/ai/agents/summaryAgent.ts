@@ -22,9 +22,9 @@ export class SummaryAgent {
             generationConfigText
         );
         console.log(("Summary returned " + text))
-        let newHistory = historyMessages.slice(0, 3)
+        let newHistory = historyMessages.slice(0, 2)
         newHistory.push({role: "user", content: text});
-        historyMessages.slice(-3).forEach(message => newHistory.push(message));
+        historyMessages.slice(-6).forEach(message => newHistory.push(message));
         return newHistory;
     }
 
