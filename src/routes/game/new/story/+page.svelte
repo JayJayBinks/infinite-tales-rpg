@@ -33,6 +33,17 @@
         }
         isGeneratingState = false;
     }
+    const onRandomizeSingle = async (stateValue) => {
+        isGeneratingState = true;
+        const currentStory = {...storyState.value};
+        currentStory[stateValue] = undefined;
+        const agentInput = {...currentStory, ...storyStateOverwrites}
+        const newState = await storyAgent.generateRandomStorySettings(agentInput);
+        if (newState) {
+            storyState.value[stateValue] = newState[stateValue];
+        }
+        isGeneratingState = false;
+    }
 
     function handleInput(evt, stateValue) {
         storyStateOverwrites[stateValue] = evt.target.value;
@@ -77,7 +88,7 @@
     {#if storyState.value}
         {#each Object.keys(storyStateForPrompt) as stateValue, i}
             <label class="form-control w-full mt-3">
-                <div class=" lex-row">
+                <div class=" flex-row">
                     {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
                     {#if storyStateOverwrites[stateValue]}
                         <span class="badge badge-accent">overwritten</span>
@@ -90,6 +101,12 @@
                           class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
 
             </label>
+            <button class="btn btn-accent mt-2"
+                    onclick={() => {
+                    onRandomizeSingle(stateValue);
+                }}>
+                Randomize
+            </button>
             <button class="btn btn-neutral mt-2"
                     onclick={() => {
                     storyState.resetProperty(stateValue);
@@ -98,5 +115,10 @@
                 Clear
             </button>
         {/each}
+        <button class="btn btn-primary mt-2"
+                onclick={() => {navigate('/new/character')}}
+                disabled="{isEqual(storyState.value , initialStoryState)}">
+            Next
+        </button>
     {/if}
 </form>

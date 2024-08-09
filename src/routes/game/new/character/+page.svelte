@@ -35,6 +35,18 @@
         }
         isGeneratingState = false;
     }
+    const onRandomizeSingle = async (stateValue) => {
+        isGeneratingState = true;
+        const agentInput = {...storyState.value, ...characterStateOverwrites}
+        const newState = await characterAgent.generateCharacterStats(agentInput);
+        if (newState) {
+            characterState.value[stateValue] = newState[stateValue];
+            if(stateValue === 'appearance'){
+                resetImageState = true;
+            }
+        }
+        isGeneratingState = false;
+    }
 
 </script>
 
@@ -54,7 +66,7 @@
         Randomize
     </button>
     <button class="btn btn-neutral"
-            onclick={() => {characterState.reset(); resetImageState = true;}}>
+            onclick={() => {characterState.reset(); characterStateOverwrites = {}; resetImageState = true;}}>
         Clear All
     </button>
     <button class="btn btn-primary"
@@ -72,10 +84,15 @@
 
     {#each Object.keys(characterState.value) as stateValue, i}
         <label class="form-control w-full mt-3">
-            {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
+            <div class=" flex-row">
+                {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
+                {#if characterStateOverwrites[stateValue]}
+                    <span class="badge badge-accent">overwritten</span>
+                {/if}
+            </div>
             <textarea bind:value={characterState.value[stateValue]}
                       placeholder="{characterStateForPrompt[stateValue]}"
-                      onblur="{(evt) => {characterStateOverwrites[stateValue] = evt.currentTarget.value}}"
+                      oninput="{(evt) => {characterStateOverwrites[stateValue] = evt.currentTarget.value}}"
                       class="mt-2 textarea textarea-bordered textarea-md w-full">
 
             </textarea>
@@ -83,11 +100,18 @@
         <button class="btn btn-neutral mt-2"
                 onclick={() => {
                     characterState.resetProperty(stateValue);
+                    delete characterStateOverwrites[stateValue];
                     if(stateValue === 'appearance'){
                         resetImageState = true;
                     }
                 }}>
             Clear
+        </button>
+        <button class="btn btn-accent mt-2"
+                onclick={() => {
+                    onRandomizeSingle(stateValue);
+                }}>
+            Randomize
         </button>
         {#if stateValue === 'appearance'}
             <AIGeneratedImage
@@ -100,4 +124,10 @@
         {/if}
 
     {/each}
+    <button class="btn btn-primary mt-2"
+            onclick="{() => {navigate('/')}}"
+            disabled={isEqual(characterState.value, initialCharacterState)}
+    >
+        Start Game
+    </button>
 </form>
