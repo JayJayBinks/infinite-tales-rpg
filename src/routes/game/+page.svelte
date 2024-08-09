@@ -9,6 +9,7 @@
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
     import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
     import {determineDiceRollResult, mustRollDice, getRndInteger} from "./gameLogic.ts";
+    import {errorState} from "$lib/state/errorState.svelte.ts";
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
 
@@ -26,6 +27,13 @@
 
     let gameAgent;
     let summaryAgent;
+
+    $effect(() => {
+        //retry after error dialog closed
+        if(!errorState.userMessage){
+            handleAIError();
+        }
+    });
 
     onMount(async () => {
         if (apiKeyState.value) {
@@ -56,14 +64,13 @@
         });
     }
 
-    async function sendAction(action, rollDice = false) {
-        //TODO this dialog is above the error dialog despite lower z-index, user does not know error ocurred
-        function handleAIError() {
-            if (rolledValueState.value) {
-                openDiceRollDialog();
-            }
+    function handleAIError() {
+        if (rolledValueState.value) {
+            openDiceRollDialog();
         }
+    }
 
+    async function sendAction(action, rollDice = false) {
         try {
             if (rollDice) {
                 rolledValueState.value = '?';
@@ -83,8 +90,6 @@
                     historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
                     chosenActionState.reset();
                     rolledValueState.reset();
-                } else {
-                    handleAIError();
                 }
             }
         } catch (e) {
