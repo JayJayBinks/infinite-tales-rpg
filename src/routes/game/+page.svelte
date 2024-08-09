@@ -149,7 +149,7 @@
                 <button id="roll-dice-button"
                         class="btn btn-neutral mb-3"
                         disabled={rolledValueState.value !== '?'}
-                        onclick={(evt) => {evt.target.disabled = true; rolledValueState.value = getRndInteger(1,20);}}>
+                        onclick={(evt) => {evt.target.disabled = true; rolledValueState.value = getRndInteger(1,21);}}>
                     Roll
                 </button>
                 {#if diceRollResultState}
