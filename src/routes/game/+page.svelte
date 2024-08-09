@@ -12,7 +12,6 @@
     import {errorState} from "$lib/state/errorState.svelte.ts";
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
-    let isMounted;
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -31,8 +30,8 @@
 
     $effect(() => {
         //retry after error dialog closed
-        if(!errorState.userMessage && rolledValueState.value && rolledValueState.value !== '?'){
-            openDiceRollDialog();
+        if(!errorState.userMessage){
+            handleAIError();
         }
     });
 
@@ -50,8 +49,10 @@
                 renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
             }
+            if (rolledValueState.value) {
+                openDiceRollDialog();
+            }
         }
-        isMounted = true;
     });
 
 
@@ -61,6 +62,12 @@
             this.removeEventListener('close', sendWithManuallyRolled);
             sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
         });
+    }
+
+    function handleAIError() {
+        if (rolledValueState.value) {
+            openDiceRollDialog();
+        }
     }
 
     async function sendAction(action, rollDice = false) {
