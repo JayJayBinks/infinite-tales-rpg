@@ -10,6 +10,7 @@
     import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
     import {determineDiceRollResult, mustRollDice, getRndInteger} from "./gameLogic.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
+    import ErrorDialog from "$lib/components/ErrorModal.svelte";
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
 
@@ -27,13 +28,6 @@
 
     let gameAgent;
     let summaryAgent;
-
-    $effect(() => {
-        //retry after error dialog closed
-        if(!errorState.userMessage){
-            handleAIError();
-        }
-    });
 
     onMount(async () => {
         if (apiKeyState.value) {
@@ -73,7 +67,6 @@
     async function sendAction(action, rollDice = false) {
         try {
             if (rollDice) {
-                rolledValueState.value = '?';
                 openDiceRollDialog();
             } else {
                 isAiGeneratingState = true;
@@ -134,6 +127,10 @@
     {#if isAiGeneratingState}
         <LoadingModal></LoadingModal>
     {/if}
+    {#if errorState.userMessage}
+        <ErrorDialog onclose={handleAIError}/>
+    {/if}
+
 
     <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-10"
             style="background: rgba(0, 0, 0, 0.3);">
@@ -144,7 +141,7 @@
                     class="font-semibold">{chosenActionState.value.dice_roll?.required_value}</output>
 
             <p>Rolled:</p>
-            <output id="dice-roll-result" class="mt-2">{rolledValueState.value}</output>
+            <output id="dice-roll-result" class="mt-2">{rolledValueState.value || '?'}</output>
             <p>Modifier:</p>
             <output id="modifier" class="mt-2">{modifierState}</output>
             <p>Reason:</p>
@@ -153,7 +150,7 @@
             <div class="flex justify-center flex-col mt-2">
                 <button id="roll-dice-button"
                         class="btn btn-neutral mb-3"
-                        disabled={rolledValueState.value !== '?'}
+                        disabled={rolledValueState.value}
                         onclick={(evt) => {evt.target.disabled = true; rolledValueState.value = getRndInteger(1,21);}}>
                     Roll
                 </button>
@@ -161,7 +158,7 @@
                     <output>{diceRollResultState}</output>
                 {/if}
                 <button onclick={() => (diceRollDialog.close())} id="dice-rolling-dialog-continue"
-                        disabled={rolledValueState.value === '?'}
+                        disabled={!rolledValueState.value}
                         class="btn btn-neutral">Continue
                 </button>
             </div>

@@ -22,7 +22,7 @@
         };
     });
 </script>
-{#if errorState.userMessage}
+{#if errorState.userMessage && activeUrl!=='/game'}
     <ErrorModal/>
 {/if}
 
