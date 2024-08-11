@@ -34,9 +34,6 @@
             gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value));
             summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value));
             //Start game when not already started
-            if (rolledValueState.value) {
-                openDiceRollDialog();
-            }
             if (gameActionsState.value.length === 0) {
                 await sendAction({
                     text: 'With you as the Dungeon Master, start the ADVENTURE_AND_MAIN_EVENT ' +
@@ -45,6 +42,9 @@
             } else {
                 renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
+            }
+            if (chosenActionState.value.text) {
+                openDiceRollDialog();
             }
         }
     });

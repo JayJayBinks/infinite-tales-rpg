@@ -1,5 +1,5 @@
 export function determineDiceRollResult(action, rolledValue, modifier) {
-    if (!action.dice_roll || rolledValue === '?') {
+    if (!action.dice_roll || !rolledValue) {
         return undefined;
     }
     const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
