@@ -1,4 +1,4 @@
-import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
+import {stringifyPretty} from "$lib/util.svelte.ts";
 import {GeminiProvider} from "../llmProvider";
 
 
@@ -30,22 +30,14 @@ export class StoryAgent {
             ...storyStateForPrompt,
             ...overwrites,
         }
-        const jsonText = await this.llmProvider.sendToAI(
+        const jsonParsed = await this.llmProvider.sendToAI(
             [{
                 "role": "user",
                 "parts": [{"text": "Create a new randomized story setting with following already set: " + stringifyPretty(preset)}]
             }],
             storyAgent
         );
-        try {
-            if (jsonText) {
-                return JSON.parse(jsonText);
-            }
-        } catch (e) {
-            handleError(e);
-
-        }
-        return undefined;
+        return jsonParsed;
     }
 
 }

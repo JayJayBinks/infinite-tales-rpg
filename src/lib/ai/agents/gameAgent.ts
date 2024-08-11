@@ -23,16 +23,7 @@ export class GameAgent {
         }
 
         let contents = this.buildAIContentsFormat(chosenAction, messages);
-        const jsonText = await this.llmProvider.sendToAI(contents, gameAgent);
-        try {
-            if (jsonText) {
-                console.log('atempt to parse', jsonText)
-                return JSON.parse(jsonText);
-            }
-        } catch (e) {
-            handleError(e);
-        }
-        return undefined;
+        return await this.llmProvider.sendToAI(contents, gameAgent);
     }
 
     private buildAIContentsFormat(chosenAction, historyMessages) {
@@ -119,7 +110,7 @@ Ongoing Tracking:
 - Review context from my first prompt, system instructions and my last message before responding.
 - Start with 100 HP and MP
 
-Make sure that the response is always valid JSON.`;
+Make sure that the response is always valid JSON. For speech use single instead double quotes.`;
 
 const jsonSystemInstruction = `You must always respond with valid JSON in the following format:
 {

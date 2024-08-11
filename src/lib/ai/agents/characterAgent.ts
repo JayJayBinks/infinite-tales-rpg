@@ -36,21 +36,13 @@ export class CharacterAgent {
             ...characterOverwrites
         }
 
-        const jsonText = await this.llmProvider.sendToAI(
+        return await this.llmProvider.sendToAI(
             [{
                 role: "user",
                 parts: [{"text": "Create the character: " + stringifyPretty(preset)}]
             }],
             agentInstruction
         );
-        if (jsonText) {
-            try {
-                return JSON.parse(jsonText);
-            } catch (e) {
-                handleError(e);
-            }
-        }
-        return undefined;
     }
 
 }

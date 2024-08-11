@@ -1,6 +1,6 @@
-
 import {handleError} from "../util.svelte";
 import {GoogleGenerativeAI} from "@google/generative-ai";
+import {JsonFixingInterceptorAgent} from "./agents/jsonFixingInterceptorAgent";
 
 const safetySettings = [
     {
@@ -35,11 +35,18 @@ export const generationConfigText = {
 };
 
 export interface LLMProvider {
+
+    sendToAI(contents,
+             systemInstruction,
+             temperature,
+             tryAutoFixJSONError);
+
     sendToAI(contents,
              systemInstruction,
              temperature,
              useGenerationConfig,
-             useSafetySettings);
+             useSafetySettings,
+             tryAutoFixJSONError);
 }
 
 
@@ -51,6 +58,8 @@ export class GeminiProvider implements LLMProvider {
     safetySettings;
 
     genAI;
+    jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
+
 
     constructor(apiKey, systemInstruction = undefined, temperature: number = generationConfig.temperature, useGenerationConfig = generationConfig, useSafetySettings = safetySettings) {
         this.apiKey = apiKey;
@@ -61,13 +70,26 @@ export class GeminiProvider implements LLMProvider {
         this.safetySettings = useSafetySettings;
 
         this.genAI = new GoogleGenerativeAI(this.apiKey);
+        this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
+    }
+
+    async sendToAINoAutoFix(contents,
+                   systemInstruction = this.systemInstruction,
+                   temperature = this.temperature) {
+        return this.sendToAI(contents,
+            systemInstruction,
+            temperature,
+            this.generationConfig,
+            this.safetySettings,
+            false);
     }
 
     async sendToAI(contents,
                    systemInstruction = this.systemInstruction,
                    temperature = this.temperature,
                    useGenerationConfig = this.generationConfig,
-                   useSafetySettings = this.safetySettings) {
+                   useSafetySettings = this.safetySettings,
+                   tryAutoFixJSONError = true) {
 
         const model = this.genAI.getGenerativeModel({
             model: "gemini-1.5-flash-latest",
@@ -75,12 +97,37 @@ export class GeminiProvider implements LLMProvider {
             safetySettings: useSafetySettings
         });
 
+        let result;
         try {
-            const result = await model.generateContent({contents, systemInstruction});
-            return result.response.text();
-            // if (response.status >= 400 && response.status < 600) {
-            //     throw new Error(await response.text());
-            // }
+            result = await model.generateContent({contents, systemInstruction});
+        } catch (e) {
+            handleError(e);
+            return undefined;
+        }
+        try {
+            const responseText = result.response.text();
+            if (generationConfig.responseMimeType === 'application/json') {
+                try {
+                    return JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''));
+                } catch (firstError) {
+                    try {
+                        console.log("Error parsing JSON: " + responseText, firstError)
+                        console.log("Try json simple fix 1")
+                        if (firstError.message.includes('Bad control character in string literal')) {
+                            return JSON.parse(responseText.replaceAll("\\", ""));
+                        }
+                        return JSON.parse("{" + responseText.replaceAll("\\", ""));
+                    } catch (secondError) {
+                        if (tryAutoFixJSONError) {
+                            console.log("Try json fix with llm agent")
+                            return this.jsonFixingInterceptorAgent.fixJSON(responseText, firstError.message);
+                        }
+                        handleError(firstError);
+                        return undefined;
+                    }
+                }
+            }
+            return responseText;
         } catch (e) {
             handleError(e);
         }
