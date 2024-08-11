@@ -14,7 +14,7 @@
     import DiceBox from "@3d-dice/dice-box";
 
     const diceBox = new DiceBox("#dice-box", {
-        assetPath: "/src/lib/assets/dice-box/", // required
+        assetPath: "/assets/dice-box/", // required
     });
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
