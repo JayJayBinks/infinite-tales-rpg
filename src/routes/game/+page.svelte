@@ -13,10 +13,8 @@
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
 
-    const diceBox = new DiceBox("#dice-box", {
-        assetPath: "/assets/dice-box/", // required
-    });
 
+    let diceBox;
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
@@ -35,6 +33,9 @@
     let summaryAgent;
 
     onMount(async () => {
+        diceBox = new DiceBox("#dice-box", {
+            assetPath: "/assets/dice-box/", // required
+        });
         diceBox.init();
         if (apiKeyState.value) {
             gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value));
