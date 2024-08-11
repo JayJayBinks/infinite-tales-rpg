@@ -141,7 +141,7 @@
     {/if}
 
 
-    <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-10" open
+    <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-10"
             style="background: rgba(0, 0, 0, 0.3);">
         <div class="modal-box flex flex-col items-center">
             <h1 class="mt-2 text-xl">Roll a d20!</h1>
