@@ -11,6 +11,11 @@
     import {determineDiceRollResult, mustRollDice, getRndInteger} from "./gameLogic.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
+    import DiceBox from "@3d-dice/dice-box";
+
+    const diceBox = new DiceBox("#dice-box", {
+        assetPath: "/src/lib/assets/dice-box/", // required
+    });
 
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
 
@@ -30,6 +35,7 @@
     let summaryAgent;
 
     onMount(async () => {
+        diceBox.init();
         if (apiKeyState.value) {
             gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value));
             summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value));
@@ -51,7 +57,8 @@
 
 
     function openDiceRollDialog() {
-        diceRollDialog.showModal();
+        //TODO showModal can not be used because it hides the dice roll
+        diceRollDialog.show();
         diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
             this.removeEventListener('close', sendWithManuallyRolled);
             sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
@@ -123,6 +130,8 @@
     }
 </script>
 
+<!--TODO refactor to component with dialog-->
+<div id="dice-box" class="fixed inset-0 w-screen h-screen z-50 pointer-events-none"></div>
 <div id="game-container" class="container mx-auto p-4">
     {#if isAiGeneratingState}
         <LoadingModal></LoadingModal>
@@ -132,7 +141,7 @@
     {/if}
 
 
-    <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-10"
+    <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-10" open
             style="background: rgba(0, 0, 0, 0.3);">
         <div class="modal-box flex flex-col items-center">
             <h1 class="mt-2 text-xl">Roll a d20!</h1>
@@ -151,13 +160,13 @@
                 <button id="roll-dice-button"
                         class="btn btn-neutral mb-3"
                         disabled={rolledValueState.value}
-                        onclick={(evt) => {evt.target.disabled = true; rolledValueState.value = getRndInteger(1,21);}}>
+                        onclick={(evt) => {diceBox.show(); diceBox.roll("1d20").then(results => rolledValueState.value = results[0].value)}}>
                     Roll
                 </button>
                 {#if diceRollResultState}
                     <output>{diceRollResultState}</output>
                 {/if}
-                <button onclick={() => (diceRollDialog.close())} id="dice-rolling-dialog-continue"
+                <button onclick={() => {diceBox.hide(); diceBox.clear(); diceRollDialog.close();}} id="dice-rolling-dialog-continue"
                         disabled={!rolledValueState.value}
                         class="btn btn-neutral">Continue
                 </button>
@@ -192,6 +201,11 @@
         .btn {
             height: fit-content;
             padding: 1rem;
+        }
+
+        canvas{
+            height: 100%;
+            width: 100%;
         }
     </style>
 </div>

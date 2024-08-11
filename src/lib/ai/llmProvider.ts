@@ -106,7 +106,7 @@ export class GeminiProvider implements LLMProvider {
         }
         try {
             const responseText = result.response.text();
-            if (generationConfig.responseMimeType === 'application/json') {
+            if (useGenerationConfig.responseMimeType === 'application/json') {
                 try {
                     return JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''));
                 } catch (firstError) {
