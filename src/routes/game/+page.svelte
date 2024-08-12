@@ -22,6 +22,7 @@
     const storyState = useLocalStorage('storyState', initialStoryState);
     const apiKeyState = useLocalStorage('apiKeyState');
     let rolledValueState = useLocalStorage('rolledValueState');
+    let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
     let chosenActionState = useLocalStorage('chosenActionState', {});
     let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
     let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
@@ -49,7 +50,7 @@
                 renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
             }
-            if (chosenActionState.value.text) {
+            if (!didAIProcessDiceRollAction.value) {
                 openDiceRollDialog();
             }
         }
@@ -58,6 +59,7 @@
 
     function openDiceRollDialog() {
         //TODO showModal can not be used because it hides the dice roll
+        didAIProcessDiceRollAction.value = false;
         diceRollDialog.show();
         diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
             this.removeEventListener('close', sendWithManuallyRolled);
@@ -66,7 +68,7 @@
     }
 
     function handleAIError() {
-        if (chosenActionState.value.text) {
+        if (!didAIProcessDiceRollAction.value) {
             openDiceRollDialog();
         }
     }
@@ -91,6 +93,7 @@
                     chosenActionState.reset();
                     rolledValueState.reset();
                     customActionInput.value = '';
+                    didAIProcessDiceRollAction.value = true;
                 }
             }
         } catch (e) {

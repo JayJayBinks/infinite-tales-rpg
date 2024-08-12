@@ -137,12 +137,13 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "actions": [
     {
-      "text": "Keep it max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
+      "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
       "type": "Misc.|Attack|Spell|Conversation|Social_Manipulation",
       "required_trait": "the skill the dice is rolled for",
       "action_difficulty": "none|simple|medium|difficult|almost_impossible",
       "dice_roll": {
-        "modifier_explanation": "Keep it max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
+        #If an action is difficult, see if you can apply a bonus rather than malus.
+        "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
         "modifier": "none|bonus|malus",
         "modifier_value": positive or negative value (-5 to +5),
         "required_value": a single integer for difficulty none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20
