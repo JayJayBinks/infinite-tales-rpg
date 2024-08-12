@@ -48,7 +48,7 @@
     </button>
     <small class="text-red-800 m-auto">This will delete your current game!</small>
 
-    <div class="mt-32">
+    <div class="mt-16">
         <a target="_blank" href="https://discord.gg/CUvgRQR77y" class="link m-auto flex flex-col items-center ">
             <span>Community Discussion at Discord</span>
             <img class="w-2/3 sm:w-1/4 mt-3 m-auto" src="{discord}" alt="Discord invite"/>
