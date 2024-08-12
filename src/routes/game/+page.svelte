@@ -144,8 +144,8 @@
 
     <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-20"
             style="background: rgba(0, 0, 0, 0.3);">
-        <div class="modal-box flex flex-col items-center justify-center text-center">
-            <p class="mt-32 sm:mt-3 text-xl">Difficulty class: </p>
+        <div class="modal-box flex flex-col items-center text-center">
+            <p class="mt-3 text-xl">Difficulty class: </p>
             <output id="dice-roll-difficulty"
                     class="font-semibold text-xl">{chosenActionState.value.dice_roll?.required_value}</output>
 
