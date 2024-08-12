@@ -108,13 +108,11 @@ Ongoing Tracking:
 - CHARACTER stats with some random items
 - Manage currency and transactions.
 - Review context from my first prompt, system instructions and my last message before responding.
-- Start with 100 HP and MP
-
-Make sure that the response is always valid JSON. For speech use single instead double quotes.`;
+- Start with 100 HP and MP`;
 
 const jsonSystemInstruction = `You must always respond with valid JSON in the following format:
 {
-  "story": "<DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES>",
+  "story": "<DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES. For character speech use single quotes.>",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the chosen action outcome and story progression, do not use character names but appearance description including the gender. Use max 10 words.",
   "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
@@ -139,12 +137,12 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "actions": [
     {
-      "text": "Description of the action to display to the player, do not include modifier or difficulty here. Keep it max 50 words.",
+      "text": "Keep it max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
       "type": "Misc.|Attack|Spell|Conversation|Social_Manipulation",
       "required_trait": "the skill the dice is rolled for",
       "action_difficulty": "none|simple|medium|difficult|almost_impossible",
       "dice_roll": {
-        "modifier_explanation": "Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that. Keep it max 30 words.",
+        "modifier_explanation": "Keep it max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
         "modifier": "none|bonus|malus",
         "modifier_value": positive or negative value (-5 to +5),
         "required_value": a single integer for difficulty none: 0, simple: 2 to 9, medium: 10 to 14, difficult: 15 to 19, almost_impossible: 20
