@@ -3,6 +3,10 @@
     import discord from '$lib/assets/socials/discord-logo-blue.png';
     import github from '$lib/assets/socials/icone-github-jaune.png';
     import logo from '$lib/assets/logo-removebg.png';
+    import Disclaimer from "$lib/components/Disclaimer.svelte";
+    import {navigate} from "$lib/util.svelte.ts";
+
+    let disclaimerOpen = $state(false);
 </script>
 
 <main class="container mx-auto p-6">
@@ -31,7 +35,7 @@
     <section class="text-center my-8">
         <h2 class="text-2xl font-semibold mb-4">Join the Beta</h2>
         <p class="mb-4">Experience the game in its early stages and help shape it's future.</p>
-        <a href="/game/settings/ai" class="btn btn-primary">Start Playing</a>
+        <button class="btn btn-primary" onclick="{() => disclaimerOpen = true}">Start Your Tale</button>
     </section>
 
     <section class="text-center my-8 bg-gray-800 p-6 rounded-lg shadow-md">
@@ -52,4 +56,6 @@
         <h2 class="text-2xl font-semibold mb-4">Open Source</h2>
         <p class="mb-4">Infinite Tales RPG is an open-source project. Licensed under the GNU AGPLv3 License.</p>
     </section>
+
+    <Disclaimer {disclaimerOpen} onAgree="{() => {navigate('/settings/ai')}}"></Disclaimer>
 </main>

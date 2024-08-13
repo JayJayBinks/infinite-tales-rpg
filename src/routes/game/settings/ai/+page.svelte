@@ -40,7 +40,7 @@
         Temperature: {temperatureState.value}
         <input type="range" min="0" max="2" step="0.05" id="temperature" bind:value={temperatureState.value}
                class="mt-2 range"/>
-        <small class="m-auto">Higher temperature makes the AI tales more creative, but also errors more likely</small>
+        <small class="m-auto">Higher temperature makes the AI more creative, but also errors more likely</small>
     </label>
 
     <button class="btn btn-neutral mt-5 m-auto"
@@ -50,7 +50,7 @@
     </button>
     <small class="text-red-800 m-auto">This will delete your current tale!</small>
 
-    <div class="mt-16">
+    <div class="mt-8">
         <a target="_blank" href="https://discord.gg/CUvgRQR77y" class="link m-auto flex flex-col items-center ">
             <span>Community Discussion at Discord</span>
             <img class="w-2/3 sm:w-1/4 mt-3 m-auto" src="{discord}" alt="Discord invite"/>
