@@ -8,10 +8,10 @@
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
     import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
-    import {determineDiceRollResult, mustRollDice, getRndInteger} from "./gameLogic.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
+    import * as gameLogic from "./gameLogic.ts";
 
     let diceBox, svgDice;
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
@@ -24,14 +24,16 @@
     let rolledValueState = useLocalStorage('rolledValueState');
     let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
     let chosenActionState = useLocalStorage('chosenActionState', {});
+    let isGameEnded = useLocalStorage('isGameEnded', false);
     let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
     let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
-    let diceRollResultState = $derived(determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState))
+    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState))
     let isAiGeneratingState = $state(false);
+
+    let derivedGameState = $state({currentHP: 0, currentMP: 0})
 
     let gameAgent;
     let summaryAgent;
-
     onMount(async () => {
         diceBox = new DiceBox("#dice-box", {
             assetPath: "/assets/dice-box/", // required
@@ -47,6 +49,7 @@
                         'with introducing the adventure background, characters and circumstances. Then describe the starting scene.'
                 });
             } else {
+                gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
                 renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
             }
@@ -79,7 +82,7 @@
                 openDiceRollDialog();
             } else {
                 isAiGeneratingState = true;
-                const newState = await gameAgent.generateStoryProgression(action.text, historyMessagesState.value, storyState.value, characterState.value);
+                const newState = await gameAgent.generateStoryProgression(action.text, historyMessagesState.value, storyState.value, characterState.value, derivedGameState);
                 isAiGeneratingState = false;
                 if (newState) {
                     const newStateJson = stringifyPretty(newState);
@@ -105,30 +108,48 @@
     function updateGameState(state) {
         gameActionsState.value = [...gameActionsState.value, {...state}];
         // TODO inventoryStore.set(state?.inventory_update || []);
+        gameLogic.applyGameActionState(derivedGameState, state);
         renderGameState(state);
     }
 
-    function renderGameState(state, addContinueStory = true) {
+    async function renderGameState(state, addContinueStory = true) {
+        const hp = derivedGameState.currentHP;
         if (actionsDiv) {
             actionsDiv.innerHTML = '';
-            state.actions = state?.actions || [];
-            state.actions.push();
-            state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
-            if (addContinueStory && state.hp > 0) {
-                addActionButton({
-                    text: 'Continue the story'
-                });
+            if(!isGameEnded.value){
+                state.actions = state?.actions || [];
+                state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
+                if (addContinueStory) {
+                    addActionButton({
+                        text: 'Continue the tale'
+                    });
+                }
             }
         }
+        if(!isGameEnded.value && hp <= 0){
+            isGameEnded.value = true;
+            await sendAction({
+                text: 'The CHARACTER has fallen to 0 HP. Describe how this tale ends.'
+            })
+        }
+        isGameEnded.value = hp <= 0;
     }
 
     function addActionButton(action, is_character_in_combat = false) {
         const button = document.createElement('button');
         button.className = 'btn btn-neutral mb-3 w-full text-md ';
+        const mpCost = parseInt(action.mp_cost) || 0;
+        const isEnoughMP = derivedGameState.currentMP >= mpCost;
         button.textContent = action.text;
+        if (mpCost > 0 && !button.textContent.includes("MP")) {
+            button.textContent +=  "(" + mpCost + " MP)";
+        }
+        if (!isEnoughMP) {
+            button.disabled = true;
+        }
         button.addEventListener('click', () => {
             chosenActionState.value = {...action};
-            sendAction({...action}, mustRollDice(action, is_character_in_combat))
+            sendAction({...action}, gameLogic.mustRollDice(action, is_character_in_combat))
         });
         actionsDiv.appendChild(button);
     }
@@ -191,15 +212,19 @@
     </dialog>
     <div class="sticky top-0 z-10 menu menu-horizontal bg-base-200 flex justify-between">
         <output id="hp" class="ml-1 font-semibold text-lg text-red-500">
-            HP: {gameActionsState.value[gameActionsState.value.length - 1]?.hp}</output>
+            HP: {derivedGameState.currentHP}</output>
         <output id="mp" class="ml-1 font-semibold text-lg text-blue-500">
-            MP: {gameActionsState.value[gameActionsState.value.length - 1]?.mp}</output>
+            MP: {derivedGameState.currentMP}</output>
     </div>
     <div id="story" bind:this={storyDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md">
-        {#each gameActionsState.value as gameActionsState}
+        <!-- For proper updating, need to use gameActionsState.image_prompt as each block id -->
+        {#each gameActionsState.value.slice(-3) as gameActionsState (gameActionsState.image_prompt)}
             <StoryProgressionWithImage story={gameActionsState.story}
                                        imagePrompt="{gameActionsState.image_prompt} {storyState.value.general_image_prompt}"/>
         {/each}
+        {#if isGameEnded.value}
+            <StoryProgressionWithImage story={gameLogic.getGameEndedMessage()}/>
+        {/if}
     </div>
     <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md"></div>
     <form id="input-form" class="mt-4 flex">

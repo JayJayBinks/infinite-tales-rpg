@@ -33,11 +33,35 @@ export function determineDiceRollResult(action, rolledValue, modifier) {
 
 //TODO implement parsing to enums
 export function mustRollDice(action, is_character_in_combat) {
-    return action.text.toLowerCase() !== 'continue the story' && (JSON.parse(is_character_in_combat) ||
+    return action.text.toLowerCase() !== 'continue the tale' && (JSON.parse(is_character_in_combat) ||
         (action.action_difficulty.toLowerCase() !== 'none' && action.action_difficulty.toLowerCase() !== 'simple')
         || action.type.toLowerCase() === 'social_manipulation');
 }
 
 export function getRndInteger(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
+}
+
+
+export function applyGameActionState(derivedGameState: object, state: object) {
+    for (const statUpdate of (state.stats_update || [])) {
+        switch (statUpdate.type) {
+            case 'hp_change':
+                derivedGameState.currentHP += statUpdate.value;
+                break;
+            case 'mp_change':
+                derivedGameState.currentMP += statUpdate.value;
+                break;
+        }
+    }
+}
+
+export function applyGameActionStates(derivedGameState, states: Array<object>) {
+    for (const state of states) {
+        applyGameActionState(derivedGameState, state);
+    }
+}
+
+export function getGameEndedMessage() {
+    return "Your tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new tale in the menu."
 }

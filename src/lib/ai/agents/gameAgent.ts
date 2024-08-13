@@ -9,7 +9,7 @@ export class GameAgent {
         this.llmProvider = llmProvider;
     }
 
-    async generateStoryProgression(chosenAction, historyMessages, storyState, characterState) {
+    async generateStoryProgression(chosenAction, historyMessages, storyState, characterState, derivedGameState) {
         const messages = [...historyMessages];
         let gameAgent = {
             parts: [{"text": systemBehaviour},
@@ -18,6 +18,7 @@ export class GameAgent {
                     "text": "The following is a description of the player character, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
                         "\n" + stringifyPretty(characterState)
                 },
+                {"text": "The following are the character's current stats, consider it in your response\n" + stringifyPretty(derivedGameState)},
                 {"text": jsonSystemInstruction},
             ]
         }
@@ -76,7 +77,7 @@ Actions:
 
 - Let me guide actions and story relevance.
 - Always provide at least 3 potential actions the CHARACTER can take, fitting the THEME and CHARACTER's abilities per GAME rules. One should randomly be brilliant, ridiculous, or dangerous. Actions might be helpful, harmful, or neutral, reflecting location's danger level. Show each action as numbered list, framed by {} at text's end, e.g., 1. {like this}.
-- Keep the suggested actions in one or two sentences each.
+- Keep the text short, max 30 words.
 - If an action consists of using a magic spell or ability, you will display the MP cost in parentheses beside that action.
 - Using magic abilities will consume MP and if I have not enough MP for an action, I can not use the ability or spell.
 - Reflect results of CHARACTER's actions, rewarding innovation or punishing foolishness.
@@ -132,8 +133,18 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
       "item_id": "unique id of the item to identify it"
     }
   ],
-  "hp": Integer value of the character's current HP,
-  "mp": Integer value of the character's current MP,
+  "stats_update": [
+     #Add this to the JSON if the story implies that the character's stats are altered
+     #At the beginning, the starting HP and MP is listed here
+    {
+      "type": "hp_change",
+      "value": positive integer if character recovers hp, negative if character looses hp
+    },
+    {
+      "type": "mp_change",
+      "value": positive integer if character recovers mp, negative if character looses mp
+    }
+  ],
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "actions": [
     {
@@ -141,6 +152,7 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
       "type": "Misc.|Attack|Spell|Conversation|Social_Manipulation",
       "required_trait": "the skill the dice is rolled for",
       "action_difficulty": "none|simple|medium|difficult|almost_impossible",
+      "mp_cost": cost of this action, 0 if this action does not use mp
       "dice_roll": {
         #If an action is difficult, see if you can apply a bonus rather than malus.
         "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",

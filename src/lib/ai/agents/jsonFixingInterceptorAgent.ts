@@ -23,7 +23,7 @@ export class JsonFixingInterceptorAgent {
                     "parts": [{"text": error}]
                 }],
             agent,
-            1
+            0
         );
     }
 

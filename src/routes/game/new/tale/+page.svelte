@@ -54,12 +54,12 @@
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
-    <li class="step step-primary">Story</li>
+    <li class="step step-primary">Tale</li>
     <li class="step">Character</li>
     <li class="step">Start Game</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
-    <p>Customize or randomize the story settings. For suggestions see
+    <p>Customize or randomize the tale settings. For suggestions see
         <a href="https://www.rpgprompts.com/" target="_blank" class="link">
             https://www.rpgprompts.com/</a>
         <br>

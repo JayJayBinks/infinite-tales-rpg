@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {determineDiceRollResult, getRndInteger, mustRollDice} from "./gameLogic";
+import {determineDiceRollResult, getRndInteger, mustRollDice} from "./gameLogic.ts";
 
 describe('determineDiceRollResult', () => {
     it('should return undefined when action.dice_roll is not provided or rolledValue is "?"', () => {
@@ -53,8 +53,8 @@ describe('determineDiceRollResult', () => {
 
 
 describe('mustRollDice', () => {
-    it('should return false when action text is "continue the story"', () => {
-        const action = { text: 'continue the story', action_difficulty: 'none', type: 'combat' };
+    it('should return false when action text is "continue the tale"', () => {
+        const action = { text: 'continue the tale', action_difficulty: 'none', type: 'combat' };
         expect(mustRollDice(action, false)).toBe(false);
     });
 

@@ -7,13 +7,14 @@
     import logo from '$lib/assets/logo-removebg.png';
 
     const apiKeyState = useLocalStorage('apiKeyState');
-    const temperatureState = useLocalStorage('temperatureState', 1);
+    const temperatureState = useLocalStorage('temperatureState', 0.8);
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const characterImageState = useLocalStorage('characterImageState');
     const storyState = useLocalStorage('storyState', initialStoryState);
+    const isGameEnded = useLocalStorage('isGameEnded', false);
 
     function onStartNew() {
         historyMessagesState.reset();
@@ -21,7 +22,8 @@
         characterState.reset();
         characterImageState.reset();
         storyState.reset();
-        navigate('/new/story')
+        isGameEnded.reset();
+        navigate('/new/tale')
     }
 </script>
 
@@ -38,15 +40,15 @@
         Temperature: {temperatureState.value}
         <input type="range" min="0" max="2" step="0.05" id="temperature" bind:value={temperatureState.value}
                class="mt-2 range"/>
-        <small class="m-auto">Higher temperature means more random output</small>
+        <small class="m-auto">Higher temperature makes the AI tales more creative, but also errors more likely</small>
     </label>
 
     <button class="btn btn-neutral mt-5 m-auto"
             disabled={!apiKeyState.value}
             onclick="{onStartNew}">
-        Start New Game
+        Start New Tale
     </button>
-    <small class="text-red-800 m-auto">This will delete your current game!</small>
+    <small class="text-red-800 m-auto">This will delete your current tale!</small>
 
     <div class="mt-16">
         <a target="_blank" href="https://discord.gg/CUvgRQR77y" class="link m-auto flex flex-col items-center ">

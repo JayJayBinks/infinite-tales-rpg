@@ -54,12 +54,12 @@
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
-    <li class="step step-primary">Story</li>
+    <li class="step step-primary">Tale</li>
     <li class="step step-primary">Character</li>
-    <li class="step">Start Game</li>
+    <li class="step">Start Tale</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
-    <p>When randomized, the Character will be created based on the story.</p>
+    <p>When randomized, the Character will be created based on the Tale.</p>
     <button class="btn btn-accent"
             disabled={isGeneratingState}
             onclick={onRandomize}>
@@ -70,7 +70,7 @@
         Clear All
     </button>
     <button class="btn btn-primary"
-        onclick="{() => {navigate('/new/story')}}"
+        onclick="{() => {navigate('/new/tale')}}"
     >
         Previous
     </button>
