@@ -176,7 +176,7 @@
             <button id="roll-dice-button"
                     class="btn btn-ghost m-3 "
                     disabled={rolledValueState.value}
-                    onclick={(evt) => {diceBox.show(); diceBox.roll("1d20").then(results => {rolledValueState.value = results[0].value;})}}>
+                    onclick={(evt) => {diceBox.roll("1d20").then(results => {rolledValueState.value = results[0].value;})}}>
                 <div class="flex justify-center flex-col items-center">
                     <svg
                             bind:this={svgDice}
@@ -199,7 +199,7 @@
             <output id="dice-roll-result" class="mt-2">{rolledValueState.value || '?'}  + {modifierState}
                 = {(rolledValueState.value + modifierState) || '?'}</output>
             <output>{diceRollResultState}</output>
-            <button onclick={() => {diceBox.hide(); diceBox.clear(); diceRollDialog.close();}}
+            <button onclick={() => {diceBox.clear(); diceRollDialog.close();}}
                     id="dice-rolling-dialog-continue"
                     disabled={!rolledValueState.value}
                     class="btn btn-neutral m-3">Continue
