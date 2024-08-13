@@ -136,6 +136,7 @@ const jsonSystemInstruction = `You must always respond with valid JSON in the fo
   "stats_update": [
      #Add this to the JSON if the story implies that the character's stats are altered
      #At the beginning, the starting HP and MP is listed here
+     #If the story is ended, apply high damage, e.g. 1000
     {
       "type": "hp_change",
       "value": positive integer if character recovers hp, negative if character looses hp

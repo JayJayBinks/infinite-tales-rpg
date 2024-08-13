@@ -7,7 +7,7 @@
     import logo from '$lib/assets/logo-removebg.png';
 
     const apiKeyState = useLocalStorage('apiKeyState');
-    const temperatureState = useLocalStorage('temperatureState', 0.8);
+    const temperatureState = useLocalStorage('temperatureState', 1.3);
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);

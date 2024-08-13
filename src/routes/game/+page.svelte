@@ -21,6 +21,7 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const storyState = useLocalStorage('storyState', initialStoryState);
     const apiKeyState = useLocalStorage('apiKeyState');
+    const temperatureState = useLocalStorage('temperatureState');
     let rolledValueState = useLocalStorage('rolledValueState');
     let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
     let chosenActionState = useLocalStorage('chosenActionState', {});
@@ -40,7 +41,7 @@
         });
         diceBox.init();
         if (apiKeyState.value) {
-            gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value));
+            gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value));
             summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value));
             //Start game when not already started
             if (gameActionsState.value.length === 0) {

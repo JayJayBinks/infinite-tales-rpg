@@ -14,7 +14,7 @@
     let storyAgent;
     onMount(() => {
         if (apiKeyState.value) {
-            storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value));
+            storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value, 2));
         }
     });
 

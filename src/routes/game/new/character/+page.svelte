@@ -16,7 +16,7 @@
     let characterAgent: CharacterAgent;
     onMount(() => {
         if (apiKeyState.value) {
-            characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value));
+            characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value, 2));
         }
     });
     const storyState = useLocalStorage('storyState', initialStoryState);

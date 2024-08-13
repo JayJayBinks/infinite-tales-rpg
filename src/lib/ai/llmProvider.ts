@@ -22,7 +22,7 @@ const safetySettings = [
 ];
 
 export const generationConfig = {
-    temperature: 2,
+    temperature: 1,
     topP: 0.95,
     topK: 64,
     maxOutputTokens: 8192,
@@ -61,7 +61,7 @@ export class GeminiProvider implements LLMProvider {
     jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
 
 
-    constructor(apiKey, systemInstruction = undefined, temperature: number = generationConfig.temperature, useGenerationConfig = generationConfig, useSafetySettings = safetySettings) {
+    constructor(apiKey, temperature: number = generationConfig.temperature, systemInstruction = undefined, useGenerationConfig = generationConfig, useSafetySettings = safetySettings) {
         this.apiKey = apiKey;
         this.systemInstruction = systemInstruction;
         this.genAI = new GoogleGenerativeAI(apiKey);
