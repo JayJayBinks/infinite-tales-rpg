@@ -7,8 +7,14 @@
     import {onMount} from "svelte";
 
     let activeUrl = $state('');
+    let hasSubMenu = $state(false);
     $effect(() => {
         activeUrl = $page.url.pathname;
+        if(activeUrl.includes('game/settings/')){
+            hasSubMenu = true;
+        }else{
+            hasSubMenu = false;
+        }
     })
 
     onMount(() => {
@@ -21,6 +27,7 @@
             return false;
         };
     });
+
 </script>
 {#if errorState.userMessage && activeUrl!=='/game'}
     <ErrorModal/>
@@ -35,7 +42,7 @@
         <li>
             <a href="/game/debugstate" class:active={activeUrl==='/game/debugstate'}>Debug Info</a>
         </li>
-        <li class="b">
+        <li>
             <a href="/game/character" class:active={activeUrl==='/game/character'}>Character</a>
         </li>
         <li>
@@ -55,7 +62,12 @@
 
 <!--TODO max-h-[85vh] is just a workaround because the mobile browser address bar makes 93vh higher than it should...
 -->
-<main class="max-h-[85vh] md:max-h-[93vh] max-w-7xl ml-auto mr-auto overflow-auto">
+<main
+      class:max-h-[78vh]={hasSubMenu}
+      class:md:max-h-[86vh]={hasSubMenu}
+      class:max-h-[85vh]={!hasSubMenu}
+      class:md:max-h-[93vh]={!hasSubMenu}
+      class='max-w-7xl ml-auto mr-auto overflow-auto'>
     <slot></slot>
 </main>
 

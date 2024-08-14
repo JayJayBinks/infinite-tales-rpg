@@ -1,23 +1,24 @@
 export const initialCharacterState = {
     name: '',
-    appearance: '',
     race: '',
-    personality: '',
-    background: '',
+    appearance: '',
     alignment: '',
-    motivation: '',
     class: '',
+    MAX_HP_MP: '',
     traits: '',
     abilities: '',
     expertise: '',
     disadvantages: '',
+    personality: '',
+    background: '',
+    motivation: '',
 }
 
 export const initialStoryState = {
     game: "",
     adventure_and_main_event: "",
-    theme: "",
-    tonality: "",
     character: "",
     general_image_prompt: "",
+    theme: "",
+    tonality: "",
 }

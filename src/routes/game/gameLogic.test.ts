@@ -55,27 +55,22 @@ describe('determineDiceRollResult', () => {
 describe('mustRollDice', () => {
     it('should return false when action text is "continue the tale"', () => {
         const action = { text: 'continue the tale', action_difficulty: 'none', type: 'combat' };
-        expect(mustRollDice(action, false)).toBe(false);
-    });
-
-    it('should return true when character is in combat', () => {
-        const action = { text: 'attack', action_difficulty: 'medium', type: 'combat' };
-        expect(mustRollDice(action, true)).toBe(true);
+        expect(mustRollDice(action)).toBe(false);
     });
 
     it('should return true when action difficulty is not "none" or "simple"', () => {
         const action = { text: 'attack', action_difficulty: 'hard', type: 'combat' };
-        expect(mustRollDice(action, false)).toBe(true);
+        expect(mustRollDice(action)).toBe(true);
     });
 
     it('should return true when action type is "social_manipulation"', () => {
         const action = { text: 'convince', action_difficulty: 'none', type: 'social_manipulation' };
-        expect(mustRollDice(action, false)).toBe(true);
+        expect(mustRollDice(action)).toBe(true);
     });
 
-    it('should return false for non-combat, non-difficult actions', () => {
+    it('should return false for non-difficult actions', () => {
         const action = { text: 'observe', action_difficulty: 'none', type: 'investigation' };
-        expect(mustRollDice(action, false)).toBe(false);
+        expect(mustRollDice(action)).toBe(false);
     });
 });
 

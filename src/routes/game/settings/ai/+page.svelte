@@ -4,7 +4,6 @@
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
     import discord from '$lib/assets/socials/discord-logo-blue.png';
     import github from '$lib/assets/socials/icone-github-jaune.png';
-    import logo from '$lib/assets/logo-removebg.png';
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -26,10 +25,7 @@
         navigate('/new/tale')
     }
 </script>
-<a href="/">
-    <img src="{logo}" alt="Infinite Tales Logo"
-         class="w-1/2 sm:w-1/4 mt-3 m-auto"/>
-</a>
+
 <form class="m-6 flex flex-col items-center">
     <label class="form-control w-full">
         <p>Gemini API Key</p>

@@ -12,6 +12,7 @@
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
     import * as gameLogic from "./gameLogic.ts";
+    import {difficultyDiceRollModifier} from "./gameLogic.ts";
 
     let diceBox, svgDice;
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
@@ -22,6 +23,7 @@
     const storyState = useLocalStorage('storyState', initialStoryState);
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState');
+    const difficultyState = useLocalStorage('difficultyState', 'Default');
     let rolledValueState = useLocalStorage('rolledValueState');
     let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
     let chosenActionState = useLocalStorage('chosenActionState', {});
@@ -119,7 +121,7 @@
             actionsDiv.innerHTML = '';
             if(!isGameEnded.value){
                 state.actions = state?.actions || [];
-                state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
+                state.actions.forEach(action => addActionButton(action));
                 if (addContinueStory) {
                     addActionButton({
                         text: 'Continue the tale'
@@ -136,7 +138,7 @@
         isGameEnded.value = hp <= 0;
     }
 
-    function addActionButton(action, is_character_in_combat = false) {
+    function addActionButton(action) {
         const button = document.createElement('button');
         button.className = 'btn btn-neutral mb-3 w-full text-md ';
         const mpCost = parseInt(action.mp_cost) || 0;
@@ -149,8 +151,10 @@
             button.disabled = true;
         }
         button.addEventListener('click', () => {
-            chosenActionState.value = {...action};
-            sendAction({...action}, gameLogic.mustRollDice(action, is_character_in_combat))
+            const chosenAction = $state.snapshot(action);
+            chosenAction.dice_roll.required_value -= difficultyDiceRollModifier[difficultyState.value];
+            chosenActionState.value = chosenAction;
+            sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value))
         });
         actionsDiv.appendChild(button);
     }

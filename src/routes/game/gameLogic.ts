@@ -1,3 +1,8 @@
+export const difficultyDiceRollModifier = {
+    Easy: 4,
+    Default: 0
+}
+
 export function determineDiceRollResult(action, rolledValue, modifier) {
     if (!action.dice_roll || !rolledValue) {
         return undefined;
@@ -32,10 +37,15 @@ export function determineDiceRollResult(action, rolledValue, modifier) {
 }
 
 //TODO implement parsing to enums
-export function mustRollDice(action, is_character_in_combat) {
-    return action.text.toLowerCase() !== 'continue the tale' && (JSON.parse(is_character_in_combat) ||
-        (action.action_difficulty.toLowerCase() !== 'none' && action.action_difficulty.toLowerCase() !== 'simple')
-        || action.type.toLowerCase() === 'social_manipulation');
+export function mustRollDice(action) {
+    const difficulty = action.action_difficulty.toLowerCase();
+    if(action.type.toLowerCase() === 'social_manipulation'){
+        return true;
+    }
+    if(action.text.toLowerCase() === 'continue the tale'){
+        return false;
+    }
+    return difficulty !== 'none' && difficulty !== 'simple';
 }
 
 export function getRndInteger(min, max) {
