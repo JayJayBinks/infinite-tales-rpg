@@ -101,6 +101,9 @@ export class GeminiProvider implements LLMProvider {
         try {
             result = await model.generateContent({contents, systemInstruction});
         } catch (e) {
+            if(e.message.includes('not available in your country')){
+                e.message = "The Google Gemini Free Tier is not available in your country. :( Better move to a different country, there are browser extensions which support you!";
+            }
             handleError(e);
             return undefined;
         }

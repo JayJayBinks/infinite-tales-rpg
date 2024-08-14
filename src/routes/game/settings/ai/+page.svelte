@@ -26,21 +26,22 @@
         navigate('/new/tale')
     }
 </script>
-
-<img src="{logo}" alt="Infinite Tales Logo"
-     class="w-1/2 sm:w-1/4 mt-3 m-auto"/>
+<a href="/">
+    <img src="{logo}" alt="Infinite Tales Logo"
+         class="w-1/2 sm:w-1/4 mt-3 m-auto"/>
+</a>
 <form class="m-6 flex flex-col items-center">
     <label class="form-control w-full">
-        Gemini API Key
+        <p>Gemini API Key</p>
         <input type="text" id="apikey" bind:value={apiKeyState.value}
                class="mt-2 input input-bordered"/>
-        <small class="m-auto">Don't worry, it is only saved in your browser</small>
+        <small class="m-auto mt-2">The free tier is not available in EU, use a browser extension to move to another country</small>
     </label>
     <label class="form-control w-full mt-3">
         Temperature: {temperatureState.value}
         <input type="range" min="0" max="2" step="0.05" id="temperature" bind:value={temperatureState.value}
                class="mt-2 range"/>
-        <small class="m-auto">Higher temperature makes the AI more creative, but also errors more likely</small>
+        <small class="m-auto mt-2">Higher temperature makes the AI more creative, but also errors more likely</small>
     </label>
 
     <button class="btn btn-neutral mt-5 m-auto"

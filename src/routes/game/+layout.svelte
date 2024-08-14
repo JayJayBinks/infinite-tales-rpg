@@ -33,7 +33,7 @@
             <a href="/game" class:active={activeUrl==='/game'}>Tale</a>
         </li>
         <li>
-            <a href="/game/debugstate" class:active={activeUrl==='/game/debugstate'}>Debug State</a>
+            <a href="/game/debugstate" class:active={activeUrl==='/game/debugstate'}>Debug Info</a>
         </li>
         <li class="b">
             <a href="/game/character" class:active={activeUrl==='/game/character'}>Character</a>
