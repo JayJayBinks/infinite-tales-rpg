@@ -2,8 +2,6 @@
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
-    import discord from '$lib/assets/socials/discord-logo-blue.png';
-    import github from '$lib/assets/socials/icone-github-jaune.png';
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -46,17 +44,4 @@
         Start New Tale
     </button>
     <small class="text-red-800 m-auto">This will delete your current tale!</small>
-
-    <div class="mt-8">
-        <a target="_blank" href="https://discord.gg/CUvgRQR77y" class="link m-auto flex flex-col items-center ">
-            <span>Community Discussion at Discord</span>
-            <img class="w-2/3 sm:w-1/4 mt-3 m-auto" src="{discord}" alt="Discord invite"/>
-        </a>
-        <a target="_blank" class="link m-auto mt-3 flex flex-col items-center "
-           href="https://github.com/JayJayBinks/infinite-tales-rpg">
-            <span>Source Code at Github</span>
-            <img class="w-1/4 sm:w-1/12 mt-3 m-auto" src="{github}"
-                 alt="Github Logo"/>
-        </a>
-    </div>
 </form>
