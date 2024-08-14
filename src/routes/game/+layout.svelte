@@ -34,8 +34,8 @@
 {/if}
 
 
-<nav class="btm-nav h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto ">
-    <ul class="menu gap-0 sm:text-lg">
+<nav class="btm-nav h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
+    <ul class="menu gap-0 p-0 sm:text-lg">
         <li>
             <a href="/game" class:active={activeUrl==='/game'}>Tale</a>
         </li>
@@ -46,7 +46,7 @@
             <a href="/game/character" class:active={activeUrl==='/game/character'}>Character</a>
         </li>
         <li>
-            <a href="/game/settings/ai" class:active={activeUrl==='/game/settings/ai'}>Menu</a>
+            <a href="/game/settings/ai" class:active={activeUrl.includes('/game/settings')}>Menu</a>
         </li>
     </ul>
 </nav>
