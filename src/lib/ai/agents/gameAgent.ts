@@ -9,7 +9,7 @@ export class GameAgent {
         this.llmProvider = llmProvider;
     }
 
-    async generateStoryProgression(chosenAction, historyMessages, storyState, characterState, derivedGameState) {
+    async generateStoryProgression(chosenAction, customSystemInstruction, historyMessages, storyState, characterState, derivedGameState) {
         const messages = [...historyMessages];
         let gameAgent = {
             parts: [{"text": systemBehaviour},
@@ -21,6 +21,9 @@ export class GameAgent {
                 {"text": "The following are the character's current stats, consider it in your response\n" + stringifyPretty(derivedGameState)},
                 {"text": jsonSystemInstruction},
             ]
+        }
+        if(customSystemInstruction){
+            gameAgent.parts.push({"text": customSystemInstruction});
         }
 
         let contents = this.buildAIContentsFormat(chosenAction, messages);

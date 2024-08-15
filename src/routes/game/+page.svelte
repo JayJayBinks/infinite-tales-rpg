@@ -21,8 +21,11 @@
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const storyState = useLocalStorage('storyState', initialStoryState);
+
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState');
+    const customSystemInstruction = useLocalStorage('customSystemInstruction');
+
     const difficultyState = useLocalStorage('difficultyState', 'Default');
     let rolledValueState = useLocalStorage('rolledValueState');
     let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
@@ -38,10 +41,6 @@
     let gameAgent;
     let summaryAgent;
     onMount(async () => {
-        diceBox = new DiceBox("#dice-box", {
-            assetPath: "/assets/dice-box/", // required
-        });
-        diceBox.init();
         if (apiKeyState.value) {
             gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value));
             summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value));
@@ -56,6 +55,10 @@
                 renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
             }
+            diceBox = new DiceBox("#dice-box", {
+                assetPath: "/assets/dice-box/", // required
+            });
+            await diceBox.init();
             if (!didAIProcessDiceRollAction.value) {
                 openDiceRollDialog();
             }
@@ -85,7 +88,9 @@
                 openDiceRollDialog();
             } else {
                 isAiGeneratingState = true;
-                const newState = await gameAgent.generateStoryProgression(action.text, historyMessagesState.value, storyState.value, characterState.value, derivedGameState);
+                const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
+                    storyState.value, characterState.value, derivedGameState);
+
                 isAiGeneratingState = false;
                 if (newState) {
                     const newStateJson = stringifyPretty(newState);
