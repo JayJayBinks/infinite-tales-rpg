@@ -9,7 +9,7 @@ export class GameAgent {
         this.llmProvider = llmProvider;
     }
 
-    async generateStoryProgression(chosenAction, customSystemInstruction, historyMessages, storyState, characterState, derivedGameState) {
+    async generateStoryProgression(actionText, customSystemInstruction, historyMessages, storyState, characterState, derivedGameState) {
         const messages = [...historyMessages];
         let gameAgent = {
             parts: [{"text": systemBehaviour},
@@ -26,11 +26,11 @@ export class GameAgent {
             gameAgent.parts.push({"text": customSystemInstruction});
         }
 
-        let contents = this.buildAIContentsFormat(chosenAction, messages);
+        let contents = this.buildAIContentsFormat(actionText, messages);
         return await this.llmProvider.sendToAI(contents, gameAgent);
     }
 
-    private buildAIContentsFormat(chosenAction, historyMessages) {
+    private buildAIContentsFormat(actionText, historyMessages) {
         let contents = []
         historyMessages.forEach(message => {
             contents.push({
@@ -38,7 +38,7 @@ export class GameAgent {
                 "parts": [{"text": message["content"]}]
             })
         });
-        let message = {"role": "user", "content": stringifyPretty(chosenAction)}
+        let message = {"role": "user", "content": actionText}
         contents.push({
             "role": message["role"],
             "parts": [{"text": message["content"]}]

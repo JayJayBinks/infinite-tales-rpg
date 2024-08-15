@@ -19,6 +19,7 @@
                 <div class="flex flex-col space-y-1">
                     <p><strong>Race:</strong> <span id="race">{characterState.value.race}</span></p>
                     <p><strong>Class:</strong> <span id="class">{characterState.value.class}</span></p>
+                    <p><span id="hpmp">{characterState.value.MAX_HP_MP}</span></p>
                     <p><strong>Alignment:</strong> <span id="alignment">{characterState.value.alignment}</span></p>
                     <p><strong>Background:</strong> <span id="background">{characterState.value.background}</span></p>
                 </div>
@@ -26,22 +27,22 @@
 
             <div class="section mb-6">
                 <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Appearance</h2>
-                <p id="appearance" class="class">{characterState.value.appearance}</p>
+                <p id="appearance">{characterState.value.appearance}</p>
             </div>
 
             <div class="section mb-6">
                 <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Personality</h2>
-                <p id="personality" class="class">{characterState.value.personality}</p>
+                <p id="personality">{characterState.value.personality}</p>
             </div>
 
             <div class="section mb-6">
                 <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Motivation</h2>
-                <p id="motivation" class="class">{characterState.value.motivation}</p>
+                <p id="motivation">{characterState.value.motivation}</p>
             </div>
 
             <div class="section mb-6">
                 <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Abilities</h2>
-                <p id="abilities" class="class">{characterState.value.abilities}</p>
+                <p id="abilities">{characterState.value.abilities}</p>
             </div>
 
             <div class="section mb-6">

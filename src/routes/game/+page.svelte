@@ -38,9 +38,13 @@
 
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
 
-    let gameAgent;
-    let summaryAgent;
+    let gameAgent,summaryAgent;
+
     onMount(async () => {
+        diceBox = new DiceBox("#dice-box", {
+            assetPath: "/assets/dice-box/", // required
+        });
+        diceBox.init();
         if (apiKeyState.value) {
             gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value));
             summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value));
@@ -55,10 +59,6 @@
                 renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
             }
-            diceBox = new DiceBox("#dice-box", {
-                assetPath: "/assets/dice-box/", // required
-            });
-            await diceBox.init();
             if (!didAIProcessDiceRollAction.value) {
                 openDiceRollDialog();
             }
@@ -166,7 +166,7 @@
 </script>
 
 <!--TODO refactor to component with dialog-->
-<div id="dice-box" class="fixed inset-0 w-screen h-screen z-30 pointer-events-none"></div>
+<div id="dice-box" class="fixed inset-0 z-30 pointer-events-none"></div>
 <div id="game-container" class="container mx-auto p-4">
     {#if isAiGeneratingState}
         <LoadingModal></LoadingModal>
@@ -186,7 +186,7 @@
             <button id="roll-dice-button"
                     class="btn btn-ghost m-3 "
                     disabled={rolledValueState.value}
-                    onclick={(evt) => {diceBox.roll("1d20").then(results => {rolledValueState.value = results[0].value;})}}>
+                    onclick={(evt) => {evt.currentTarget.disabled = true; diceBox.roll("1d20").then(results => {rolledValueState.value = results[0].value;})}}>
                 <div class="flex justify-center flex-col items-center">
                     <svg
                             bind:this={svgDice}

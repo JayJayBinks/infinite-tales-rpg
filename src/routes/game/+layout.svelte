@@ -55,9 +55,9 @@
 -->
 <main
       class:max-h-[78vh]={hasSubMenu}
-      class:md:max-h-[86vh]={hasSubMenu}
+      class:lg:max-h-[86vh]={hasSubMenu}
       class:max-h-[85vh]={!hasSubMenu}
-      class:md:max-h-[93vh]={!hasSubMenu}
+      class:lg:max-h-[93vh]={!hasSubMenu}
       class='max-w-7xl ml-auto mr-auto overflow-auto'>
     <slot></slot>
 </main>
