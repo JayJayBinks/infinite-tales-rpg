@@ -68,7 +68,7 @@
     <li class="step">Start Tale</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
-    <p>Customize or randomize the tale settings. You can also create the Character first and the Tale after.</p>
+    <p>Customize or randomize the Tale settings. You can also create the Character first and the Tale after.</p>
     <p>Overriding any setting will be considered for Randomize</p>
 
     <button class="btn btn-accent"

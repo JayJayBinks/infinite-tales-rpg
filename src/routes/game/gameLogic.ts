@@ -38,12 +38,12 @@ export function determineDiceRollResult(action, rolledValue, modifier) {
 
 //TODO implement parsing to enums
 export function mustRollDice(action) {
+    if(action.text.toLowerCase() === 'continue the tale'){
+        return false;
+    }
     const difficulty = action.action_difficulty.toLowerCase();
     if(action.type.toLowerCase() === 'social_manipulation'){
         return true;
-    }
-    if(action.text.toLowerCase() === 'continue the tale'){
-        return false;
     }
     return difficulty !== 'none' && difficulty !== 'simple';
 }

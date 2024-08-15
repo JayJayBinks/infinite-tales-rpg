@@ -129,7 +129,7 @@
                 state.actions.forEach(action => addActionButton(action));
                 if (addContinueStory) {
                     addActionButton({
-                        text: 'Continue the tale'
+                        text: 'Continue The Tale'
                     });
                 }
             }
@@ -157,7 +157,9 @@
         }
         button.addEventListener('click', () => {
             const chosenAction = $state.snapshot(action);
-            chosenAction.dice_roll.required_value -= difficultyDiceRollModifier[difficultyState.value];
+            if(chosenAction.dice_roll){
+                chosenAction.dice_roll.required_value -= difficultyDiceRollModifier[difficultyState.value];
+            }
             chosenActionState.value = chosenAction;
             sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value))
         });
