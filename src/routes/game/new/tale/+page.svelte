@@ -5,31 +5,32 @@
     import {storyStateForPrompt} from "$lib/ai/agents/storyAgent.ts";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
-    import {navigate} from "$lib/util.svelte.ts";
+    import {
+        navigate,
+        downloadLocalStorageAsJson,
+        importJsonFromFile
+    } from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
     let storyAgent;
+
+    const storyState = useLocalStorage('storyState', {...initialStoryState});
+    let storyStateOverwrites = $state({});
+    const characterState = useLocalStorage('characterState', {...initialCharacterState});
+
     onMount(() => {
         if (apiKeyState.value) {
             storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value, 2));
         }
     });
-
-    const storyState = useLocalStorage('storyState', {...initialStoryState});
-    let storyStateOverwrites = $state({});
-    const characterState = useLocalStorage('characterState', {...initialCharacterState});
-    const characterImageState = useLocalStorage('characterImageState');
     const onRandomize = async (evt) => {
         isGeneratingState = true;
-        const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites);
+        const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites, $state.snapshot(characterState.value));
         if (newState) {
             storyState.value = newState;
-            //TODO better way to reset?
-            characterState.reset();
-            characterImageState.reset();
         }
         isGeneratingState = false;
     }
@@ -48,6 +49,14 @@
     function handleInput(evt, stateValue) {
         storyStateOverwrites[stateValue] = evt.target.value;
     }
+
+    const importSettings = () => {
+        importJsonFromFile((parsed) => {
+            storyState.value = parsed.storyState;
+            characterState.value = parsed.characterState;
+        });
+    };
+
 </script>
 
 {#if isGeneratingState}
@@ -55,16 +64,13 @@
 {/if}
 <ul class="steps w-full mt-3">
     <li class="step step-primary">Tale</li>
-    <li class="step">Character</li>
-    <li class="step">Start Game</li>
+    <li class="step"><a href="/game/new/character">Character</a></li>
+    <li class="step">Start Tale</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
-    <p>Customize or randomize the tale settings. For suggestions see
-        <a href="https://www.rpgprompts.com/" target="_blank" class="link">
-            https://www.rpgprompts.com/</a>
-        <br>
-        You can also just enter certain elements to be considered for Randomize.
-    </p>
+    <p>Customize or randomize the tale settings. You can also create the Character first and the Tale after.</p>
+    <p>Overriding any setting will be considered for Randomize</p>
+
     <button class="btn btn-accent"
             disabled={isGeneratingState}
             onclick={onRandomize}>
@@ -74,22 +80,27 @@
             onclick={() => {
                 storyState.reset();
                 storyStateOverwrites = {};
-                characterState.reset();
-                characterImageState.reset();
                 }
             }>
         Clear All
     </button>
+    <button class="btn btn-neutral"
+            onclick={downloadLocalStorageAsJson}>
+        Export All Settings
+    </button>
+    <button class="btn btn-neutral"
+            onclick={importSettings}>
+        Import All Settings
+    </button>
     <button class="btn btn-primary"
-            onclick={() => {navigate('/new/character')}}
-            disabled="{isEqual(storyState.value , initialStoryState)}">
-        Next
+            onclick={() => {navigate('/new/character')}}>
+        Customize Character
     </button>
     {#if storyState.value}
         {#each Object.keys(storyStateForPrompt) as stateValue, i}
             <label class="form-control w-full mt-3">
-                <div class=" flex-row">
-                    {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
+                <div class=" flex-row capitalize">
+                    {stateValue.replaceAll('_', ' ')}
                     {#if storyStateOverwrites[stateValue]}
                         <span class="badge badge-accent">overwritten</span>
                     {/if}
@@ -116,9 +127,8 @@
             </button>
         {/each}
         <button class="btn btn-primary mt-2"
-                onclick={() => {navigate('/new/character')}}
-                disabled="{isEqual(storyState.value , initialStoryState)}">
-            Next
+                onclick={() => {navigate('/new/character')}}>
+            Customize Character
         </button>
     {/if}
 </form>

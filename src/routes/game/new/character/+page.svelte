@@ -23,12 +23,11 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
 
     let characterStateOverwrites = $state({});
-
     let resetImageState = $state(false);
 
     const onRandomize = async (evt) => {
         isGeneratingState = true;
-        const newState = await characterAgent.generateCharacterStats(storyState.value, characterStateOverwrites);
+        const newState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value), characterStateOverwrites);
         if (newState) {
             characterState.value = newState;
             resetImageState = true;
@@ -54,7 +53,7 @@
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
-    <li class="step step-primary">Tale</li>
+    <li class="step step-primary"><a href="/game/new/tale">Tale</a></li>
     <li class="step step-primary">Character</li>
     <li class="step">Start Tale</li>
 </ul>
@@ -72,20 +71,20 @@
     <button class="btn btn-primary"
         onclick="{() => {navigate('/new/tale')}}"
     >
-        Previous
+        Customize Tale
     </button>
     <button class="btn btn-primary"
             onclick="{() => {navigate('/')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Game
+        Start Tale
     </button>
 
 
     {#each Object.keys(characterState.value) as stateValue, i}
         <label class="form-control w-full mt-3">
-            <div class=" flex-row">
-                {stateValue.charAt(0).toUpperCase() + stateValue.slice(1)}
+            <div class=" flex-row capitalize">
+                {stateValue.replaceAll('_', ' ')}
                 {#if characterStateOverwrites[stateValue]}
                     <span class="badge badge-accent">overwritten</span>
                 {/if}
@@ -128,6 +127,6 @@
             onclick="{() => {navigate('/')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Game
+        Start Tale
     </button>
 </form>

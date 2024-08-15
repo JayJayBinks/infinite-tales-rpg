@@ -10,7 +10,7 @@
     let hasSubMenu = $state(false);
     $effect(() => {
         activeUrl = $page.url.pathname;
-        if(activeUrl.includes('game/settings/')){
+        if(activeUrl.includes('game/settings')){
             hasSubMenu = true;
         }else{
             hasSubMenu = false;
@@ -50,15 +50,6 @@
         </li>
     </ul>
 </nav>
-
-<!--<nav class="sub-menu" id="character">-->
-<!--	<a href="/character/inventory" class="menu-tab" data-tab="inventory">Inventory</a>-->
-<!--	<a href="/character" class="menu-tab" data-tab="stats">Stats</a>-->
-<!--</nav>-->
-<!--<nav class="sub-menu" id="menu">-->
-<!--	<a href="/settings/ai" class="menu-tab" data-tab="ai-settings">AI Settings</a>-->
-<!--	<a href="/settings/game" class="menu-tab" data-tab="game-settings">Game Settings</a>-->
-<!--</nav>-->
 
 <!--TODO max-h-[85vh] is just a workaround because the mobile browser address bar makes 93vh higher than it should...
 -->

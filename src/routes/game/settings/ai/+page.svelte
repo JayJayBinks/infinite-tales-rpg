@@ -49,7 +49,7 @@
     <label class="form-control w-full mt-3">
         Tale System Instruction
         <textarea bind:value={customSystemInstruction.value}
-                  placeholder="For example: Make every action easy difficulty. Make every character speak in riddles."
+                  placeholder="For example: Make every action difficulty easy. Make every character speak in riddles. You may have to start a new Tale after setting the instruction."
                class="mt-2 textarea textarea-bordered">
         </textarea>
         <small class="m-auto mt-2">This instruction will be added to the AI</small>

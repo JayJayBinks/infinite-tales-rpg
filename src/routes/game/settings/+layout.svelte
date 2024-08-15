@@ -17,7 +17,7 @@
 <nav class="btm-nav bottom-[6vh] h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
     <ul class="menu gap-0 p-0 sm:text-lg">
         <li>
-            <a href="/game/settings/" class:active={activeUrl==='/game/settings'}>Game Settings</a>
+            <a href="/game/settings/" class:active={activeUrl==='/game/settings'}>Tale Settings</a>
         </li>
         <li>
             <a href="/game/settings/ai" class:active={activeUrl==='/game/settings/ai'}>AI Settings</a>
