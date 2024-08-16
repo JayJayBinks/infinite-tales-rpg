@@ -5,12 +5,7 @@
     import ErrorModal from "$lib/components/ErrorModal.svelte";
     import {handleError} from "$lib/util.svelte.ts";
     import {onMount} from "svelte";
-    import { dev } from '$app/environment';
-    import { inject } from '@vercel/analytics';
-    import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 
-    injectSpeedInsights();
-    inject({ mode: dev ? 'development' : 'production' });
     let activeUrl = $state('');
     let hasSubMenu = $state(false);
     $effect(() => {
