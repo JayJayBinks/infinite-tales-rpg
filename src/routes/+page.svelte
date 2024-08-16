@@ -56,6 +56,13 @@
         <h2 class="text-2xl font-semibold mb-4">Open Source</h2>
         <p class="mb-4">Infinite Tales RPG is an open-source project, licensed under the GNU AGPLv3 License.</p>
     </section>
+    <section  class="text-center my-8 bg-gray-800 p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-semibold mb-2">Acknowledgements</h2>
+        <p class="mb-2">Special thanks to the prompt magicians of <a class="link" href="https://www.rpgprompts.com/" target="_blank">rpgprompts</a>, this game is run on your prompt!</p>
+        <p class="mb-2">The amazing image generation is done by <a class="link" href="https://pollinations.ai/" target="_blank">pollinations.ai</a></p>
+        <p class="mb-2">The cool dice rolling feature is developed here <a class="link" href="https://github.com/3d-dice/dice-box" target="_blank">3d-dice dice-box</a></p>
+        <p class="mb-2">Favicon is created by <a class="link" href="https://icons8.com" target="_blank">icons8.com</a></p>
+    </section>
 
     <Disclaimer {disclaimerOpen} onAgree="{() => {navigate('/settings/ai')}}"></Disclaimer>
 </main>

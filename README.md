@@ -78,4 +78,8 @@ To develop **Infinite Tales RPG**, you'll need to set up a few things:
 
 ## 🎉 Acknowledgements
 
-- Special thanks to the developers of Svelte, Tailwind CSS, and DaisyUI for their amazing tools.
+- Many thanks to the developers of Svelte, Tailwind CSS, and DaisyUI for their amazing tools.
+- Special thanks to the prompt magicians of <a class="link" href="https://www.rpgprompts.com/" target="_blank">rpgprompts</a>, this game is run on your prompt!
+- The amazing image generation is done by <a href="https://pollinations.ai/" target="_blank">pollinations.ai</a>
+- The cool dice rolling feature is developed here <a class="link" href="https://github.com/3d-dice/dice-box" target="_blank">3d-dice dice-box</a>
+- Favicon is created by <a href="https://icons8.com" target="_blank">icons8.com</a>
