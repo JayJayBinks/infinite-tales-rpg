@@ -52,6 +52,25 @@ export function getRndInteger(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
 }
 
+export function renderStatUpdates(statsUpdate: object) {
+    if(statsUpdate){
+        return statsUpdate.map(statsUpdate => {
+            if(statsUpdate.value == 0){
+                return undefined;
+            }
+            let responseText;
+            if(statsUpdate.value > 0){
+                responseText = "You gain " + statsUpdate.value;
+            }
+            if(statsUpdate.value < 0){
+                responseText = "You loose " + statsUpdate.value * -1;
+            }
+            responseText += " " + statsUpdate.type.replace('_change', '').toUpperCase();
+            return responseText;
+        }).filter(value => !!value);
+    }
+    return [];
+}
 
 export function applyGameActionState(derivedGameState: object, state: object) {
     for (const statUpdate of (state.stats_update || [])) {

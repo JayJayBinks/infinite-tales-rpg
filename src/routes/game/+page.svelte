@@ -233,6 +233,7 @@
         <!-- For proper updating, need to use gameActionsState.image_prompt as each block id -->
         {#each gameActionsState.value.slice(-3) as gameActionsState (gameActionsState.image_prompt)}
             <StoryProgressionWithImage story={gameActionsState.story}
+                                       statsUpdates={gameLogic.renderStatUpdates(gameActionsState.stats_update)}
                                        imagePrompt="{gameActionsState.image_prompt} {storyState.value.general_image_prompt}"/>
         {/each}
         {#if isGameEnded.value}
