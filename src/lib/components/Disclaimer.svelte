@@ -14,7 +14,9 @@
         <span class="mt-2 font-semibold">Age Restriction</span>
         <span class="mt-2">This game is intended for players aged 18 and above.</span>
         <span class="mt-2 font-semibold">Privacy Notice</span>
-        <span class="mt-2">This game does not collect, store, or share any personal data. No cookies or tracking technologies are used.</span>
+        <span class="mt-2">This website uses Vercel Web Analytics and Speed Insights. They collect information such as page views, country, browser and load times.
+            No personal data is collected at all that could identify individual users. It is used solely for the purpose of improving this website.
+            We are committed to protecting user privacy and do not share this data with any third parties.</span>
         
         <button class="btn btn-info mt-3"
                 onclick={() => {disclaimer.close(); onAgree();}}
