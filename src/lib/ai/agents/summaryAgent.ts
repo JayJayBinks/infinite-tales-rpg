@@ -16,7 +16,7 @@ export class SummaryAgent {
      * @param numOfLastActions number of last actions to keep for detailed memory
      */
     async summarizeStoryIfTooLong(historyMessages: Array<object>, startSummaryAtSize = 12 * 2, numOfLastActions = 4 * 2) {
-        if(historyMessages.length < startSummaryAtSize){
+        if (historyMessages.length < startSummaryAtSize) {
             return historyMessages;
         }
         let agent = "You are a Summary Agent for a RPG adventure, who is responsible for summarizing the most important bits of a continuous story." +
@@ -24,11 +24,12 @@ export class SummaryAgent {
 
         let toSummarize = historyMessages.slice(2, (numOfLastActions + 1) * -1);
 
-        const text = await this.llmProvider.sendToAI({parts: [{"text": agent}]},
+        const text = await this.llmProvider.sendToAI(
             {
                 "role": "user",
                 "parts": [{"text": "Summarize the following story: \n" + stringifyPretty(toSummarize)}]
             },
+            {parts: [{"text": agent}]},
             1,
             generationConfigText
         );

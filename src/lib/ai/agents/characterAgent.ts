@@ -42,7 +42,7 @@ export class CharacterAgent {
                 role: "user",
                 parts: [{"text": "Create the character: " + stringifyPretty(preset)}]
             }],
-            agentInstruction
+            {parts: [{"text": agentInstruction}]}
         );
     }
 

@@ -15,6 +15,7 @@
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
+    const aiLanguage = useLocalStorage('aiLanguage');
     let storyAgent;
 
     const storyState = useLocalStorage('storyState', {...initialStoryState});
@@ -23,7 +24,7 @@
 
     onMount(() => {
         if (apiKeyState.value) {
-            storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value, 2));
+            storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
         }
     });
     const onRandomize = async (evt) => {

@@ -52,6 +52,7 @@ export interface LLMProvider {
 
 export class GeminiProvider implements LLMProvider {
     apiKey: string;
+    language: string;
     systemInstruction: any; // TODO The requested module '@google/generative-ai' does not provide an export named 'Part'
     temperature: number;
     generationConfig;
@@ -61,11 +62,11 @@ export class GeminiProvider implements LLMProvider {
     jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
 
 
-    constructor(apiKey, temperature: number = generationConfig.temperature, systemInstruction = undefined, useGenerationConfig = generationConfig, useSafetySettings = safetySettings) {
+    constructor(apiKey, temperature: number = generationConfig.temperature, language, systemInstruction = undefined, useGenerationConfig = generationConfig, useSafetySettings = safetySettings) {
         this.apiKey = apiKey;
-        this.systemInstruction = systemInstruction;
-        this.genAI = new GoogleGenerativeAI(apiKey);
         this.temperature = temperature;
+        this.language = language;
+        this.systemInstruction = systemInstruction;
         this.generationConfig = useGenerationConfig;
         this.safetySettings = useSafetySettings;
 
@@ -74,8 +75,8 @@ export class GeminiProvider implements LLMProvider {
     }
 
     async sendToAINoAutoFix(contents,
-                   systemInstruction = this.systemInstruction,
-                   temperature = this.temperature) {
+                            systemInstruction = this.systemInstruction,
+                            temperature = this.temperature) {
         return this.sendToAI(contents,
             systemInstruction,
             temperature,
@@ -96,12 +97,20 @@ export class GeminiProvider implements LLMProvider {
             generationConfig: {...useGenerationConfig, temperature},
             safetySettings: useSafetySettings
         });
+        if (this.language) {
+            const languageInstruction = 'Important! You must respond in the following language: ' + this.language;
+            if (systemInstruction.parts) {
+                systemInstruction.parts.push({"text": languageInstruction})
+            } else {
+                systemInstruction += "\n" + languageInstruction;
+            }
+        }
 
         let result;
         try {
             result = await model.generateContent({contents, systemInstruction});
         } catch (e) {
-            if(e.message.includes('not available in your country')){
+            if (e.message.includes('not available in your country')) {
                 e.message = "The Google Gemini Free Tier is not available in your country. :( Better move to a different country, there are browser extensions which support you!";
             }
             handleError(e);

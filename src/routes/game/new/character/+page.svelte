@@ -13,10 +13,12 @@
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
+    const aiLanguage = useLocalStorage('aiLanguage');
+
     let characterAgent: CharacterAgent;
     onMount(() => {
         if (apiKeyState.value) {
-            characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value, 2));
+            characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
         }
     });
     const storyState = useLocalStorage('storyState', initialStoryState);

@@ -36,7 +36,7 @@ export class StoryAgent {
                 "role": "user",
                 "parts": [{"text": "Create a new randomized story setting with following already set: " + stringifyPretty(preset)}]
             }],
-            storyAgent
+            {parts: [{"text": storyAgent}]}
         );
         return jsonParsed;
     }

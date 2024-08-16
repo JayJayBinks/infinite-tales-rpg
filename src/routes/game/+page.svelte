@@ -25,6 +25,7 @@
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState');
     const customSystemInstruction = useLocalStorage('customSystemInstruction');
+    const aiLanguage = useLocalStorage('aiLanguage');
 
     const difficultyState = useLocalStorage('difficultyState', 'Default');
     let rolledValueState = useLocalStorage('rolledValueState');
@@ -46,8 +47,8 @@
         });
         diceBox.init();
         if (apiKeyState.value) {
-            gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value));
-            summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value));
+            gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value));
+            summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value, 1, aiLanguage.value));
             //Start game when not already started
             if (gameActionsState.value.length === 0) {
                 await sendAction({

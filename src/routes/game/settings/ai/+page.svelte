@@ -6,6 +6,7 @@
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
     const customSystemInstruction = useLocalStorage('customSystemInstruction');
+    const aiLanguage = useLocalStorage('aiLanguage');
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -40,6 +41,15 @@
     <small class="text-red-800 m-auto mt-3">This will delete your current tale!</small>
     <p class="mt-5">Advanced Settings</p>
 
+    <label class="form-control w-full mt-3">
+        AI Language
+        <input bind:value={aiLanguage.value}
+                  placeholder="AI will respond in this language, leave empty for English"
+                  class="mt-2 input input-bordered"/>
+        <small class="m-auto mt-2">The Game UI will not be translated yet</small>
+
+
+    </label>
     <label class="form-control w-full mt-3">
         Temperature: {temperatureState.value}
         <input type="range" min="0" max="2" step="0.05" id="temperature" bind:value={temperatureState.value}
