@@ -69,13 +69,14 @@
     <li class="step">Start Tale</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
-    <p>Customize or randomize the Tale settings. You can also create the Character first and the Tale after.</p>
-    <p>Overriding any setting will be considered for Randomize</p>
-
-    <button class="btn btn-accent"
+    <p>Quickstart: Click on Randomize All to generate a random Tale.</p>
+    <p>You can also customize every setting and play the Tale suited to your liking.</p>
+    <p>Any custom setting will be considered for the Randomize feature.</p>
+    <p>You can even create the Character first and the Tale after.</p>
+    <button class="btn btn-accent mt-3"
             disabled={isGeneratingState}
             onclick={onRandomize}>
-        Randomize
+        Randomize All
     </button>
     <button class="btn btn-neutral"
             onclick={() => {
@@ -95,7 +96,7 @@
     </button>
     <button class="btn btn-primary"
             onclick={() => {navigate('/new/character')}}>
-        Customize Character
+        Next Step: Customize Character
     </button>
     {#if storyState.value}
         {#each Object.keys(storyStateForPrompt) as stateValue, i}
@@ -113,23 +114,23 @@
                           class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
 
             </label>
-            <button class="btn btn-accent mt-2"
+            <button class="btn btn-accent mt-2 capitalize"
                     onclick={() => {
                     onRandomizeSingle(stateValue);
                 }}>
-                Randomize
+                Randomize {stateValue.replaceAll('_', ' ')}
             </button>
-            <button class="btn btn-neutral mt-2"
+            <button class="btn btn-neutral mt-2 capitalize"
                     onclick={() => {
                     storyState.resetProperty(stateValue);
                     delete storyStateOverwrites[stateValue];
                 }}>
-                Clear
+                Clear {stateValue.replaceAll('_', ' ')}
             </button>
         {/each}
         <button class="btn btn-primary mt-2"
                 onclick={() => {navigate('/new/character')}}>
-            Customize Character
+            Next Step: Customize Character
         </button>
     {/if}
 </form>
