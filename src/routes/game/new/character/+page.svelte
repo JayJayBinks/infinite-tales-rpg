@@ -60,11 +60,11 @@
     <li class="step">Start Tale</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
-    <p>When randomized, the Character will be created based on the Tale.</p>
-    <button class="btn btn-accent"
+    <p>Click on Randomize All to generate a random Character based on the Tale settings</p>
+    <button class="btn btn-accent m-3"
             disabled={isGeneratingState}
             onclick={onRandomize}>
-        Randomize
+        Randomize All
     </button>
     <button class="btn btn-neutral"
             onclick={() => {characterState.reset(); characterStateOverwrites = {}; resetImageState = true;}}>
@@ -73,13 +73,13 @@
     <button class="btn btn-primary"
         onclick="{() => {navigate('/new/tale')}}"
     >
-        Customize Tale
+        Previous Step: Customize Tale
     </button>
     <button class="btn btn-primary"
             onclick="{() => {navigate('/')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Tale
+        Start Your Tale
     </button>
 
 
@@ -98,7 +98,13 @@
 
             </textarea>
         </label>
-        <button class="btn btn-neutral mt-2"
+        <button class="btn btn-accent mt-2 capitalize"
+                onclick={() => {
+                    onRandomizeSingle(stateValue);
+                }}>
+            Randomize {stateValue.replaceAll('_', ' ')}
+        </button>
+        <button class="btn btn-neutral mt-2 capitalize"
                 onclick={() => {
                     characterState.resetProperty(stateValue);
                     delete characterStateOverwrites[stateValue];
@@ -106,13 +112,7 @@
                         resetImageState = true;
                     }
                 }}>
-            Clear
-        </button>
-        <button class="btn btn-accent mt-2"
-                onclick={() => {
-                    onRandomizeSingle(stateValue);
-                }}>
-            Randomize
+            Clear {stateValue.replaceAll('_', ' ')}
         </button>
         {#if stateValue === 'appearance'}
             <AIGeneratedImage
@@ -129,6 +129,6 @@
             onclick="{() => {navigate('/')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Tale
+        Start Your Tale
     </button>
 </form>
