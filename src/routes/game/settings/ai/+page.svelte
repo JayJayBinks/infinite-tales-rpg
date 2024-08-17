@@ -27,7 +27,7 @@
 </script>
 
 <form class="m-6 flex flex-col items-center text-center">
-    <label class="form-control w-full">
+    <label class="form-control w-full sm:w-2/3">
         <p>Gemini API Key</p>
         <input type="text" id="apikey" bind:value={apiKeyState.value}
                class="mt-2 input input-bordered"/>
@@ -38,10 +38,10 @@
             onclick="{onStartNew}">
         Start New Tale
     </button>
-    <small class="text-red-800 m-auto mt-3">This will delete your current tale!</small>
+    <small class="text-red-800 m-auto mt-2">This will delete your current tale!</small>
     <p class="mt-5">Advanced Settings</p>
 
-    <label class="form-control w-full mt-3">
+    <label class="form-control w-full sm:w-2/3 mt-3">
         AI Language
         <input bind:value={aiLanguage.value}
                   placeholder="AI will respond in this language, leave empty for English"
@@ -50,19 +50,19 @@
 
 
     </label>
-    <label class="form-control w-full mt-3">
+    <label class="form-control w-full sm:w-2/3 mt-5">
         Temperature: {temperatureState.value}
         <input type="range" min="0" max="2" step="0.05" id="temperature" bind:value={temperatureState.value}
                class="mt-2 range"/>
         <small class="m-auto mt-2">Higher temperature makes the AI more creative, but also errors more likely</small>
     </label>
-    <label class="form-control w-full mt-3">
+    <label class="form-control w-full sm:w-2/3 mt-5">
         Tale System Instruction
         <textarea bind:value={customSystemInstruction.value}
-                  placeholder="For example: Make every action difficulty easy. Make every character speak in riddles. You may have to start a new Tale after setting the instruction."
+                  placeholder="For example: Make every action difficulty easy. Make every character speak in riddles."
                class="mt-2 textarea textarea-bordered">
         </textarea>
-        <small class="m-auto mt-2">This instruction will be added to the AI</small>
+        <small class="m-auto mt-2">You may have to start a new Tale after setting the instruction.</small>
     </label>
 
 </form>

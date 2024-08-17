@@ -14,7 +14,7 @@
 </script>
 
 <form class="m-6 flex flex-col items-center text-center">
-    <label class="form-control w-1/2">
+    <label class="form-control w-full sm:w-1/2">
         <p>Difficulty</p>
         <select id="difficultyState" bind:value={difficultyState.value}
                class="mt-2 select select-bordered text-center"
@@ -24,7 +24,7 @@
         </select>
         <small class="m-auto mt-2">Easy will reduce required dice rolls by {difficultyDiceRollModifier.Easy}</small>
     </label>
-    <button class="btn btn-neutral mt-2"
+    <button class="btn btn-neutral mt-4"
             onclick={downloadLocalStorageAsJson}>
         Export Tale
     </button>
