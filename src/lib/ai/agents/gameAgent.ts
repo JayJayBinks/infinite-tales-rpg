@@ -108,7 +108,7 @@ Ongoing Tracking:
 - Manage currency and transactions.
 - Review context from my first prompt, system instructions and my last message before responding.`;
 
-const jsonSystemInstruction = `You must always respond with valid JSON in the following format:
+const jsonSystemInstruction = `Important Instruction! You must always respond with valid JSON in the following format:
 {
   "story": "DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES. For character speech use single quotes.",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the chosen action outcome and story progression, do not use character names but appearance description including gender. Use max 20 words. Keep the prompt similar to previous prompts to maintain image consistency.",

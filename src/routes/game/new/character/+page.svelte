@@ -7,7 +7,7 @@
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {StoryAgent} from "$lib/ai/agents/storyAgent";
     import {GeminiProvider} from "$lib/ai/llmProvider";
-    import {navigate} from "$lib/util.svelte.ts";
+    import {navigate, getRowsForTextarea} from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
 
@@ -23,11 +23,12 @@
     });
     const storyState = useLocalStorage('storyState', initialStoryState);
     const characterState = useLocalStorage('characterState', initialCharacterState);
+    const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value))
 
     let characterStateOverwrites = $state({});
     let resetImageState = $state(false);
 
-    const onRandomize = async (evt) => {
+    const onRandomize = async () => {
         isGeneratingState = true;
         const newState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value), characterStateOverwrites);
         if (newState) {
@@ -49,19 +50,26 @@
         isGeneratingState = false;
     }
 
+    const startTaleStepClicked = async () =>  {
+        if(isEqual(characterState.value, initialCharacterState)){
+            await onRandomize();
+        }
+        navigate('/')
+    };
+
 </script>
 
 {#if isGeneratingState}
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
-    <li class="step step-primary"><a href="/game/new/tale">Tale</a></li>
+    <li class="step step-primary cursor-pointer" onclick={() => navigate('/new/tale')}>Tale</li>
     <li class="step step-primary">Character</li>
-    <li class="step">Start Tale</li>
+    <li class="step cursor-pointer" onclick={startTaleStepClicked}>Start Tale</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
     <p>Click on Randomize All to generate a random Character based on the Tale settings</p>
-    <button class="btn btn-accent m-3"
+    <button class="btn btn-accent mt-3"
             disabled={isGeneratingState}
             onclick={onRandomize}>
         Randomize All
@@ -92,10 +100,10 @@
                 {/if}
             </div>
             <textarea bind:value={characterState.value[stateValue]}
+                      rows="{textAreaRowsDerived ? textAreaRowsDerived[stateValue] : 2}"
                       placeholder="{characterStateForPrompt[stateValue]}"
                       oninput="{(evt) => {characterStateOverwrites[stateValue] = evt.currentTarget.value}}"
                       class="mt-2 textarea textarea-bordered textarea-md w-full">
-
             </textarea>
         </label>
         <button class="btn btn-accent mt-2 capitalize"
