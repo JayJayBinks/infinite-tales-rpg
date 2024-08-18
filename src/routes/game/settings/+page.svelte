@@ -4,6 +4,7 @@
     import {downloadLocalStorageAsJson, importJsonFromFile} from "$lib/util.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
     const difficultyState = useLocalStorage('difficultyState', 'Default');
+    let useKarmicDice = useLocalStorage('useKarmicDice');
 
     const importSavegame = () => {
         importJsonFromFile((parsed) => {
@@ -24,6 +25,13 @@
         </select>
         <small class="m-auto mt-2">Easy will reduce required dice rolls by {difficultyDiceRollModifier.Easy}</small>
     </label>
+    <label class="form-control w-full mt-2">
+        <p>Karmic Dice</p>
+        <input type="checkbox" id="useKarmicDice" bind:checked={useKarmicDice.value}
+                class="mt-2 m-auto toggle text-center"/>
+        <small class="m-auto mt-2 mb-3">If 3 consecutive dice rolls fail, you will get a bonus on the next roll</small>
+    </label>
+
     <button class="btn btn-neutral mt-4"
             onclick={downloadLocalStorageAsJson}>
         Export Tale

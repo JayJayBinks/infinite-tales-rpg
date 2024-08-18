@@ -27,19 +27,23 @@
     const customSystemInstruction = useLocalStorage('customSystemInstruction');
     const aiLanguage = useLocalStorage('aiLanguage');
 
-    const difficultyState = useLocalStorage('difficultyState', 'Default');
-    let rolledValueState = useLocalStorage('rolledValueState');
     let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
     let chosenActionState = useLocalStorage('chosenActionState', {});
     let isGameEnded = useLocalStorage('isGameEnded', false);
-    let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
-    let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
-    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState))
     let isAiGeneratingState = $state(false);
 
+    const difficultyState = useLocalStorage('difficultyState', 'Default');
+    let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
+    let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
+    let rolledValueState = useLocalStorage('rolledValueState');
+    let rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
+    let useKarmicDice = useLocalStorage('useKarmicDice');
+    let karmaModifier = $derived(gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, chosenActionState.value?.dice_roll?.required_value || 0));
+
+    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState + karmaModifier))
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
 
-    let gameAgent,summaryAgent;
+    let gameAgent, summaryAgent;
 
     onMount(async () => {
         diceBox = new DiceBox("#dice-box", {
@@ -72,6 +76,7 @@
         didAIProcessDiceRollAction.value = false;
         diceRollDialog.show();
         diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
+            rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2), rolledValueState.value - chosenActionState.value.dice_roll.required_value];
             this.removeEventListener('close', sendWithManuallyRolled);
             sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
         });
@@ -125,7 +130,7 @@
         const hp = derivedGameState.currentHP;
         if (actionsDiv) {
             actionsDiv.innerHTML = '';
-            if(!isGameEnded.value){
+            if (!isGameEnded.value) {
                 state.actions = state?.actions || [];
                 state.actions.forEach(action => addActionButton(action));
                 if (addContinueStory) {
@@ -135,7 +140,7 @@
                 }
             }
         }
-        if(!isGameEnded.value && hp <= 0){
+        if (!isGameEnded.value && hp <= 0) {
             isGameEnded.value = true;
             await sendAction({
                 text: 'The CHARACTER has fallen to 0 HP. Describe how this tale ends.'
@@ -151,14 +156,14 @@
         const isEnoughMP = mpCost === 0 || derivedGameState.currentMP >= mpCost;
         button.textContent = action.text;
         if (mpCost > 0 && !button.textContent.includes("MP")) {
-            button.textContent +=  "(" + mpCost + " MP)";
+            button.textContent += "(" + mpCost + " MP)";
         }
         if (!isEnoughMP) {
             button.disabled = true;
         }
         button.addEventListener('click', () => {
             const chosenAction = $state.snapshot(action);
-            if(chosenAction.dice_roll){
+            if (chosenAction.dice_roll) {
                 chosenAction.dice_roll.required_value -= difficultyDiceRollModifier[difficultyState.value];
             }
             chosenActionState.value = chosenAction;
@@ -166,6 +171,15 @@
         });
         actionsDiv.appendChild(button);
     }
+
+    function getRollResult() {
+        let karmaValue = 0
+        if (useKarmicDice.value) {
+            karmaValue = karmaModifier;
+        }
+        return `${rolledValueState.value || '?'}  + ${modifierState + karmaValue} = ${(rolledValueState.value + modifierState + karmaValue) || '?'}`;
+    }
+
 </script>
 
 <!--TODO refactor to component with dialog-->
@@ -209,14 +223,16 @@
             </button>
 
             <p>Result:</p>
-            <output id="dice-roll-result" class="mt-2">{rolledValueState.value || '?'}  + {modifierState}
-                = {(rolledValueState.value + modifierState) || '?'}</output>
+            <output id="dice-roll-result" class="mt-2">{getRollResult()}</output>
             <output>{diceRollResultState}</output>
             <button onclick={() => {diceBox.clear(); diceRollDialog.close();}}
                     id="dice-rolling-dialog-continue"
                     disabled={!rolledValueState.value}
                     class="btn btn-neutral m-3">Continue
             </button>
+            {#if useKarmicDice.value}
+                <output id="Karma" class="mt-2">Karma Modifier: {karmaModifier}</output>
+            {/if}
             <output id="modifier" class="mt-2">Modifier: {modifierState}</output>
             <p>Reason:</p>
             <output id="modifier-reason" class="mt-2">{modifierReasonState}</output>

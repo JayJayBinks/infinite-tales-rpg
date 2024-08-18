@@ -3,6 +3,17 @@ export const difficultyDiceRollModifier = {
     Default: 0
 }
 
+export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue) {
+    if (!rollDifferenceHistory || rollDifferenceHistory.length < 3) {
+        return 0;
+    }
+    //if the last 3 rolls were negative, give some karma
+    if(rollDifferenceHistory.slice(-3).filter(rolled => rolled < 0).length >= 3){
+        return Math.ceil(requiredValue / 2);
+    }
+    return 0;
+}
+
 export function determineDiceRollResult(action, rolledValue, modifier) {
     if (!action.dice_roll || !rolledValue) {
         return undefined;
@@ -38,11 +49,11 @@ export function determineDiceRollResult(action, rolledValue, modifier) {
 
 //TODO implement parsing to enums
 export function mustRollDice(action) {
-    if(action.text.toLowerCase() === 'continue the tale'){
+    if (action.text.toLowerCase() === 'continue the tale') {
         return false;
     }
     const difficulty = action.action_difficulty.toLowerCase();
-    if(action.type.toLowerCase() === 'social_manipulation'){
+    if (action.type.toLowerCase() === 'social_manipulation') {
         return true;
     }
     return difficulty !== 'none' && difficulty !== 'simple';
@@ -53,16 +64,16 @@ export function getRndInteger(min, max) {
 }
 
 export function renderStatUpdates(statsUpdate: object) {
-    if(statsUpdate){
+    if (statsUpdate) {
         return statsUpdate.map(statsUpdate => {
-            if(statsUpdate.value == 0){
+            if (statsUpdate.value == 0) {
                 return undefined;
             }
             let responseText;
-            if(statsUpdate.value > 0){
+            if (statsUpdate.value > 0) {
                 responseText = "You gain " + statsUpdate.value;
             }
-            if(statsUpdate.value < 0){
+            if (statsUpdate.value < 0) {
                 responseText = "You loose " + statsUpdate.value * -1;
             }
             responseText += " " + statsUpdate.type.replace('_change', '').toUpperCase();
