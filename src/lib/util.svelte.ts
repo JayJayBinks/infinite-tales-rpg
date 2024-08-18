@@ -55,3 +55,27 @@ export const importJsonFromFile = (callback) => {
         }
     });
 }
+
+export function getRowsForTextarea(state) {
+    const mappedRows = {};
+    if (!state) {
+        return undefined;
+    }
+    Object.keys(state).forEach(key => {
+        const textLength = state[key].length;
+        mappedRows[key] = 2;
+        if (textLength >= 100) {
+            mappedRows[key] = 3;
+        }
+        if (textLength >= 200) {
+            mappedRows[key] = 4;
+        }
+        if (textLength >= 300) {
+            mappedRows[key] = 5;
+        }
+        if (textLength <= 30) {
+            mappedRows[key] = 1;
+        }
+    });
+    return mappedRows;
+}

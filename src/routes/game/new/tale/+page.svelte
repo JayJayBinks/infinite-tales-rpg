@@ -8,7 +8,7 @@
     import {
         navigate,
         downloadLocalStorageAsJson,
-        importJsonFromFile
+        importJsonFromFile, getRowsForTextarea
     } from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
@@ -19,6 +19,7 @@
     let storyAgent;
 
     const storyState = useLocalStorage('storyState', {...initialStoryState});
+    const textAreaRowsDerived = $derived(getRowsForTextarea(storyState.value))
     let storyStateOverwrites = $state({});
     const characterState = useLocalStorage('characterState', {...initialCharacterState});
 
@@ -57,7 +58,6 @@
             characterState.value = parsed.characterState;
         });
     };
-
 </script>
 
 {#if isGeneratingState}
@@ -65,14 +65,15 @@
 {/if}
 <ul class="steps w-full mt-3">
     <li class="step step-primary">Tale</li>
-    <li class="step"><a href="/game/new/character">Character</a></li>
+    <li class="step cursor-pointer" onclick={() => navigate('/new/character/')}>Character</li>
     <li class="step">Start Tale</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
     <p>Quickstart: Click on Randomize All to generate a random Tale.</p>
-    <p>You can also customize every setting and play the Tale suited to your liking.</p>
-    <p>Any custom setting will be considered for the Randomize feature.</p>
+    <p>You can also customize any setting and play the Tale suited to your liking.</p>
+    <p>The custom settings will be considered for the Randomize feature.</p>
     <p>You can even create the Character first and the Tale after.</p>
+    <p>Example: Enter 'Call of Cthulhu' as Game and click Randomize All. A random Cthulhu Tale will be generated.</p>
     <button class="btn btn-accent mt-3"
             disabled={isGeneratingState}
             onclick={onRandomize}>
@@ -109,6 +110,7 @@
                 </div>
 
                 <textarea bind:value={storyState.value[stateValue]}
+                          rows="{textAreaRowsDerived ? textAreaRowsDerived[stateValue] : 2}"
                           oninput="{(evt) => handleInput(evt, stateValue)}"
                           placeholder="{storyStateForPrompt[stateValue]}"
                           class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
