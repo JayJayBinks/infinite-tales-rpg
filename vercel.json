@@ -2,7 +2,7 @@
   "version": 2,
   "headers": [
     {
-      "source":"/assets/dice-box/.+",
+      "source":"/assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
