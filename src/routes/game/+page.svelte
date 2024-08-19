@@ -23,7 +23,7 @@
     const storyState = useLocalStorage('storyState', initialStoryState);
 
     const apiKeyState = useLocalStorage('apiKeyState');
-    const temperatureState = useLocalStorage('temperatureState');
+    const temperatureState = useLocalStorage('temperatureState', 1.3);
     const customSystemInstruction = useLocalStorage('customSystemInstruction');
     const aiLanguage = useLocalStorage('aiLanguage');
 
@@ -37,7 +37,7 @@
     let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
     let rolledValueState = useLocalStorage('rolledValueState');
     let rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
-    let useKarmicDice = useLocalStorage('useKarmicDice');
+    let useKarmicDice = useLocalStorage('useKarmicDice', true);
     let karmaModifier = $derived(gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, chosenActionState.value?.dice_roll?.required_value || 0));
 
     let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState + karmaModifier))
@@ -230,7 +230,7 @@
                     disabled={!rolledValueState.value}
                     class="btn btn-neutral m-3">Continue
             </button>
-            {#if useKarmicDice.value}
+            {#if useKarmicDice.value && karmaModifier > 0}
                 <output id="Karma" class="mt-2">Karma Modifier: {karmaModifier}</output>
             {/if}
             <output id="modifier" class="mt-2">Modifier: {modifierState}</output>

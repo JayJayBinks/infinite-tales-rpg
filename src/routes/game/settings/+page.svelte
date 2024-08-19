@@ -4,7 +4,7 @@
     import {downloadLocalStorageAsJson, importJsonFromFile} from "$lib/util.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
     const difficultyState = useLocalStorage('difficultyState', 'Default');
-    let useKarmicDice = useLocalStorage('useKarmicDice');
+    let useKarmicDice = useLocalStorage('useKarmicDice', true);
 
     const importSavegame = () => {
         importJsonFromFile((parsed) => {
