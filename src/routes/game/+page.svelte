@@ -123,6 +123,12 @@
 
     async function renderGameState(state, addContinueStory = true) {
         const hp = derivedGameState.currentHP;
+        if(!isGameEnded.value && hp <= 0){
+            await sendAction({
+                text: 'The CHARACTER has fallen to 0 HP. Describe how this tale ends.'
+            })
+        }
+        isGameEnded.value = hp <= 0;
         if (actionsDiv) {
             actionsDiv.innerHTML = '';
             if(!isGameEnded.value){
@@ -135,13 +141,6 @@
                 }
             }
         }
-        if(!isGameEnded.value && hp <= 0){
-            isGameEnded.value = true;
-            await sendAction({
-                text: 'The CHARACTER has fallen to 0 HP. Describe how this tale ends.'
-            })
-        }
-        isGameEnded.value = hp <= 0;
     }
 
     function addActionButton(action) {
