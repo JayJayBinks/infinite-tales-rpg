@@ -1,6 +1,7 @@
 export const initialCharacterState = {
     name: '',
     race: '',
+    gender: '',
     appearance: '',
     alignment: '',
     class: '',

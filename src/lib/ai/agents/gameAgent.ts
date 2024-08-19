@@ -111,7 +111,7 @@ Ongoing Tracking:
 const jsonSystemInstruction = `Important Instruction! You must always respond with valid JSON in the following format:
 {
   "story": "DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES. For character speech use single quotes.",
-  "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description including gender. Keep the prompt similar to previous prompts to maintain image consistency. Always use the format: {sceneDetailed} {adjective} {charactersDetailed} {visualStyle} {genre} {artistReference}",
+  "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. Always use the format: {sceneDetailed} {adjective} {charactersDetailed} {visualStyle} {genre} {artistReference}",
   "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
         #For each item addition or removal this object is added once, the whole inventory does not need to be tracked here

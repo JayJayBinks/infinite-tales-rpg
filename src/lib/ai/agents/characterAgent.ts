@@ -6,6 +6,7 @@ import {GeminiProvider} from "../llmProvider";
 export const characterStateForPrompt = {
     name: "",
     race: "",
+    gender: "",
     appearance: "",
     alignment: "",
     class: "",

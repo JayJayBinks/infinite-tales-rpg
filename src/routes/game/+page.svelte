@@ -38,9 +38,9 @@
     let rolledValueState = useLocalStorage('rolledValueState');
     let rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
     let useKarmicDice = useLocalStorage('useKarmicDice', true);
-    let karmaModifier = $derived(gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, chosenActionState.value?.dice_roll?.required_value || 0));
+    let karmaModifierState = $derived(gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, chosenActionState.value?.dice_roll?.required_value || 0));
 
-    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState + karmaModifier))
+    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState + karmaModifierState))
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
 
     let gameAgent, summaryAgent;
@@ -76,7 +76,8 @@
         didAIProcessDiceRollAction.value = false;
         diceRollDialog.show();
         diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
-            rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2), rolledValueState.value - chosenActionState.value.dice_roll.required_value];
+            rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2),
+                (rolledValueState.value + modifierState + karmaModifierState) - chosenActionState.value.dice_roll.required_value];
             this.removeEventListener('close', sendWithManuallyRolled);
             sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
         });
@@ -175,7 +176,7 @@
     function getRollResult() {
         let karmaValue = 0
         if (useKarmicDice.value) {
-            karmaValue = karmaModifier;
+            karmaValue = karmaModifierState;
         }
         return `${rolledValueState.value || '?'}  + ${modifierState + karmaValue} = ${(rolledValueState.value + modifierState + karmaValue) || '?'}`;
     }
@@ -230,8 +231,8 @@
                     disabled={!rolledValueState.value}
                     class="btn btn-neutral m-3">Continue
             </button>
-            {#if useKarmicDice.value && karmaModifier > 0}
-                <output id="Karma" class="mt-2">Karma Modifier: {karmaModifier}</output>
+            {#if useKarmicDice.value && karmaModifierState > 0}
+                <output id="Karma" class="mt-2">Karma Modifier: {karmaModifierState}</output>
             {/if}
             <output id="modifier" class="mt-2">Modifier: {modifierState}</output>
             <p>Reason:</p>

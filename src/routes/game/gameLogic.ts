@@ -8,7 +8,7 @@ export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredV
         return 0;
     }
     //if the last 3 rolls were negative, give some karma
-    if(rollDifferenceHistory.slice(-3).filter(rolled => rolled < 0).length >= 3){
+    if(rollDifferenceHistory.slice(-3).filter(difference => difference < 0).length >= 3){
         return Math.ceil(requiredValue / 2);
     }
     return 0;

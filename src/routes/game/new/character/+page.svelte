@@ -129,7 +129,7 @@
                     showGenerateButton={true}
                     {resetImageState}
                     onClickGenerate="{() => {resetImageState = false;}}"
-                    imagePrompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"/>
+                    imagePrompt="{characterState.value.gender} {characterState.value.appearance} {storyState.value.general_image_prompt}"/>
         {/if}
 
     {/each}
