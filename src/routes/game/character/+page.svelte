@@ -18,6 +18,7 @@
                 <h2 class="text-xl font-semibold mt-2 border-b border-gray-600 pb-1 mb-2">Basic Information</h2>
                 <div class="flex flex-col space-y-1">
                     <p><strong>Race:</strong> <span id="race">{characterState.value.race}</span></p>
+                    <p><strong>Gender:</strong> <span id="gender">{characterState.value.gender}</span></p>
                     <p><strong>Class:</strong> <span id="class">{characterState.value.class}</span></p>
                     <p><span id="hpmp">{characterState.value.MAX_HP_MP}</span></p>
                     <p><strong>Alignment:</strong> <span id="alignment">{characterState.value.alignment}</span></p>
