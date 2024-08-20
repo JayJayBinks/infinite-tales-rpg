@@ -246,10 +246,10 @@
             MP: {derivedGameState.currentMP}</output>
     </div>
     <div id="story" bind:this={storyDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md">
-        <!-- For proper updating, need to use gameActionsState.image_prompt as each block id -->
+        <!-- For proper updating, need to use gameActionsState.id as each block id -->
         {#each gameActionsState.value.slice(-3) as gameActionState, i (gameActionState.id)}
             <StoryProgressionWithImage story={gameActionState.story}
-                                       statsUpdates={i === 0 ? [] : gameLogic.renderStatUpdates(gameActionState.stats_update)}
+                                       statsUpdates={gameActionState.id === 0 ? [] : gameLogic.renderStatUpdates(gameActionState.stats_update)}
                                        imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"/>
         {/each}
         {#if isGameEnded.value}
