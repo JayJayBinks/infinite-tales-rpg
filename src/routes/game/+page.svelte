@@ -121,7 +121,7 @@
     }
 
     function updateGameState(state) {
-        gameActionsState.value = [...gameActionsState.value, {...state}];
+        gameActionsState.value = [...gameActionsState.value, {...state, id: gameActionsState.value.length}];
         // TODO inventoryStore.set(state?.inventory_update || []);
         gameLogic.applyGameActionState(derivedGameState, state);
         renderGameState(state);
@@ -247,7 +247,7 @@
     </div>
     <div id="story" bind:this={storyDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md">
         <!-- For proper updating, need to use gameActionsState.image_prompt as each block id -->
-        {#each gameActionsState.value.slice(-3) as gameActionState, i (gameActionState.image_prompt)}
+        {#each gameActionsState.value.slice(-3) as gameActionState, i (gameActionState.id)}
             <StoryProgressionWithImage story={gameActionState.story}
                                        statsUpdates={i === 0 ? [] : gameLogic.renderStatUpdates(gameActionState.stats_update)}
                                        imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"/>
