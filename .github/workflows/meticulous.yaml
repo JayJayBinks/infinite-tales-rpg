@@ -38,23 +38,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: yarn
+          cache: npm
 
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             node-modules-${{ runner.os }}
 
       - name: Install dependencies
         run: |
-          yarn install --frozen-lockfile --non-interactive
+          npm install --force --frozen-lockfile --non-interactive
 
       - name: Build project
         run: |
-          yarn build
+          npm build
 
       - name: Serve project
         # then update the app-url to match.
