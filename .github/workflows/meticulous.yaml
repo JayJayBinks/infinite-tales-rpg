@@ -54,7 +54,7 @@ jobs:
 
       - name: Build project
         run: |
-          npm build
+          vite build
 
       - name: Serve project
         # then update the app-url to match.
