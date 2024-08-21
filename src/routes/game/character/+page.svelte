@@ -12,7 +12,7 @@
             <h1 id="name"
                 class="text-3xl font-bold text-center mb-4 class border-b border-gray-600">{characterState.value.name}</h1>
             <AIGeneratedImage className="w-full m-auto mt-3 flex flex-col"
-                              imagePrompt="{characterState.value.appearance} {storyState.value.general_image_prompt}"
+                              imagePrompt="{characterState.value.race} {characterState.value.appearance} {storyState.value.general_image_prompt}"
                               storageKey="characterImageState"></AIGeneratedImage>
             <div class="section mb-6">
                 <h2 class="text-xl font-semibold mt-2 border-b border-gray-600 pb-1 mb-2">Basic Information</h2>
