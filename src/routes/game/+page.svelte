@@ -38,7 +38,7 @@
     let rolledValueState = useLocalStorage('rolledValueState');
     let rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
     let useKarmicDice = useLocalStorage('useKarmicDice', true);
-    let karmaModifierState = $derived(gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, chosenActionState.value?.dice_roll?.required_value || 0));
+    let karmaModifierState = $derived(!useKarmicDice.value ? 0 : gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, chosenActionState.value?.dice_roll?.required_value || 0));
 
     let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState + karmaModifierState))
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
@@ -174,11 +174,7 @@
     }
 
     function getRollResult() {
-        let karmaValue = 0
-        if (useKarmicDice.value) {
-            karmaValue = karmaModifierState;
-        }
-        return `${rolledValueState.value || '?'}  + ${modifierState + karmaValue} = ${(rolledValueState.value + modifierState + karmaValue) || '?'}`;
+        return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${(rolledValueState.value + modifierState + karmaModifierState) || '?'}`;
     }
 
 </script>
@@ -231,7 +227,7 @@
                     disabled={!rolledValueState.value}
                     class="btn btn-neutral m-3">Continue
             </button>
-            {#if useKarmicDice.value && karmaModifierState > 0}
+            {#if karmaModifierState > 0}
                 <output id="Karma" class="mt-2">Karma Modifier: {karmaModifierState}</output>
             {/if}
             <output id="modifier" class="mt-2">Modifier: {modifierState}</output>
