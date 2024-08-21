@@ -11,7 +11,7 @@
         imagePrompt} = $props();
 
     const initialImageState = {
-        prompt: '',
+        prompt: imagePrompt,
         isGenerating: false,
         link: {
             title: "Vegas Bleeds Neon, CC BY-SA 3.0 https://creativecommons.org/licenses/by-sa/3.0>, via Wikimedia Commons",
@@ -29,6 +29,9 @@
     let imageToReplace;
 
     $effect(() => {
+        if(imagePrompt?.trim()){
+            imageState.value.prompt = imagePrompt;
+        }
         if (resetImageState) {
             imageState.value = {...initialImageState};
             resetImageState = false;
@@ -36,13 +39,13 @@
     })
 
     function replaceWithAiGenerated() {
-        if (imagePrompt) {
+        if (imageState.value.prompt) {
             imageState.value.isGenerating = true;
             const aiGeneratedImage = new Image();
             //wait till ai has generated image
             aiGeneratedImage.onload = function () {
                 const newImgState = {
-                    prompt: imagePrompt,
+                    prompt: imageState.value.prompt,
                     isGenerating: false,
                     link: {
                         ...initialImageState.link,
@@ -59,13 +62,13 @@
             }
             aiGeneratedImage.onerror = aiGeneratedImage.onload;
 
-            aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(imagePrompt)
+            aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(imageState.value.prompt)
                 + "?width=512&height=512&enhance=true";
         }
     }
 
     onMount(() => {
-        if (!showGenerateButton && isEqual(initialImageState, imageState.value)) {
+        if (imageState.value.isGenerating || (!showGenerateButton && isEqual(initialImageState, imageState.value))) {
             replaceWithAiGenerated();
         }
     })
