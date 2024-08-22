@@ -18,6 +18,7 @@ export const initialCharacterState = {
 export const initialStoryState = {
     game: "",
     adventure_and_main_event: "",
+    secrets_to_discover: "",
     character_simple_description: "",
     general_image_prompt: "",
     theme: "",
