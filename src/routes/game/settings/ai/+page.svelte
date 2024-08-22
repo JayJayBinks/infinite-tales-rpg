@@ -14,6 +14,7 @@
     const characterImageState = useLocalStorage('characterImageState');
     const storyState = useLocalStorage('storyState', initialStoryState);
     const isGameEnded = useLocalStorage('isGameEnded', false);
+    const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 
     function onStartNew() {
         historyMessagesState.reset();
@@ -22,6 +23,7 @@
         characterImageState.reset();
         storyState.reset();
         isGameEnded.reset();
+        rollDifferenceHistoryState.reset();
         navigate('/new/tale')
     }
 </script>
