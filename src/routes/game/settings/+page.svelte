@@ -9,6 +9,7 @@
     const importSavegame = () => {
         importJsonFromFile((parsed) => {
             Object.keys(parsed).forEach(key => localStorage.setItem(key, JSON.stringify(parsed[key])));
+            alert('Import successfull.');
         });
     };
 
