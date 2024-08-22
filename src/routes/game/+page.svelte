@@ -56,8 +56,7 @@
             //Start game when not already started
             if (gameActionsState.value.length === 0) {
                 await sendAction({
-                    text: 'With you as the Dungeon Master, start the ADVENTURE_AND_MAIN_EVENT ' +
-                        'with introducing the adventure background, characters and circumstances. Then describe the starting scene.'
+                    text: gameLogic.getStartingPrompt()
                 });
             } else {
                 gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
