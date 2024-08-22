@@ -75,11 +75,11 @@
         //TODO showModal can not be used because it hides the dice roll
         didAIProcessDiceRollAction.value = false;
         diceRollDialog.show();
-        diceRollDialog.addEventListener('close', function sendWithManuallyRolled(event) {
+        diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
+            this.removeEventListener('close', sendWithManuallyRolled);
+            sendAction({text: chosenActionState.value.text + '\n ' + diceRollDialog.returnValue})
             rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2),
                 (rolledValueState.value + modifierState + karmaModifierState) - chosenActionState.value.dice_roll.required_value];
-            this.removeEventListener('close', sendWithManuallyRolled);
-            sendAction({text: chosenActionState.value.text + '\n ' + diceRollResultState})
         });
     }
 
@@ -222,7 +222,7 @@
             <p>Result:</p>
             <output id="dice-roll-result" class="mt-2">{getRollResult()}</output>
             <output>{diceRollResultState}</output>
-            <button onclick={() => {diceBox.clear(); diceRollDialog.close();}}
+            <button onclick={() => {diceBox.clear(); diceRollDialog.close($state.snapshot(diceRollResultState));}}
                     id="dice-rolling-dialog-continue"
                     disabled={!rolledValueState.value}
                     class="btn btn-neutral m-3">Continue
