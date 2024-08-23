@@ -154,10 +154,10 @@
         button.className = 'btn btn-neutral mb-3 w-full text-md ';
         const mpCost = parseInt(action.mp_cost) || 0;
         const isEnoughMP = mpCost === 0 || derivedGameState.currentMP >= mpCost;
-        button.textContent = action.text;
-        if (mpCost > 0 && !button.textContent.includes("MP")) {
-            button.textContent += "(" + mpCost + " MP)";
+        if (mpCost > 0 && !action.text.includes("MP")) {
+            action.text +=  " (" + mpCost + " MP)";
         }
+        button.textContent = action.text;
         if (!isEnoughMP) {
             button.disabled = true;
         }
