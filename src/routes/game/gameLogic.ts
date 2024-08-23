@@ -4,9 +4,10 @@ export const difficultyDiceRollModifier = {
 }
 
 export function getStartingPrompt() {
-    return 'With you as the Dungeon Master, start the ADVENTURE_AND_MAIN_EVENT ' +
+    return 'With you as the Game Master, start the ADVENTURE_AND_MAIN_EVENT ' +
         'with introducing the adventure background, characters and circumstances. Then describe the starting scene.' +
-        '  At the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.'
+        '  At the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
+        ' CHARACTER starts with some random items.'
 }
 
 export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue) {
