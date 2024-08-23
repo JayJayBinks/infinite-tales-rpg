@@ -63,7 +63,7 @@
             aiGeneratedImage.onerror = aiGeneratedImage.onload;
 
             aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(imageState.value.prompt)
-                + "?width=512&height=512&enhance=true";
+                + "?width=768&height=768&enhance=true";
         }
     }
 
