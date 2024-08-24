@@ -3,6 +3,31 @@ export const difficultyDiceRollModifier = {
     Default: 0
 }
 
+export function getRequiredValue(action_difficulty: string | undefined, gameDifficulty: string) {
+    let requiredValue = 0;
+    if(!action_difficulty){
+        return requiredValue;
+    }
+    switch (action_difficulty) {
+        case 'none':
+            return 0;
+        case 'simple':
+            requiredValue = getRandomInteger(2, 9);
+            break;
+        case 'medium':
+            requiredValue = getRandomInteger(10, 15);
+            break;
+        case 'difficult':
+            requiredValue = getRandomInteger(16, 20);
+            break;
+    }
+    if(gameDifficulty){
+        requiredValue -= difficultyDiceRollModifier[gameDifficulty];
+    }
+    return requiredValue;
+}
+
+
 export function getStartingPrompt() {
     return 'With you as the Game Master, start the ADVENTURE_AND_MAIN_EVENT ' +
         'with introducing the adventure background, characters and circumstances. Then describe the starting scene.' +
@@ -21,8 +46,8 @@ export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredV
     return 0;
 }
 
-export function determineDiceRollResult(action, rolledValue, modifier) {
-    if (!action.dice_roll || !rolledValue) {
+export function determineDiceRollResult(required_value, rolledValue, modifier) {
+    if (!required_value || !rolledValue) {
         return undefined;
     }
     const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
@@ -34,7 +59,7 @@ export function determineDiceRollResult(action, rolledValue, modifier) {
     if (rolledValue === 20) {
         return 'The action is a critical success!';
     }
-    const diff = evaluatedValue - action.dice_roll.required_value;
+    const diff = evaluatedValue - required_value;
     if (diff <= -6) {
         return 'The action is a major failure.';
     }
@@ -51,7 +76,7 @@ export function determineDiceRollResult(action, rolledValue, modifier) {
         return 'The action is a regular success.';
     }
     //Error fallback (e.g. '10 to 14')
-    return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${action.dice_roll.required_value}`
+    return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${required_value}`
 }
 
 //TODO implement parsing to enums
@@ -66,8 +91,8 @@ export function mustRollDice(action) {
     return difficulty !== 'none' && difficulty !== 'simple';
 }
 
-export function getRndInteger(min, max) {
-    return Math.floor(Math.random() * (max - min)) + min;
+export function getRandomInteger(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 export function renderStatUpdates(statsUpdate: object) {

@@ -33,14 +33,15 @@
     let isAiGeneratingState = $state(false);
 
     const difficultyState = useLocalStorage('difficultyState', 'Default');
+    let diceRollRequiredValueState = $derived(gameLogic.getRequiredValue(chosenActionState.value?.action_difficulty, difficultyState.value));
     let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
     let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
     let rolledValueState = useLocalStorage('rolledValueState');
     let rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
     let useKarmicDice = useLocalStorage('useKarmicDice', true);
-    let karmaModifierState = $derived(!useKarmicDice.value ? 0 : gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, chosenActionState.value?.dice_roll?.required_value || 0));
+    let karmaModifierState = $derived(!useKarmicDice.value ? 0 : gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState));
 
-    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(chosenActionState.value, rolledValueState.value, modifierState + karmaModifierState))
+    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
 
     let gameAgent, summaryAgent;
@@ -78,7 +79,7 @@
             this.removeEventListener('close', sendWithManuallyRolled);
             sendAction({text: chosenActionState.value.text + '\n ' + diceRollDialog.returnValue})
             rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2),
-                (rolledValueState.value + modifierState + karmaModifierState) - chosenActionState.value.dice_roll.required_value];
+                (rolledValueState.value + modifierState + karmaModifierState) - diceRollRequiredValueState];
         });
     }
 
@@ -99,10 +100,8 @@
 
                 isAiGeneratingState = false;
                 if (newState) {
-                    const newStateJson = stringifyPretty(newState);
-                    console.log(newStateJson)
-                    const userMessage = {"role": "user", "content": action.text}
-                    const modelMessage = {"role": "model", "content": JSON.stringify(newStateJson)}
+                    const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
+                    console.log(stringifyPretty(newState))
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
                     updateGameState(newState);
                     //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
@@ -162,11 +161,7 @@
             button.disabled = true;
         }
         button.addEventListener('click', () => {
-            const chosenAction = $state.snapshot(action);
-            if (chosenAction.dice_roll) {
-                chosenAction.dice_roll.required_value -= difficultyDiceRollModifier[difficultyState.value];
-            }
-            chosenActionState.value = chosenAction;
+            chosenActionState.value =  $state.snapshot(action);
             sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value))
         });
         actionsDiv.appendChild(button);
@@ -194,7 +189,7 @@
         <div class="modal-box flex flex-col items-center text-center">
             <p class="mt-3 text-xl">Difficulty class: </p>
             <output id="dice-roll-difficulty"
-                    class="font-semibold text-xl">{chosenActionState.value.dice_roll?.required_value}</output>
+                    class="font-semibold text-xl">{diceRollRequiredValueState}</output>
 
             <button id="roll-dice-button"
                     class="btn btn-ghost m-3 "

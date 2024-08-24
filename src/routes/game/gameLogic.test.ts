@@ -1,51 +1,43 @@
 import { describe, it, expect } from 'vitest';
-import {determineDiceRollResult, getRndInteger, mustRollDice} from "./gameLogic.ts";
+import {determineDiceRollResult, getRandomInteger, mustRollDice} from "./gameLogic.ts";
 
 describe('determineDiceRollResult', () => {
-    it('should return undefined when action.dice_roll is not provided or rolledValue is "?"', () => {
-        expect(determineDiceRollResult({}, '?', 2)).toBeUndefined();
-        expect(determineDiceRollResult({ dice_roll: undefined }, 15, 2)).toBeUndefined();
+    it('should return undefined when required_value is not provided or rolledValue is undefined', () => {
+        expect(determineDiceRollResult(12, undefined, 2)).toBeUndefined();
+        expect(determineDiceRollResult(undefined, 15, 2)).toBeUndefined();
     });
 
     it('should return critical failure on rolled value of 1', () => {
-        const action = { dice_roll: { required_value: 10 } };
-        expect(determineDiceRollResult(action, 1, 0)).toBe('The action is a critical failure!');
+        expect(determineDiceRollResult(10, 1, 0)).toBe('The action is a critical failure!');
     });
 
     it('should return critical success on rolled value of 20', () => {
-        const action = { dice_roll: { required_value: 10 } };
-        expect(determineDiceRollResult(action, 20, 0)).toBe('The action is a critical success!');
+        expect(determineDiceRollResult(10, 20, 0)).toBe('The action is a critical success!');
     });
 
     it('should return major failure when diff is <= -6', () => {
-        const action = { dice_roll: { required_value: 15 } };
-        expect(determineDiceRollResult(action, 5, 4)).toBe('The action is a major failure.');
+        expect(determineDiceRollResult(15, 5, 4)).toBe('The action is a major failure.');
     });
 
     it('should return regular failure when diff is <= -3', () => {
-        const action = { dice_roll: { required_value: 15 } };
-        expect(determineDiceRollResult(action, 10, 1)).toBe('The action is a regular failure.');
+        expect(determineDiceRollResult(15, 10, 1)).toBe('The action is a regular failure.');
     });
 
     it('should return partial failure when diff is <= -1', () => {
-        const action = { dice_roll: { required_value: 15 } };
-        expect(determineDiceRollResult(action, 13, 1)).toBe('The action is a partial failure.');
+        expect(determineDiceRollResult(15, 13, 1)).toBe('The action is a partial failure.');
     });
 
     it('should return major success when diff is >= 6', () => {
-        const action = { dice_roll: { required_value: 10 } };
-        expect(determineDiceRollResult(action, 15, 2)).toBe('The action is a major success.');
+        expect(determineDiceRollResult(10, 15, 2)).toBe('The action is a major success.');
     });
 
     it('should return regular success when diff is >= 0', () => {
-        const action = { dice_roll: { required_value: 15 } };
-        expect(determineDiceRollResult(action, 15, 0)).toBe('The action is a regular success.');
+        expect(determineDiceRollResult(15, 15, 0)).toBe('The action is a regular success.');
     });
 
     it('should handle non-numeric rolledValue or modifier', () => {
-        const action = { dice_roll: { required_value: 10 } };
-        expect(determineDiceRollResult(action, 'five', 2)).toBe('The action is a major failure.');
-        expect(determineDiceRollResult(action, 12, 'three')).toBe('The action is a regular success.');
+        expect(determineDiceRollResult(10, 'five', 2)).toBe('The action is a major failure.');
+        expect(determineDiceRollResult(10, 12, 'three')).toBe('The action is a regular success.');
     });
 });
 
@@ -82,9 +74,9 @@ describe('getRndInteger', () => {
         const min = 1;
         const max = 10;
         for (let i = 0; i < 100; i++) { // Test multiple times for random value
-            const value = getRndInteger(min, max);
+            const value = getRandomInteger(min, max);
             expect(value).toBeGreaterThanOrEqual(min);
-            expect(value).toBeLessThan(max);
+            expect(value).toBeLessThanOrEqual(max);
         }
     });
 
@@ -92,9 +84,9 @@ describe('getRndInteger', () => {
         const min = -10;
         const max = -1;
         for (let i = 0; i < 100; i++) {
-            const value = getRndInteger(min, max);
+            const value = getRandomInteger(min, max);
             expect(value).toBeGreaterThanOrEqual(min);
-            expect(value).toBeLessThan(max);
+            expect(value).toBeLessThanOrEqual(max);
         }
     });
 });
