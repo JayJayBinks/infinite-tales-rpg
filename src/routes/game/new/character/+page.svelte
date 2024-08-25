@@ -39,8 +39,10 @@
     }
     const onRandomizeSingle = async (stateValue) => {
         isGeneratingState = true;
-        const agentInput = {...storyState.value, ...characterStateOverwrites}
-        const newState = await characterAgent.generateCharacterStats(agentInput);
+        const currentCharacter = {...characterState.value};
+        currentCharacter[stateValue] = undefined;
+        const characterInput = {...currentCharacter, ...characterStateOverwrites}
+        const newState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value), characterInput);
         if (newState) {
             characterState.value[stateValue] = newState[stateValue];
             if(stateValue === 'appearance'){
