@@ -28,9 +28,19 @@
             storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
         }
     });
+
+    function getCharacterDescription() {
+        let characterDescription = $state.snapshot(characterState.value);
+        if(isEqual(characterDescription, initialCharacterState)){
+            characterDescription = undefined;
+        }
+        return characterDescription;
+    }
+
     const onRandomize = async (evt) => {
         isGeneratingState = true;
-        const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites, $state.snapshot(characterState.value));
+
+        const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites, getCharacterDescription());
         if (newState) {
             storyState.value = newState;
         }
@@ -41,7 +51,7 @@
         const currentStory = {...storyState.value};
         currentStory[stateValue] = undefined;
         const agentInput = {...currentStory, ...storyStateOverwrites}
-        const newState = await storyAgent.generateRandomStorySettings(agentInput);
+        const newState = await storyAgent.generateRandomStorySettings(agentInput, getCharacterDescription());
         if (newState) {
             storyState.value[stateValue] = newState[stateValue];
         }
