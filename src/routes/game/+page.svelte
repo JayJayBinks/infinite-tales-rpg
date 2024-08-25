@@ -57,11 +57,11 @@
             //Start game when not already started
             if (gameActionsState.value.length === 0) {
                 await sendAction({
-                    text: gameLogic.getStartingPrompt()
+                    text: gameAgent.getStartingPrompt()
                 });
             } else {
                 gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
-                renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
+                await renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
                 tick().then(() => customActionInput.scrollIntoView(false));
             }
             if (!didAIProcessDiceRollAction.value) {
@@ -95,6 +95,8 @@
                 openDiceRollDialog();
             } else {
                 isAiGeneratingState = true;
+                //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
+                // + slowStory
                 const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
                     storyState.value, characterState.value, derivedGameState);
 
@@ -138,7 +140,7 @@
             actionsDiv.innerHTML = '';
             if (!isGameEnded.value) {
                 state.actions = state?.actions || [];
-                state.actions.forEach(action => addActionButton(action));
+                state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
                 if (addContinueStory) {
                     addActionButton({
                         text: 'Continue The Tale'
@@ -148,7 +150,7 @@
         }
     }
 
-    function addActionButton(action) {
+    function addActionButton(action, is_character_in_combat) {
         const button = document.createElement('button');
         button.className = 'btn btn-neutral mb-3 w-full text-md ';
         const mpCost = parseInt(action.mp_cost) || 0;
@@ -162,7 +164,7 @@
         }
         button.addEventListener('click', () => {
             chosenActionState.value =  $state.snapshot(action);
-            sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value))
+            sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat))
         });
         actionsDiv.appendChild(button);
     }

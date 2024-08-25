@@ -9,30 +9,24 @@ export function getRequiredValue(action_difficulty: string | undefined, gameDiff
         return requiredValue;
     }
     switch (action_difficulty) {
-        case 'none':
-            return 0;
         case 'simple':
+            return 0;
+        case 'medium':
             requiredValue = getRandomInteger(2, 9);
             break;
-        case 'medium':
+        case 'difficult':
             requiredValue = getRandomInteger(10, 15);
             break;
-        case 'difficult':
+        case 'very_difficult':
             requiredValue = getRandomInteger(16, 20);
             break;
+        default:
+            return 0;
     }
     if(gameDifficulty){
         requiredValue -= difficultyDiceRollModifier[gameDifficulty];
     }
     return requiredValue;
-}
-
-
-export function getStartingPrompt() {
-    return 'With you as the Game Master, start the ADVENTURE_AND_MAIN_EVENT ' +
-        'with introducing the adventure background, characters and circumstances. Then describe the starting scene.' +
-        '  At the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
-        ' CHARACTER starts with some random items.'
 }
 
 export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue) {
@@ -80,7 +74,7 @@ export function determineDiceRollResult(required_value, rolledValue, modifier) {
 }
 
 //TODO implement parsing to enums
-export function mustRollDice(action) {
+export function mustRollDice(action, isInCombat) {
     if (action.text.toLowerCase() === 'continue the tale') {
         return false;
     }
@@ -88,7 +82,7 @@ export function mustRollDice(action) {
     if (action.type.toLowerCase() === 'social_manipulation') {
         return true;
     }
-    return difficulty !== 'none' && difficulty !== 'simple';
+    return difficulty !== 'simple' && (difficulty !== 'medium' || isInCombat);
 }
 
 export function getRandomInteger(min, max) {

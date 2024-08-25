@@ -22,12 +22,18 @@ export class GameAgent {
                 {"text": jsonSystemInstruction},
             ]
         }
-        if(customSystemInstruction){
+        if (customSystemInstruction) {
             gameAgent.parts.push({"text": customSystemInstruction});
         }
 
         let contents = this.buildAIContentsFormat(actionText, messages);
         return await this.llmProvider.sendToAI(contents, gameAgent);
+    }
+
+    getStartingPrompt() {
+        return 'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
+            '  At the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
+            ' CHARACTER starts with some random items.'
     }
 
     buildHistoryMessages = function (userText, modelStateObject) {
@@ -70,7 +76,6 @@ The Game Master's General Responsibilities Include:
 
 Storytelling:
 
-- Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.
 - Keep story secrets until they are discovered by the player.
 - Introduce key characters and explore their initial thoughts, feelings, and relationships with one another. Focus on how they react to the first signs of an unfolding mystery or adventure, showcasing their emotions, motivations, and backstories. 
 - Gradually introduce small, suspenseful events that build tension and hint at larger secrets or challenges to come. 
@@ -139,7 +144,8 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
       "type": "Misc|Attack|Spell|Conversation|Social_Manipulation",
       "required_trait": "the skill the dice is rolled for",
-      "action_difficulty": "none|simple|medium|difficult",
+      "difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
+      "action_difficulty": "simple|medium|difficult|very_difficult",
       "mp_cost": cost of this action, 0 if this action does not use mp
       "dice_roll": {
         "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
