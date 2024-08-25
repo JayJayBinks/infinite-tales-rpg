@@ -1,8 +1,6 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
 import {GeminiProvider} from "../llmProvider";
 
-
-
 export const storyStateForPrompt = {
     game: "Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons",
     adventure_and_main_event: "Generate a random adventure with a random main story line. It does not have to be a quest, it can also be an event. It should be extraordinary and not cliche.",
@@ -29,13 +27,21 @@ export class StoryAgent {
         let preset = {
             ...storyStateForPrompt,
             ...overwrites,
-            ...characterDescription
+        }
+        const contents = [
+            {
+                "role": "user",
+                "parts": [{"text": "Create a new randomized story considering the following settings: " + stringifyPretty(preset)}]
+            }
+        ];
+        if(characterDescription){
+            contents.push( {
+                "role": "user",
+                "parts": [{"text": "Character description: " + stringifyPretty(characterDescription)}]
+            })
         }
         const jsonParsed = await this.llmProvider.sendToAI(
-            [{
-                "role": "user",
-                "parts": [{"text": "Create a new randomized story setting with following already set: " + stringifyPretty(preset)}]
-            }],
+            contents,
             {parts: [{"text": storyAgent}]}
         );
         return jsonParsed;
