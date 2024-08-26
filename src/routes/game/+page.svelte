@@ -13,6 +13,7 @@
     import DiceBox from "@3d-dice/dice-box";
     import * as gameLogic from "./gameLogic.ts";
     import {difficultyDiceRollModifier} from "./gameLogic.ts";
+    import {goto} from "$app/navigation";
 
     let diceBox, svgDice;
     let diceRollDialog, storyDiv, actionsDiv, customActionInput;
@@ -46,26 +47,29 @@
     let gameAgent, summaryAgent;
 
     onMount(async () => {
+        if (!apiKeyState.value) {
+            errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.'
+            goto('game/settings/ai');
+            return;
+        }
         diceBox = new DiceBox("#dice-box", {
             assetPath: "/assets/dice-box/", // required
         });
         diceBox.init();
-        if (apiKeyState.value) {
-            gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value));
-            summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value, 1, aiLanguage.value));
-            //Start game when not already started
-            if (gameActionsState.value.length === 0) {
-                await sendAction({
-                    text: gameLogic.getStartingPrompt()
-                });
-            } else {
-                gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
-                renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
-                tick().then(() => customActionInput.scrollIntoView(false));
-            }
-            if (!didAIProcessDiceRollAction.value) {
-                openDiceRollDialog();
-            }
+        gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value));
+        summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value, 1, aiLanguage.value));
+        //Start game when not already started
+        if (gameActionsState.value.length === 0) {
+            await sendAction({
+                text: gameLogic.getStartingPrompt()
+            });
+        } else {
+            gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
+            await renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
+            tick().then(() => customActionInput.scrollIntoView(false));
+        }
+        if (!didAIProcessDiceRollAction.value) {
+            openDiceRollDialog();
         }
     });
 
@@ -128,7 +132,7 @@
 
     async function renderGameState(state, addContinueStory = true) {
         const hp = derivedGameState.currentHP;
-        if(!isGameEnded.value && hp <= 0){
+        if (!isGameEnded.value && hp <= 0) {
             isGameEnded.value = true;
             await sendAction({
                 text: 'The CHARACTER has fallen to 0 HP, make an HP Change for 0. Describe how this tale ends.'
@@ -155,7 +159,7 @@
         const mpCost = parseInt(action.mp_cost) || 0;
         const isEnoughMP = mpCost === 0 || derivedGameState.currentMP >= mpCost;
         if (mpCost > 0 && !action.text.includes("MP")) {
-            action.text +=  " (" + mpCost + " MP)";
+            action.text += " (" + mpCost + " MP)";
         }
         button.textContent = action.text;
         if (!isEnoughMP) {

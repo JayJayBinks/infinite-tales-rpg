@@ -2,6 +2,11 @@
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
+    import {errorState} from "$lib/state/errorState.svelte.ts";
+    import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
+    import {GeminiProvider} from "$lib/ai/llmProvider.ts";
+    import {StoryAgent} from "$lib/ai/agents/storyAgent.ts";
+    import LoadingModal from "$lib/components/LoadingModal.svelte";
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -15,8 +20,9 @@
     const storyState = useLocalStorage('storyState', initialStoryState);
     const isGameEnded = useLocalStorage('isGameEnded', false);
     const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
+    let isGeneratingState = $state(false);
 
-    function onStartNew() {
+    function clearStates() {
         historyMessagesState.reset();
         gameActionsState.reset();
         characterState.reset();
@@ -24,25 +30,58 @@
         storyState.reset();
         isGameEnded.reset();
         rollDifferenceHistoryState.reset();
+    }
+
+    async function onQuickstartNew() {
+        if (!apiKeyState.value) {
+            errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.'
+            return;
+        }
+        clearStates();
+        // TODO refactor
+        const storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
+        isGeneratingState = true;
+        const newStoryState = await storyAgent.generateRandomStorySettings();
+        if (newStoryState) {
+            storyState.value = newStoryState;
+            const characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
+            const newCharacterState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value));
+            if (newCharacterState) {
+                characterState.value = newCharacterState;
+                navigate('/');
+            }
+        }
+        isGeneratingState = false;
+    }
+
+    function onStartNew() {
+        clearStates();
         navigate('/new/tale')
     }
 </script>
 
+{#if isGeneratingState}
+    <LoadingModal loadingText="Creating Your New Tale..."/>
+{/if}
 <form class="m-6 flex flex-col items-center text-center">
     <label class="form-control w-full sm:w-2/3">
-        <p>Gemini API Key</p>
+        <p>Google Gemini API Key</p>
         <input type="text" id="apikey" bind:value={apiKeyState.value}
                class="mt-2 input input-bordered"/>
-        <small class="m-auto mt-2">The free tier is not available in EU, use a browser extension to move to another country</small>
+        <small class="m-auto mt-2">For EU players: The free tier is not available in EU, use a browser extension to move to another country</small>
     </label>
-    <button class="btn btn-neutral mt-3 m-auto"
+    <button class="btn btn-accent mt-5 m-auto"
+            onclick="{onQuickstartNew}">
+        Quickstart: New Random Tale
+    </button>
+    <small class="m-auto mt-2">Let the AI generate a Tale for you</small>
+    <button class="btn btn-neutral m-auto  mt-5"
             disabled={!apiKeyState.value}
             onclick="{onStartNew}">
-        Start New Tale
+        New Custom Tale
     </button>
-    <small class="text-red-800 m-auto mt-2">This will delete your current tale!</small>
-    <p class="mt-5">Advanced Settings</p>
-
+    <small class="m-auto mt-2">Customize any setting of your Tale</small>
+    <div class="divider mt-7">Advanced Settings</div>
     <label class="form-control w-full sm:w-2/3 mt-3">
         AI Language
         <input bind:value={aiLanguage.value}
@@ -66,5 +105,4 @@
         </textarea>
         <small class="m-auto mt-2">You may have to start a new Tale after setting the instruction.</small>
     </label>
-
 </form>
