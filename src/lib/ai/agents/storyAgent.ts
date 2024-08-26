@@ -19,7 +19,7 @@ export class StoryAgent {
     }
 
 
-    async generateRandomStorySettings(overwrites, characterDescription) {
+    async generateRandomStorySettings(overwrites = undefined, characterDescription = undefined) {
         let storyAgent = "You are RPG story agent, crafting captivating, limitless GAME experiences using BOOKS, THEME, TONALITY for CHARACTER.\n" +
             "Always respond with following JSON!\n" +
             stringifyPretty(storyStateForPrompt);
