@@ -69,7 +69,7 @@
         <p>Google Gemini API Key</p>
         <input type="text" id="apikey" bind:value={apiKeyState.value}
                class="mt-2 input input-bordered"/>
-        <small class="m-auto mt-2">For EU players: The free tier is not available in EU, use a browser extension to move to another country</small>
+        <small class="m-auto mt-2">Create your free API Key at <a target="_blank" href="https://aistudio.google.com/app/apikey" class="link text-blue-400 underline">Google AI Studio</a></small>
     </label>
     <button class="btn btn-accent mt-5 m-auto"
             onclick="{onQuickstartNew}">
