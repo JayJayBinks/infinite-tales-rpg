@@ -7,6 +7,7 @@
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
     import {StoryAgent} from "$lib/ai/agents/storyAgent.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
+    import {goto} from "$app/navigation";
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -48,7 +49,7 @@
             const newCharacterState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value));
             if (newCharacterState) {
                 characterState.value = newCharacterState;
-                navigate('/');
+                await goto('/game');
             }
         }
         isGeneratingState = false;
@@ -68,7 +69,7 @@
         <p>Google Gemini API Key</p>
         <input type="text" id="apikey" bind:value={apiKeyState.value}
                class="mt-2 input input-bordered"/>
-        <small class="m-auto mt-2">For EU players: The free tier is not available in EU, use a browser extension to move to another country</small>
+        <small class="m-auto mt-2">Create your free API Key at <a target="_blank" href="https://aistudio.google.com/app/apikey" class="link text-blue-400 underline">Google AI Studio</a></small>
     </label>
     <button class="btn btn-accent mt-5 m-auto"
             onclick="{onQuickstartNew}">
@@ -88,8 +89,6 @@
                   placeholder="AI will respond in this language, leave empty for English"
                   class="mt-2 input input-bordered"/>
         <small class="m-auto mt-2">The Game UI will not be translated yet</small>
-
-
     </label>
     <label class="form-control w-full sm:w-2/3 mt-5">
         Temperature: {temperatureState.value}
