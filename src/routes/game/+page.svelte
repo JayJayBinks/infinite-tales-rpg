@@ -164,6 +164,8 @@
             action.text += " (" + mpCost + " MP)";
         }
         button.textContent = action.text;
+        //TODO only for debugging, remove before release,
+        button.textContent += "   " + action.action_difficulty;
         if (!isEnoughMP) {
             button.disabled = true;
         }
