@@ -12,10 +12,10 @@ export function getRequiredValue(action_difficulty: string | undefined, gameDiff
         case 'simple':
             return 0;
         case 'medium':
-            requiredValue = getRandomInteger(2, 9);
+            requiredValue = getRandomInteger(6, 10);
             break;
         case 'difficult':
-            requiredValue = getRandomInteger(10, 15);
+            requiredValue = getRandomInteger(11, 15);
             break;
         case 'very_difficult':
             requiredValue = getRandomInteger(16, 20);
@@ -75,14 +75,18 @@ export function determineDiceRollResult(required_value, rolledValue, modifier) {
 
 //TODO implement parsing to enums
 export function mustRollDice(action, isInCombat) {
-    if (action.text.toLowerCase() === 'continue the tale') {
+    const actionText = action.text.toLowerCase();
+    if (actionText === 'continue the tale') {
         return false;
     }
+    let includesTrying = actionText.includes('attempt') || actionText.includes('attempting')
+        || actionText.includes('try') || actionText.includes('trying');
+
     const difficulty = action.action_difficulty.toLowerCase();
     if (action.type.toLowerCase() === 'social_manipulation') {
         return true;
     }
-    return difficulty !== 'simple' && (difficulty !== 'medium' || isInCombat);
+    return difficulty !== 'simple' && (difficulty !== 'medium' || isInCombat || includesTrying);
 }
 
 export function getRandomInteger(min, max) {
