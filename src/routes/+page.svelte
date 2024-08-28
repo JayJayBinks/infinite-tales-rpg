@@ -4,7 +4,7 @@
     import github from '$lib/assets/socials/icone-github-jaune.png';
     import logo from '$lib/assets/logo-removebg.png';
     import Disclaimer from "$lib/components/Disclaimer.svelte";
-    import {navigate} from "$lib/util.svelte.ts";
+    import {goto} from "$app/navigation";
 
     let disclaimerOpen = $state(false);
 </script>
@@ -64,5 +64,5 @@
         <p class="mb-2">Favicon is created by <a class="link" href="https://icons8.com" target="_blank">icons8.com</a></p>
     </section>
 
-    <Disclaimer {disclaimerOpen} onAgree="{() => {disclaimerOpen = false; navigate('/settings/ai')}}"></Disclaimer>
+    <Disclaimer {disclaimerOpen} onAgree="{() => {disclaimerOpen = false; goto('game/settings/ai')}}"></Disclaimer>
 </main>
