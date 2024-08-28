@@ -64,5 +64,5 @@
         <p class="mb-2">Favicon is created by <a class="link" href="https://icons8.com" target="_blank">icons8.com</a></p>
     </section>
 
-    <Disclaimer {disclaimerOpen} onAgree="{() => {navigate('/settings/ai')}}"></Disclaimer>
+    <Disclaimer {disclaimerOpen} onAgree="{() => {disclaimerOpen = false; navigate('/settings/ai')}}"></Disclaimer>
 </main>
