@@ -68,8 +68,9 @@
     <label class="form-control w-full sm:w-2/3">
         <p>Google Gemini API Key</p>
         <input type="text" id="apikey" bind:value={apiKeyState.value}
+               placeholder="Copy your API Key from Google AI Studio and Paste here"
                class="mt-2 input input-bordered"/>
-        <small class="m-auto mt-2">Create your free API Key at <a target="_blank" href="https://aistudio.google.com/app/apikey" class="link text-blue-400 underline">Google AI Studio</a></small>
+        <small class="m-auto mt-2">View the <a target="_blank" href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91" class="link text-blue-400 underline">guide to create the API Key</a></small>
     </label>
     <button class="btn btn-accent mt-5 m-auto"
             onclick="{onQuickstartNew}">

@@ -28,7 +28,7 @@
 
     <section class="text-center my-8 bg-gray-800 p-6 rounded-lg shadow-md">
         <h2 class="text-2xl font-semibold mb-4">How to Start Playing</h2>
-        <p class="mb-4">To begin your tale, you need a Google Gemini API Key. It's free and easy to set up! Visit <a target="_blank" href="https://aistudio.google.com/app/apikey" class="text-blue-400 underline">Google AI Studio</a>, generate your API key and enter it in the settings.</p>
+        <p class="mb-4">To begin your tale, you need a Google Gemini API Key. It's free and easy to set up! View the <a target="_blank" href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91" class="text-blue-400 underline">guide to create the API Key</a></p>
         <p>Your key is only stored in your browser, ensuring your privacy.</p>
     </section>
 
@@ -64,5 +64,5 @@
         <p class="mb-2">Favicon is created by <a class="link" href="https://icons8.com" target="_blank">icons8.com</a></p>
     </section>
 
-    <Disclaimer {disclaimerOpen} onAgree="{() => {navigate('/settings/ai')}}"></Disclaimer>
+    <Disclaimer {disclaimerOpen} onAgree="{() => {disclaimerOpen = false; navigate('/settings/ai')}}"></Disclaimer>
 </main>
