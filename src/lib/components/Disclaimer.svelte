@@ -11,7 +11,8 @@
                 While you can minimize exposure to certain content through the settings, complete avoidance cannot be guaranteed.</span>
         <span class="mt-2">By playing this game, you acknowledge and accept the potential for such content and agree to proceed at your own discretion.
                 The developers are not responsible for any distress or offense caused by AI-generated material.</span>
-        <span>Adhere to the <a class="link" target="_blank" href="https://ai.google.dev/gemini-api/terms">Google Gemini Terms</a></span>
+        <span class="mt-2">Adhere to the <a class="link" target="_blank" href="https://ai.google.dev/gemini-api/terms">Google Gemini Terms</a>
+            and for image generation the <a class="link" target="_blank" href="  https://pollinations.ai/terms">Pollinations Terms</a></span>
         <span class="mt-2 font-semibold">Age Restriction</span>
         <span class="mt-2">This game is intended for players aged 18 and above.</span>
         <span class="mt-2 font-semibold">Privacy Notice</span>
