@@ -1,18 +1,21 @@
 export const initialCharacterState = {
     name: '',
+    class: '',
     race: '',
     gender: '',
     appearance: '',
     alignment: '',
-    class: '',
-    MAX_HP_MP: '',
-    traits: '',
-    abilities: '',
-    expertise: '',
-    disadvantages: '',
     personality: '',
     background: '',
     motivation: '',
+}
+
+export const initialCharacterStatsState = {
+    resources: {},
+    traits: {},
+    abilities: {},
+    expertise: {},
+    disadvantages: {},
 }
 
 export const initialStoryState = {

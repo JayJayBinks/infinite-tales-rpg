@@ -10,6 +10,7 @@
     import {navigate, getRowsForTextarea} from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
+    import {goto} from "$app/navigation";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -30,7 +31,7 @@
 
     const onRandomize = async () => {
         isGeneratingState = true;
-        const newState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value), characterStateOverwrites);
+        const newState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value), characterStateOverwrites);
         if (newState) {
             characterState.value = newState;
             resetImageState = true;
@@ -42,7 +43,7 @@
         const currentCharacter = {...characterState.value};
         currentCharacter[stateValue] = undefined;
         const characterInput = {...currentCharacter, ...characterStateOverwrites}
-        const newState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value), characterInput);
+        const newState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value), characterInput);
         if (newState) {
             characterState.value[stateValue] = newState[stateValue];
             if(stateValue === 'appearance'){
@@ -52,11 +53,11 @@
         isGeneratingState = false;
     }
 
-    const startTaleStepClicked = async () =>  {
+    const nextStepClicked = async () =>  {
         if(isEqual(characterState.value, initialCharacterState)){
             await onRandomize();
         }
-        navigate('/')
+        await goto('characterStats')
     };
 
 </script>
@@ -65,9 +66,10 @@
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
-    <li class="step step-primary cursor-pointer" onclick={() => navigate('/new/tale')}>Tale</li>
+    <li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
     <li class="step step-primary">Character</li>
-    <li class="step cursor-pointer" onclick={startTaleStepClicked}>Start Tale</li>
+    <li class="step cursor-pointer" onclick={nextStepClicked}>Stats</li>
+    <li class="step cursor-pointer" onclick={nextStepClicked}>Start</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
     <p>Click on Randomize All to generate a random Character based on the Tale settings</p>
@@ -86,10 +88,10 @@
         Previous Step: Customize Tale
     </button>
     <button class="btn btn-primary"
-            onclick="{() => {navigate('/')}}"
+            onclick="{() => {navigate('/new/characterStats')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Your Tale
+        Next Step: Customize the Character's Stats
     </button>
 
 

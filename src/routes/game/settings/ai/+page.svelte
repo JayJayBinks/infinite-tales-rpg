@@ -1,13 +1,14 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
-    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
+    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
     import {StoryAgent} from "$lib/ai/agents/storyAgent.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import {goto} from "$app/navigation";
+    import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent.ts";
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -18,6 +19,7 @@
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const characterImageState = useLocalStorage('characterImageState');
+    const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
     const storyState = useLocalStorage('storyState', initialStoryState);
     const isGameEnded = useLocalStorage('isGameEnded', false);
     const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
@@ -28,6 +30,7 @@
         gameActionsState.reset();
         characterState.reset();
         characterImageState.reset();
+        characterStatsState.reset();
         storyState.reset();
         isGameEnded.reset();
         rollDifferenceHistoryState.reset();
@@ -46,10 +49,15 @@
         if (newStoryState) {
             storyState.value = newStoryState;
             const characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
-            const newCharacterState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value));
+            const newCharacterState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value));
             if (newCharacterState) {
                 characterState.value = newCharacterState;
-                await goto('/game');
+                const characterStatsAgent = new CharacterStatsAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
+                const newCharacterStatsState = await characterStatsAgent.generateCharacterStats($state.snapshot(storyState.value));
+                if (newCharacterState) {
+                    characterStatsState.value = newCharacterStatsState;
+                    await goto('/game');
+                }
             }
         }
         isGeneratingState = false;
