@@ -6,7 +6,7 @@
     import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
-    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
+    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
     import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
@@ -21,6 +21,7 @@
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
+    const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
     const storyState = useLocalStorage('storyState', initialStoryState);
 
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -146,6 +147,8 @@
             if (!isGameEnded.value) {
                 state.actions = state?.actions || [];
                 state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
+                characterStatsState.value.abilities.map(a => ({...a, type: 'Spell', text: a.name + " " + a.effect
+                    , action_difficulty: a.difficulty})).forEach(ability => addActionButton(ability, state.is_character_in_combat));
                 if (addContinueStory) {
                     addActionButton({
                         text: 'Continue The Tale'

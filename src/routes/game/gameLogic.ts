@@ -87,7 +87,7 @@ export function mustRollDice(action, isInCombat) {
 
     const listOfDiceRollingActions = ['attempt', 'try', 'seek', 'search', 'investigate']
     let includesTrying = listOfDiceRollingActions.some(value => actionText.includes(value));
-    if (action.type.toLowerCase() === 'social_manipulation') {
+    if (action.type.toLowerCase() === 'social_manipulation' || action.type.toLowerCase() === 'spell') {
         return true;
     }
     return difficulty !== 'medium' || isInCombat || includesTrying;
