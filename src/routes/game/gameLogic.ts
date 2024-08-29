@@ -5,7 +5,7 @@ export const difficultyDiceRollModifier = {
 
 export function getRequiredValue(action_difficulty: string | undefined, gameDifficulty: string) {
     let requiredValue = 0;
-    if(!action_difficulty){
+    if (!action_difficulty) {
         return requiredValue;
     }
     switch (action_difficulty) {
@@ -23,7 +23,7 @@ export function getRequiredValue(action_difficulty: string | undefined, gameDiff
         default:
             return 0;
     }
-    if(gameDifficulty){
+    if (gameDifficulty) {
         requiredValue -= difficultyDiceRollModifier[gameDifficulty];
     }
     return requiredValue;
@@ -34,7 +34,7 @@ export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredV
         return 0;
     }
     //if the last 3 rolls were negative, give some karma
-    if(rollDifferenceHistory.slice(-3).filter(difference => difference < 0).length >= 3){
+    if (rollDifferenceHistory.slice(-3).filter(difference => difference < 0).length >= 3) {
         return Math.ceil(requiredValue / 2);
     }
     return 0;
@@ -75,18 +75,22 @@ export function determineDiceRollResult(required_value, rolledValue, modifier) {
 
 //TODO implement parsing to enums
 export function mustRollDice(action, isInCombat) {
+    const difficulty = action.action_difficulty?.toLowerCase();
+    if (!difficulty || difficulty === 'simple') {
+        return false;
+    }
+
     const actionText = action.text.toLowerCase();
     if (actionText === 'continue the tale') {
         return false;
     }
-    let includesTrying = actionText.includes('attempt') || actionText.includes('attempting')
-        || actionText.includes('try') || actionText.includes('trying');
 
-    const difficulty = action.action_difficulty.toLowerCase();
+    const listOfDiceRollingActions = ['attempt', 'try', 'seek', 'search', 'investigate']
+    let includesTrying = listOfDiceRollingActions.some(value => actionText.includes(value));
     if (action.type.toLowerCase() === 'social_manipulation') {
         return true;
     }
-    return difficulty !== 'simple' && (difficulty !== 'medium' || isInCombat || includesTrying);
+    return difficulty !== 'medium' || isInCombat || includesTrying;
 }
 
 export function getRandomInteger(min, max) {
