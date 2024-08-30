@@ -13,9 +13,9 @@ export const initialCharacterState = {
 export const initialCharacterStatsState = {
     resources: {},
     traits: {},
-    abilities: {},
     expertise: {},
     disadvantages: {},
+    spells_and_abilities: {},
 }
 
 export const initialStoryState = {

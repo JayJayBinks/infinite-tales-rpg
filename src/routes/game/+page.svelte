@@ -12,11 +12,11 @@
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
     import * as gameLogic from "./gameLogic.ts";
-    import {difficultyDiceRollModifier} from "./gameLogic.ts";
     import {goto} from "$app/navigation";
+    import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
 
     let diceBox, svgDice;
-    let diceRollDialog, storyDiv, actionsDiv, customActionInput;
+    let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput;
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -45,6 +45,7 @@
 
     let diceRollResultState = $derived(gameLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
+    const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
     let gameAgent, summaryAgent;
 
@@ -68,7 +69,7 @@
             });
         } else {
             gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
-            await renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
+            await renderGameState(currentGameActionState);
             tick().then(() => customActionInput.scrollIntoView(false));
         }
         if (!didAIProcessDiceRollAction.value) {
@@ -97,6 +98,10 @@
 
     async function sendAction(action, rollDice = false) {
         try {
+            if (action.text.toLowerCase() === 'spells & abilities') {
+                useSpellsAbilitiesModal.showModal();
+                return;
+            }
             if (rollDice) {
                 openDiceRollDialog();
             } else {
@@ -104,7 +109,7 @@
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
                 const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
-                    storyState.value, characterState.value, derivedGameState);
+                    storyState.value, characterState.value, characterStatsState.value, derivedGameState);
 
                 isAiGeneratingState = false;
                 if (newState) {
@@ -147,9 +152,13 @@
             if (!isGameEnded.value) {
                 state.actions = state?.actions || [];
                 state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
-                characterStatsState.value.abilities.map(a => ({...a, type: 'Spell', text: a.name + " " + a.effect
-                    , action_difficulty: a.difficulty})).forEach(ability => addActionButton(ability, state.is_character_in_combat));
+
+                // characterStatsState.value.spells_and_abilities.map(a => ({...a, type: 'Spell', text: 'I cast ' + a.name + ": " + a.effect
+                //     , action_difficulty: a.difficulty})).forEach(ability => addActionButton(ability, state.is_character_in_combat));
                 if (addContinueStory) {
+                    addActionButton({
+                        text: 'Spells & Abilities'
+                    });
                     addActionButton({
                         text: 'Continue The Tale'
                     });
@@ -173,7 +182,7 @@
             button.disabled = true;
         }
         button.addEventListener('click', () => {
-            chosenActionState.value =  $state.snapshot(action);
+            chosenActionState.value = $state.snapshot(action);
             sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat))
         });
         actionsDiv.appendChild(button);
@@ -182,7 +191,6 @@
     function getRollResult() {
         return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${(rolledValueState.value + modifierState + karmaModifierState) || '?'}`;
     }
-
 </script>
 
 <!--TODO refactor to component with dialog-->
@@ -194,6 +202,12 @@
     {#if errorState.userMessage}
         <ErrorDialog onclose={handleAIError}/>
     {/if}
+    <UseSpellsAbilitiesModal bind:dialogRef={useSpellsAbilitiesModal}
+                             abilities="{characterStatsState.value?.spells_and_abilities}"
+                             onclose={(action) => {chosenActionState.value = $state.snapshot(action); sendAction(action,
+                             gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat))}}
+    >
+    </UseSpellsAbilitiesModal>
 
 
     <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-20"

@@ -10,16 +10,20 @@ export class GameAgent {
         this.llmProvider = llmProvider;
     }
 
-    async generateStoryProgression(actionText, customSystemInstruction, historyMessages, storyState, characterState, derivedGameState) {
+    async generateStoryProgression(actionText, customSystemInstruction, historyMessages, storyState, characterState, characterStatsState, derivedGameState) {
         const messages = [...historyMessages];
         let gameAgent = {
             parts: [{"text": systemBehaviour},
                 {"text": stringifyPretty(storyState)},
                 {
-                    "text": "The following is a description of the player character, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
+                    "text": "The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc." +
                         "\n" + stringifyPretty(characterState)
                 },
-                {"text": "The following are the character's current stats, consider it in your response\n" + stringifyPretty(derivedGameState)},
+                {
+                    "text": "The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
+                        "\n" + stringifyPretty(characterStatsState)
+                },
+                {"text": "The following are the character's CURRENT resources, consider it in your response\n" + stringifyPretty(derivedGameState)},
                 {"text": jsonSystemInstruction},
             ]
         }

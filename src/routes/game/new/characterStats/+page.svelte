@@ -14,6 +14,7 @@
     import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates";
     import {CharacterStatsAgent, characterStatsStateForPrompt} from "$lib/ai/agents/characterStatsAgent";
     import {goto} from "$app/navigation";
+    import {ActionDifficulty} from "../../gameLogic.ts";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -123,7 +124,7 @@
                     {#each Object.keys(characterStatsState.value[stateValue]) as statValue, i}
                         <label class="form-control w-full mt-3">
                             {#if isPlainObject(characterStatsState.value[stateValue][statValue])}
-                                <details class="collapse collapse-arrow border-base-300 bg-base-200 border">
+                                <details class="collapse collapse-arrow bg-base-200 border textarea-bordered">
                                     {#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i}
                                         {#if i === 0}
                                             <summary
@@ -133,16 +134,29 @@
                                         {/if}
                                         <div class="collapse-content">
                                             <label class="form-control w-full mt-3">
-                                                <div class="capitalize">
-                                                    {deepNestedValue.replaceAll('_', ' ')}
-                                                </div>
-                                                <!--   characterStatsStateOverwrites -->
-                                                <textarea
-                                                        bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue]}
-                                                        rows="{characterStatsState.value[stateValue][statValue][deepNestedValue].length > 30 ? 2 : 1}"
-                                                        oninput="{(evt) => {characterStatsStateOverwrites[stateValue][statValue] = evt.currentTarget.value}}"
-                                                        class="mt-2 textarea textarea-bordered textarea-md w-full">
-                                        </textarea>
+                                                <!--   TODO characterStatsStateOverwrites -->
+                                                {#if deepNestedValue.toLowerCase() === 'difficulty'}
+                                                    <div>
+                                                        Difficulty (required dice roll)
+                                                    </div>
+                                                    <select bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue]}
+                                                            class="mt-2 capitalize select select-bordered w-full"
+                                                    >
+                                                        {#each Object.keys(ActionDifficulty) as option}
+                                                            <option value={option}>{option.replaceAll('_', ' ')}</option>
+                                                        {/each}
+                                                    </select>
+                                                {:else}
+                                                    <div class="capitalize">
+                                                        {deepNestedValue.replaceAll('_', ' ')}
+                                                    </div>
+                                                     <textarea
+                                                             bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue]}
+                                                             rows="{characterStatsState.value[stateValue][statValue][deepNestedValue]?.length > 30 ? 2 : 1}"
+                                                             oninput="{(evt) => {characterStatsStateOverwrites[stateValue][statValue] = evt.currentTarget.value}}"
+                                                             class="mt-2 textarea textarea-bordered textarea-md w-full">
+                                                     </textarea>
+                                                {/if}
                                             </label>
                                         </div>
                                     {/each}
@@ -169,7 +183,7 @@
                 onclick={() => {
                     const name = prompt('Enter the name');
                     if(Array.isArray(characterStatsState.value[stateValue])){
-                        //TODO abilities not generic yet
+                        //TODO spells_and_abilities not generic yet
                         characterStatsState.value[stateValue].push({name, effect: '', mp_cost: 0, difficulty: 'simple'});
                     }else{
                         characterStatsStateOverwrites[stateValue][name] = '';
