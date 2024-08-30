@@ -5,19 +5,17 @@ export const difficultyDiceRollModifier = {
 
 export function getRequiredValue(action_difficulty: string | undefined, gameDifficulty: string) {
     let requiredValue = 0;
-    if (!action_difficulty) {
-        return requiredValue;
-    }
-    switch (action_difficulty) {
-        case 'simple':
+    const difficulty: ActionDifficulty = ActionDifficulty[action_difficulty?.toLowerCase()];
+    switch (difficulty) {
+        case ActionDifficulty.simple:
             return 0;
-        case 'medium':
+        case ActionDifficulty.medium:
             requiredValue = getRandomInteger(6, 10);
             break;
-        case 'difficult':
+        case ActionDifficulty.difficult:
             requiredValue = getRandomInteger(11, 15);
             break;
-        case 'very_difficult':
+        case ActionDifficulty.very_difficult:
             requiredValue = getRandomInteger(16, 20);
             break;
         default:
@@ -73,10 +71,17 @@ export function determineDiceRollResult(required_value, rolledValue, modifier) {
     return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${required_value}`
 }
 
-//TODO implement parsing to enums
+export enum ActionDifficulty {
+    simple = 'simple',
+    medium = 'medium',
+    difficult = 'difficult',
+    very_difficult = 'very_difficult'
+}
+
+//TODO implement parsing to enums directly from json
 export function mustRollDice(action, isInCombat) {
-    const difficulty = action.action_difficulty?.toLowerCase();
-    if (!difficulty || difficulty === 'simple') {
+    const difficulty: ActionDifficulty = ActionDifficulty[action.action_difficulty?.toLowerCase()];
+    if (!difficulty || difficulty === ActionDifficulty.simple) {
         return false;
     }
 
@@ -90,7 +95,7 @@ export function mustRollDice(action, isInCombat) {
     if (action.type.toLowerCase() === 'social_manipulation' || action.type.toLowerCase() === 'spell') {
         return true;
     }
-    return difficulty !== 'medium' || isInCombat || includesTrying;
+    return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
 export function getRandomInteger(min, max) {

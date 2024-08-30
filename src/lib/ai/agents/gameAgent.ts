@@ -1,5 +1,6 @@
-import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
+import {stringifyPretty} from "$lib/util.svelte.ts";
 import {GeminiProvider} from "../llmProvider";
+import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
 export class GameAgent {
 
@@ -145,7 +146,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "type": "Misc|Attack|Spell|Conversation|Social_Manipulation",
       "required_trait": "the skill the dice is rolled for",
       "difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
-      "action_difficulty": "simple|medium|difficult|very_difficult",
+      "action_difficulty": "${Object.keys(ActionDifficulty)}",
       "mp_cost": cost of this action, 0 if this action does not use mp
       "dice_roll": {
         "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
