@@ -71,6 +71,10 @@ export function determineDiceRollResult(required_value, rolledValue, modifier) {
     return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${required_value}`
 }
 
+export const getTargetText = function (targets) {
+    return "\n I target " + targets.join(' and ');
+}
+
 export enum ActionDifficulty {
     simple = 'simple',
     medium = 'medium',

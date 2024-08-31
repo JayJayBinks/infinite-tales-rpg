@@ -1,14 +1,23 @@
 <script>
-    let {onclose, abilities, currentMP, dialogRef = $bindable()} = $props();
+    import TargetModal from "$lib/components/TargetModal.svelte";
+
+    let {abilities, currentMP, targets, onclose, dialogRef = $bindable()} = $props();
+    let targetModalRef;
+    let abilityActionState = $state({});
 
     function mapAbilityToAction(ability) {
-        return {
-            ...ability, type: 'Spell', text: 'I cast ' + ability.name + ": " + ability.effect + " (" + ability.mp_cost + " MP)",
+        abilityActionState = {
+            ...ability,
+            type: 'Spell',
+            text: 'I cast ' + ability.name + ": " + ability.effect + " (" + ability.mp_cost + " MP)",
             action_difficulty: ability.difficulty
         };
     }
 </script>
 
+{#if targets}
+    <TargetModal bind:dialogRef={targetModalRef} {targets} {abilityActionState} {onclose}></TargetModal>
+{/if}
 <dialog bind:this={dialogRef} class="modal z-100" style="background: rgba(0, 0, 0, 0.3);">
     <div class="modal-box flex flex-col items-center">
         <form method="dialog">
@@ -22,9 +31,9 @@
                         <div class="flex flex-col items-center text-center">
                             <span class="badge badge-info">{ability.mp_cost} MP</span>
                             <span class="mt-2">{ability.name}</span>
-                            <button class="btn btn-neutral mt-2"
+                            <button type="button" class="btn btn-neutral mt-2"
                                     disabled={ability.mp_cost > currentMP}
-                                    onclick="{() => {dialogRef.close(); onclose(mapAbilityToAction(ability))}}">
+                                    onclick="{() => {mapAbilityToAction(ability); dialogRef.close(); targetModalRef.showModal(); }}">
                                 Cast
                             </button>
                         </div>

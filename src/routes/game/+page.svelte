@@ -184,6 +184,13 @@
     function getRollResult() {
         return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${(rolledValueState.value + modifierState + karmaModifierState) || '?'}`;
     }
+
+    const onTargetedSpellsOrAbility = (action, targets) => {
+        action.text += gameLogic.getTargetText(targets);
+        chosenActionState.value = action;
+        sendAction(action,
+            gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat));
+    }
 </script>
 
 <!--TODO refactor to component with dialog-->
@@ -196,10 +203,10 @@
         <ErrorDialog onclose={handleAIError}/>
     {/if}
     <UseSpellsAbilitiesModal bind:dialogRef={useSpellsAbilitiesModal}
-                             currentMP="{derivedGameState.currentMP}"
-                             abilities="{characterStatsState.value?.spells_and_abilities}"
-                             onclose={(action) => {chosenActionState.value = $state.snapshot(action); sendAction(action,
-                             gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat))}}
+                             currentMP={derivedGameState.currentMP}
+                             abilities={characterStatsState.value?.spells_and_abilities}
+                             targets={currentGameActionState.targets}
+                             onclose={onTargetedSpellsOrAbility}
     >
     </UseSpellsAbilitiesModal>
 
@@ -268,12 +275,14 @@
         {/if}
     </div>
     <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md"></div>
-    <div id="static-actions" class="mt-4 p-4">
-        <button
-                onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
-                class="btn btn-primary w-full text-md">Spells & Abilities
-        </button>
-    </div>
+    {#if !isGameEnded.value}
+        <div id="static-actions" class="mt-4 p-4">
+            <button
+                    onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
+                    class="btn btn-primary w-full text-md">Spells & Abilities
+            </button>
+        </div>
+    {/if}
     <form id="input-form" class="mt-4 flex">
         <input type="text"
                bind:this={customActionInput}

@@ -144,6 +144,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
     }
   ],
   "is_character_in_combat": true if CHARACTER is in active combat else false,
+  "targets": List of beings that can be targeted by attacks or spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["name", ...], "friendly": ["name", ...], "neutral": ["name", ...]}
   "actions": [
     {
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
