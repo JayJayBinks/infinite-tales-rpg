@@ -98,10 +98,6 @@
 
     async function sendAction(action, rollDice = false) {
         try {
-            if (action.text.toLowerCase() === 'spells & abilities') {
-                useSpellsAbilitiesModal.showModal();
-                return;
-            }
             if (rollDice) {
                 openDiceRollDialog();
             } else {
@@ -157,9 +153,6 @@
                 //     , action_difficulty: a.difficulty})).forEach(ability => addActionButton(ability, state.is_character_in_combat));
                 if (addContinueStory) {
                     addActionButton({
-                        text: 'Spells & Abilities'
-                    });
-                    addActionButton({
                         text: 'Continue The Tale'
                     });
                 }
@@ -203,6 +196,7 @@
         <ErrorDialog onclose={handleAIError}/>
     {/if}
     <UseSpellsAbilitiesModal bind:dialogRef={useSpellsAbilitiesModal}
+                             currentMP="{derivedGameState.currentMP}"
                              abilities="{characterStatsState.value?.spells_and_abilities}"
                              onclose={(action) => {chosenActionState.value = $state.snapshot(action); sendAction(action,
                              gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat))}}
@@ -274,6 +268,12 @@
         {/if}
     </div>
     <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md"></div>
+    <div id="static-actions" class="mt-4 p-4">
+        <button
+                onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
+                class="btn btn-primary w-full text-md">Spells & Abilities
+        </button>
+    </div>
     <form id="input-form" class="mt-4 flex">
         <input type="text"
                bind:this={customActionInput}
