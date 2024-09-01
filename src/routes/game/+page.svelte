@@ -274,24 +274,26 @@
             <StoryProgressionWithImage story={gameLogic.getGameEndedMessage()}/>
         {/if}
     </div>
-    <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md"></div>
+    <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 pb-0"></div>
     {#if !isGameEnded.value}
-        <div id="static-actions" class="mt-4 p-4">
+        <div id="static-actions" class="p-4 pt-2 pb-0">
             <button
                     onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
                     class="btn btn-primary w-full text-md">Spells & Abilities
             </button>
         </div>
     {/if}
-    <form id="input-form" class="mt-4 flex">
-        <input type="text"
-               bind:this={customActionInput}
-               class="input input-bordered flex-grow mr-2" id="user-input"
-               placeholder="Enter your action">
-        <button type="submit"
-                onclick="{(evt) => {sendAction({text: customActionInput.value});}}"
-                class="btn btn-neutral" id="submit-button">Submit
-        </button>
+    <form id="input-form" class="p-4">
+        <div class="join">
+            <input type="text"
+                   bind:this={customActionInput}
+                   class="input input-bordered" id="user-input"
+                   placeholder="Enter your action">
+            <button type="submit"
+                    onclick="{(evt) => {sendAction({text: customActionInput.value});}}"
+                    class="btn btn-neutral" id="submit-button">Submit
+            </button>
+        </div>
     </form>
 
     <style>
