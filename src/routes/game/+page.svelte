@@ -16,7 +16,7 @@
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
 
     let diceBox, svgDice;
-    let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput;
+    let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -275,26 +275,28 @@
         {/if}
     </div>
     <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 pb-0"></div>
-    {#if !isGameEnded.value}
-        <div id="static-actions" class="p-4 pt-2 pb-0">
-            <button
-                    onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
-                    class="btn btn-primary w-full text-md">Spells & Abilities
-            </button>
-        </div>
+    {#if Object.keys(currentGameActionState).length !== 0}
+        {#if !isGameEnded.value}
+            <div id="static-actions" class="p-4 pt-2 pb-0">
+                <button
+                        onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
+                        class="btn btn-primary w-full text-md">Spells & Abilities
+                </button>
+            </div>
+        {/if}
+        <form id="input-form" class="p-4">
+            <div class="join">
+                <input type="text"
+                       bind:this={customActionInput}
+                       class="input input-bordered" id="user-input"
+                       placeholder="Enter your action">
+                <button type="submit"
+                        onclick="{(evt) => {sendAction({text: customActionInput.value});}}"
+                        class="btn btn-neutral" id="submit-button">Submit
+                </button>
+            </div>
+        </form>
     {/if}
-    <form id="input-form" class="p-4">
-        <div class="join">
-            <input type="text"
-                   bind:this={customActionInput}
-                   class="input input-bordered" id="user-input"
-                   placeholder="Enter your action">
-            <button type="submit"
-                    onclick="{(evt) => {sendAction({text: customActionInput.value});}}"
-                    class="btn btn-neutral" id="submit-button">Submit
-            </button>
-        </div>
-    </form>
 
     <style>
         .btn {

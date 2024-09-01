@@ -2,12 +2,13 @@
     let {targets, abilityActionState, onclose, dialogRef = $bindable()} = $props();
     let targetForm;
     let customTargetState = $state();
+
     function mapTargets() {
         const mappedTargets = Array.from(targetForm.elements).filter(elm => elm.checked).map(elm => {
             elm.checked = false;
             return elm.value;
         });
-        if(customTargetState){
+        if (customTargetState) {
             mappedTargets.push(customTargetState);
         }
         customTargetState = undefined;
@@ -36,7 +37,7 @@
             </div>
             <span class="m-auto mt-3">Hostile:</span>
             {#if targets?.hostile?.length === 0}
-                <span class="m-auto mt-2">Currently no hostile targets</span>
+                <span class="m-auto mt-2">-</span>
             {/if}
             {#each targets?.hostile as target, i}
                 <div class="form-control">
@@ -48,7 +49,7 @@
             {/each}
             <span class="m-auto mt-3">Friendly:</span>
             {#if targets?.friendly?.length === 0}
-                <span class="m-auto mt-2">Currently no friendly targets</span>
+                <span class="m-auto mt-2">-</span>
             {/if}
             {#each targets?.friendly as target, i}
                 <div class="form-control">
@@ -60,7 +61,7 @@
             {/each}
             <span class="m-auto mt-3">Neutral:</span>
             {#if targets?.neutral?.length === 0}
-                <span class="m-auto mt-2">Currently no neutral targets</span>
+                <span class="m-auto mt-2">-</span>
             {/if}
             {#each targets?.neutral as target, i}
                 <div class="form-control">
@@ -71,8 +72,9 @@
                 </div>
             {/each}
             <div class="form-control items-center mt-5 w-full">
-                    <label class="capitalize">Custom Target</label>
-                    <input class="input input-bordered mt-3" bind:value={customTargetState} placeholder="Enter any target">
+                <label for="customTargetState" class="capitalize">Custom Target</label>
+                <input id="customTargetState" class="input input-bordered mt-3" bind:value={customTargetState}
+                       placeholder="Enter any target">
             </div>
             <button type="submit" class="btn btn-neutral mt-5 m-auto"
                     onclick="{() => {dialogRef.close(); onclose(abilityActionState, mapTargets())}}">
