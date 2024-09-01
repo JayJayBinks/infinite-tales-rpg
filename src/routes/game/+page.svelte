@@ -111,12 +111,12 @@
                     console.log(stringifyPretty(newState))
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
                     updateGameState(newState);
-                    //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
-                    historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
                     chosenActionState.reset();
                     rolledValueState.reset();
                     customActionInput.value = '';
                     didAIProcessDiceRollAction.value = true;
+                    //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
+                    historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
                 }
             }
         } catch (e) {
