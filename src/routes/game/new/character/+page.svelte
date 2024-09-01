@@ -52,14 +52,6 @@
         }
         isGeneratingState = false;
     }
-
-    const nextStepClicked = async () =>  {
-        if(isEqual(characterState.value, initialCharacterState)){
-            await onRandomize();
-        }
-        await goto('characterStats')
-    };
-
 </script>
 
 {#if isGeneratingState}
@@ -68,8 +60,8 @@
 <ul class="steps w-full mt-3">
     <li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
     <li class="step step-primary">Character</li>
-    <li class="step cursor-pointer" onclick={nextStepClicked}>Stats</li>
-    <li class="step cursor-pointer" onclick={nextStepClicked}>Start</li>
+    <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
+    <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Start</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
     <p>Click on Randomize All to generate a random Character based on the Tale settings</p>
@@ -91,7 +83,7 @@
             onclick="{() => {navigate('/new/characterStats')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Next Step: Customize the Character's Stats
+        Next Step: Customize Stats & Abilities
     </button>
 
 

@@ -83,9 +83,9 @@
 {/if}
 <ul class="steps w-full mt-3">
     <li class="step step-primary">Tale</li>
-    <li class="step cursor-pointer" onclick={nextStepClicked}>Character</li>
-    <li class="step cursor-pointer" onclick={nextStepClicked}>Stats</li>
-    <li class="step cursor-pointer" onclick={nextStepClicked}>Start</li>
+    <li class="step cursor-pointer" onclick={() => goto('character')}>Character</li>
+    <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
+    <li class="step cursor-pointer" onclick={() => goto('character')}>Start</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
 <p>Quickstart: Click on Randomize All to generate a random Tale.</p>
