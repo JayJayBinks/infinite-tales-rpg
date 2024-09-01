@@ -1,6 +1,8 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import {GameAgent} from "$lib/ai/agents/gameAgent.ts";
+    import {DifficultyAgent} from "$lib/ai/agents/difficultyAgent.ts";
+
     import {onMount, tick} from "svelte";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
     import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
@@ -47,7 +49,7 @@
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
     const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
-    let gameAgent, summaryAgent;
+    let gameAgent, difficultyAgent, summaryAgent;
 
     onMount(async () => {
         if (!apiKeyState.value) {
@@ -60,8 +62,10 @@
         });
         diceBox.init();
 
-        gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value));
-        summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value, 1, aiLanguage.value));
+        const geminiProvider = new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value);
+        gameAgent = new GameAgent(geminiProvider);
+        difficultyAgent = new DifficultyAgent(geminiProvider);
+        summaryAgent = new SummaryAgent(geminiProvider);
         //Start game when not already started
         if (gameActionsState.value.length === 0) {
             await sendAction({
@@ -107,7 +111,6 @@
                 const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
                     storyState.value, characterState.value, characterStatsState.value, derivedGameState);
 
-                isAiGeneratingState = false;
                 if (newState) {
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
@@ -120,6 +123,7 @@
                     //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
                     historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
                 }
+                isAiGeneratingState = false;
             }
         } catch (e) {
             isAiGeneratingState = false;
@@ -185,11 +189,20 @@
         return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${(rolledValueState.value + modifierState + karmaModifierState) || '?'}`;
     }
 
-    const onTargetedSpellsOrAbility = (action, targets) => {
+    const onTargetedSpellsOrAbility = async (action, targets) => {
         action.text += gameLogic.getTargetText(targets);
+        const lastTwoHistoryActions = historyMessagesState.value.slice(-4);
+        isAiGeneratingState = true;
+        const difficultyResponse = await difficultyAgent.generateDifficulty(action.text,
+            customSystemInstruction.value, lastTwoHistoryActions, characterState.value, characterStatsState.value);
+        if (difficultyResponse) {
+            action = {...action, ...difficultyResponse}
+        }
+        console.log('difficultyResponse', stringifyPretty(difficultyResponse));
         chosenActionState.value = action;
-        sendAction(action,
+        await sendAction(action,
             gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat));
+        isAiGeneratingState = false;
     }
 </script>
 
@@ -285,10 +298,10 @@
             </div>
         {/if}
         <form id="input-form" class="p-4">
-            <div class="join">
+            <div class="join w-full">
                 <input type="text"
                        bind:this={customActionInput}
-                       class="input input-bordered" id="user-input"
+                       class="input input-bordered w-full" id="user-input"
                        placeholder="Enter your action">
                 <button type="submit"
                         onclick="{(evt) => {sendAction({text: customActionInput.value});}}"

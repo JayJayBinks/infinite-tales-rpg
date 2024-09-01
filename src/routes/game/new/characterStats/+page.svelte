@@ -135,28 +135,15 @@
                                         <div class="collapse-content">
                                             <label class="form-control w-full mt-3">
                                                 <!--   TODO characterStatsStateOverwrites -->
-                                                {#if deepNestedValue.toLowerCase() === 'difficulty'}
-                                                    <div>
-                                                        Difficulty (required dice roll)
-                                                    </div>
-                                                    <select bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue]}
-                                                            class="mt-2 capitalize select select-bordered w-full"
-                                                    >
-                                                        {#each Object.keys(ActionDifficulty) as option}
-                                                            <option value={option}>{option.replaceAll('_', ' ')}</option>
-                                                        {/each}
-                                                    </select>
-                                                {:else}
-                                                    <div class="capitalize">
-                                                        {deepNestedValue.replaceAll('_', ' ')}
-                                                    </div>
-                                                     <textarea
-                                                             bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue]}
-                                                             rows="{characterStatsState.value[stateValue][statValue][deepNestedValue]?.length > 30 ? 2 : 1}"
-                                                             oninput="{(evt) => {characterStatsStateOverwrites[stateValue][statValue] = evt.currentTarget.value}}"
-                                                             class="mt-2 textarea textarea-bordered textarea-md w-full">
+                                                <div class="capitalize">
+                                                    {deepNestedValue.replaceAll('_', ' ')}
+                                                </div>
+                                                <textarea
+                                                        bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue]}
+                                                        rows="{characterStatsState.value[stateValue][statValue][deepNestedValue]?.length > 30 ? 2 : 1}"
+                                                        oninput="{(evt) => {characterStatsStateOverwrites[stateValue][statValue] = evt.currentTarget.value}}"
+                                                        class="mt-2 textarea textarea-bordered textarea-md w-full">
                                                      </textarea>
-                                                {/if}
                                             </label>
                                         </div>
                                     {/each}

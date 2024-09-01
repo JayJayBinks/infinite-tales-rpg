@@ -9,8 +9,7 @@
         abilityActionState = {
             ...ability,
             type: 'Spell',
-            text: 'I cast ' + ability.name + ": " + ability.effect + " (" + ability.mp_cost + " MP)",
-            action_difficulty: ability.difficulty
+            text: 'I cast ' + ability.name + ": " + ability.effect + " (" + ability.mp_cost + " MP)"
         };
     }
 </script>

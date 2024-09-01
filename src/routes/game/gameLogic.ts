@@ -72,7 +72,9 @@ export function determineDiceRollResult(required_value, rolledValue, modifier) {
 }
 
 export const getTargetText = function (targets) {
-    return "\n I target " + targets.join(' and ');
+    return "\n I target " + targets.join(' and ')
+        + "\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended."
+        + "\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.";
 }
 
 export enum ActionDifficulty {
