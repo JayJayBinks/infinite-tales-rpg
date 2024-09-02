@@ -1,5 +1,6 @@
 import {errorState} from "./state/errorState.svelte";
 import isPlainObject from 'lodash.isplainobject';
+import isString from 'lodash.isstring';
 
 export function stringifyPretty(object) {
     return JSON.stringify(object, null, 2);
@@ -83,4 +84,13 @@ export function getRowsForTextarea(object) {
         }
     });
     return mappedRows;
+}
+
+export function parseState(newState) {
+    Object.keys(newState).forEach(key => {
+        if (isString(newState[key])) {
+            const parsedValue = JSON.parse(newState[key]);
+            newState[key] = parsedValue;
+        }
+    })
 }

@@ -7,9 +7,8 @@
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {StoryAgent} from "$lib/ai/agents/storyAgent";
     import {GeminiProvider} from "$lib/ai/llmProvider";
-    import {navigate, getRowsForTextarea} from "$lib/util.svelte.ts";
+    import {navigate, getRowsForTextarea, parseState} from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
-    import isString from 'lodash.isstring';
     import isPlainObject from 'lodash.isplainobject';
     import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates";
     import {CharacterStatsAgent, characterStatsStateForPrompt} from "$lib/ai/agents/characterStatsAgent";
@@ -32,15 +31,6 @@
     const textAreaRowsDerived = $derived(getRowsForTextarea(characterStatsState.value))
 
     let characterStatsStateOverwrites = $state({...initialCharacterStatsState});
-
-    function parseState(newState) {
-        Object.keys(newState).forEach(key => {
-            if (isString(newState[key])) {
-                const parsedValue = JSON.parse(newState[key]);
-                newState[key] = parsedValue;
-            }
-        })
-    }
 
     const onRandomize = async () => {
         isGeneratingState = true;

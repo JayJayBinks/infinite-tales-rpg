@@ -1,6 +1,6 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import {navigate} from "$lib/util.svelte.ts";
+    import {navigate, parseState} from "$lib/util.svelte.ts";
     import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
@@ -53,7 +53,8 @@
             if (newCharacterState) {
                 characterState.value = newCharacterState;
                 const characterStatsAgent = new CharacterStatsAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
-                const newCharacterStatsState = await characterStatsAgent.generateCharacterStats($state.snapshot(storyState.value));
+                const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(storyState.value, characterState.value);
+                parseState(newCharacterStatsState);
                 if (newCharacterState) {
                     characterStatsState.value = newCharacterStatsState;
                     await goto('/game');
