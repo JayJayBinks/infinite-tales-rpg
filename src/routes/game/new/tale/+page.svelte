@@ -124,7 +124,7 @@
             <div class=" flex-row capitalize">
                 {stateValue.replaceAll('_', ' ')}
                 {#if storyStateOverwrites[stateValue]}
-                    <span class="badge badge-accent">overwritten</span>
+                    <span class="badge badge-accent ml-2">overwritten</span>
                 {/if}
             </div>
 

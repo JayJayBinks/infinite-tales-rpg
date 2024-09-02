@@ -115,13 +115,13 @@
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
-                    updateGameState(newState);
                     chosenActionState.reset();
                     rolledValueState.reset();
                     customActionInput.value = '';
                     didAIProcessDiceRollAction.value = true;
                     //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
                     historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
+                    updateGameState(newState);
                 }
                 isAiGeneratingState = false;
             }
@@ -191,6 +191,8 @@
 
     const onTargetedSpellsOrAbility = async (action, targets) => {
         action.text += gameLogic.getTargetText(targets);
+        //TODO maybe make this more effectie when target also has spells, attack etc. create enemyTurnAgent
+        action.text += "\n After using this action it's the enemies turn. Include the enemies attack result. Do i loose HP?";
         const lastTwoHistoryActions = historyMessagesState.value.slice(-4);
         isAiGeneratingState = true;
         const difficultyResponse = await difficultyAgent.generateDifficulty(action.text,

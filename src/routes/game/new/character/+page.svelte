@@ -92,7 +92,7 @@
             <div class=" flex-row capitalize">
                 {stateValue.replaceAll('_', ' ')}
                 {#if characterStateOverwrites[stateValue]}
-                    <span class="badge badge-accent">overwritten</span>
+                    <span class="badge badge-accent ml-2">overwritten</span>
                 {/if}
             </div>
             <textarea bind:value={characterState.value[stateValue]}

@@ -12,9 +12,9 @@ export class DifficultyAgent {
 
     async generateDifficulty(actionText, customSystemInstruction, historyMessages, characterState, characterStatsState) {
         const messages = historyMessages.map(message => {
-            try{
+            try {
                 return {...message, content: JSON.parse(message.content).story};
-            }catch (e) {
+            } catch (e) {
                 return message;
             }
         });
@@ -23,6 +23,7 @@ export class DifficultyAgent {
             parts: [{
                 "text": "You are RPG difficulty agent, the player will try to perform an action " +
                     "and you determine how difficult it is in the current situation, considering the story, action effect, number of targets and character description. " +
+                    " The difficulty increases with more targets." +
                     " Any action is allowed to target anything per game rules."
             },
                 {
