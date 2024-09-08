@@ -152,9 +152,6 @@
             if (!isGameEnded.value) {
                 state.actions = state?.actions || [];
                 state.actions.forEach(action => addActionButton(action, state.is_character_in_combat));
-
-                // characterStatsState.value.spells_and_abilities.map(a => ({...a, type: 'Spell', text: 'I cast ' + a.name + ": " + a.effect
-                //     , action_difficulty: a.difficulty})).forEach(ability => addActionButton(ability, state.is_character_in_combat));
                 if (addContinueStory) {
                     addActionButton({
                         text: 'Continue The Tale'

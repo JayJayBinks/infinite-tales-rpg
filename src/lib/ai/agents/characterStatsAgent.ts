@@ -1,13 +1,14 @@
-import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
+import {stringifyPretty} from "$lib/util.svelte.ts";
 import {GeminiProvider} from "../llmProvider";
 
+export const abilityFormat = '{"name": "", "effect": "", "mp_cost": "integer"}'
 
 export const characterStatsStateForPrompt = {
     resources: 'Starting maximum HP and MP in range 20 - 100, based on overall description of the character. Format: {"MAX_HP": startingHP, "MAX_MP": startingMP}',
     traits: 'list of the beginning traits of the character in following format: {"trait1": startingValue1, "trait2": startingValue2, ...}',
     expertise: 'Traits where CHARACTER has a high value and a positive dice roll modifier format: {"trait1": value between 1-5, "trait2": 1-5, ...}',
     disadvantages: 'Traits where CHARACTER has a low value and a negative dice roll modifier format: {"trait1": value between -1 to -5, "trait2": -1 to -5, ...}',
-    spells_and_abilities: 'Array of spells and abilities. Only list actively usable spells and abilities. Format: [{"name": "", "effect": "", "mp_cost": integer}]',
+    spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. Format: [${abilityFormat}]`,
 }
 
 export class CharacterStatsAgent {
@@ -35,6 +36,33 @@ export class CharacterStatsAgent {
                 {
                     role: "user",
                     parts: [{"text": "Already existing stats to be reused: " + stringifyPretty(statsOverwrites)}]
+                }],
+            {parts: [{"text": agentInstruction}]}
+        );
+    }
+
+    async generateSingleAbility(storyState, characterState, characterStats, ability) {
+        let agentInstruction = "You are RPG character stats agent, generating a single new ability for a character according to game system, adventure and character description.\n" +
+            "Important instruction! The new ability must be based on the following: " + stringifyPretty(ability) + "\n" +
+            "Always respond with following JSON!\n" +
+            abilityFormat;
+
+        return await this.llmProvider.sendToAI(
+            [{
+                role: "user",
+                parts: [{"text": "Description of the story: " + stringifyPretty(storyState)}]
+            },
+                {
+                    role: "user",
+                    parts: [{"text": "Description of the character: " + stringifyPretty(characterState)}]
+                },
+                {
+                    role: "user",
+                    parts: [{"text": "Stats of the character: " + stringifyPretty(characterStats)}]
+                },
+                {
+                    role: "user",
+                    parts: [{"text": "Important instruction! The new ability must be based on the following: " + stringifyPretty(ability)}]
                 }],
             {parts: [{"text": agentInstruction}]}
         );

@@ -30,7 +30,7 @@
                         <div class="flex flex-col items-center text-center">
                             <span class="badge badge-info">{ability.mp_cost} MP</span>
                             <span class="mt-2">{ability.name}</span>
-                            <button type="button" class="btn btn-neutral mt-2"
+                            <button type="button" class="btn btn-neutral mt-2 components"
                                     disabled={ability.mp_cost > currentMP}
                                     onclick="{() => {mapAbilityToAction(ability); dialogRef.close(); targetModalRef.showModal(); }}">
                                 Cast

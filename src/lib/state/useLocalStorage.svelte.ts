@@ -1,9 +1,10 @@
 import {onMount} from 'svelte';
+import cloneDeep from "lodash.clonedeep";
 
 const useLocalStorage = (key, initialValue = undefined) => {
 
     function getInitial() {
-        return typeof initialValue === 'object' && !Array.isArray(initialValue) ? {...initialValue} : initialValue;
+        return cloneDeep(initialValue);
     }
 
     let value = $state(getInitial());
