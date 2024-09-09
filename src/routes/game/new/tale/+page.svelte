@@ -71,13 +71,6 @@
             alert('Import successfull.');
         });
     };
-
-    const nextStepClicked = async () => {
-        if (isEqual(storyState.value, initialStoryState)) {
-            await onRandomize();
-        }
-        await goto('character');
-    };
 </script>
 
 {#if isGeneratingState}

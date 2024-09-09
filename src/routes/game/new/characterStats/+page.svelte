@@ -34,10 +34,11 @@
 
     const onRandomize = async () => {
         isGeneratingState = true;
+        const filteredOverwrites = removeEmptyValues(characterStatsStateOverwrites);
         const newState = await characterStatsAgent.generateCharacterStats(
             $state.snapshot(storyState.value),
             $state.snapshot(characterState.value),
-            characterStatsStateOverwrites);
+            filteredOverwrites);
         if (newState) {
             parseState(newState);
             characterStatsState.value = newState;
@@ -172,7 +173,6 @@
                                                                 characterStatsStateOverwrites[stateValue][statValue] = {};
                                                             }
                                                             characterStatsStateOverwrites[stateValue][statValue][deepNestedValue] = evt.target.value;
-                                                            console.log(initialCharacterStatsState)
                                                         }}"
                                                         class="mt-2 textarea textarea-bordered textarea-md w-full">
                                                      </textarea>
@@ -190,13 +190,14 @@
                             {:else}
                                 <div class="flex-row capitalize">
                                     {statValue.replaceAll('_', ' ')}
-                                        <button class="btn btn-error btn-xs no-animation ml-2 components"
-                                                onclick={(evt) => {evt.preventDefault(); delete characterStatsState.value[stateValue][statValue]}}>
-                                            Delete
-                                        </button>
+
                                     {#if characterStatsStateOverwrites[stateValue][statValue]}
                                         <span class="badge badge-accent ml-2">overwritten</span>
                                     {/if}
+                                    <button class="btn btn-error btn-xs no-animation ml-2 components"
+                                            onclick={(evt) => {evt.preventDefault(); delete characterStatsState.value[stateValue][statValue]}}>
+                                        Delete
+                                    </button>
                                 </div>
                                 <textarea bind:value={characterStatsState.value[stateValue][statValue]}
                                           rows="{textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}"
