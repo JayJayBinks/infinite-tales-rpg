@@ -65,8 +65,10 @@
 
     const importSettings = () => {
         importJsonFromFile((parsed) => {
+            Object.keys(parsed).forEach(key => localStorage.setItem(key, JSON.stringify(parsed[key])));
             storyState.value = parsed.storyState;
             characterState.value = parsed.characterState;
+            alert('Import successfull.');
         });
     };
 
