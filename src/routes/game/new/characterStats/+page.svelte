@@ -107,21 +107,21 @@
 </ul>
 <form class="custom-main grid gap-2 m-6">
     <p>Click on Randomize All to generate random Stats based on the Character settings</p>
-    <button class="btn btn-accent mt-3"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-3"
             disabled={isGeneratingState}
             onclick={onRandomize}>
         Randomize All
     </button>
-    <button class="btn btn-neutral"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
             onclick={() => {characterStatsState.reset(); characterStatsStateOverwrites = cloneDeep(initialCharacterStatsState);}}>
         Clear All
     </button>
-    <button class="btn btn-primary"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
             onclick="{() => {navigate('/new/character')}}"
     >
-        Previous Step: Customize Character
+        Previous Step:<br> Customize Character
     </button>
-    <button class="btn btn-primary"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
             onclick="{() => {navigate('/')}}"
             disabled={isEqual(characterStatsState.value, initialCharacterStatsState)}
     >
@@ -179,7 +179,7 @@
                                             </label>
                                         </div>
                                     {/each}
-                                    <button class="btn btn-accent mt-2 m-5"
+                                    <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-2 mb-2 m-5"
                                             onclick={() => {
                                                 onRandomizeSingle(stateValue, statValue);
                                             }}>
@@ -210,7 +210,7 @@
                 </div>
             </details>
         </label>
-        <button class="btn btn-neutral mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral mt-2 capitalize"
                 onclick={() => {
                     if(Array.isArray(characterStatsState.value[stateValue])){
                         //TODO spells_and_abilities not generic yet
@@ -226,13 +226,13 @@
                 }}>
             Add {stateValue.replaceAll('_', ' ')}
         </button>
-        <button class="btn btn-accent mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-2 capitalize"
                 onclick={() => {
                     onRandomizeSingle(stateValue);
                 }}>
             Randomize {stateValue.replaceAll('_', ' ')}
         </button>
-        <button class="btn btn-neutral mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral mt-2 capitalize"
                 onclick={() => {
                      if(Array.isArray(characterStatsStateOverwrites[stateValue])){
                             //TODO not generic
@@ -246,7 +246,7 @@
             Clear {stateValue.replaceAll('_', ' ')}
         </button>
     {/each}
-    <button class="btn btn-primary mt-2"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary mt-2"
             onclick="{() => {navigate('/')}}"
             disabled={isEqual(characterStatsState.value, initialCharacterStatsState)}
     >

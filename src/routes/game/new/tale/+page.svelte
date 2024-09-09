@@ -88,12 +88,12 @@
 <p>The custom settings will be considered for the Randomize feature.</p>
 <p>You can even create the Character first and the Tale after.</p>
 <p>Example: Enter 'Call of Cthulhu' as Game and click Randomize All. A random Cthulhu Tale will be generated.</p>
-<button class="btn btn-accent mt-3"
+<button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-3"
         disabled={isGeneratingState}
         onclick={onRandomize}>
     Randomize All
 </button>
-<button class="btn btn-neutral"
+<button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
         onclick={() => {
                 storyState.reset();
                 storyStateOverwrites = {};
@@ -101,17 +101,17 @@
             }>
     Clear All
 </button>
-<button class="btn btn-neutral"
+<button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
         onclick={downloadLocalStorageAsJson}>
     Export All Settings
 </button>
-<button class="btn btn-neutral"
+<button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
         onclick={importSettings}>
     Import All Settings
 </button>
-<button class="btn btn-primary"
+<button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
         onclick={() => {navigate('/new/character')}}>
-    Next Step: Customize Character
+    Next Step:<br> Customize Character
 </button>
 {#if storyState.value}
     {#each Object.keys(storyStateForPrompt) as stateValue, i}
@@ -130,13 +130,13 @@
                       class="mt-2 textarea textarea-bordered textarea-md w-full"></textarea>
 
         </label>
-        <button class="btn btn-accent mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-2 capitalize"
                 onclick={() => {
                     onRandomizeSingle(stateValue);
                 }}>
             Randomize {stateValue.replaceAll('_', ' ')}
         </button>
-        <button class="btn btn-neutral mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral mt-2 capitalize"
                 onclick={() => {
                     storyState.resetProperty(stateValue);
                     delete storyStateOverwrites[stateValue];
@@ -144,9 +144,9 @@
             Clear {stateValue.replaceAll('_', ' ')}
         </button>
     {/each}
-    <button class="btn btn-primary mt-2"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary mt-2"
             onclick={() => {navigate('/new/character')}}>
-        Next Step: Customize Character
+        Next Step:<br> Customize Character
     </button>
 {/if}
 </form>

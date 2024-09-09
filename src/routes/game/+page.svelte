@@ -289,14 +289,14 @@
     <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 pb-0"></div>
     {#if Object.keys(currentGameActionState).length !== 0}
         {#if !isGameEnded.value}
-            <div id="static-actions" class="p-4 pt-2 pb-0">
+            <div id="static-actions" class="p-4 pt-0 pb-0">
                 <button
                         onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
                         class="btn btn-primary w-full text-md">Spells & Abilities
                 </button>
             </div>
         {/if}
-        <form id="input-form" class="p-4">
+        <form id="input-form" class="p-4 pb-2">
             <div class="join w-full">
                 <input type="text"
                        bind:this={customActionInput}

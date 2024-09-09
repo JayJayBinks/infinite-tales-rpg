@@ -65,25 +65,25 @@
 </ul>
 <form class="custom-main grid gap-2 m-6">
     <p>Click on Randomize All to generate a random Character based on the Tale settings</p>
-    <button class="btn btn-accent mt-3"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-3"
             disabled={isGeneratingState}
             onclick={onRandomize}>
         Randomize All
     </button>
-    <button class="btn btn-neutral"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
             onclick={() => {characterState.reset(); characterStateOverwrites = {}; resetImageState = true;}}>
         Clear All
     </button>
-    <button class="btn btn-primary"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
         onclick="{() => {navigate('/new/tale')}}"
     >
-        Previous Step: Customize Tale
+        Previous Step:<br> Customize Tale
     </button>
-    <button class="btn btn-primary"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
             onclick="{() => {navigate('/new/characterStats')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Next Step: Customize Stats & Abilities
+        Next Step:<br> Customize Stats & Abilities
     </button>
 
 
@@ -102,13 +102,13 @@
                       class="mt-2 textarea textarea-bordered textarea-md w-full">
             </textarea>
         </label>
-        <button class="btn btn-accent mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-2 capitalize"
                 onclick={() => {
                     onRandomizeSingle(stateValue);
                 }}>
             Randomize {stateValue.replaceAll('_', ' ')}
         </button>
-        <button class="btn btn-neutral mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral mt-2 capitalize"
                 onclick={() => {
                     characterState.resetProperty(stateValue);
                     delete characterStateOverwrites[stateValue];
@@ -130,10 +130,10 @@
         {/if}
 
     {/each}
-    <button class="btn btn-primary mt-2"
-            onclick="{() => {navigate('/')}}"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
+            onclick="{() => {navigate('/new/characterStats')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Your Tale
+        Next Step:<br> Customize Stats & Abilities
     </button>
 </form>
