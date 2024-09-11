@@ -71,6 +71,12 @@ export function determineDiceRollResult(required_value, rolledValue, modifier) {
     return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${required_value}`
 }
 
+export const getTargetText = function (targets) {
+    return "\n I target " + targets.join(' and ')
+        + "\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended."
+        + "\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.";
+}
+
 export enum ActionDifficulty {
     simple = 'simple',
     medium = 'medium',
@@ -92,7 +98,7 @@ export function mustRollDice(action, isInCombat) {
 
     const listOfDiceRollingActions = ['attempt', 'try', 'seek', 'search', 'investigate']
     let includesTrying = listOfDiceRollingActions.some(value => actionText.includes(value));
-    if (action.type.toLowerCase() === 'social_manipulation') {
+    if (action.type.toLowerCase() === 'social_manipulation' || action.type.toLowerCase() === 'spell') {
         return true;
     }
     return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;

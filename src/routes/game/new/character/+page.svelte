@@ -10,6 +10,7 @@
     import {navigate, getRowsForTextarea} from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
+    import {goto} from "$app/navigation";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -30,7 +31,7 @@
 
     const onRandomize = async () => {
         isGeneratingState = true;
-        const newState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value), characterStateOverwrites);
+        const newState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value), characterStateOverwrites);
         if (newState) {
             characterState.value = newState;
             resetImageState = true;
@@ -42,7 +43,7 @@
         const currentCharacter = {...characterState.value};
         currentCharacter[stateValue] = undefined;
         const characterInput = {...currentCharacter, ...characterStateOverwrites}
-        const newState = await characterAgent.generateCharacterStats($state.snapshot(storyState.value), characterInput);
+        const newState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value), characterInput);
         if (newState) {
             characterState.value[stateValue] = newState[stateValue];
             if(stateValue === 'appearance'){
@@ -51,45 +52,38 @@
         }
         isGeneratingState = false;
     }
-
-    const startTaleStepClicked = async () =>  {
-        if(isEqual(characterState.value, initialCharacterState)){
-            await onRandomize();
-        }
-        navigate('/')
-    };
-
 </script>
 
 {#if isGeneratingState}
     <LoadingModal/>
 {/if}
 <ul class="steps w-full mt-3">
-    <li class="step step-primary cursor-pointer" onclick={() => navigate('/new/tale')}>Tale</li>
+    <li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
     <li class="step step-primary">Character</li>
-    <li class="step cursor-pointer" onclick={startTaleStepClicked}>Start Tale</li>
+    <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
+    <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Start</li>
 </ul>
 <form class="custom-main grid gap-2 m-6">
     <p>Click on Randomize All to generate a random Character based on the Tale settings</p>
-    <button class="btn btn-accent mt-3"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-3"
             disabled={isGeneratingState}
             onclick={onRandomize}>
         Randomize All
     </button>
-    <button class="btn btn-neutral"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
             onclick={() => {characterState.reset(); characterStateOverwrites = {}; resetImageState = true;}}>
         Clear All
     </button>
-    <button class="btn btn-primary"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
         onclick="{() => {navigate('/new/tale')}}"
     >
-        Previous Step: Customize Tale
+        Previous Step:<br> Customize Tale
     </button>
-    <button class="btn btn-primary"
-            onclick="{() => {navigate('/')}}"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
+            onclick="{() => {navigate('/new/characterStats')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Your Tale
+        Next Step:<br> Customize Stats & Abilities
     </button>
 
 
@@ -98,7 +92,7 @@
             <div class=" flex-row capitalize">
                 {stateValue.replaceAll('_', ' ')}
                 {#if characterStateOverwrites[stateValue]}
-                    <span class="badge badge-accent">overwritten</span>
+                    <span class="badge badge-accent ml-2">overwritten</span>
                 {/if}
             </div>
             <textarea bind:value={characterState.value[stateValue]}
@@ -108,13 +102,13 @@
                       class="mt-2 textarea textarea-bordered textarea-md w-full">
             </textarea>
         </label>
-        <button class="btn btn-accent mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-2 capitalize"
                 onclick={() => {
                     onRandomizeSingle(stateValue);
                 }}>
             Randomize {stateValue.replaceAll('_', ' ')}
         </button>
-        <button class="btn btn-neutral mt-2 capitalize"
+        <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral mt-2 capitalize"
                 onclick={() => {
                     characterState.resetProperty(stateValue);
                     delete characterStateOverwrites[stateValue];
@@ -136,10 +130,10 @@
         {/if}
 
     {/each}
-    <button class="btn btn-primary mt-2"
-            onclick="{() => {navigate('/')}}"
+    <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
+            onclick="{() => {navigate('/new/characterStats')}}"
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
-        Start Your Tale
+        Next Step:<br> Customize Stats & Abilities
     </button>
 </form>
