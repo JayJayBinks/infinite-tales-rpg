@@ -1,14 +1,16 @@
 <script>
-    import { VERCEL_ENV } from '$env/static/private';
     import {inject} from '@vercel/analytics';
     import {injectSpeedInsights} from '@vercel/speed-insights/sveltekit';
 
-    const mode = VERCEL_ENV || 'development';
-    console.log('VERCEL_ENV is', VERCEL_ENV);
+    export let data;
+    const mode = data.VERCEL_ENV || 'development';
+    console.log('data is', data);
     if (mode === 'production') {
         injectSpeedInsights();
         inject({mode: 'production'});
     }
 </script>
+
+{JSON.stringify(data)}
 
 <slot></slot>
