@@ -4,7 +4,7 @@
     import {injectSpeedInsights} from '@vercel/speed-insights/sveltekit';
 
     const mode = env.VERCEL_ENV || 'development';
-    console.log('VERCEL_ENV is', mode);
+    console.log('VERCEL_ENV is', env.VERCEL_ENV);
     if (mode === 'production') {
         injectSpeedInsights();
         inject({mode: 'production'});
