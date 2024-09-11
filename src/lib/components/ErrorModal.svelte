@@ -1,4 +1,4 @@
-<dialog bind:this={dialog} {onclose} class="modal z-100" open style="background: rgba(0, 0, 0, 0.3);">
+<dialog bind:this={dialog} {onclose} class="modal z-[1000]" open style="background: rgba(0, 0, 0, 0.3);">
     <div class="modal-box flex flex-col flex-wrap items-center">
         <span>Error</span>
         <span class="mt-2 max-w-sm sm:max-w-md">{(errorState.userMessage + "").replaceAll(',', ', ').replaceAll(':', ': ')}</span>

@@ -33,15 +33,15 @@
         <small class="m-auto mt-2 mb-3">If 3 consecutive dice rolls fail, you will get a bonus on the next roll</small>
     </label>
 
-    <button class="btn btn-neutral mt-4"
+    <button class="btn btn-neutral w-1/2 mt-4"
             onclick={downloadLocalStorageAsJson}>
         Export Tale
     </button>
-    <button class="btn btn-neutral mt-2"
+    <button class="btn btn-neutral w-1/2 mt-2"
             onclick={importSavegame}>
         Import Tale
     </button>
-    <button class="btn btn-neutral mt-2"
+    <button class="btn btn-neutral w-1/2 mt-2"
             onclick={() => navigate('/new/tale')}>
         View Tale Settings
     </button>

@@ -1,26 +1,29 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import {GameAgent} from "$lib/ai/agents/gameAgent.ts";
+    import {DifficultyAgent} from "$lib/ai/agents/difficultyAgent.ts";
+
     import {onMount, tick} from "svelte";
     import {GeminiProvider} from "$lib/ai/llmProvider.ts";
     import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
-    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
+    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
     import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
     import * as gameLogic from "./gameLogic.ts";
-    import {difficultyDiceRollModifier} from "./gameLogic.ts";
     import {goto} from "$app/navigation";
+    import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
 
     let diceBox, svgDice;
-    let diceRollDialog, storyDiv, actionsDiv, customActionInput;
+    let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
+    const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
     const storyState = useLocalStorage('storyState', initialStoryState);
 
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -44,8 +47,9 @@
 
     let diceRollResultState = $derived(gameLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
+    const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
-    let gameAgent, summaryAgent;
+    let gameAgent, difficultyAgent, summaryAgent;
 
     onMount(async () => {
         if (!apiKeyState.value) {
@@ -58,8 +62,10 @@
         });
         diceBox.init();
 
-        gameAgent = new GameAgent(new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value));
-        summaryAgent = new SummaryAgent(new GeminiProvider(apiKeyState.value, 1, aiLanguage.value));
+        const geminiProvider = new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value);
+        gameAgent = new GameAgent(geminiProvider);
+        difficultyAgent = new DifficultyAgent(geminiProvider);
+        summaryAgent = new SummaryAgent(geminiProvider);
         //Start game when not already started
         if (gameActionsState.value.length === 0) {
             await sendAction({
@@ -67,7 +73,7 @@
             });
         } else {
             gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
-            await renderGameState(gameActionsState.value[gameActionsState.value.length - 1]);
+            await renderGameState(currentGameActionState);
             tick().then(() => customActionInput.scrollIntoView(false));
         }
         if (!didAIProcessDiceRollAction.value) {
@@ -103,21 +109,21 @@
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
                 const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
-                    storyState.value, characterState.value, derivedGameState);
+                    storyState.value, characterState.value, characterStatsState.value, derivedGameState);
 
-                isAiGeneratingState = false;
                 if (newState) {
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
-                    updateGameState(newState);
                     chosenActionState.reset();
                     rolledValueState.reset();
                     customActionInput.value = '';
                     didAIProcessDiceRollAction.value = true;
                     //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
                     historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
+                    updateGameState(newState);
                 }
+                isAiGeneratingState = false;
             }
         } catch (e) {
             isAiGeneratingState = false;
@@ -170,7 +176,7 @@
             button.disabled = true;
         }
         button.addEventListener('click', () => {
-            chosenActionState.value =  $state.snapshot(action);
+            chosenActionState.value = $state.snapshot(action);
             sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat))
         });
         actionsDiv.appendChild(button);
@@ -180,6 +186,23 @@
         return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${(rolledValueState.value + modifierState + karmaModifierState) || '?'}`;
     }
 
+    const onTargetedSpellsOrAbility = async (action, targets) => {
+        action.text += gameLogic.getTargetText(targets);
+        //TODO maybe make this more effectie when target also has spells, attack etc. create enemyTurnAgent
+        action.text += "\n After using this action it's the enemies turn. Include the enemies attack result. Do i loose HP?";
+        const lastTwoHistoryActions = historyMessagesState.value.slice(-4);
+        isAiGeneratingState = true;
+        const difficultyResponse = await difficultyAgent.generateDifficulty(action.text,
+            customSystemInstruction.value, lastTwoHistoryActions, characterState.value, characterStatsState.value);
+        if (difficultyResponse) {
+            action = {...action, ...difficultyResponse}
+        }
+        console.log('difficultyResponse', stringifyPretty(difficultyResponse));
+        chosenActionState.value = action;
+        await sendAction(action,
+            gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat));
+        isAiGeneratingState = false;
+    }
 </script>
 
 <!--TODO refactor to component with dialog-->
@@ -191,6 +214,13 @@
     {#if errorState.userMessage}
         <ErrorDialog onclose={handleAIError}/>
     {/if}
+    <UseSpellsAbilitiesModal bind:dialogRef={useSpellsAbilitiesModal}
+                             currentMP={derivedGameState.currentMP}
+                             abilities={characterStatsState.value?.spells_and_abilities}
+                             targets={currentGameActionState.targets}
+                             onclose={onTargetedSpellsOrAbility}
+    >
+    </UseSpellsAbilitiesModal>
 
 
     <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-20"
@@ -256,17 +286,29 @@
             <StoryProgressionWithImage story={gameLogic.getGameEndedMessage()}/>
         {/if}
     </div>
-    <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 bg-base-100 rounded-lg shadow-md"></div>
-    <form id="input-form" class="mt-4 flex">
-        <input type="text"
-               bind:this={customActionInput}
-               class="input input-bordered flex-grow mr-2" id="user-input"
-               placeholder="Enter your action">
-        <button type="submit"
-                onclick="{(evt) => {sendAction({text: customActionInput.value});}}"
-                class="btn btn-neutral" id="submit-button">Submit
-        </button>
-    </form>
+    <div id="actions" bind:this={actionsDiv} class="mt-4 p-4 pb-0"></div>
+    {#if Object.keys(currentGameActionState).length !== 0}
+        {#if !isGameEnded.value}
+            <div id="static-actions" class="p-4 pt-0 pb-0">
+                <button
+                        onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
+                        class="btn btn-primary w-full text-md">Spells & Abilities
+                </button>
+            </div>
+        {/if}
+        <form id="input-form" class="p-4 pb-2">
+            <div class="join w-full">
+                <input type="text"
+                       bind:this={customActionInput}
+                       class="input input-bordered w-full" id="user-input"
+                       placeholder="Enter your action">
+                <button type="submit"
+                        onclick="{(evt) => {sendAction({text: customActionInput.value});}}"
+                        class="btn btn-neutral" id="submit-button">Submit
+                </button>
+            </div>
+        </form>
+    {/if}
 
     <style>
         .btn {

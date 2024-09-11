@@ -1,8 +1,10 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
+    import {stringifyPretty} from "$lib/util.svelte.ts";
 
     const characterState = useLocalStorage('characterState');
+    const characterStatsState = useLocalStorage('characterStatsState');
     const storyState = useLocalStorage('storyState');
 </script>
 
@@ -42,28 +44,23 @@
             </div>
 
             <div class="section mb-6">
-                <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Abilities</h2>
-                <p id="abilities">{characterState.value.abilities}</p>
-            </div>
-
-            <div class="section mb-6">
                 <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Traits</h2>
                 <ul id="traits" class="list-disc list-inside space-y-1 class">
-                    {characterState.value.traits}
+                    {stringifyPretty(characterStatsState.value.traits)}
                 </ul>
             </div>
 
             <div class="section mb-6">
                 <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Expertise</h2>
                 <ul id="expertise" class="list-disc list-inside space-y-1 class">
-                    {characterState.value.expertise}
+                    {stringifyPretty(characterStatsState.value.expertise)}
                 </ul>
             </div>
 
             <div class="section mb-6">
                 <h2 class="text-xl font-semibold class border-b border-gray-600 pb-1 mb-2">Disadvantages</h2>
                 <ul id="disadvantages" class="list-disc list-inside space-y-1 class">
-                    {characterState.value.disadvantages}
+                    {stringifyPretty(characterStatsState.value.disadvantages)}
                 </ul>
             </div>
         </div>
