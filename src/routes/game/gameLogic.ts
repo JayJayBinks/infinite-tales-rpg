@@ -1,3 +1,5 @@
+import { stringifyPretty } from "../../lib/util.svelte";
+
 export const difficultyDiceRollModifier = {
     Easy: 4,
     Default: 0

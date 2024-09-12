@@ -11,6 +11,15 @@ export const characterStatsStateForPrompt = {
     spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. Format: [${abilityFormat}]`,
 }
 
+export const npcStatsStateForPrompt = {
+    id: "",
+    name: "",
+    class: "",
+    tier: "Power ranking of the NPC ranging from 1 very weak to 20 most powerful",
+    resources: characterStatsStateForPrompt.resources,
+    spells_and_abilities: characterStatsStateForPrompt.spells_and_abilities
+}
+
 export class CharacterStatsAgent {
 
     llmProvider: GeminiProvider;
@@ -36,6 +45,28 @@ export class CharacterStatsAgent {
                 {
                     role: "user",
                     parts: [{"text": "Already existing stats to be reused: " + stringifyPretty(statsOverwrites)}]
+                }],
+            {parts: [{"text": agentInstruction}]}
+        );
+    }
+
+    async generateNPCStats(storyState, storyProgression, npcList) {
+        let agentInstruction = "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.\n" +
+            "Always respond with following JSON!\n" +
+            '[' + stringifyPretty(npcStatsStateForPrompt) + ', ...]';
+
+        return await this.llmProvider.sendToAI(
+            [{
+                role: "user",
+                parts: [{"text": "Description of the story: " + stringifyPretty(storyState)}]
+            },
+                {
+                    role: "user",
+                    parts: [{"text": "Story progression to derive the NPCs from: " + storyProgression}]
+                },
+                {
+                    role: "user",
+                    parts: [{"text": "Generate the following NPCs " + stringifyPretty(npcList)}]
                 }],
             {parts: [{"text": agentInstruction}]}
         );

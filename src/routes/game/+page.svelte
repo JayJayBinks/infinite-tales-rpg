@@ -10,6 +10,7 @@
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
     import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
     import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
+    import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
@@ -25,6 +26,7 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
     const storyState = useLocalStorage('storyState', initialStoryState);
+    const npcState = useLocalStorage('npcState', []);
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -49,7 +51,7 @@
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
     const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
-    let gameAgent, difficultyAgent, summaryAgent;
+    let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent;
 
     onMount(async () => {
         if (!apiKeyState.value) {
@@ -64,6 +66,7 @@
 
         const geminiProvider = new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value);
         gameAgent = new GameAgent(geminiProvider);
+        characterStatsAgent = new CharacterStatsAgent(geminiProvider);
         difficultyAgent = new DifficultyAgent(geminiProvider);
         summaryAgent = new SummaryAgent(geminiProvider);
         //Start game when not already started
@@ -81,6 +84,25 @@
         }
     });
 
+    function getAllTargetsAsList(targets) {
+        if(!targets){
+            return []
+        }
+        return [...targets.hostile, ...targets.neutral, ...targets.friendly];
+    }
+
+    function getNPCActionsPrompt() {
+        const allTargetsAsList = getAllTargetsAsList(currentGameActionState.targets);
+        if (allTargetsAsList.length > 0) {
+            let text = '\n ' + "After this action the NPCs react." +
+                  " Describe their reactions in the story progression for following NPCs:\n" + stringifyPretty(allTargetsAsList);
+            if(currentGameActionState.is_character_in_combat){
+                text += '\n Also include the results of their reactions as stats_update';
+            }
+           return text;
+        }
+        return '';
+    }
 
     function openDiceRollDialog() {
         //TODO showModal can not be used because it hides the dice roll
@@ -88,7 +110,8 @@
         diceRollDialog.show();
         diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
             this.removeEventListener('close', sendWithManuallyRolled);
-            sendAction({text: chosenActionState.value.text + '\n ' + diceRollDialog.returnValue})
+            let actionText = chosenActionState.value.text + '\n ' + diceRollDialog.returnValue;
+            sendAction({text: actionText});
             rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2),
                 (rolledValueState.value + modifierState + karmaModifierState) - diceRollRequiredValueState];
         });
@@ -108,12 +131,22 @@
                 isAiGeneratingState = true;
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
+                action.text += getNPCActionsPrompt();
                 const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
                     storyState.value, characterState.value, characterStatsState.value, derivedGameState);
 
                 if (newState) {
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
+
+                    const newNPCs = getAllTargetsAsList(newState.targets)
+                        .filter(newNPC => !npcState.value.some(existingNPC => newNPC.id === existingNPC.id));
+                    if(newNPCs.length > 0){
+                        characterStatsAgent.generateNPCStats(storyState.value, newState.story, newNPCs)
+                            .then(newState => npcState.value = [...npcState.value, ...newState]);
+                        console.log(stringifyPretty(npcState.value));
+                    }
+
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
                     chosenActionState.reset();
                     rolledValueState.reset();
@@ -177,7 +210,7 @@
         }
         button.addEventListener('click', () => {
             chosenActionState.value = $state.snapshot(action);
-            sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat))
+            sendAction(chosenActionState.value, gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat));
         });
         actionsDiv.appendChild(button);
     }
@@ -187,9 +220,7 @@
     }
 
     const onTargetedSpellsOrAbility = async (action, targets) => {
-        action.text += gameLogic.getTargetText(targets);
-        //TODO maybe make this more effectie when target also has spells, attack etc. create enemyTurnAgent
-        action.text += "\n After using this action it's the enemies turn. Include the enemies attack result. Do i loose HP?";
+        action.text += '\n' + gameLogic.getTargetText(targets);
         const lastTwoHistoryActions = historyMessagesState.value.slice(-4);
         isAiGeneratingState = true;
         const difficultyResponse = await difficultyAgent.generateDifficulty(action.text,

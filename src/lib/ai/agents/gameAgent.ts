@@ -132,19 +132,23 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   ],
   "stats_update": [
      #Add this to the JSON if the story implies that the character's stats are altered
-     #At the beginning, the starting HP and MP is listed here
-     #If the story implies that the character dies immediately, apply hp_change of -1000. It must be a dramatic cause, otherwise apply normal damage.
+     #At the beginning, the starting HP and MP is listed here for the player character
+     #If the story implies that the player character dies immediately, apply hp_change of -1000. It must be a dramatic cause, otherwise apply normal damage.
     {
+      "targetId": 'self for referring the player character, else the NPC id',
+      "explanation": "Short explanation for the reason of this change",
       "type": "hp_change",
       "value": positive integer if character recovers hp, negative if character looses hp
     },
     {
+      "targetId": 'self for referring the player character, else the NPC id',
+      "explanation": "Short explanation for the reason of this change",
       "type": "mp_change",
       "value": positive integer if character recovers mp, negative if character looses mp
     }
   ],
   "is_character_in_combat": true if CHARACTER is in active combat else false,
-  "targets": List of beings that can be targeted by attacks or spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["name", ...], "friendly": ["name", ...], "neutral": ["name", ...]}
+  "targets": List of beings that can be targeted by attacks or spells in the current situation. Also list objects if story relevant. Format: {"hostile": [{"id": "", "name", ""}, ...], "friendly": [{"id": "", "name", ""}, ...], "neutral": [{"id": "", "name", ""}, ...]}
   "actions": [
     {
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
