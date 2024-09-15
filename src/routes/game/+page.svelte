@@ -1,24 +1,26 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import {GameAgent} from "$lib/ai/agents/gameAgent.ts";
-    import {DifficultyAgent} from "$lib/ai/agents/difficultyAgent.ts";
+    import { GameAgent } from "$lib/ai/agents/gameAgent.ts";
+    import { DifficultyAgent } from "$lib/ai/agents/difficultyAgent.ts";
 
-    import {onMount, tick} from "svelte";
-    import {GeminiProvider} from "$lib/ai/llmProvider.ts";
-    import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
+    import { onMount, tick } from "svelte";
+    import { GeminiProvider } from "$lib/ai/llmProvider.ts";
+    import { handleError, stringifyPretty } from "$lib/util.svelte.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
-    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
-    import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
-    import {errorState} from "$lib/state/errorState.svelte.ts";
+    import { initialCharacterState, initialCharacterStatsState, initialStoryState } from "$lib/state/initialStates.ts";
+    import { SummaryAgent } from "$lib/ai/agents/summaryAgent.ts";
+    import { errorState } from "$lib/state/errorState.svelte.ts";
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
     import * as gameLogic from "./gameLogic.ts";
-    import {goto} from "$app/navigation";
+    import { goto } from "$app/navigation";
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
+    import NPCInteractionModal from "$lib/components/NPCInteractionModal.svelte";
+    import { getInteractionTargetText } from "./gameLogic.ts";
 
     let diceBox, svgDice;
-    let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
+    let diceRollDialog, useSpellsAbilitiesModal, npcInteractionModal, storyDiv, actionsDiv, customActionInput = {};
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -187,7 +189,7 @@
     }
 
     const onTargetedSpellsOrAbility = async (action, targets) => {
-        action.text += gameLogic.getTargetText(targets);
+        action.text += gameLogic.getSpellTargetText(targets);
         //TODO maybe make this more effectie when target also has spells, attack etc. create enemyTurnAgent
         action.text += "\n After using this action it's the enemies turn. Include the enemies attack result. Do i loose HP?";
         const lastTwoHistoryActions = historyMessagesState.value.slice(-4);
@@ -198,6 +200,16 @@
             action = {...action, ...difficultyResponse}
         }
         console.log('difficultyResponse', stringifyPretty(difficultyResponse));
+        chosenActionState.value = action;
+        await sendAction(action,
+            gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat));
+        isAiGeneratingState = false;
+    }
+
+    const onNPCInteraction = async (action, targets) => {
+        action.text += gameLogic.getInteractionTargetText(targets);
+        const lastTwoHistoryActions = historyMessagesState.value.slice(-4);
+        isAiGeneratingState = true;
         chosenActionState.value = action;
         await sendAction(action,
             gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat));
@@ -221,6 +233,11 @@
                              onclose={onTargetedSpellsOrAbility}
     >
     </UseSpellsAbilitiesModal>
+    <NPCInteractionModal bind:dialogRef={npcInteractionModal}
+                             targets={currentGameActionState.targets}
+                             onclose={onNPCInteraction}
+    >
+    </NPCInteractionModal>
 
 
     <dialog bind:this={diceRollDialog} id="dice-rolling-dialog" class="modal z-20"
@@ -293,6 +310,10 @@
                 <button
                         onclick="{(evt) => {useSpellsAbilitiesModal.showModal();}}"
                         class="btn btn-primary w-full text-md">Spells & Abilities
+                </button>
+                <button
+                        onclick="{(evt) => {npcInteractionModal.showModal();}}"
+                        class="mt-3 btn btn-primary w-full text-md">Interact with NPC
                 </button>
             </div>
         {/if}
