@@ -42,8 +42,8 @@
             {#each targets?.hostile as target, i}
                 <div class="form-control">
                     <label class="label cursor-pointer">
-                        <input type="checkbox" class="checkbox" value={target.name}/>
-                        <span class="capitalize ml-2">{target.name}</span>
+                        <input type="checkbox" class="checkbox" value={target}/>
+                        <span class="capitalize ml-2">{target}</span>
                     </label>
                 </div>
             {/each}
@@ -54,8 +54,8 @@
             {#each targets?.friendly as target, i}
                 <div class="form-control">
                     <label class="label cursor-pointer">
-                        <input type="checkbox" class="checkbox" value={target.name}/>
-                        <span class="capitalize ml-2">{target.name}</span>
+                        <input type="checkbox" class="checkbox" value={target}/>
+                        <span class="capitalize ml-2">{target}</span>
                     </label>
                 </div>
             {/each}
@@ -66,8 +66,8 @@
             {#each targets?.neutral as target, i}
                 <div class="form-control">
                     <label class="label cursor-pointer">
-                        <input type="checkbox" class="checkbox" value={target.name}/>
-                        <span class="capitalize ml-2">{target.name}</span>
+                        <input type="checkbox" class="checkbox" value={target}/>
+                        <span class="capitalize ml-2">{target}</span>
                     </label>
                 </div>
             {/each}

@@ -5,6 +5,7 @@
     import ErrorModal from "$lib/components/ErrorModal.svelte";
     import {handleError} from "$lib/util.svelte.ts";
     import {onMount} from "svelte";
+    import { stringifyPretty } from "$lib/util.svelte";
 
     let activeUrl = $state('');
     let hasSubMenu = $state(false);
@@ -19,7 +20,7 @@
 
     onMount(() => {
         window.onerror = (event, source, lineno, colno, error) => {
-            handleError(JSON.stringify({event, source, lineno, colno, error}));
+            handleError(stringifyPretty({event, source, lineno, colno, error}));
             return false;
         };
         window.onunhandledrejection = (a) => {

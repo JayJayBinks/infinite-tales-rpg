@@ -12,8 +12,6 @@ export const characterStatsStateForPrompt = {
 }
 
 export const npcStatsStateForPrompt = {
-    id: "",
-    name: "",
     class: "",
     tier: "Power ranking of the NPC ranging from 1 very weak to 20 most powerful",
     resources: characterStatsStateForPrompt.resources,
@@ -53,7 +51,7 @@ export class CharacterStatsAgent {
     async generateNPCStats(storyState, storyProgression, npcList) {
         let agentInstruction = "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.\n" +
             "Always respond with following JSON!\n" +
-            '[' + stringifyPretty(npcStatsStateForPrompt) + ', ...]';
+            '{"uniqueNpcName": ' + stringifyPretty(npcStatsStateForPrompt) + ', ...}';
 
         return await this.llmProvider.sendToAI(
             [{

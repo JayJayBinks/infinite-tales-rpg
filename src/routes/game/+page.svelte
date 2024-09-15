@@ -26,7 +26,7 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
     const storyState = useLocalStorage('storyState', initialStoryState);
-    const npcState = useLocalStorage('npcState', []);
+    const npcState = useLocalStorage('npcState', {});
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -75,7 +75,7 @@
                 text: gameAgent.getStartingPrompt()
             });
         } else {
-            gameLogic.applyGameActionStates(derivedGameState, gameActionsState.value);
+            gameLogic.applyGameActionStates(derivedGameState, npcState.value, gameActionsState.value);
             await renderGameState(currentGameActionState);
             tick().then(() => customActionInput.scrollIntoView(false));
         }
@@ -94,10 +94,10 @@
     function getNPCActionsPrompt() {
         const allTargetsAsList = getAllTargetsAsList(currentGameActionState.targets);
         if (allTargetsAsList.length > 0) {
-            let text = '\n ' + "After this action it is the NPCs turn." +
-                  " Describe which actions they take in the story progression for following NPCs:\n" + stringifyPretty(allTargetsAsList);
+            let text = '\n ' + "After this action each NPC takes their turn." +
+                  " For each NPC describe which actions they take in the story progression for following NPCs:\n" + stringifyPretty(allTargetsAsList);
             if(currentGameActionState.is_character_in_combat){
-                text += '\n If hostile the NPC will attack. Also include the results of their reactions as stats_update';
+                text += '\n If hostile the NPC will attack or use a spell. Also include the results of their actions as stats_update';
             }
            return text;
         }
@@ -139,11 +139,10 @@
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
 
-                    const newNPCs = getAllTargetsAsList(newState.targets)
-                        .filter(newNPC => !npcState.value.some(existingNPC => newNPC.id === existingNPC.id));
+                    const newNPCs = getAllTargetsAsList(newState.targets).filter(newNPC => Object.keys(npcState.value).includes(newNPC));
                     if(newNPCs.length > 0){
                         characterStatsAgent.generateNPCStats(storyState.value, newState.story, newNPCs)
-                            .then(newState => npcState.value = [...npcState.value, ...newState]);
+                            .then(newState => npcState.value = {...npcState.value, ...newState});
                         console.log(stringifyPretty(npcState.value));
                     }
 
@@ -167,7 +166,7 @@
     function updateGameState(state) {
         gameActionsState.value = [...gameActionsState.value, {...state, id: gameActionsState.value.length}];
         // TODO inventoryStore.set(state?.inventory_update || []);
-        gameLogic.applyGameActionState(derivedGameState, state);
+        gameLogic.applyGameActionState(derivedGameState, npcState.value, state);
         renderGameState(state);
     }
 
@@ -310,7 +309,7 @@
         <!-- For proper updating, need to use gameActionsState.id as each block id -->
         {#each gameActionsState.value.slice(-3) as gameActionState, i (gameActionState.id)}
             <StoryProgressionWithImage story={gameActionState.story}
-                                       statsUpdates={gameActionState.id === 0 ? [] : gameLogic.renderStatUpdates(gameActionState.stats_update)}
+                                       statsUpdates={gameActionState.id === 0 ? [] : gameLogic.renderStatUpdates(gameActionState.stats_update, npcState.value)}
                                        imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"/>
         {/each}
         {#if isGameEnded.value}

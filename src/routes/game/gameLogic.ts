@@ -110,18 +110,38 @@ export function getRandomInteger(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export function renderStatUpdates(statsUpdate: object) {
+function getTargetStatUpdateText(targetId, npcList) {
+    switch (targetId) {
+        case 'self':
+            return 'You '
+        default:
+            return npcList[targetId].name + " ";
+    }
+}
+
+export function renderStatUpdates(statsUpdate: object, npcList) {
     if (statsUpdate) {
         return statsUpdate.map(statsUpdate => {
             if (statsUpdate.value == 0) {
                 return undefined;
             }
             let responseText;
-            if (statsUpdate.value > 0) {
-                responseText = "You gain " + statsUpdate.value;
-            }
-            if (statsUpdate.value < 0) {
-                responseText = "You loose " + statsUpdate.value * -1;
+            if(statsUpdate.targetId.toLowerCase() === 'self'){
+                responseText = 'You '
+                if (statsUpdate.value > 0) {
+                    responseText += " gain " + statsUpdate.value;
+                }
+                if (statsUpdate.value < 0) {
+                    responseText += " loose " + statsUpdate.value * -1;
+                }
+            }else{
+                responseText = statsUpdate.targetId + " ";
+                if (statsUpdate.value > 0) {
+                    responseText += " gains " + statsUpdate.value;
+                }
+                if (statsUpdate.value < 0) {
+                    responseText += " looses " + statsUpdate.value * -1;
+                }
             }
             responseText += " " + statsUpdate.type.replace('_change', '').toUpperCase();
             return responseText;
@@ -130,22 +150,38 @@ export function renderStatUpdates(statsUpdate: object) {
     return [];
 }
 
-export function applyGameActionState(derivedGameState: object, state: object) {
+export function applyGameActionState(derivedGameState: object, npcState: object, state: object) {
     for (const statUpdate of (state.stats_update || [])) {
-        switch (statUpdate.type) {
-            case 'hp_change':
-                derivedGameState.currentHP += statUpdate.value;
-                break;
-            case 'mp_change':
-                derivedGameState.currentMP += statUpdate.value;
-                break;
+        if(statUpdate.targetId.toLowerCase() === 'self'){
+            switch (statUpdate.type) {
+                case 'hp_change':
+                    derivedGameState.currentHP += statUpdate.value;
+                    break;
+                case 'mp_change':
+                    derivedGameState.currentMP += statUpdate.value;
+                    break;
+            }
+        }else{
+            const npc = npcState[statUpdate.targetId];
+            if(npc){
+                switch (statUpdate.type) {
+                    case 'hp_change':
+                        npc.resources.MAX_HP += statUpdate.value;
+                        break;
+                    case 'mp_change':
+                        npc.resources.MAX_MP += statUpdate.value;
+                        break;
+                }
+            }
+            Object.keys(npcState).filter(npc => npcState[npc].resources.MAX_HP < 0)
+                .forEach(goneNPC => delete npcState[goneNPC]);
         }
     }
 }
 
-export function applyGameActionStates(derivedGameState, states: Array<object>) {
+export function applyGameActionStates(derivedGameState, npcState, states: Array<object>) {
     for (const state of states) {
-        applyGameActionState(derivedGameState, state);
+        applyGameActionState(derivedGameState, npcState, state);
     }
 }
 
