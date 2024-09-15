@@ -20,6 +20,7 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const characterImageState = useLocalStorage('characterImageState');
     const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
+    const npcState = useLocalStorage('npcState', []);
     const storyState = useLocalStorage('storyState', initialStoryState);
     const isGameEnded = useLocalStorage('isGameEnded', false);
     const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
@@ -34,6 +35,7 @@
         storyState.reset();
         isGameEnded.reset();
         rollDifferenceHistoryState.reset();
+        npcState.reset();
     }
 
     async function onQuickstartNew() {

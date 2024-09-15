@@ -94,10 +94,10 @@
     function getNPCActionsPrompt() {
         const allTargetsAsList = getAllTargetsAsList(currentGameActionState.targets);
         if (allTargetsAsList.length > 0) {
-            let text = '\n ' + "After this action the NPCs react." +
-                  " Describe their reactions in the story progression for following NPCs:\n" + stringifyPretty(allTargetsAsList);
+            let text = '\n ' + "After this action it is the NPCs turn." +
+                  " Describe which actions they take in the story progression for following NPCs:\n" + stringifyPretty(allTargetsAsList);
             if(currentGameActionState.is_character_in_combat){
-                text += '\n Also include the results of their reactions as stats_update';
+                text += '\n If hostile the NPC will attack. Also include the results of their reactions as stats_update';
             }
            return text;
         }
