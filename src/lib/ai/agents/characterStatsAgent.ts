@@ -64,7 +64,7 @@ export class CharacterStatsAgent {
                 },
                 {
                     role: "user",
-                    parts: [{"text": "Generate the following NPCs " + stringifyPretty(npcList)}]
+                    parts: [{"text": "Generate the following NPCs. You must reuse the names given: " + stringifyPretty(npcList)}]
                 }],
             {parts: [{"text": agentInstruction}]}
         );

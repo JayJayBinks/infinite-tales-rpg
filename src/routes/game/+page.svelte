@@ -85,21 +85,23 @@
     });
 
     function getAllTargetsAsList(targets) {
-        if(!targets){
+        if (!targets) {
             return []
         }
         return [...targets.hostile, ...targets.neutral, ...targets.friendly];
     }
 
     function getNPCActionsPrompt() {
-        const allTargetsAsList = getAllTargetsAsList(currentGameActionState.targets);
-        if (allTargetsAsList.length > 0) {
+        const allNpcsDetailsAsList = getAllTargetsAsList(currentGameActionState.targets)
+            .map(npcName => ({
+                nameId: npcName,
+                ...npcState.value[npcName],
+            }));
+        if (allNpcsDetailsAsList.length > 0) {
             let text = '\n ' + "After this action each NPC takes their turn." +
-                  " For each NPC describe which actions they take in the story progression for following NPCs:\n" + stringifyPretty(allTargetsAsList);
-            if(currentGameActionState.is_character_in_combat){
-                text += '\n If hostile the NPC will attack or use a spell. Also include the results of their actions as stats_update';
-            }
-           return text;
+                " In the story progression describe the actions of following NPCs:\n" + stringifyPretty(allNpcsDetailsAsList) +
+                '\n If hostile the NPC will attack. Also include the results of NPC actions as stats_update';
+            return text;
         }
         return '';
     }
@@ -131,7 +133,9 @@
                 isAiGeneratingState = true;
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
-                action.text += getNPCActionsPrompt();
+                if (currentGameActionState.is_character_in_combat) {
+                    action.text += getNPCActionsPrompt();
+                }
                 const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
                     storyState.value, characterState.value, characterStatsState.value, derivedGameState);
 
@@ -139,8 +143,8 @@
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
 
-                    const newNPCs = getAllTargetsAsList(newState.targets).filter(newNPC => Object.keys(npcState.value).includes(newNPC));
-                    if(newNPCs.length > 0){
+                    const newNPCs = getAllTargetsAsList(newState.targets).filter(newNPC => !Object.keys(npcState.value).includes(newNPC));
+                    if (newNPCs.length > 0) {
                         characterStatsAgent.generateNPCStats(storyState.value, newState.story, newNPCs)
                             .then(newState => npcState.value = {...npcState.value, ...newState});
                         console.log(stringifyPretty(npcState.value));
