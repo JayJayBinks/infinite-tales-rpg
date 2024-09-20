@@ -11,7 +11,7 @@
         importJsonFromFile, getRowsForTextarea
     } from "$lib/util.svelte.ts";
     import isEqual from 'lodash.isequal';
-    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates.ts";
+    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
     import {goto} from "$app/navigation";
 
     let isGeneratingState = $state(false);
@@ -23,6 +23,7 @@
     const textAreaRowsDerived = $derived(getRowsForTextarea(storyState.value))
     let storyStateOverwrites = $state({});
     const characterState = useLocalStorage('characterState', {...initialCharacterState});
+    const characterStatsState = useLocalStorage('characterStatsState', {...initialCharacterStatsState});
 
     onMount(() => {
         if (apiKeyState.value) {
@@ -65,9 +66,9 @@
 
     const importSettings = () => {
         importJsonFromFile((parsed) => {
-            Object.keys(parsed).forEach(key => localStorage.setItem(key, JSON.stringify(parsed[key])));
             storyState.value = parsed.storyState;
             characterState.value = parsed.characterState;
+            characterStatsState.value = parsed.characterStatsState;
             alert('Import successfull.');
         });
     };

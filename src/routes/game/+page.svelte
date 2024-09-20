@@ -17,6 +17,7 @@
     import * as gameLogic from "./gameLogic.ts";
     import {goto} from "$app/navigation";
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
+    import {removeDeadNPCs} from "./gameLogic.ts";
 
     let diceBox, svgDice;
     let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
@@ -98,9 +99,18 @@
                 ...npcState.value[npcName],
             }));
         if (allNpcsDetailsAsList.length > 0) {
-            let text = '\n ' + "After this action each NPC takes their turn." +
+            let text = '\n ' + "After this action each NPC takes their attack turn. " +
                 " In the story progression describe the actions of following NPCs:\n" + stringifyPretty(allNpcsDetailsAsList) +
-                '\n If hostile the NPC will attack. Also include the results of NPC actions as stats_update';
+                '\n Also include the results of NPC actions as stats_update';
+            return text;
+        }
+        return '';
+    }
+
+    function getDeadNPCsPrompt(deadNpcs) {
+        if (deadNpcs.length > 0) {
+            let text = '\n ' + "Following NPCs have died, describe their death in the story progression." +
+                "\n" + stringifyPretty(deadNpcs)
             return text;
         }
         return '';
@@ -133,7 +143,10 @@
                 isAiGeneratingState = true;
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
+                const deadNPCs = removeDeadNPCs(npcState.value);
+                //TODO ai applies -1000 when it thinks NPC is dead, and not actually hp < 0
                 if (currentGameActionState.is_character_in_combat) {
+                    action.text += getDeadNPCsPrompt(deadNPCs);
                     action.text += getNPCActionsPrompt();
                 }
                 const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
@@ -146,8 +159,10 @@
                     const newNPCs = getAllTargetsAsList(newState.targets).filter(newNPC => !Object.keys(npcState.value).includes(newNPC));
                     if (newNPCs.length > 0) {
                         characterStatsAgent.generateNPCStats(storyState.value, newState.story, newNPCs)
-                            .then(newState => npcState.value = {...npcState.value, ...newState});
-                        console.log(stringifyPretty(npcState.value));
+                            .then(newState => {
+                                npcState.value = {...npcState.value, ...newState}
+                                console.log(stringifyPretty(npcState.value));
+                            });
                     }
 
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
@@ -313,8 +328,10 @@
         <!-- For proper updating, need to use gameActionsState.id as each block id -->
         {#each gameActionsState.value.slice(-3) as gameActionState, i (gameActionState.id)}
             <StoryProgressionWithImage story={gameActionState.story}
-                                       statsUpdates={gameActionState.id === 0 ? [] : gameLogic.renderStatUpdates(gameActionState.stats_update, npcState.value)}
-                                       imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"/>
+                                       imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
+                                       statsUpdates={gameActionState.id === 0 ? [] :
+                                       gameLogic.renderStatUpdates(gameActionState.stats_update, npcState.value)}
+            />
         {/each}
         {#if isGameEnded.value}
             <StoryProgressionWithImage story={gameLogic.getGameEndedMessage()}/>

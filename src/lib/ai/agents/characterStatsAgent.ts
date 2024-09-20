@@ -11,10 +11,21 @@ export const characterStatsStateForPrompt = {
     spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. Format: [${abilityFormat}]`,
 }
 
+const npcRank = [
+    "Very Weak",
+    "Weak",
+    "Average",
+    "Strong",
+    "Elite",
+    "Boss",
+    "Legendary"
+]
+
 export const npcStatsStateForPrompt = {
     class: "",
-    tier: "Power ranking of the NPC ranging from 1 very weak to 20 most powerful",
-    resources: characterStatsStateForPrompt.resources,
+    rank: "Power ranking of the NPC. Can be one of " + npcRank.join('|'),
+    //TODO dirty hack, NPC only has current resources
+    resources: characterStatsStateForPrompt.resources.replaceAll('MAX', 'CURRENT'),
     spells_and_abilities: characterStatsStateForPrompt.spells_and_abilities
 }
 
@@ -49,14 +60,14 @@ export class CharacterStatsAgent {
     }
 
     async generateNPCStats(storyState, storyProgression, npcList) {
-        let agentInstruction = "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.\n" +
+        let agentInstruction = "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and rank.\n" +
             "Always respond with following JSON!\n" +
             '{"uniqueNpcName": ' + stringifyPretty(npcStatsStateForPrompt) + ', ...}';
 
         return await this.llmProvider.sendToAI(
             [{
                 role: "user",
-                parts: [{"text": "Description of the story: " + stringifyPretty(storyState)}]
+                parts: [{"text": "Description of the adventure: " + stringifyPretty(storyState)}]
             },
                 {
                     role: "user",

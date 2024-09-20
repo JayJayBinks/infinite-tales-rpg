@@ -1,4 +1,4 @@
-import { stringifyPretty } from "../../lib/util.svelte";
+import {stringifyPretty} from "../../lib/util.svelte";
 
 export const difficultyDiceRollModifier = {
     Easy: 4,
@@ -119,40 +119,41 @@ function getTargetStatUpdateText(targetId, npcList) {
     }
 }
 
-export function renderStatUpdates(statsUpdate: object, npcList) {
+export function renderStatUpdates(statsUpdate: Array<object>, npcList) {
     if (statsUpdate) {
-        return statsUpdate.map(statsUpdate => {
-            if (statsUpdate.value == 0) {
-                return undefined;
-            }
-            let responseText;
-            if(statsUpdate.targetId.toLowerCase() === 'self'){
-                responseText = 'You '
-                if (statsUpdate.value > 0) {
-                    responseText += " gain " + statsUpdate.value;
+        return statsUpdate.toSorted((a, b) => a.targetId < b.targetId ? -1 : 1)
+            .map(statsUpdate => {
+                if (statsUpdate.value == 0) {
+                    return undefined;
                 }
-                if (statsUpdate.value < 0) {
-                    responseText += " loose " + statsUpdate.value * -1;
+                let responseText;
+                if (statsUpdate.targetId.toLowerCase() === 'self') {
+                    responseText = 'You '
+                    if (statsUpdate.value > 0) {
+                        responseText += " gain " + statsUpdate.value;
+                    }
+                    if (statsUpdate.value < 0) {
+                        responseText += " loose " + statsUpdate.value * -1;
+                    }
+                } else {
+                    responseText = statsUpdate.targetId + " ";
+                    if (statsUpdate.value > 0) {
+                        responseText += " gains " + statsUpdate.value;
+                    }
+                    if (statsUpdate.value < 0) {
+                        responseText += " looses " + statsUpdate.value * -1;
+                    }
                 }
-            }else{
-                responseText = statsUpdate.targetId + " ";
-                if (statsUpdate.value > 0) {
-                    responseText += " gains " + statsUpdate.value;
-                }
-                if (statsUpdate.value < 0) {
-                    responseText += " looses " + statsUpdate.value * -1;
-                }
-            }
-            responseText += " " + statsUpdate.type.replace('_change', '').toUpperCase();
-            return responseText;
-        }).filter(value => !!value);
+                responseText += " " + statsUpdate.type.replace('_change', '').toUpperCase();
+                return responseText;
+            }).filter(value => !!value);
     }
     return [];
 }
 
-export function applyGameActionState(derivedGameState: object, npcState: object, state: object) {
+export function applyGameActionState(derivedGameState: object, npcState: object, state: object, prohibitNPCChange = false) {
     for (const statUpdate of (state.stats_update || [])) {
-        if(statUpdate.targetId.toLowerCase() === 'self'){
+        if (statUpdate.targetId.toLowerCase() === 'self') {
             switch (statUpdate.type) {
                 case 'hp_change':
                     derivedGameState.currentHP += statUpdate.value;
@@ -161,27 +162,36 @@ export function applyGameActionState(derivedGameState: object, npcState: object,
                     derivedGameState.currentMP += statUpdate.value;
                     break;
             }
-        }else{
-            const npc = npcState[statUpdate.targetId];
-            if(npc){
-                switch (statUpdate.type) {
-                    case 'hp_change':
-                        npc.resources.MAX_HP += statUpdate.value;
-                        break;
-                    case 'mp_change':
-                        npc.resources.MAX_MP += statUpdate.value;
-                        break;
+        } else {
+            if (!prohibitNPCChange) {
+                const npc = npcState[statUpdate.targetId];
+                if (npc) {
+                    switch (statUpdate.type) {
+                        case 'hp_change':
+                            npc.resources.CURRENT_HP += statUpdate.value;
+                            break;
+                        case 'mp_change':
+                            npc.resources.CURRENT_MP += statUpdate.value;
+                            break;
+                    }
                 }
             }
-            Object.keys(npcState).filter(npc => npcState[npc].resources.MAX_HP < 0)
-                .forEach(goneNPC => delete npcState[goneNPC]);
         }
     }
 }
 
+export function removeDeadNPCs(npcState) {
+    return Object.keys(npcState).filter(npc => npcState[npc].resources.CURRENT_HP < 0)
+        .map(deadNPC => {
+            delete npcState[deadNPC];
+            return deadNPC;
+        });
+}
+
+
 export function applyGameActionStates(derivedGameState, npcState, states: Array<object>) {
     for (const state of states) {
-        applyGameActionState(derivedGameState, npcState, state);
+        applyGameActionState(derivedGameState, npcState, state, true);
     }
 }
 
