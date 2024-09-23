@@ -84,7 +84,8 @@ Actions:
 
 Combat:
 
-- Combat is slow paced with several turns. An enemy and CHARACTER can not simply be defeated in one or two actions.
+- Combat is slow paced with multiple turns.
+- NPCs and CHARACTER can not simply be defeated with a single attack.
 - NPCs only die if their HP falls to 0.
 
 NPC Interactions:
