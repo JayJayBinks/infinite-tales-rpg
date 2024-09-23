@@ -17,7 +17,6 @@ export const npcRank = [
     "Weak",
     "Average",
     "Strong",
-    "Elite",
     "Boss",
     "Legendary"
 ]

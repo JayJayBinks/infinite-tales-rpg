@@ -35,15 +35,6 @@ export function mustRollDice(action, isInCombat) {
     return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
-function getTargetStatUpdateText(targetId, npcList) {
-    switch (targetId) {
-        case 'self':
-            return 'You '
-        default:
-            return npcList[targetId].name + " ";
-    }
-}
-
 export function renderStatUpdates(statsUpdate: Array<object>, npcList) {
     if (statsUpdate) {
         return statsUpdate.toSorted((a, b) => a.targetId < b.targetId ? -1 : 1)
@@ -52,7 +43,7 @@ export function renderStatUpdates(statsUpdate: Array<object>, npcList) {
                     return undefined;
                 }
                 let responseText;
-                if (statsUpdate.targetId.toLowerCase() === 'self') {
+                if (statsUpdate.targetId.toLowerCase() === 'player_character') {
                     responseText = 'You '
                     if (statsUpdate.value > 0) {
                         responseText += " gain " + statsUpdate.value;
@@ -78,13 +69,13 @@ export function renderStatUpdates(statsUpdate: Array<object>, npcList) {
 
 export function applyGameActionState(derivedGameState: object, npcState: object, state: object, prohibitNPCChange = false) {
     for (const statUpdate of (state.stats_update || [])) {
-        if (statUpdate.targetId.toLowerCase() === 'self') {
+        if (statUpdate.targetId.toLowerCase() === 'player_character') {
             switch (statUpdate.type) {
                 case 'hp_change':
-                    derivedGameState.currentHP += statUpdate.value;
+                    derivedGameState.currentHP += Number.parseInt(statUpdate.value);
                     break;
                 case 'mp_change':
-                    derivedGameState.currentMP += statUpdate.value;
+                    derivedGameState.currentMP += Number.parseInt(statUpdate.value);
                     break;
             }
         } else {
@@ -106,7 +97,7 @@ export function applyGameActionState(derivedGameState: object, npcState: object,
 }
 
 export function removeDeadNPCs(npcState) {
-    return Object.keys(npcState).filter(npc => npcState[npc].resources.current_hp < 0)
+    return Object.keys(npcState).filter(npc => npcState[npc].resources.current_hp <= 0)
         .map(deadNPC => {
             delete npcState[deadNPC];
             return deadNPC;

@@ -85,7 +85,7 @@ Actions:
 Combat:
 
 - Combat is slow paced with several turns. An enemy and CHARACTER can not simply be defeated in one or two actions.
-- Let me defeat any NPC if capable.
+- NPCs only die if their HP falls to 0.
 
 NPC Interactions:
 
@@ -120,13 +120,15 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
      #Add this to the JSON if the story implies that the character's stats are altered
      #At the beginning, the starting HP and MP is listed here for the player character
     {
-      "targetId": "name id of the NPC to be updated, self for referring the player character",
+      "sourceId": "id of the NPC which caused this stat update or player_character",
+      "targetId": "id of the NPC to be updated or player_character",
       "explanation": "Short explanation for the reason of this change",
       "type": "hp_change",
       "value": positive integer if character recovers hp, negative if character looses hp
     },
     {
-      "targetId": 'self for referring the player character, else the NPC name',
+      "sourceId": "id of the NPC which caused this stat update or player_character",
+      "targetId": "id of the NPC to be updated or player_character",
       "explanation": "Short explanation for the reason of this change",
       "type": "mp_change",
       "value": positive integer if character recovers mp, negative if character looses mp

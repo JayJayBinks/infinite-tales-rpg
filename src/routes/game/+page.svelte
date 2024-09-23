@@ -93,6 +93,7 @@
         return [...targets.hostile, ...targets.neutral, ...targets.friendly];
     }
 
+    //TODO extract prompts to different file
     function getNPCActionsPrompt() {
         const allNpcsDetailsAsList = getAllTargetsAsList(currentGameActionState.targets)
             .map(npcName => ({
@@ -100,9 +101,9 @@
                 ...npcState.value[npcName],
             }));
         if (allNpcsDetailsAsList.length > 0) {
-            let text = '\n ' + "After this action each NPC takes their attack turn. " +
-                " In the story progression describe the actions of following NPCs:\n" + stringifyPretty(allNpcsDetailsAsList) +
-                '\n Also include the results of NPC actions as stats_update';
+            let text = '\n\n' + "After this action each NPC takes their attack turn. " +
+                '\nAlso include the results of NPC actions as stats_update. NPCs only die if their current_hp falls to 0.' +
+                "\nIn the story progression describe the actions of following NPCs:\n" + stringifyPretty(allNpcsDetailsAsList)
             return text;
         }
         return '';
@@ -145,7 +146,6 @@
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
                 const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-                //TODO ai applies -1000 when it thinks NPC is dead, and not actually hp < 0
                 if (currentGameActionState.is_character_in_combat) {
                     action.text += getDeadNPCsPrompt(deadNPCs);
                     action.text += getNPCActionsPrompt();
