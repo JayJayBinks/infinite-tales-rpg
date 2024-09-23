@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {determineDiceRollResult, getRandomInteger, mustRollDice} from "./gameLogic.ts";
+import {mustRollDice} from "./gameLogic.ts";
 
 describe('determineDiceRollResult', () => {
     it('should return undefined when required_value is not provided or rolledValue is undefined', () => {

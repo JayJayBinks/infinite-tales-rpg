@@ -15,9 +15,10 @@
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
     import * as gameLogic from "./gameLogic.ts";
+    import * as combatLogic from "./combatLogic.ts";
+    import * as diceRollLogic from "./diceRollLogic.ts";
     import {goto} from "$app/navigation";
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
-    import {removeDeadNPCs} from "./gameLogic.ts";
 
     let diceBox, svgDice;
     let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
@@ -40,15 +41,15 @@
     let isAiGeneratingState = $state(false);
 
     const difficultyState = useLocalStorage('difficultyState', 'Default');
-    let diceRollRequiredValueState = $derived(gameLogic.getRequiredValue(chosenActionState.value?.action_difficulty, difficultyState.value));
+    let diceRollRequiredValueState = $derived(diceRollLogic.getRequiredValue(chosenActionState.value?.action_difficulty, difficultyState.value));
     let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
     let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
     let rolledValueState = useLocalStorage('rolledValueState');
     let rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
     let useKarmicDice = useLocalStorage('useKarmicDice', true);
-    let karmaModifierState = $derived(!useKarmicDice.value ? 0 : gameLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState));
+    let karmaModifierState = $derived(!useKarmicDice.value ? 0 : diceRollLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState));
 
-    let diceRollResultState = $derived(gameLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
+    let diceRollResultState = $derived(diceRollLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
     const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
@@ -143,7 +144,7 @@
                 isAiGeneratingState = true;
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
-                const deadNPCs = removeDeadNPCs(npcState.value);
+                const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
                 //TODO ai applies -1000 when it thinks NPC is dead, and not actually hp < 0
                 if (currentGameActionState.is_character_in_combat) {
                     action.text += getDeadNPCsPrompt(deadNPCs);
@@ -155,17 +156,17 @@
                 if (newState) {
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
+                    historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
 
                     const newNPCs = getAllTargetsAsList(newState.targets).filter(newNPC => !Object.keys(npcState.value).includes(newNPC));
                     if (newNPCs.length > 0) {
-                        characterStatsAgent.generateNPCStats(storyState.value, newState.story, newNPCs)
+                        characterStatsAgent.generateNPCStats(storyState.value, getLatestStoryMessages(), newNPCs)
                             .then(newState => {
+                                combatLogic.addResourceValues(newState);
                                 npcState.value = {...npcState.value, ...newState}
                                 console.log(stringifyPretty(npcState.value));
                             });
                     }
-
-                    historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
                     chosenActionState.reset();
                     rolledValueState.reset();
                     customActionInput.value = '';
@@ -237,12 +238,23 @@
         return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${(rolledValueState.value + modifierState + karmaModifierState) || '?'}`;
     }
 
+    function getLatestStoryMessages(numOfActions = 2) {
+        const historyMessages = historyMessagesState.value.slice(numOfActions * -2);
+        return historyMessages.map(message => {
+            try {
+                return {...message, content: JSON.parse(message.content).story};
+            } catch (e) {
+                return message;
+            }
+        })
+    }
+
     const onTargetedSpellsOrAbility = async (action, targets) => {
         action.text += '\n' + gameLogic.getTargetText(targets);
-        const lastTwoHistoryActions = historyMessagesState.value.slice(-4);
+
         isAiGeneratingState = true;
         const difficultyResponse = await difficultyAgent.generateDifficulty(action.text,
-            customSystemInstruction.value, lastTwoHistoryActions, characterState.value, characterStatsState.value);
+            customSystemInstruction.value, getLatestStoryMessages(), characterState.value, characterStatsState.value);
         if (difficultyResponse) {
             action = {...action, ...difficultyResponse}
         }

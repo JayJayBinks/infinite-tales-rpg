@@ -1,5 +1,6 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
-import {GeminiProvider} from "../llmProvider";
+import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
+import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
 export const abilityFormat = '{"name": "", "effect": "", "mp_cost": "integer"}'
 
@@ -11,7 +12,7 @@ export const characterStatsStateForPrompt = {
     spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. Format: [${abilityFormat}]`,
 }
 
-const npcRank = [
+export const npcRank = [
     "Very Weak",
     "Weak",
     "Average",
@@ -24,8 +25,6 @@ const npcRank = [
 export const npcStatsStateForPrompt = {
     class: "",
     rank: "Power ranking of the NPC. Can be one of " + npcRank.join('|'),
-    //TODO dirty hack, NPC only has current resources
-    resources: characterStatsStateForPrompt.resources.replaceAll('MAX', 'CURRENT'),
     spells_and_abilities: characterStatsStateForPrompt.spells_and_abilities
 }
 
@@ -59,26 +58,30 @@ export class CharacterStatsAgent {
         );
     }
 
-    async generateNPCStats(storyState, storyProgression, npcList) {
-        let agentInstruction = "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and rank.\n" +
-            "Always respond with following JSON!\n" +
-            '{"uniqueNpcName": ' + stringifyPretty(npcStatsStateForPrompt) + ', ...}';
-
-        return await this.llmProvider.sendToAI(
-            [{
-                role: "user",
-                parts: [{"text": "Description of the adventure: " + stringifyPretty(storyState)}]
-            },
+    async generateNPCStats(storyState, historyMessages, npcList, customSystemInstruction) {
+        const latestHistoryTextOnly = historyMessages.map(m => m.content).join("\n");
+        let agent = {
+            parts: [
                 {
-                    role: "user",
-                    parts: [{"text": "Story progression to derive the NPCs from: " + storyProgression}]
+                    "text": "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression."
                 },
                 {
-                    role: "user",
-                    parts: [{"text": "Generate the following NPCs. You must reuse the names given: " + stringifyPretty(npcList)}]
-                }],
-            {parts: [{"text": agentInstruction}]}
-        );
+                    "text": "Description of the adventure: " + stringifyPretty(storyState)
+                },
+                {
+                    "text": "Latest story progression:\n" + latestHistoryTextOnly
+                },
+                {
+                    "text": `Most important instruction! You must always respond with following JSON format! 
+                            {"uniqueNpcName": ${stringifyPretty(npcStatsStateForPrompt)}}`
+                },
+            ]
+        }
+        if (customSystemInstruction) {
+            agent.parts.push({"text": customSystemInstruction});
+        }
+        const action = "Generate the following NPCs. You must reuse the names given: " + stringifyPretty(npcList);
+        return await this.llmProvider.sendToAI(buildAIContentsFormat(action, undefined), agent);
     }
 
     async generateSingleAbility(storyState, characterState, characterStats, ability) {

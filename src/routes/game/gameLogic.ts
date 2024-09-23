@@ -1,77 +1,6 @@
 import {stringifyPretty} from "../../lib/util.svelte";
 
-export const difficultyDiceRollModifier = {
-    Easy: 4,
-    Default: 0
-}
 
-export function getRequiredValue(action_difficulty: string | undefined, gameDifficulty: string) {
-    let requiredValue = 0;
-    const difficulty: ActionDifficulty = ActionDifficulty[action_difficulty?.toLowerCase()];
-    switch (difficulty) {
-        case ActionDifficulty.simple:
-            return 0;
-        case ActionDifficulty.medium:
-            requiredValue = getRandomInteger(6, 10);
-            break;
-        case ActionDifficulty.difficult:
-            requiredValue = getRandomInteger(11, 15);
-            break;
-        case ActionDifficulty.very_difficult:
-            requiredValue = getRandomInteger(16, 20);
-            break;
-        default:
-            return 0;
-    }
-    if (gameDifficulty) {
-        requiredValue -= difficultyDiceRollModifier[gameDifficulty];
-    }
-    return requiredValue;
-}
-
-export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue) {
-    if (!rollDifferenceHistory || rollDifferenceHistory.length < 3) {
-        return 0;
-    }
-    //if the last 3 rolls were negative, give some karma
-    if (rollDifferenceHistory.slice(-3).filter(difference => difference < 0).length >= 3) {
-        return Math.ceil(requiredValue / 2);
-    }
-    return 0;
-}
-
-export function determineDiceRollResult(required_value, rolledValue, modifier) {
-    if (!required_value || !rolledValue) {
-        return undefined;
-    }
-    const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
-    const evaluatedRolledValue = isNaN(Number.parseInt(rolledValue)) ? 0 : Number.parseInt(rolledValue);
-    const evaluatedValue = evaluatedRolledValue + evaluatedModifier;
-    if (rolledValue === 1) {
-        return 'The action is a critical failure!';
-    }
-    if (rolledValue === 20) {
-        return 'The action is a critical success!';
-    }
-    const diff = evaluatedValue - required_value;
-    if (diff <= -6) {
-        return 'The action is a major failure.';
-    }
-    if (diff <= -3) {
-        return 'The action is a regular failure.';
-    }
-    if (diff <= -1) {
-        return 'The action is a partial failure.';
-    }
-    if (diff >= 6) {
-        return 'The action is a major success.';
-    }
-    if (diff >= 0) {
-        return 'The action is a regular success.';
-    }
-    //Error fallback (e.g. '10 to 14')
-    return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${required_value}`
-}
 
 export const getTargetText = function (targets) {
     return "\n I target " + targets.join(' and ')
@@ -104,10 +33,6 @@ export function mustRollDice(action, isInCombat) {
         return true;
     }
     return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
-}
-
-export function getRandomInteger(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function getTargetStatUpdateText(targetId, npcList) {
@@ -168,10 +93,10 @@ export function applyGameActionState(derivedGameState: object, npcState: object,
                 if (npc) {
                     switch (statUpdate.type) {
                         case 'hp_change':
-                            npc.resources.CURRENT_HP += statUpdate.value;
+                            npc.resources.current_hp += statUpdate.value;
                             break;
                         case 'mp_change':
-                            npc.resources.CURRENT_MP += statUpdate.value;
+                            npc.resources.current_mp += statUpdate.value;
                             break;
                     }
                 }
@@ -181,7 +106,7 @@ export function applyGameActionState(derivedGameState: object, npcState: object,
 }
 
 export function removeDeadNPCs(npcState) {
-    return Object.keys(npcState).filter(npc => npcState[npc].resources.CURRENT_HP < 0)
+    return Object.keys(npcState).filter(npc => npcState[npc].resources.current_hp < 0)
         .map(deadNPC => {
             delete npcState[deadNPC];
             return deadNPC;

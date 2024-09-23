@@ -1,6 +1,6 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import {difficultyDiceRollModifier} from "../gameLogic.ts";
+    import {difficultyDiceRollModifier} from "../diceRollLogic.ts";
     import {downloadLocalStorageAsJson, importJsonFromFile} from "$lib/util.svelte.ts";
     import {navigate} from "$lib/util.svelte.ts";
     const difficultyState = useLocalStorage('difficultyState', 'Default');

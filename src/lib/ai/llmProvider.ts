@@ -146,3 +146,23 @@ export class GeminiProvider implements LLMProvider {
         return undefined;
     }
 }
+
+export function buildAIContentsFormat(actionText, historyMessages) {
+    let contents = []
+    if (historyMessages) {
+        historyMessages.forEach(message => {
+            contents.push({
+                "role": message["role"],
+                "parts": [{"text": message["content"]}]
+            })
+        });
+    }
+    if (actionText) {
+        let message = {"role": "user", "content": actionText}
+        contents.push({
+            "role": message["role"],
+            "parts": [{"text": message["content"]}]
+        })
+    }
+    return contents;
+}

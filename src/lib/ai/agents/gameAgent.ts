@@ -1,5 +1,5 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
-import {GeminiProvider} from "../llmProvider";
+import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
 export class GameAgent {
@@ -31,7 +31,7 @@ export class GameAgent {
             gameAgent.parts.push({"text": customSystemInstruction});
         }
 
-        let contents = this.buildAIContentsFormat(actionText, messages);
+        let contents = buildAIContentsFormat(actionText, messages);
         return await this.llmProvider.sendToAI(contents, gameAgent);
     }
 
@@ -47,21 +47,7 @@ export class GameAgent {
         return {userMessage, modelMessage};
     }
 
-    private buildAIContentsFormat(actionText, historyMessages) {
-        let contents = []
-        historyMessages.forEach(message => {
-            contents.push({
-                "role": message["role"],
-                "parts": [{"text": message["content"]}]
-            })
-        });
-        let message = {"role": "user", "content": actionText}
-        contents.push({
-            "role": message["role"],
-            "parts": [{"text": message["content"]}]
-        })
-        return contents;
-    }
+
 }
 
 

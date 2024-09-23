@@ -1,5 +1,5 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
-import {GeminiProvider} from "../llmProvider";
+import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
 export class DifficultyAgent {
@@ -11,13 +11,6 @@ export class DifficultyAgent {
     }
 
     async generateDifficulty(actionText, customSystemInstruction, historyMessages, characterState, characterStatsState) {
-        const messages = historyMessages.map(message => {
-            try {
-                return {...message, content: JSON.parse(message.content).story};
-            } catch (e) {
-                return message;
-            }
-        });
         let {["spells_and_abilities"]: _, ...characterStatsStateMapped} = characterStatsState;
         let agent = {
             parts: [{
@@ -52,23 +45,8 @@ export class DifficultyAgent {
             agent.parts.push({"text": customSystemInstruction});
         }
 
-        let contents = this.buildAIContentsFormat(actionText, messages);
+        let contents = buildAIContentsFormat(actionText, historyMessages);
         return await this.llmProvider.sendToAI(contents, agent, 1);
     }
 
-    private buildAIContentsFormat(actionText, historyMessages) {
-        let contents = []
-        historyMessages.forEach(message => {
-            contents.push({
-                "role": message["role"],
-                "parts": [{"text": message["content"]}]
-            })
-        });
-        let message = {"role": "user", "content": actionText}
-        contents.push({
-            "role": message["role"],
-            "parts": [{"text": message["content"]}]
-        })
-        return contents;
-    }
 }
