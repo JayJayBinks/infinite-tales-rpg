@@ -101,8 +101,9 @@
                 ...npcState.value[npcName],
             }));
         if (allNpcsDetailsAsList.length > 0) {
-            let text = '\n\n' + "After this action each NPC takes their attack turn. " +
+            let text = '\n\n' + "After this action each NPC takes their attack turn." +
                 '\nAlso include the results of NPC actions as stats_update. NPCs only die if their current_hp falls to 0.' +
+                '\nMost important! NPCs only die if their current_hp falls to 0.' +
                 "\nIn the story progression describe the actions of following NPCs:\n" + stringifyPretty(allNpcsDetailsAsList)
             return text;
         }
