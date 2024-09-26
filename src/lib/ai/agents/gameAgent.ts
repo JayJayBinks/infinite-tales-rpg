@@ -10,8 +10,22 @@ export class GameAgent {
         this.llmProvider = llmProvider;
     }
 
-    async generateStoryProgression(actionText, customSystemInstruction, historyMessages, storyState, characterState, characterStatsState, derivedGameState) {
+    /**
+     *
+     * @param actionText text from the user action, will be added to the historyMessages
+     * @param additionalActionInput additional text to act as asinge message system instruction, e.g combat, not added to historyMessages
+     * @param customSystemInstruction
+     * @param historyMessages
+     * @param storyState
+     * @param characterState
+     * @param characterStatsState
+     * @param derivedGameState
+     */
+    async generateStoryProgression(actionText, additionalActionInput, customSystemInstruction, historyMessages, storyState, characterState, characterStatsState, derivedGameState) {
         const messages = [...historyMessages];
+        let combinedText = actionText;
+        if(additionalActionInput) combinedText += '\n\n' + additionalActionInput;
+
         let gameAgent = {
             parts: [{"text": systemBehaviour},
                 {"text": stringifyPretty(storyState)},
@@ -31,7 +45,7 @@ export class GameAgent {
             gameAgent.parts.push({"text": customSystemInstruction});
         }
 
-        let contents = buildAIContentsFormat(actionText, messages);
+        let contents = buildAIContentsFormat(combinedText, messages);
         return await this.llmProvider.sendToAI(contents, gameAgent);
     }
 
@@ -84,9 +98,9 @@ Actions:
 
 Combat:
 
-- Combat is slow paced and only ends when the hostile NPCs HP falls to 0.
-- NPCs and CHARACTER can not simply be finished off with a single attack.
-- NPCs only die if their HP falls to 0.
+- Combat is slow paced and only ends when the hostile NPCs are dead.
+- Never decide on your own that NPCs or CHARACTER die, apply appropriate damage instead. Only the player will tell you when they die.
+- NPCs and CHARACTER can never simply be finished off with a single attack.
 
 NPC Interactions:
 

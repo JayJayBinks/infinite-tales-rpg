@@ -57,6 +57,7 @@ export class CharacterStatsAgent {
         );
     }
 
+    //TODO include human readable id=
     async generateNPCStats(storyState, historyMessages, npcList, customSystemInstruction) {
         const latestHistoryTextOnly = historyMessages.map(m => m.content).join("\n");
         let agent = {

@@ -19,6 +19,7 @@
     import * as diceRollLogic from "./diceRollLogic.ts";
     import {goto} from "$app/navigation";
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
+    import {CombatAgent} from "$lib/ai/agents/combatAgent.ts";
 
     let diceBox, svgDice;
     let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
@@ -53,7 +54,7 @@
     let derivedGameState = $state({currentHP: 0, currentMP: 0})
     const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
-    let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent;
+    let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent;
 
     onMount(async () => {
         if (!apiKeyState.value) {
@@ -66,9 +67,10 @@
         });
         diceBox.init();
 
-        const geminiProvider = new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value);
+        const geminiProvider = new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value, customSystemInstruction.value);
         gameAgent = new GameAgent(geminiProvider);
         characterStatsAgent = new CharacterStatsAgent(geminiProvider);
+        combatAgent = new CombatAgent(geminiProvider);
         difficultyAgent = new DifficultyAgent(geminiProvider);
         summaryAgent = new SummaryAgent(geminiProvider);
         //Start game when not already started
@@ -94,29 +96,54 @@
     }
 
     //TODO extract prompts to different file
-    function getNPCActionsPrompt() {
+    async function getActionPromptForCombat(playerAction) {
         const allNpcsDetailsAsList = getAllTargetsAsList(currentGameActionState.targets)
             .map(npcName => ({
                 nameId: npcName,
                 ...npcState.value[npcName],
             }));
-        if (allNpcsDetailsAsList.length > 0) {
-            let text = '\n\n' + "After this action each NPC takes their attack turn." +
-                '\nAlso include the results of NPC actions as stats_update. NPCs only die if their current_hp falls to 0.' +
-                '\nMost important! NPCs only die if their current_hp falls to 0.' +
-                "\nIn the story progression describe the actions of following NPCs:\n" + stringifyPretty(allNpcsDetailsAsList)
-            return text;
-        }
-        return '';
+        const allResources = allNpcsDetailsAsList
+            .map(npc => ({
+                nameId: npc.nameId,
+                resources: npc.resources
+            }));
+        allResources.push({
+            nameId: 'player_character',
+            resources: derivedGameState
+        })
+
+        let determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(playerAction.text, allNpcsDetailsAsList,
+            customSystemInstruction.value, getLatestStoryMessages(), storyState.value);
+
+        //need to apply already here to have most recent allResources
+        gameLogic.applyStatsUpdate(derivedGameState, npcState.value, determinedActionsAndStatsUpdate);
+        let deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+        let aliveNPCs = allNpcsDetailsAsList.filter(npc => npc.resources.current_hp > 0).map(npc => npc.nameId);
+        let healthStatePrompt = getNPCsHealthStatePrompt(deadNPCs, aliveNPCs);
+        let bossPrompt = allNpcsDetailsAsList.some(npc => npc.rank = 'Boss')
+
+        //TODO include this to provide actions for current health?
+        // "\n\nMost important! NPCs and CHARACTER only die if their current_hp falls to 0. Current resources:\n" + stringifyPretty(allResources) +
+        let additionalActionInput = "\nNPCs can never be finished off with a single attack!" +
+            "\nYou must not apply stats_update for this actions, as this was already done!" +
+            "\nYou must not apply stats_update for this actions, as this was already done!" +
+            "\nDescribe the following actions in the story progression:\n" + stringifyPretty(determinedActionsAndStatsUpdate.actions) +
+            "\n\nMost important! " + healthStatePrompt
+
+        return {additionalActionInput, determinedActionsAndStatsUpdate};
     }
 
-    function getDeadNPCsPrompt(deadNpcs) {
-        if (deadNpcs.length > 0) {
-            let text = '\n ' + "Following NPCs have died, describe their death in the story progression." +
-                "\n" + stringifyPretty(deadNpcs)
-            return text;
+    function getNPCsHealthStatePrompt(deadNPCs, aliveNPCs) {
+        let text = ''
+        if (aliveNPCs && aliveNPCs.length > 0) {
+            text += '\n ' + "Following NPCs are alive!" +
+                "\n" + stringifyPretty(aliveNPCs)
         }
-        return '';
+        if (deadNPCs && deadNPCs.length > 0) {
+            text += '\n ' + "Following NPCs have died, describe their death in the story progression." +
+                "\n" + stringifyPretty(deadNPCs)
+        }
+        return text;
     }
 
     function openDiceRollDialog() {
@@ -146,15 +173,27 @@
                 isAiGeneratingState = true;
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
-                const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-                if (currentGameActionState.is_character_in_combat) {
-                    action.text += getDeadNPCsPrompt(deadNPCs);
-                    action.text += getNPCActionsPrompt();
+                let deadNPCs, additionalActionInput, allCombatDeterminedActionsAndStatsUpdate;
+                if (!isGameEnded.value && currentGameActionState.is_character_in_combat) {
+                    let combatObject = await getActionPromptForCombat(action);
+                    additionalActionInput = combatObject.additionalActionInput;
+                    allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
+                } else {
+                    deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+                    additionalActionInput = getNPCsHealthStatePrompt(deadNPCs);
                 }
-                const newState = await gameAgent.generateStoryProgression(action.text, customSystemInstruction.value, historyMessagesState.value,
+                console.log(action.text, additionalActionInput);
+                const newState = await gameAgent.generateStoryProgression(action.text, additionalActionInput, customSystemInstruction.value, historyMessagesState.value,
                     storyState.value, characterState.value, characterStatsState.value, derivedGameState);
 
                 if (newState) {
+                    if (allCombatDeterminedActionsAndStatsUpdate) {
+                        //override the gameActionsState stat update with the combat one
+                        newState.stats_update = allCombatDeterminedActionsAndStatsUpdate.stats_update;
+                    } else {
+                        //StatsUpdate did not come from combat agent
+                        gameLogic.applyStatsUpdate(derivedGameState, npcState.value, newState);
+                    }
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
@@ -168,13 +207,18 @@
                                 console.log(stringifyPretty(npcState.value));
                             });
                     }
+
                     chosenActionState.reset();
                     rolledValueState.reset();
                     customActionInput.value = '';
                     didAIProcessDiceRollAction.value = true;
                     //ai can more easily remember the middle part and prevents undesired writing style, action values etc...
                     historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
-                    updateGameState(newState);
+                    gameActionsState.value = [...gameActionsState.value, {
+                        ...newState,
+                        id: gameActionsState.value.length
+                    }];
+                    await renderGameState(newState);
                 }
                 isAiGeneratingState = false;
             }
@@ -184,19 +228,12 @@
         }
     }
 
-    function updateGameState(state) {
-        gameActionsState.value = [...gameActionsState.value, {...state, id: gameActionsState.value.length}];
-        // TODO inventoryStore.set(state?.inventory_update || []);
-        gameLogic.applyGameActionState(derivedGameState, npcState.value, state);
-        renderGameState(state);
-    }
-
     async function renderGameState(state, addContinueStory = true) {
         const hp = derivedGameState.currentHP;
         if (!isGameEnded.value && hp <= 0) {
             isGameEnded.value = true;
             await sendAction({
-                text: 'The CHARACTER has fallen to 0 HP, make an HP Change for 0. Describe how this tale ends.'
+                text: 'The CHARACTER has fallen to 0 HP. Describe how this tale ends.'
             })
         }
         isGameEnded.value = hp <= 0;

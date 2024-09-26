@@ -67,7 +67,7 @@ export function renderStatUpdates(statsUpdate: Array<object>, npcList) {
     return [];
 }
 
-export function applyGameActionState(derivedGameState: object, npcState: object, state: object, prohibitNPCChange = false) {
+export function applyStatsUpdate(derivedGameState: object, npcState: object, state: object, prohibitNPCChange = false) {
     for (const statUpdate of (state.stats_update || [])) {
         if (statUpdate.targetId.toLowerCase() === 'player_character') {
             switch (statUpdate.type) {
@@ -84,10 +84,10 @@ export function applyGameActionState(derivedGameState: object, npcState: object,
                 if (npc) {
                     switch (statUpdate.type) {
                         case 'hp_change':
-                            npc.resources.current_hp += statUpdate.value;
+                            npc.resources.current_hp += Number.parseInt(statUpdate.value);
                             break;
                         case 'mp_change':
-                            npc.resources.current_mp += statUpdate.value;
+                            npc.resources.current_mp += Number.parseInt(statUpdate.value);
                             break;
                     }
                 }
@@ -107,7 +107,8 @@ export function removeDeadNPCs(npcState) {
 
 export function applyGameActionStates(derivedGameState, npcState, states: Array<object>) {
     for (const state of states) {
-        applyGameActionState(derivedGameState, npcState, state, true);
+        //TODO because of prohibitNPCChange we can not revert actions anymore, introduce derived aswell?
+        applyStatsUpdate(derivedGameState, npcState, state, true);
     }
 }
 
