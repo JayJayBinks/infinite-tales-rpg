@@ -20,6 +20,7 @@
     import {goto} from "$app/navigation";
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
     import {CombatAgent} from "$lib/ai/agents/combatAgent.ts";
+    import {ActionDifficulty} from "./gameLogic.ts";
 
     let diceBox, svgDice;
     let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
@@ -102,15 +103,6 @@
                 nameId: npcName,
                 ...npcState.value[npcName],
             }));
-        const allResources = allNpcsDetailsAsList
-            .map(npc => ({
-                nameId: npc.nameId,
-                resources: npc.resources
-            }));
-        allResources.push({
-            nameId: 'player_character',
-            resources: derivedGameState
-        })
 
         let determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(playerAction.text, allNpcsDetailsAsList,
             customSystemInstruction.value, getLatestStoryMessages(), storyState.value);
@@ -120,13 +112,16 @@
         let deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
         let aliveNPCs = allNpcsDetailsAsList.filter(npc => npc.resources.current_hp > 0).map(npc => npc.nameId);
         let healthStatePrompt = getNPCsHealthStatePrompt(deadNPCs, aliveNPCs);
-        let bossPrompt = allNpcsDetailsAsList.some(npc => npc.rank = 'Boss')
+        if(derivedGameState.currentHP > 0) healthStatePrompt += "\n player_character is alive!";
 
-        //TODO include this to provide actions for current health?
-        // "\n\nMost important! NPCs and CHARACTER only die if their current_hp falls to 0. Current resources:\n" + stringifyPretty(allResources) +
+        //TODO rather do this programatically? Keep an eye on if influence future actions, very_difficult will not be used even when fight has finished
+        let bossDifficulties = [ActionDifficulty.simple , ActionDifficulty.medium , ActionDifficulty.difficult];
+        let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
+            ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): '';
+
         let additionalActionInput = "\nNPCs can never be finished off with a single attack!" +
-            "\nYou must not apply stats_update for this actions, as this was already done!" +
-            "\nYou must not apply stats_update for this actions, as this was already done!" +
+            bossFightPrompt +
+            "\nYou must not apply stats_update for following actions, as this was already done!" +
             "\nDescribe the following actions in the story progression:\n" + stringifyPretty(determinedActionsAndStatsUpdate.actions) +
             "\n\nMost important! " + healthStatePrompt
 
@@ -200,7 +195,7 @@
 
                     const newNPCs = getAllTargetsAsList(newState.targets).filter(newNPC => !Object.keys(npcState.value).includes(newNPC));
                     if (newNPCs.length > 0) {
-                        characterStatsAgent.generateNPCStats(storyState.value, getLatestStoryMessages(), newNPCs)
+                        characterStatsAgent.generateNPCStats(storyState.value, getLatestStoryMessages(), newNPCs, customSystemInstruction.value)
                             .then(newState => {
                                 combatLogic.addResourceValues(newState);
                                 npcState.value = {...npcState.value, ...newState}
@@ -233,7 +228,7 @@
         if (!isGameEnded.value && hp <= 0) {
             isGameEnded.value = true;
             await sendAction({
-                text: 'The CHARACTER has fallen to 0 HP. Describe how this tale ends.'
+                text: 'The CHARACTER has fallen to 0 HP and is dying.'
             })
         }
         isGameEnded.value = hp <= 0;

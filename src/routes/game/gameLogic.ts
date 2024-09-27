@@ -1,7 +1,3 @@
-import {stringifyPretty} from "../../lib/util.svelte";
-
-
-
 export const getTargetText = function (targets) {
     return "\n I target " + targets.join(' and ')
         + "\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended."
@@ -52,7 +48,7 @@ export function renderStatUpdates(statsUpdate: Array<object>, npcList) {
                         responseText += " loose " + statsUpdate.value * -1;
                     }
                 } else {
-                    responseText = statsUpdate.targetId + " ";
+                    responseText = statsUpdate.targetId.replaceAll("_", "") + " ";
                     if (statsUpdate.value > 0) {
                         responseText += " gains " + statsUpdate.value;
                     }

@@ -67,7 +67,7 @@
         const characterStatsInput = {...currentCharacterStats, ...filteredOverwrites}
 
         if (deepNested) {
-            // TODO only works for ability
+            // TODO only works for ability section
             const newAbility = await characterStatsAgent.generateSingleAbility(
                 $state.snapshot(storyState.value),
                 $state.snapshot(characterState.value),

@@ -9,9 +9,8 @@ Very Weak	4	7
 Weak	11	22
 Average	21	42
 Strong	33	65
-Elite	45	90
-Boss	59	117
-Legendary	73	146
+Boss	45	90
+Legendary	59	117
 */
 function calculateMaxResource(i, minRandom, maxRandom) {
     // Using logarithmic growth

@@ -57,8 +57,7 @@ export class CharacterStatsAgent {
         );
     }
 
-    //TODO include human readable id=
-    async generateNPCStats(storyState, historyMessages, npcList, customSystemInstruction) {
+    async generateNPCStats(storyState, historyMessages, npcsToGenerate, customSystemInstruction) {
         const latestHistoryTextOnly = historyMessages.map(m => m.content).join("\n");
         let agent = {
             parts: [
@@ -80,7 +79,7 @@ export class CharacterStatsAgent {
         if (customSystemInstruction) {
             agent.parts.push({"text": customSystemInstruction});
         }
-        const action = "Generate the following NPCs. You must reuse the names given: " + stringifyPretty(npcList);
+        const action = "Generate the following NPCs. You must reuse the names given: " + stringifyPretty(npcsToGenerate);
         return await this.llmProvider.sendToAI(buildAIContentsFormat(action, undefined), agent);
     }
 

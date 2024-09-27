@@ -10,7 +10,6 @@ export class CombatAgent {
     }
 
     //TODO are effects like stunned etc. considered via historyMessages?
-    //TODO failed actioms cause damage to self ...
     //TODO far future improvement, include initiative with chain of actions, some actions then are skipped due to stun, death etc.
     async generateActionsFromContext(actionText, npcsList, customSystemInstruction, historyMessages, storyState) {
         const agent = {
