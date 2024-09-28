@@ -94,7 +94,8 @@ export class GeminiProvider implements LLMProvider {
                 { role: 'user', content: transformMessagesToContent(contents) }
             ],
             temperature: temperature,
-            model: 'mistral-large'
+            model: 'mistral-large',
+            response_format: { type: 'json_object' },
         });
 
         let result;
