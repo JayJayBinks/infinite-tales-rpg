@@ -94,7 +94,8 @@ export class GeminiProvider implements LLMProvider {
                 { role: 'user', content: transformMessagesToContent(contents) }
             ],
             temperature: temperature,
-            model: 'mistral-large',
+            model: 'openai',
+            seed: Math.floor(Math.random() * 1000000),
             response_format: { type: 'json_object' },
         });
 
@@ -173,5 +174,8 @@ function transformMessagesToContent(messages: any): string {
 }
 
  function extractSystemPrompt(messages: any): string {
+    if (typeof messages === 'string') {
+        return messages;
+    }
     return messages.parts.map((part: any) => part.text).join('\n')
 }
