@@ -8,7 +8,7 @@
 <article class="m-auto prose prose-neutral mt-2" style="color: unset">
     {@html rendered}
     {#each statsUpdates as statsUpdate}
-        <p class="capitalize text-center text-sm m-1">{statsUpdate}</p>
+        <p class="capitalize text-center text-sm m-1">{statsUpdate.text} <span class="{statsUpdate.color}">{statsUpdate.resourceText}</span></p>
     {/each}
 </article>
 {#if imagePrompt}

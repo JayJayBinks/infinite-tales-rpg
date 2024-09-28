@@ -152,6 +152,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "targets": List of NPCs that can be targeted by attacks or spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
   "actions": [
+    # If is_character_in_combat is true append a "Standard Attack" as additional action
     {
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
       "type": "Misc|Attack|Spell|Conversation|Social_Manipulation",
@@ -160,7 +161,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "action_difficulty": "${Object.keys(ActionDifficulty)}",
       "mp_cost": cost of this action, 0 if this action does not use mp
       "dice_roll": {
-        "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
+        "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an in game story explanation why a modifier is applied or not and how you decided that.",
         # If action_difficulty is difficult apply a bonus.
         "modifier": "none|bonus|malus",
         "modifier_value": positive or negative value (-5 to +5)      

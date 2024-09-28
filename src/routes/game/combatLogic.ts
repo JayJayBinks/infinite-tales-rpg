@@ -14,6 +14,10 @@ Legendary	59	117
 */
 function calculateMaxResource(i, minRandom, maxRandom) {
     // Using logarithmic growth
+    //TODO boss fight too difficult, limit HP
+    if(i > 2){
+        i = 2;
+    }
     return Math.ceil(Math.log(i + 2) * (i + 1) * getRandomInteger(minRandom, maxRandom));
 }
 

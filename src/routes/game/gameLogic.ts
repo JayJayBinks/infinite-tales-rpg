@@ -31,33 +31,50 @@ export function mustRollDice(action, isInCombat) {
     return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
-export function renderStatUpdates(statsUpdate: Array<object>, npcList) {
+export function renderStatUpdates(statsUpdate: Array<object>) {
     if (statsUpdate) {
         return statsUpdate.toSorted((a, b) => a.targetId < b.targetId ? -1 : 1)
             .map(statsUpdate => {
                 if (statsUpdate.value == 0) {
                     return undefined;
                 }
-                let responseText;
+                let responseText, changeText, resourceText;
+                const mappedType = statsUpdate.type.replace('_change', '').toUpperCase();
+                const color = mappedType.includes('HP') ? 'text-red-500' : mappedType.includes('MP') ? 'text-blue-500' : '';
+
                 if (statsUpdate.targetId.toLowerCase() === 'player_character') {
                     responseText = 'You '
                     if (statsUpdate.value > 0) {
-                        responseText += " gain " + statsUpdate.value;
+                        changeText = " gain ";
+                        resourceText = statsUpdate.value;
                     }
                     if (statsUpdate.value < 0) {
-                        responseText += " loose " + statsUpdate.value * -1;
+                        changeText = " loose ";
+                        resourceText = statsUpdate.value * -1;
+                    }
+                    if(!changeText){
+                        changeText = ' are '
                     }
                 } else {
-                    responseText = statsUpdate.targetId.replaceAll("_", "") + " ";
+                    responseText = statsUpdate.targetId.toLowerCase().replaceAll("_", " ").replaceAll("id", "") + " ";
                     if (statsUpdate.value > 0) {
-                        responseText += " gains " + statsUpdate.value;
+                        changeText = " gains ";
+                        resourceText = statsUpdate.value;
                     }
                     if (statsUpdate.value < 0) {
-                        responseText += " looses " + statsUpdate.value * -1;
+                        changeText = " looses ";
+                        resourceText = statsUpdate.value * -1;
+                    }
+                    if(!changeText){
+                        changeText = ' is '
                     }
                 }
-                responseText += " " + statsUpdate.type.replace('_change', '').toUpperCase();
-                return responseText;
+                if(!resourceText){
+                    resourceText = statsUpdate.value.replaceAll("_", " ");
+                }
+                responseText += changeText;
+                resourceText += " " + mappedType;
+                return {text: responseText, resourceText, color};
             }).filter(value => !!value);
     }
     return [];

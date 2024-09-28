@@ -2,14 +2,14 @@ import {stringifyPretty} from "$lib/util.svelte.ts";
 import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
-export const abilityFormat = '{"name": "", "effect": "", "mp_cost": "integer"}'
+export const abilityFormat = '{"name": "", "effect": "", "mp_cost": integer}'
 
 export const characterStatsStateForPrompt = {
     resources: 'Starting maximum HP and MP in range 20 - 100, based on overall description of the character. Format: {"MAX_HP": startingHP, "MAX_MP": startingMP}',
     traits: 'list of the beginning traits of the character in following format: {"trait1": startingValue1, "trait2": startingValue2, ...}',
     expertise: 'Traits where CHARACTER has a high value and a positive dice roll modifier format: {"trait1": value between 1-5, "trait2": 1-5, ...}',
     disadvantages: 'Traits where CHARACTER has a low value and a negative dice roll modifier format: {"trait1": value between -1 to -5, "trait2": -1 to -5, ...}',
-    spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. Format: [${abilityFormat}]`,
+    spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. At last include a 'Standard Attack'. Format: [${abilityFormat}]`,
 }
 
 export const npcRank = [

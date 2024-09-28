@@ -112,15 +112,16 @@
         let deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
         let aliveNPCs = allNpcsDetailsAsList.filter(npc => npc.resources.current_hp > 0).map(npc => npc.nameId);
         let healthStatePrompt = getNPCsHealthStatePrompt(deadNPCs, aliveNPCs);
-        if(derivedGameState.currentHP > 0) healthStatePrompt += "\n player_character is alive!";
+        if(derivedGameState.currentHP > 0) healthStatePrompt += "\n player_character is alive after the attacks!";
 
         //TODO rather do this programatically? Keep an eye on if influence future actions, very_difficult will not be used even when fight has finished
-        let bossDifficulties = [ActionDifficulty.simple , ActionDifficulty.medium , ActionDifficulty.difficult];
-        let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
-            ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): '';
+        let combatDifficulties = [ActionDifficulty.simple , ActionDifficulty.medium , ActionDifficulty.difficult];
+        // let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
+        //     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): '';
 
         let additionalActionInput = "\nNPCs can never be finished off with a single attack!" +
-            bossFightPrompt +
+            "\nFor now only use following difficulties: " + combatDifficulties.join('|') +
+            "\nFor now only apply bonus to dice_roll" +
             "\nYou must not apply stats_update for following actions, as this was already done!" +
             "\nDescribe the following actions in the story progression:\n" + stringifyPretty(determinedActionsAndStatsUpdate.actions) +
             "\n\nMost important! " + healthStatePrompt
@@ -131,7 +132,7 @@
     function getNPCsHealthStatePrompt(deadNPCs, aliveNPCs) {
         let text = ''
         if (aliveNPCs && aliveNPCs.length > 0) {
-            text += '\n ' + "Following NPCs are alive!" +
+            text += '\n ' + "Following NPCs are still alive after the attacks!" +
                 "\n" + stringifyPretty(aliveNPCs)
         }
         if (deadNPCs && deadNPCs.length > 0) {
@@ -375,7 +376,7 @@
             <StoryProgressionWithImage story={gameActionState.story}
                                        imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
                                        statsUpdates={gameActionState.id === 0 ? [] :
-                                       gameLogic.renderStatUpdates(gameActionState.stats_update, npcState.value)}
+                                       gameLogic.renderStatUpdates(gameActionState.stats_update)}
             />
         {/each}
         {#if isGameEnded.value}
