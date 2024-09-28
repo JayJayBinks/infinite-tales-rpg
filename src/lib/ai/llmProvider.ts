@@ -1,5 +1,4 @@
 import {handleError} from "../util.svelte";
-import {GoogleGenerativeAI} from "@google/generative-ai";
 import {JsonFixingInterceptorAgent} from "./agents/jsonFixingInterceptorAgent";
 
 const safetySettings = [
@@ -36,33 +35,30 @@ export const generationConfigText = {
 
 export interface LLMProvider {
 
-    sendToAI(contents,
-             systemInstruction,
-             temperature,
-             tryAutoFixJSONError);
+    sendToAI(contents: any,
+             systemInstruction: any,
+             temperature: number,
+             tryAutoFixJSONError: boolean): Promise<any>;
 
-    sendToAI(contents,
-             systemInstruction,
-             temperature,
-             useGenerationConfig,
-             useSafetySettings,
-             tryAutoFixJSONError);
+    sendToAI(contents: any,
+             systemInstruction: any,
+             temperature: number,
+             useGenerationConfig: any,
+             useSafetySettings: any,
+             tryAutoFixJSONError: boolean): Promise<any>;
 }
-
 
 export class GeminiProvider implements LLMProvider {
     apiKey: string;
     language: string;
-    systemInstruction: any; // TODO The requested module '@google/generative-ai' does not provide an export named 'Part'
+    systemInstruction: any;
     temperature: number;
-    generationConfig;
-    safetySettings;
+    generationConfig: any;
+    safetySettings: any;
 
-    genAI;
     jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
 
-
-    constructor(apiKey, temperature: number = generationConfig.temperature, language, systemInstruction = undefined, useGenerationConfig = generationConfig, useSafetySettings = safetySettings) {
+    constructor(apiKey: string, temperature: number = generationConfig.temperature, language: string, systemInstruction: any = undefined, useGenerationConfig: any = generationConfig, useSafetySettings: any = safetySettings) {
         this.apiKey = apiKey;
         this.temperature = temperature;
         this.language = language;
@@ -70,13 +66,12 @@ export class GeminiProvider implements LLMProvider {
         this.generationConfig = useGenerationConfig;
         this.safetySettings = useSafetySettings;
 
-        this.genAI = new GoogleGenerativeAI(this.apiKey);
         this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
     }
 
-    async sendToAINoAutoFix(contents,
-                            systemInstruction = this.systemInstruction,
-                            temperature = this.temperature) {
+    async sendToAINoAutoFix(contents: any,
+                            systemInstruction: any = this.systemInstruction,
+                            temperature: number = this.temperature): Promise<any> {
         return this.sendToAI(contents,
             systemInstruction,
             temperature,
@@ -85,57 +80,62 @@ export class GeminiProvider implements LLMProvider {
             false);
     }
 
-    async sendToAI(contents,
-                   systemInstruction = this.systemInstruction,
-                   temperature = this.temperature,
-                   useGenerationConfig = this.generationConfig,
-                   useSafetySettings = this.safetySettings,
-                   tryAutoFixJSONError = true) {
+    async sendToAI(contents: any,
+                   systemInstruction: any = this.systemInstruction,
+                   temperature: number = this.temperature,
+                   useGenerationConfig: any = this.generationConfig,
+                   useSafetySettings: any = this.safetySettings,
+                   tryAutoFixJSONError: boolean = true): Promise<any> {
 
-        const model = this.genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-latest",
-            generationConfig: {...useGenerationConfig, temperature},
-            safetySettings: useSafetySettings
+        const url = `https://text.pollinations.ai/openai`;
+        const body = JSON.stringify({
+            messages: [
+                { role: 'system', content: extractSystemPrompt(systemInstruction) },
+                { role: 'user', content: transformMessagesToContent(contents) }
+            ],
+            temperature: temperature,
+            model: 'mistral-large'
         });
-        if (this.language) {
-            const languageInstruction = 'Important! You must respond in the following language: ' + this.language;
-            if (systemInstruction.parts) {
-                systemInstruction.parts.push({"text": languageInstruction})
-            } else {
-                systemInstruction += "\n" + languageInstruction;
-            }
-        }
 
         let result;
         try {
-            result = await model.generateContent({contents, systemInstruction});
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: body
+            });
+            result = await response.json();
         } catch (e) {
-            if (e.message.includes('not available in your country')) {
-                e.message = "The Google Gemini Free Tier is not available in your country. :( Better move to a different country, there are browser extensions which support you!";
+            if (e instanceof Error && e.message.includes('not available in your country')) {
+                e.message = "The Pollinations AI Free Tier is not available in your country. :( Better move to a different country, there are browser extensions which support you!";
             }
             handleError(e);
             return undefined;
         }
         try {
-            const responseText = result.response.text();
+            const responseText = result.choices[0].message.content;
             if (useGenerationConfig.responseMimeType === 'application/json') {
                 try {
                     return JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''));
                 } catch (firstError) {
-                    try {
-                        console.log("Error parsing JSON: " + responseText, firstError)
-                        console.log("Try json simple fix 1")
-                        if (firstError.message.includes('Bad control character in string literal')) {
-                            return JSON.parse(responseText.replaceAll("\\", ""));
+                    if (firstError instanceof Error) {
+                        try {
+                            console.log("Error parsing JSON: " + responseText, firstError)
+                            console.log("Try json simple fix 1")
+                            if (firstError.message.includes('Bad control character in string literal')) {
+                                return JSON.parse(responseText.replaceAll("\\", ""));
+                            }
+                            return JSON.parse("{" + responseText.replaceAll("\\", ""));
+                        } catch (secondError) {
+                            if (tryAutoFixJSONError) {
+                                console.log("Try json fix with llm agent")
+                                return this.jsonFixingInterceptorAgent.fixJSON(responseText, firstError.message);
+                            }
+                            handleError(firstError);
+                            return undefined;
                         }
-                        return JSON.parse("{" + responseText.replaceAll("\\", ""));
-                    } catch (secondError) {
-                        if (tryAutoFixJSONError) {
-                            console.log("Try json fix with llm agent")
-                            return this.jsonFixingInterceptorAgent.fixJSON(responseText, firstError.message);
-                        }
-                        handleError(firstError);
-                        return undefined;
                     }
                 }
             }
@@ -147,13 +147,13 @@ export class GeminiProvider implements LLMProvider {
     }
 }
 
-export function buildAIContentsFormat(actionText, historyMessages) {
+export function buildAIContentsFormat(actionText: any, historyMessages: any): any {
     let contents = []
     if (historyMessages) {
-        historyMessages.forEach(message => {
+        historyMessages.forEach((message: any) => {
             contents.push({
                 "role": message["role"],
-                "parts": [{"text": message["content"]}]
+                "content": message["content"]
             })
         });
     }
@@ -161,8 +161,16 @@ export function buildAIContentsFormat(actionText, historyMessages) {
         let message = {"role": "user", "content": actionText}
         contents.push({
             "role": message["role"],
-            "parts": [{"text": message["content"]}]
+            "content": message["content"]
         })
     }
     return contents;
+}
+
+function transformMessagesToContent(messages: any): string {
+    return messages.map((message: any) => message.content ? message.content : message.parts.map((part: any) => part.text).join('\n')).join('\n');
+}
+
+ function extractSystemPrompt(messages: any): string {
+    return messages.parts.map((part: any) => part.text).join('\n')
 }
