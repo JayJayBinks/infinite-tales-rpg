@@ -87,13 +87,14 @@ export class GeminiProvider implements LLMProvider {
                    useSafetySettings: any = this.safetySettings,
                    tryAutoFixJSONError: boolean = true): Promise<any> {
 
+        console.log("calling llm with temperature", temperature)
         const url = `https://text.pollinations.ai/openai`;
         const body = JSON.stringify({
             messages: [
                 { role: 'system', content: extractSystemPrompt(systemInstruction) },
                 { role: 'user', content: transformMessagesToContent(contents) }
             ],
-            temperature: temperature,
+            temperature: Math.max(0, Math.min(temperature, 1.3)),
             model: 'openai',
             seed: Math.floor(Math.random() * 1000000),
             response_format: { type: 'json_object' },
