@@ -1,5 +1,5 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
-import {GeminiProvider} from "../llmProvider";
+import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
 export class GameAgent {
@@ -10,8 +10,22 @@ export class GameAgent {
         this.llmProvider = llmProvider;
     }
 
-    async generateStoryProgression(actionText, customSystemInstruction, historyMessages, storyState, characterState, characterStatsState, derivedGameState) {
+    /**
+     *
+     * @param actionText text from the user action, will be added to the historyMessages
+     * @param additionalActionInput additional text to act as asinge message system instruction, e.g combat, not added to historyMessages
+     * @param customSystemInstruction
+     * @param historyMessages
+     * @param storyState
+     * @param characterState
+     * @param characterStatsState
+     * @param derivedGameState
+     */
+    async generateStoryProgression(actionText, additionalActionInput, customSystemInstruction, historyMessages, storyState, characterState, characterStatsState, derivedGameState) {
         const messages = [...historyMessages];
+        let combinedText = actionText;
+        if(additionalActionInput) combinedText += '\n\n' + additionalActionInput;
+
         let gameAgent = {
             parts: [{"text": systemBehaviour},
                 {"text": stringifyPretty(storyState)},
@@ -31,7 +45,7 @@ export class GameAgent {
             gameAgent.parts.push({"text": customSystemInstruction});
         }
 
-        let contents = this.buildAIContentsFormat(actionText, messages);
+        let contents = buildAIContentsFormat(combinedText, messages);
         return await this.llmProvider.sendToAI(contents, gameAgent);
     }
 
@@ -47,21 +61,7 @@ export class GameAgent {
         return {userMessage, modelMessage};
     }
 
-    private buildAIContentsFormat(actionText, historyMessages) {
-        let contents = []
-        historyMessages.forEach(message => {
-            contents.push({
-                "role": message["role"],
-                "parts": [{"text": message["content"]}]
-            })
-        });
-        let message = {"role": "user", "content": actionText}
-        contents.push({
-            "role": message["role"],
-            "parts": [{"text": message["content"]}]
-        })
-        return contents;
-    }
+
 }
 
 
@@ -98,8 +98,9 @@ Actions:
 
 Combat:
 
-- Combat is slow paced with several turns. An enemy and CHARACTER can not simply be defeated in one or two actions.
-- Let me defeat any NPC if capable.
+- Combat is slow paced and only ends when the hostile NPCs are dead.
+- Never decide on your own that NPCs or CHARACTER die, apply appropriate damage instead. Only the player will tell you when they die.
+- NPCs and CHARACTER can never simply be finished off with a single attack.
 
 NPC Interactions:
 
@@ -132,20 +133,26 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   ],
   "stats_update": [
      #Add this to the JSON if the story implies that the character's stats are altered
-     #At the beginning, the starting HP and MP is listed here
-     #If the story implies that the character dies immediately, apply hp_change of -1000. It must be a dramatic cause, otherwise apply normal damage.
+     #At the beginning, the starting HP and MP is listed here for the player character
     {
+      "sourceId": "id of the NPC which caused this stat update or player_character",
+      "targetId": "id of the NPC to be updated or player_character",
+      "explanation": "Short explanation for the reason of this change",
       "type": "hp_change",
       "value": positive integer if character recovers hp, negative if character looses hp
     },
     {
+      "sourceId": "id of the NPC which caused this stat update or player_character",
+      "targetId": "id of the NPC to be updated or player_character",
+      "explanation": "Short explanation for the reason of this change",
       "type": "mp_change",
       "value": positive integer if character recovers mp, negative if character looses mp
     }
   ],
   "is_character_in_combat": true if CHARACTER is in active combat else false,
-  "targets": List of beings that can be targeted by attacks or spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["name", ...], "friendly": ["name", ...], "neutral": ["name", ...]}
+  "targets": List of NPCs that can be targeted by attacks or spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
   "actions": [
+    # If is_character_in_combat is true append a "Standard Attack" as additional action
     {
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
       "type": "Misc|Attack|Spell|Conversation|Social_Manipulation",
@@ -154,7 +161,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "action_difficulty": "${Object.keys(ActionDifficulty)}",
       "mp_cost": cost of this action, 0 if this action does not use mp
       "dice_roll": {
-        "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an explanation why a modifier is applied or not and how you decided that.",
+        "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an in game story explanation why a modifier is applied or not and how you decided that.",
         # If action_difficulty is difficult apply a bonus.
         "modifier": "none|bonus|malus",
         "modifier_value": positive or negative value (-5 to +5)      

@@ -1,14 +1,30 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
-import {GeminiProvider} from "../llmProvider";
+import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
+import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
-export const abilityFormat = '{"name": "", "effect": "", "mp_cost": "integer"}'
+export const abilityFormat = '{"name": "", "effect": "", "mp_cost": integer}'
 
 export const characterStatsStateForPrompt = {
     resources: 'Starting maximum HP and MP in range 20 - 100, based on overall description of the character. Format: {"MAX_HP": startingHP, "MAX_MP": startingMP}',
     traits: 'list of the beginning traits of the character in following format: {"trait1": startingValue1, "trait2": startingValue2, ...}',
     expertise: 'Traits where CHARACTER has a high value and a positive dice roll modifier format: {"trait1": value between 1-5, "trait2": 1-5, ...}',
     disadvantages: 'Traits where CHARACTER has a low value and a negative dice roll modifier format: {"trait1": value between -1 to -5, "trait2": -1 to -5, ...}',
-    spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. Format: [${abilityFormat}]`,
+    spells_and_abilities: `Array of spells and abilities. List 2-4 actively usable spells and abilities. At last include a 'Standard Attack'. Format: [${abilityFormat}]`,
+}
+
+export const npcRank = [
+    "Very Weak",
+    "Weak",
+    "Average",
+    "Strong",
+    "Boss",
+    "Legendary"
+]
+
+export const npcStatsStateForPrompt = {
+    class: "",
+    rank: "Power ranking of the NPC. Can be one of " + npcRank.join('|'),
+    spells_and_abilities: characterStatsStateForPrompt.spells_and_abilities
 }
 
 export class CharacterStatsAgent {
@@ -39,6 +55,32 @@ export class CharacterStatsAgent {
                 }],
             {parts: [{"text": agentInstruction}]}
         );
+    }
+
+    async generateNPCStats(storyState, historyMessages, npcsToGenerate, customSystemInstruction) {
+        const latestHistoryTextOnly = historyMessages.map(m => m.content).join("\n");
+        let agent = {
+            parts: [
+                {
+                    "text": "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression."
+                },
+                {
+                    "text": "Description of the adventure: " + stringifyPretty(storyState)
+                },
+                {
+                    "text": "Latest story progression:\n" + latestHistoryTextOnly
+                },
+                {
+                    "text": `Most important instruction! You must always respond with following JSON format! 
+                            {"uniqueNpcName": ${stringifyPretty(npcStatsStateForPrompt)}}`
+                },
+            ]
+        }
+        if (customSystemInstruction) {
+            agent.parts.push({"text": customSystemInstruction});
+        }
+        const action = "Generate the following NPCs. You must reuse the names given: " + stringifyPretty(npcsToGenerate);
+        return await this.llmProvider.sendToAI(buildAIContentsFormat(action, undefined), agent);
     }
 
     async generateSingleAbility(storyState, characterState, characterStats, ability) {
