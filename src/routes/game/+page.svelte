@@ -90,7 +90,7 @@
     });
 
     function getAllTargetsAsList(targets) {
-        if (!targets) {
+        if (!targets || !targets.hostile) {
             return []
         }
         return [...targets.hostile, ...targets.neutral, ...targets.friendly];
