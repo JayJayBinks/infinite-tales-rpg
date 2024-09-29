@@ -15,7 +15,8 @@
     import {goto} from "$app/navigation";
 
     let isGeneratingState = $state(false);
-    const apiKeyState = useLocalStorage('apiKeyState');
+    //TODO select provider
+    const apiKeyState = useLocalStorage('apiKeyState', "todo use multiple provider");
     const aiLanguage = useLocalStorage('aiLanguage');
     let storyAgent;
 

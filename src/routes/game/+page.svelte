@@ -32,7 +32,8 @@
     const storyState = useLocalStorage('storyState', initialStoryState);
     const npcState = useLocalStorage('npcState', {});
 
-    const apiKeyState = useLocalStorage('apiKeyState');
+    //TODO select provider
+    const apiKeyState = useLocalStorage('apiKeyState', "todo use multiple provider");
     const temperatureState = useLocalStorage('temperatureState', 1.3);
     const customSystemInstruction = useLocalStorage('customSystemInstruction');
     const aiLanguage = useLocalStorage('aiLanguage');
