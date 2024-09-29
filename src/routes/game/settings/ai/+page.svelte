@@ -10,7 +10,7 @@
     import {goto} from "$app/navigation";
     import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent.ts";
 
-    const temperatureState = useLocalStorage('temperatureState', 1.3);
+    const temperatureState = useLocalStorage('temperatureState', 0.3);
     const customSystemInstruction = useLocalStorage('customSystemInstruction');
     const aiLanguage = useLocalStorage('aiLanguage');
 

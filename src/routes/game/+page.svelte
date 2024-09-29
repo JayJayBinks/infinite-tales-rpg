@@ -34,7 +34,7 @@
 
     //TODO select provider
     const apiKeyState = useLocalStorage('apiKeyState', "todo use multiple provider");
-    const temperatureState = useLocalStorage('temperatureState', 1.3);
+    const temperatureState = useLocalStorage('temperatureState', 0.3);
     const customSystemInstruction = useLocalStorage('customSystemInstruction');
     const aiLanguage = useLocalStorage('aiLanguage');
 
