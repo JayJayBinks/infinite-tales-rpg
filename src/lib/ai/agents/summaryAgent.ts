@@ -25,10 +25,12 @@ export class SummaryAgent {
         let toSummarize = historyMessages.slice(2, (numOfLastActions + 1) * -1);
 
         const text = await this.llmProvider.sendToAI(
-            {
-                "role": "user",
-                "parts": [{"text": "Summarize the following story: \n" + stringifyPretty(toSummarize)}]
-            },
+            [
+                {
+                    "role": "user",
+                    "parts": [{"text": "Summarize the following story: \n" + stringifyPretty(toSummarize)}]
+                }
+            ],
             {parts: [{"text": agent}]},
             1,
             generationConfigText
