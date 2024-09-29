@@ -95,7 +95,7 @@ export class GeminiProvider implements LLMProvider {
                 { role: 'user', content: transformMessagesToContent(contents) }
             ],
             temperature: Math.max(0, Math.min(temperature, 1.3)),
-            model: 'mistral-large',
+            model: 'openai',
             seed: Math.floor(Math.random() * 1000000),
             response_format: { type: 'json_object' },
         });
