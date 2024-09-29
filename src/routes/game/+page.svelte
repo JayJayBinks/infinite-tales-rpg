@@ -53,7 +53,7 @@
     let karmaModifierState = $derived(!useKarmicDice.value ? 0 : diceRollLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState));
 
     let diceRollResultState = $derived(diceRollLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
-    let derivedGameState = $state({currentHP: 0, currentMP: 0})
+    let derivedGameState = $state({currentHP: 10, currentMP: 10})
     const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
     let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent;
