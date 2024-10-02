@@ -39,7 +39,7 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                     return undefined;
                 }
                 let responseText, changeText, resourceText;
-                const mappedType = statsUpdate.type.replace('_change', '').toUpperCase();
+                let mappedType = statsUpdate.type.replace('_change', '').toUpperCase();
                 const color = mappedType.includes('HP') ? 'text-red-500' : mappedType.includes('MP') ? 'text-blue-500' : '';
 
                 if (statsUpdate.targetId.toLowerCase() === 'player_character') {
@@ -52,7 +52,7 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                         changeText = " loose ";
                         resourceText = statsUpdate.value * -1;
                     }
-                    if(!changeText){
+                    if (!changeText) {
                         changeText = ' are '
                     }
                 } else {
@@ -65,19 +65,48 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                         changeText = " looses ";
                         resourceText = statsUpdate.value * -1;
                     }
-                    if(!changeText){
+                    if (!changeText) {
                         changeText = ' is '
                     }
                 }
-                if(!resourceText){
+                if (statsUpdate.type === 'condition_applied') {
+                    resourceText = statsUpdate.conditionId.replace(/_\d+/g, '').replaceAll("_", " ");
+                    mappedType = '';
+                }
+                if (statsUpdate.type === 'condition_removed') {
+                    changeText += 'no longer'
+                    resourceText = statsUpdate.conditionId.replace(/_\d+/g, '').replaceAll("_", " ");
+                    mappedType = '';
+                }
+                if (!resourceText) {
                     resourceText = statsUpdate.value.replaceAll("_", " ");
                 }
                 responseText += changeText;
-                resourceText += " " + mappedType;
+                if (mappedType) resourceText += " " + mappedType;
                 return {text: responseText, resourceText, color};
             }).filter(value => !!value);
     }
     return [];
+}
+
+export function tickOneRound(derivedGameState: any, npcState: any, prohibitNPCChange = false) {
+    Object.keys(derivedGameState.conditions).filter(condId => derivedGameState.conditions[condId].rounds_duration <= 0)
+        .forEach(expiredCondId => {
+            delete derivedGameState.conditions[expiredCondId];
+            console.log('Player is no longer ' + expiredCondId)
+        });
+    Object.keys(derivedGameState.conditions).forEach(condId => derivedGameState.conditions[condId].rounds_duration -= 1);
+    //NPCs already saved, do not tick more than once
+    if(!prohibitNPCChange){
+        Object.keys(npcState).forEach(npcId => Object.keys(npcState[npcId].conditions)
+            .filter(condId => npcState[npcId].conditions[condId].rounds_duration <= 0)
+            .forEach(expiredCondId => {
+                delete npcState[npcId].conditions[expiredCondId]
+                console.log(npcId + ' is no longer ' + expiredCondId)
+            }));
+        Object.keys(npcState).forEach(npcId => Object.keys(npcState[npcId].conditions)
+            .forEach(condId => npcState[npcId].conditions[condId].rounds_duration -= 1));
+    }
 }
 
 export function applyStatsUpdate(derivedGameState: object, npcState: object, state: object, prohibitNPCChange = false) {
@@ -90,6 +119,13 @@ export function applyStatsUpdate(derivedGameState: object, npcState: object, sta
                 case 'mp_change':
                     derivedGameState.currentMP += Number.parseInt(statUpdate.value);
                     break;
+                case 'condition_applied':
+                    derivedGameState.conditions[statUpdate.conditionId] =
+                        {value: statUpdate.value, rounds_duration: statUpdate.rounds_duration};
+                    break;
+                case 'condition_removed':
+                    delete derivedGameState.conditions[statUpdate.conditionId];
+                    break;
             }
         } else {
             if (!prohibitNPCChange) {
@@ -101,6 +137,13 @@ export function applyStatsUpdate(derivedGameState: object, npcState: object, sta
                             break;
                         case 'mp_change':
                             npc.resources.current_mp += Number.parseInt(statUpdate.value);
+                            break;
+                        case 'condition_applied':
+                            npc.conditions[statUpdate.conditionId] =
+                                {value: statUpdate.value, rounds_duration: statUpdate.rounds_duration};
+                            break;
+                        case 'condition_removed':
+                            delete npc.conditions[statUpdate.conditionId];
                             break;
                     }
                 }
@@ -122,6 +165,7 @@ export function applyGameActionStates(derivedGameState, npcState, states: Array<
     for (const state of states) {
         //TODO because of prohibitNPCChange we can not revert actions anymore, introduce derived aswell?
         applyStatsUpdate(derivedGameState, npcState, state, true);
+        tickOneRound(derivedGameState, npcState, true)
     }
 }
 

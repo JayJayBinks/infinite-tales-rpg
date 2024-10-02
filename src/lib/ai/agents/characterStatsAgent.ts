@@ -2,7 +2,7 @@ import {stringifyPretty} from "$lib/util.svelte.ts";
 import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
-export const abilityFormat = '{"name": "", "effect": "", "mp_cost": integer}'
+export const abilityFormat = '{"name": "", "effect": "Clearly state the effect caused. If causing damage include a notation like 2d6", "mp_cost": integer}'
 
 export const characterStatsStateForPrompt = {
     resources: 'Starting maximum HP and MP in range 20 - 100, based on overall description of the character. Format: {"MAX_HP": startingHP, "MAX_MP": startingMP}',
@@ -24,7 +24,8 @@ export const npcRank = [
 export const npcStatsStateForPrompt = {
     class: "",
     rank: "Power ranking of the NPC. Can be one of " + npcRank.join('|'),
-    spells_and_abilities: characterStatsStateForPrompt.spells_and_abilities
+    spells_and_abilities: characterStatsStateForPrompt.spells_and_abilities,
+    conditions: "Always empty object {}"
 }
 
 export class CharacterStatsAgent {
