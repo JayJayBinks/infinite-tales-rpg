@@ -53,7 +53,7 @@
     let karmaModifierState = $derived(!useKarmicDice.value ? 0 : diceRollLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState));
 
     let diceRollResultState = $derived(diceRollLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
-    let derivedGameState = $state({currentHP: 10, currentMP: 10})
+    let derivedGameState = $state({currentHP: 10, currentMP: 10, conditions: {}})
     const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
     let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent;
@@ -105,7 +105,7 @@
                 ...npcState.value[npcName],
             }));
 
-        let determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(playerAction.text, allNpcsDetailsAsList,
+        let determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(playerAction.text, derivedGameState, allNpcsDetailsAsList,
             customSystemInstruction.value, getLatestStoryMessages(), storyState.value);
 
         //need to apply already here to have most recent allResources
@@ -171,13 +171,14 @@
                 //const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
                 // + slowStory
                 let deadNPCs, additionalActionInput, allCombatDeterminedActionsAndStatsUpdate;
+                additionalActionInput = "Current player_character stats: " + stringifyPretty(derivedGameState) + "\n";
                 if (!isGameEnded.value && currentGameActionState.is_character_in_combat) {
                     let combatObject = await getActionPromptForCombat(action);
-                    additionalActionInput = combatObject.additionalActionInput;
+                    additionalActionInput += combatObject.additionalActionInput;
                     allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
                 } else {
                     deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-                    additionalActionInput = getNPCsHealthStatePrompt(deadNPCs);
+                    additionalActionInput += getNPCsHealthStatePrompt(deadNPCs);
                 }
                 console.log(action.text, additionalActionInput);
                 const newState = await gameAgent.generateStoryProgression(action.text, additionalActionInput, customSystemInstruction.value, historyMessagesState.value,
@@ -191,6 +192,8 @@
                         //StatsUpdate did not come from combat agent
                         gameLogic.applyStatsUpdate(derivedGameState, npcState.value, newState);
                     }
+                    const removedConditions = gameLogic.tickOneRound(derivedGameState, npcState.value);
+
                     const {userMessage, modelMessage} = gameAgent.buildHistoryMessages(action.text, newState);
                     console.log(stringifyPretty(newState))
                     historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];

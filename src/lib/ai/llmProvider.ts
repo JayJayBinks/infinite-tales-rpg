@@ -94,9 +94,10 @@ export class GeminiProvider implements LLMProvider {
                 { role: 'system', content: extractSystemPrompt(systemInstruction) },
                 { role: 'user', content: transformMessagesToContent(contents) }
             ],
-            temperature: Math.max(0, Math.min(temperature, 1.3)),
+            temperature: Math.max(0, Math.min(temperature, 0.3)),
             model: 'openai',
             seed: Math.floor(Math.random() * 1000000),
+            //TODO fix summary agent to accept json
             response_format: { type: 'json_object' },
         });
 
@@ -105,7 +106,7 @@ export class GeminiProvider implements LLMProvider {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': useGenerationConfig.responseMimeType,
+                    'Content-Type': 'application/json',
                 },
                 body: body
             });

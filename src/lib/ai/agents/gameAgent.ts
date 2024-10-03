@@ -1,6 +1,7 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
 import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
+import {statsUpdatePromptObject} from "$lib/ai/agents/combatAgent";
 
 export class GameAgent {
 
@@ -131,26 +132,9 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "item_id": "unique id of the item to identify it"
     }
   ],
-  "stats_update": [
-     #Add this to the JSON if the story implies that the character's stats are altered
-     #At the beginning, the starting HP and MP is listed here for the player character
-    {
-      "sourceId": "id of the NPC which caused this stat update or player_character",
-      "targetId": "id of the NPC to be updated or player_character",
-      "explanation": "Short explanation for the reason of this change",
-      "type": "hp_change",
-      "value": positive integer if character recovers hp, negative if character looses hp
-    },
-    {
-      "sourceId": "id of the NPC which caused this stat update or player_character",
-      "targetId": "id of the NPC to be updated or player_character",
-      "explanation": "Short explanation for the reason of this change",
-      "type": "mp_change",
-      "value": positive integer if character recovers mp, negative if character looses mp
-    }
-  ],
+  ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
-  "targets": List of NPCs that can be targeted by attacks or spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
+  "targets": List of NPCs that can be targeted by attacks or friendly spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
   "actions": [
     # If is_character_in_combat is true append a "Standard Attack" as additional action
     {
