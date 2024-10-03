@@ -5,6 +5,7 @@
     import {navigate} from "$lib/util.svelte.ts";
     const difficultyState = useLocalStorage('difficultyState', 'Default');
     let useKarmicDice = useLocalStorage('useKarmicDice', true);
+    let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
 
     const importSavegame = () => {
         importJsonFromFile((parsed) => {
@@ -31,6 +32,12 @@
         <input type="checkbox" id="useKarmicDice" bind:checked={useKarmicDice.value}
                 class="mt-2 m-auto toggle text-center"/>
         <small class="m-auto mt-2 mb-3">If 3 consecutive dice rolls fail, you will get a bonus on the next roll</small>
+    </label>
+    <label class="form-control w-full mt-2">
+        <p>Dynamic Combat</p>
+        <input type="checkbox" id="useDynamicCombat" bind:checked={useDynamicCombat.value}
+               class="mt-2 m-auto toggle text-center"/>
+        <small class="m-auto mt-2 mb-3">Complex combat with NPC stats and reactions, can take many rounds<br>Turn off for quicker story focused combat</small>
     </label>
 
     <button class="btn btn-neutral w-1/2 mt-4"

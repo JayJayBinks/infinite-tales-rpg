@@ -43,7 +43,7 @@
                 <div class="form-control">
                     <label class="label cursor-pointer">
                         <input type="checkbox" class="checkbox" value={target}/>
-                        <span class="capitalize ml-2">{target.toLowerCase().replaceAll("_", " ").replaceAll("id", "")}</span>
+                        <span class="capitalize ml-2">{target.replaceAll("_", " ").replaceAll("id", "")}</span>
                     </label>
                 </div>
             {/each}
@@ -55,7 +55,7 @@
                 <div class="form-control">
                     <label class="label cursor-pointer">
                         <input type="checkbox" class="checkbox" value={target}/>
-                        <span class="capitalize ml-2">{target.toLowerCase().replaceAll("_", " ").replaceAll("id", "")}</span>
+                        <span class="capitalize ml-2">{target.replaceAll("_", " ").replaceAll("id", "")}</span>
                     </label>
                 </div>
             {/each}
@@ -67,7 +67,7 @@
                 <div class="form-control">
                     <label class="label cursor-pointer">
                         <input type="checkbox" class="checkbox" value={target}/>
-                        <span class="capitalize ml-2">{target.toLowerCase().replaceAll("_", " ").replaceAll("id", "")}</span>
+                        <span class="capitalize ml-2">{target.replaceAll("_", " ").replaceAll("id", "")}</span>
                     </label>
                 </div>
             {/each}

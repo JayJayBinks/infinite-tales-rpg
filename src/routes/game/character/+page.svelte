@@ -22,7 +22,7 @@
                     <p><strong>Race:</strong> <span id="race">{characterState.value.race}</span></p>
                     <p><strong>Gender:</strong> <span id="gender">{characterState.value.gender}</span></p>
                     <p><strong>Class:</strong> <span id="class">{characterState.value.class}</span></p>
-                    <p><span id="hpmp">{characterState.value.MAX_HP_MP}</span></p>
+                    <p><span id="hpmp">{stringifyPretty(characterStatsState.value.resources)}</span></p>
                     <p><strong>Alignment:</strong> <span id="alignment">{characterState.value.alignment}</span></p>
                     <p><strong>Background:</strong> <span id="background">{characterState.value.background}</span></p>
                 </div>

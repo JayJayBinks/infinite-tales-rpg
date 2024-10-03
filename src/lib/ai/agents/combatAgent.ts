@@ -1,6 +1,29 @@
 import {stringifyPretty} from "$lib/util.svelte.ts";
 import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
 
+
+export const statsUpdatePromptObject = `
+    "stats_update": [
+        # You must include one object for each action
+        # Do not apply self damage to player_character because of a failed action unless explicitly stated
+        # Also include one object per turn effect like poisoned or bleeding
+        {
+            "sourceId": "NPC id or player_character, which is the initiator of this action",
+            "targetId": "NPC id or player_character, which stats must be updated.",
+            "explanation": "Short explanation for the reason of this change",
+            "type": "hp_change",
+            "value": positive integer if character recovers hp, negative if character looses hp
+        },
+        {
+            "sourceId": "NPC id or player_character, which is the initiator of this action",
+            "targetId": "NPC id or player_character, which stats must be updated.",
+            "explanation": "Short explanation for the reason of this change",
+            "type": "mp_change",
+            "value": positive integer if character recovers mp, negative if character looses mp
+        },
+        ...
+        ]`;
+
 export class CombatAgent {
 
     llmProvider: GeminiProvider;
@@ -30,32 +53,14 @@ export class CombatAgent {
                   "actions": [
                     # You must include one object for each npc and one for the player_character
                     {
-                      "sourceId": "id of the NPC which is taking the action or player_character",
-                      "targetId": "id of the NPC which is targeted or player_character",
+                      "sourceId": "NPC id or player_character, which is the initiator of this action",
+                      "targetId": "NPC id or player_character, which stats must be updated. can be same as sourceId",
                       "text": "description of the action the NPC takes",
                       "explanation": "Short explanation for the reason of this action"
                     },
                     ...
                   ],
-                  "stats_update": [
-                    # You must include one object for each action
-                    # Do not apply sef damage to player_character because of a failed action unless explicitly stated
-                    {
-                      "sourceId": "id of the NPC which caused this stat update or player_character",
-                      "targetId": "id of the NPC to be updated or player_character",
-                      "explanation": "Short explanation for the reason of this change",
-                      "type": "hp_change",
-                      "value": positive integer if character recovers hp, negative if character looses hp
-                    },
-                    {
-                      "sourceId": "id of the NPC which caused this stat update or player_character",
-                      "targetId": "id of the NPC to be updated or player_character",
-                      "explanation": "Short explanation for the reason of this change",
-                      "type": "mp_change",
-                      "value": positive integer if character recovers mp, negative if character looses mp
-                    },
-                    ...
-                  ]
+                  ${statsUpdatePromptObject}
                 }`
                 },
             ]
@@ -67,6 +72,7 @@ export class CombatAgent {
             "Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action." +
             "\n" + stringifyPretty(npcsList);
         let contents = buildAIContentsFormat(action, historyMessages);
+        console.log('combat', action);
         return await this.llmProvider.sendToAI(contents, agent);
     }
 

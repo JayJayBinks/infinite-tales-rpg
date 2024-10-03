@@ -1,4 +1,4 @@
-export const getTargetText = function (targets) {
+export const getTargetPromptAddtition = function (targets) {
     return "\n I target " + targets.join(' and ')
         + "\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended."
         + "\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.";
@@ -56,7 +56,7 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                         changeText = ' are '
                     }
                 } else {
-                    responseText = statsUpdate.targetId.toLowerCase().replaceAll("_", " ").replaceAll("id", "") + " ";
+                    responseText = statsUpdate.targetId.replaceAll("_", " ").replaceAll("id", "") + " ";
                     if (statsUpdate.value > 0) {
                         changeText = " gains ";
                         resourceText = statsUpdate.value;
@@ -126,5 +126,5 @@ export function applyGameActionStates(derivedGameState, npcState, states: Array<
 }
 
 export function getGameEndedMessage() {
-    return "Your tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new tale in the menu."
+    return "Your Tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new Tale in the menu."
 }
