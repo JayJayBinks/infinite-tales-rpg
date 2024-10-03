@@ -200,6 +200,9 @@
                         let combatObject = await getActionPromptForCombat(action);
                         additionalActionInput += combatObject.additionalActionInput;
                         allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
+                    }else{
+                        deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+                        additionalActionInput += getNPCsHealthStatePrompt(deadNPCs);
                     }
                 } else {
                     deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
