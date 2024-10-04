@@ -149,6 +149,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   ],
   ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
+  "targets_explanation": "For each NPC explain why they are or are not present in list of targets",
   "targets": List of NPCs that can be targeted by attacks or friendly spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
   "actions": [
     {
