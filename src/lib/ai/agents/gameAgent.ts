@@ -1,14 +1,14 @@
-import {stringifyPretty} from "$lib/util.svelte.ts";
-import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
+import {stringifyPretty} from "$lib/util.svelte";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
 import {statsUpdatePromptObject} from "$lib/ai/agents/combatAgent";
+import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 
 export class GameAgent {
 
-    llmProvider: GeminiProvider;
+    llm: LLM;
 
-    constructor(llmProvider: GeminiProvider) {
-        this.llmProvider = llmProvider;
+    constructor(llm: LLM) {
+        this.llm = llm;
     }
 
     /**
@@ -22,31 +22,28 @@ export class GameAgent {
      * @param characterStatsState
      * @param derivedGameState
      */
-    async generateStoryProgression(actionText, additionalActionInput, customSystemInstruction, historyMessages, storyState, characterState, characterStatsState, derivedGameState) {
-        const messages = [...historyMessages];
+    async generateStoryProgression(actionText: string, additionalActionInput: string, customSystemInstruction: string, historyMessages: Array<LLMMessage>,
+                                   storyState: object, characterState: object, characterStatsState: object, derivedGameState: object) {
         let combinedText = actionText;
-        if(additionalActionInput) combinedText += '\n\n' + additionalActionInput;
-
-        let gameAgent = {
-            parts: [{"text": systemBehaviour},
-                {"text": stringifyPretty(storyState)},
-                {
-                    "text": "The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc." +
-                        "\n" + stringifyPretty(characterState)
-                },
-                {
-                    "text": "The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
-                        "\n" + stringifyPretty(characterStatsState)
-                },
-                {"text": "The following are the character's CURRENT resources, consider it in your response\n" + stringifyPretty(derivedGameState)},
-                {"text": jsonSystemInstruction},
-            ]
-        }
+        if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
+        const gameAgent = [systemBehaviour,
+            stringifyPretty(storyState),
+            "The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc." +
+            "\n" + stringifyPretty(characterState),
+            "The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
+            "\n" + stringifyPretty(characterStatsState),
+            "The following are the character's CURRENT resources, consider it in your response\n" + stringifyPretty(derivedGameState),
+            jsonSystemInstruction,
+        ];
         if (customSystemInstruction) {
-            gameAgent.parts.push({"text": customSystemInstruction});
+            gameAgent.push(customSystemInstruction);
         }
-        let contents = buildAIContentsFormat(combinedText, messages);
-        return await this.llmProvider.sendToAI(contents, gameAgent);
+        const request: LLMRequest = {
+            userMessage: combinedText,
+            historyMessages: historyMessages,
+            systemInstruction: gameAgent,
+        }
+        return await this.llm.generateContent(request);
     }
 
     getStartingPrompt() {
@@ -55,20 +52,20 @@ export class GameAgent {
             ' CHARACTER starts with some random items.'
     }
 
-    buildHistoryMessages = function (userText, modelStateObject) {
-        const userMessage = {"role": "user", "content": userText}
-        const modelMessage = {"role": "model", "content": stringifyPretty(modelStateObject)}
+    buildHistoryMessages = function (userText: string, modelStateObject: object) {
+        const userMessage: LLMMessage = {"role": "user", "content": userText}
+        const modelMessage: LLMMessage = {"role": "model", "content": stringifyPretty(modelStateObject)}
         return {userMessage, modelMessage};
     }
 
-    getStartingResourcesUpdateObject(hp, mp) {
+    getStartingResourcesUpdateObject(hp: number, mp: number) {
         return {
             stats_update: [{
                 "sourceId": "player_character",
                 "targetId": "player_character",
                 "type": "hp_change",
                 "value": hp
-                },
+            },
                 {
                     "sourceId": "player_character",
                     "targetId": "player_character",

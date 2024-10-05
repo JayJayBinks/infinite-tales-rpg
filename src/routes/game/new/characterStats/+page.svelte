@@ -1,13 +1,9 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
     import {onMount} from "svelte";
-    import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
-    import {characterStateForPrompt} from "$lib/ai/agents/characterAgent.ts";
-    import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
-    import {StoryAgent} from "$lib/ai/agents/storyAgent";
-    import {GeminiProvider} from "$lib/ai/llmProvider";
-    import {navigate, getRowsForTextarea, parseState} from "$lib/util.svelte.ts";
+    import {LLMProvider} from "$lib/ai/llmProvider";
+    import {getRowsForTextarea, navigate, parseState} from "$lib/util.svelte";
     import isEqual from 'lodash.isequal';
     import cloneDeep from "lodash.clonedeep";
     import isPlainObject from 'lodash.isplainobject';
@@ -21,9 +17,9 @@
 
     let characterStatsAgent: CharacterStatsAgent;
     onMount(() => {
-        if (apiKeyState.value) {
-            characterStatsAgent = new CharacterStatsAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
-        }
+        characterStatsAgent = new CharacterStatsAgent(
+            LLMProvider.provideLLM({temperature: 2, apiKey: apiKeyState.value, language: aiLanguage.value})
+        );
     });
     const storyState = useLocalStorage('storyState', initialStoryState);
     const characterState = useLocalStorage('characterState', initialCharacterState);

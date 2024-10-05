@@ -4,7 +4,7 @@
     import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
     import {errorState} from "$lib/state/errorState.svelte.ts";
     import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
-    import {GeminiProvider} from "$lib/ai/llmProvider.ts";
+    import {defaultLLMConfig, LLMProvider} from "$lib/ai/llmProvider";
     import {StoryAgent} from "$lib/ai/agents/storyAgent.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import {goto} from "$app/navigation";
@@ -45,16 +45,17 @@
         }
         clearStates();
         // TODO refactor
-        const storyAgent = new StoryAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
+        const llm = LLMProvider.provideLLM({temperature: 2, apiKey: apiKeyState.value, language: aiLanguage.value});
+        const storyAgent = new StoryAgent(llm);
         isGeneratingState = true;
         const newStoryState = await storyAgent.generateRandomStorySettings();
         if (newStoryState) {
             storyState.value = newStoryState;
-            const characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
-            const newCharacterState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value));
+            const characterAgent = new CharacterAgent(llm);
+            const newCharacterState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value), undefined);
             if (newCharacterState) {
                 characterState.value = newCharacterState;
-                const characterStatsAgent = new CharacterStatsAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
+                const characterStatsAgent = new CharacterStatsAgent(llm);
                 const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(storyState.value, characterState.value);
                 parseState(newCharacterStatsState);
                 if (newCharacterState) {

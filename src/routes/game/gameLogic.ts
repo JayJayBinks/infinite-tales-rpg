@@ -39,7 +39,7 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                     return undefined;
                 }
                 let responseText, changeText, resourceText;
-                const mappedType = statsUpdate.type.replace('_change', '').toUpperCase();
+                const mappedType = statsUpdate.type?.replace('_change', '').toUpperCase() || '';
                 const color = mappedType.includes('HP') ? 'text-red-500' : mappedType.includes('MP') ? 'text-blue-500' : '';
 
                 if (statsUpdate.targetId.toLowerCase() === 'player_character') {
@@ -70,7 +70,7 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                     }
                 }
                 if(!resourceText){
-                    resourceText = statsUpdate.value.replaceAll("_", " ");
+                    resourceText = statsUpdate.value?.replaceAll("_", " ");
                 }
                 responseText += changeText;
                 resourceText += " " + mappedType;

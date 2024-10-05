@@ -1,5 +1,5 @@
-import {stringifyPretty} from "$lib/util.svelte.ts";
-import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
+import {stringifyPretty} from "$lib/util.svelte";
+import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 
 
 export const statsUpdatePromptObject = `
@@ -26,29 +26,23 @@ export const statsUpdatePromptObject = `
 
 export class CombatAgent {
 
-    llmProvider: GeminiProvider;
+    llm: LLM;
 
-    constructor(llmProvider: GeminiProvider) {
-        this.llmProvider = llmProvider;
+    constructor(llm: LLM) {
+        this.llm = llm;
     }
 
     //TODO are effects like stunned etc. considered via historyMessages?
     //TODO far future improvement, include initiative with chain of actions, some actions then are skipped due to stun, death etc.
-    async generateActionsFromContext(actionText, npcsList, customSystemInstruction, historyMessages, storyState) {
-        const agent = {
-            parts: [{
-                "text": "You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
-                    "and what the consequences of these actions are. " +
-                    "\n You must not apply self damage to player_character because of a failed action unless explicitly stated!" +
-                    "\n You must include an action for each NPC from the list. You must also describe one action for the player_character, even if the action is a failure." +
-                    "\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!"
-            },
-                {
-                    "text": "The following is a description of the story setting to keep the actions consistent on." +
-                        "\n" + stringifyPretty(storyState)
-                },
-                {
-                    "text": `Most important instruction! You must always respond with following JSON format! 
+    async generateActionsFromContext(actionText: string, npcsList: Array<object>, customSystemInstruction: string, historyMessages: Array<LLMMessage>, storyState: any) {
+        const agent = ["You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
+        "and what the consequences of these actions are. " +
+        "\n You must not apply self damage to player_character because of a failed action unless explicitly stated!" +
+        "\n You must include an action for each NPC from the list. You must also describe one action for the player_character, even if the action is a failure." +
+        "\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!",
+            "The following is a description of the story setting to keep the actions consistent on." +
+            "\n" + stringifyPretty(storyState),
+            `Most important instruction! You must always respond with following JSON format! 
                  {
                   "actions": [
                     # You must include one object for each npc and one for the player_character
@@ -61,19 +55,21 @@ export class CombatAgent {
                     ...
                   ],
                   ${statsUpdatePromptObject}
-                }`
-                },
-            ]
-        }
+                }`,
+        ];
         if (customSystemInstruction) {
-            agent.parts.push({"text": customSystemInstruction});
+            agent.push(customSystemInstruction);
         }
-        let action = "The player takes following action: " + actionText + "\n" +
+        const action = "The player takes following action: " + actionText + "\n" +
             "Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action." +
             "\n" + stringifyPretty(npcsList);
-        let contents = buildAIContentsFormat(action, historyMessages);
         console.log('combat', action);
-        return await this.llmProvider.sendToAI(contents, agent);
+        const request: LLMRequest = {
+            userMessage: action,
+            historyMessages: historyMessages,
+            systemInstruction: agent
+        }
+        return await this.llm.generateContent(request);
     }
 
 }

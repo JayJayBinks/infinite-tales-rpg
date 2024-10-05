@@ -4,7 +4,6 @@
     import {DifficultyAgent} from "$lib/ai/agents/difficultyAgent.ts";
 
     import {onMount, tick} from "svelte";
-    import {GeminiProvider} from "$lib/ai/llmProvider.ts";
     import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
@@ -21,6 +20,7 @@
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
     import {CombatAgent} from "$lib/ai/agents/combatAgent.ts";
     import {ActionDifficulty} from "./gameLogic.ts";
+    import {defaultLLMConfig, LLMProvider} from "$lib/ai/llmProvider.ts";
 
     let diceBox, svgDice;
     let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
@@ -72,12 +72,17 @@
         });
         diceBox.init();
 
-        const geminiProvider = new GeminiProvider(apiKeyState.value, temperatureState.value, aiLanguage.value, customSystemInstruction.value);
-        gameAgent = new GameAgent(geminiProvider);
-        characterStatsAgent = new CharacterStatsAgent(geminiProvider);
-        combatAgent = new CombatAgent(geminiProvider);
-        difficultyAgent = new DifficultyAgent(geminiProvider);
-        summaryAgent = new SummaryAgent(geminiProvider);
+        const llm = LLMProvider.provideLLM(
+            {
+                temperature: temperatureState.value,
+                language: aiLanguage.value,
+                apiKey: apiKeyState.value,
+            });
+        gameAgent = new GameAgent(llm);
+        characterStatsAgent = new CharacterStatsAgent(llm);
+        combatAgent = new CombatAgent(llm);
+        difficultyAgent = new DifficultyAgent(llm);
+        summaryAgent = new SummaryAgent(llm);
         //Start game when not already started
         if (gameActionsState.value.length === 0) {
             handleStartingStats();
@@ -129,7 +134,7 @@
         let deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
         let aliveNPCs = allNpcsDetailsAsList.filter(npc => npc.resources.current_hp > 0).map(npc => npc.nameId);
         let healthStatePrompt = getNPCsHealthStatePrompt(deadNPCs, aliveNPCs);
-        if(derivedGameState.currentHP > 0) healthStatePrompt += "\n player_character is alive after the attacks!";
+        if (derivedGameState.currentHP > 0) healthStatePrompt += "\n player_character is alive after the attacks!";
         // let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
         //     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): '';
 
@@ -177,7 +182,7 @@
     function getCombatPromptAddition() {
         //TODO rather do this programatically? Keep an eye on if influence future actions, it is not used in the history
         // but very_difficult may not be used anymore even when fight has finished
-        const combatDifficulties = [ActionDifficulty.simple , ActionDifficulty.medium , ActionDifficulty.difficult];
+        const combatDifficulties = [ActionDifficulty.simple, ActionDifficulty.medium, ActionDifficulty.difficult];
         return "\nFor now only use following difficulties: " + combatDifficulties.join('|') +
             "\nFor now only apply bonus to dice_roll";
     }
@@ -200,7 +205,7 @@
                         let combatObject = await getActionPromptForCombat(action);
                         additionalActionInput += combatObject.additionalActionInput;
                         allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
-                    }else{
+                    } else {
                         deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
                         additionalActionInput += getNPCsHealthStatePrompt(deadNPCs);
                     }

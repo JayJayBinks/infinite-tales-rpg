@@ -1,16 +1,14 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
     import {onMount} from "svelte";
-    import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
+    import {CharacterAgent, characterStateForPrompt} from "$lib/ai/agents/characterAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
-    import {characterStateForPrompt} from "$lib/ai/agents/characterAgent.ts";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
-    import {StoryAgent} from "$lib/ai/agents/storyAgent";
-    import {GeminiProvider} from "$lib/ai/llmProvider";
-    import {navigate, getRowsForTextarea} from "$lib/util.svelte.ts";
+    import {getRowsForTextarea, navigate} from "$lib/util.svelte";
     import isEqual from 'lodash.isequal';
     import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
     import {goto} from "$app/navigation";
+    import {LLMProvider} from "$lib/ai/llmProvider";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -18,9 +16,8 @@
 
     let characterAgent: CharacterAgent;
     onMount(() => {
-        if (apiKeyState.value) {
-            characterAgent = new CharacterAgent(new GeminiProvider(apiKeyState.value, 2, aiLanguage.value));
-        }
+        characterAgent = new CharacterAgent(
+            LLMProvider.provideLLM({temperature: 2, apiKey: apiKeyState.value, language: aiLanguage.value}));
     });
     const storyState = useLocalStorage('storyState', initialStoryState);
     const characterState = useLocalStorage('characterState', initialCharacterState);
@@ -46,7 +43,7 @@
         const newState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value), characterInput);
         if (newState) {
             characterState.value[stateValue] = newState[stateValue];
-            if(stateValue === 'appearance'){
+            if (stateValue === 'appearance') {
                 resetImageState = true;
             }
         }
@@ -75,7 +72,7 @@
         Clear All
     </button>
     <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
-        onclick="{() => {navigate('/new/tale')}}"
+            onclick="{() => {navigate('/new/tale')}}"
     >
         Previous Step:<br> Customize Tale
     </button>

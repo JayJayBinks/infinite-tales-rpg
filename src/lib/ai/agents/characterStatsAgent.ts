@@ -1,6 +1,5 @@
-import {stringifyPretty} from "$lib/util.svelte.ts";
-import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
-import {ActionDifficulty} from "../../../routes/game/gameLogic";
+import {stringifyPretty} from "$lib/util.svelte";
+import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 
 export const abilityFormat = '{"name": "", "effect": "Clearly state the effect caused. If causing damage include a notation like 2d6", "mp_cost": integer}'
 
@@ -29,85 +28,79 @@ export const npcStatsStateForPrompt = {
 
 export class CharacterStatsAgent {
 
-    llmProvider: GeminiProvider;
+    llm: LLM;
 
-    constructor(llmProvider: GeminiProvider) {
-        this.llmProvider = llmProvider;
+    constructor(llm: LLM) {
+        this.llm = llm;
     }
 
-    async generateCharacterStats(storyState, characterState, statsOverwrites) {
-        let agentInstruction = "You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n" +
+    async generateCharacterStats(storyState: any, characterState: any, statsOverwrites: any) {
+        const agentInstruction = "You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n" +
             "Always respond with following JSON!\n" +
             stringifyPretty(characterStatsStateForPrompt);
 
-        return await this.llmProvider.sendToAI(
-            [{
+        const request: LLMRequest = {
+            userMessage: "Create the character according to the descriptions and existing stats",
+            historyMessages: [{
                 role: "user",
-                parts: [{"text": "Description of the story: " + stringifyPretty(storyState)}]
+                content: "Description of the story: " + stringifyPretty(storyState)
             },
                 {
                     role: "user",
-                    parts: [{"text": "Description of the character: " + stringifyPretty(characterState)}]
+                    content: "Description of the character: " + stringifyPretty(characterState)
                 },
                 {
                     role: "user",
-                    parts: [{"text": "Already existing stats to be reused: " + stringifyPretty(statsOverwrites)}]
+                    content: "Already existing stats to be reused: " + stringifyPretty(statsOverwrites)
                 }],
-            {parts: [{"text": agentInstruction}]}
-        );
+            systemInstruction: agentInstruction
+        }
+        return await this.llm.generateContent(request);
     }
 
-    async generateNPCStats(storyState, historyMessages, npcsToGenerate, customSystemInstruction) {
-        const latestHistoryTextOnly = historyMessages.map(m => m.content).join("\n");
-        let agent = {
-            parts: [
-                {
-                    "text": "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression."
-                },
-                {
-                    "text": "Description of the adventure: " + stringifyPretty(storyState)
-                },
-                {
-                    "text": "Latest story progression:\n" + latestHistoryTextOnly
-                },
-                {
-                    "text": `Most important instruction! You must always respond with following JSON format! 
-                            {"uniqueNpcName": ${stringifyPretty(npcStatsStateForPrompt)}}`
-                },
-            ]
-        }
+    async generateNPCStats(storyState: any, historyMessages: LLMMessage[], npcsToGenerate: any, customSystemInstruction: string) {
+        const latestHistoryTextOnly = historyMessages.map((m: LLMMessage) => m.content).join("\n");
+        const agent = [
+            "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.",
+            "Description of the adventure: " + stringifyPretty(storyState),
+            "Latest story progression:\n" + latestHistoryTextOnly,
+            `Most important instruction! You must always respond with following JSON format! 
+                            {"uniqueNpcName": ${stringifyPretty(npcStatsStateForPrompt)}}`,
+        ];
         if (customSystemInstruction) {
-            agent.parts.push({"text": customSystemInstruction});
+            agent.push(customSystemInstruction);
         }
         const action = "Generate the following NPCs. You must reuse the names given: " + stringifyPretty(npcsToGenerate);
-        return await this.llmProvider.sendToAI(buildAIContentsFormat(action, undefined), agent);
+        const request: LLMRequest = {
+            userMessage: action,
+            systemInstruction: agent
+        }
+        return await this.llm.generateContent(request);
     }
 
-    async generateSingleAbility(storyState, characterState, characterStats, ability) {
-        let agentInstruction = "You are RPG character stats agent, generating a single new ability for a character according to game system, adventure and character description.\n" +
+    async generateSingleAbility(storyState: any, characterState: any, characterStats: any, ability: any) {
+        const agentInstruction = "You are RPG character stats agent, generating a single new ability for a character according to game system, adventure and character description.\n" +
             "Important instruction! The new ability must be based on the following: " + stringifyPretty(ability) + "\n" +
             "Always respond with following JSON!\n" +
             abilityFormat;
 
-        return await this.llmProvider.sendToAI(
-            [{
+        const request: LLMRequest = {
+            userMessage: "Important! The new ability must be based on the following: " + stringifyPretty(ability),
+            historyMessages: [{
                 role: "user",
-                parts: [{"text": "Description of the story: " + stringifyPretty(storyState)}]
+                content: "Description of the story: " + stringifyPretty(storyState)
             },
                 {
                     role: "user",
-                    parts: [{"text": "Description of the character: " + stringifyPretty(characterState)}]
+                    content: "Description of the character: " + stringifyPretty(characterState)
                 },
                 {
                     role: "user",
-                    parts: [{"text": "Stats of the character: " + stringifyPretty(characterStats)}]
-                },
-                {
-                    role: "user",
-                    parts: [{"text": "Important instruction! The new ability must be based on the following: " + stringifyPretty(ability)}]
+                    content: "Stats of the character: " + stringifyPretty(characterStats)
                 }],
-            {parts: [{"text": agentInstruction}]}
-        );
+            systemInstruction: agentInstruction
+        }
+        return await this.llm.generateContent(request);
     }
 
 }

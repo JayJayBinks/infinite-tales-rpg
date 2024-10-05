@@ -1,6 +1,5 @@
-import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
-import {GeminiProvider} from "../llmProvider";
-
+import {stringifyPretty} from "$lib/util.svelte";
+import type {LLM, LLMRequest} from "$lib/ai/llm";
 
 
 export const characterStateForPrompt = {
@@ -17,29 +16,26 @@ export const characterStateForPrompt = {
 
 export class CharacterAgent {
 
-    llmProvider: GeminiProvider;
+    llm: LLM;
 
-    constructor(llmProvider: GeminiProvider) {
-        this.llmProvider = llmProvider;
+    constructor(llm: LLM) {
+        this.llm = llm;
     }
 
-    async generateCharacterDescription(storyState, characterOverwrites) {
-        let agentInstruction = "You are RPG character agent, describing a character according to game system, adventure and character description.\n" +
+    async generateCharacterDescription(storyState: object, characterOverwrites: object) : Promise<object> {
+        const agentInstruction = "You are RPG character agent, describing a character according to game system, adventure and character description.\n" +
             "Always respond with following JSON!\n" +
             stringifyPretty(characterStateForPrompt);
 
-        let preset = {
+        const preset = {
             ...storyState,
             ...characterOverwrites
         }
-
-        return await this.llmProvider.sendToAI(
-            [{
-                role: "user",
-                parts: [{"text": "Create the character: " + stringifyPretty(preset)}]
-            }],
-            {parts: [{"text": agentInstruction}]}
-        );
+        const request: LLMRequest = {
+            userMessage: "Create the character: " + stringifyPretty(preset),
+            systemInstruction: agentInstruction,
+        }
+        return await this.llm.generateContent(request);
     }
 
 }
