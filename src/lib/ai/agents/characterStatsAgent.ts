@@ -34,26 +34,30 @@ export class CharacterStatsAgent {
         this.llm = llm;
     }
 
-    async generateCharacterStats(storyState: any, characterState: any, statsOverwrites: any) {
+    async generateCharacterStats(storyState: any, characterState: any, statsOverwrites: any = undefined) {
         const agentInstruction = "You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n" +
             "Always respond with following JSON!\n" +
             stringifyPretty(characterStatsStateForPrompt);
 
         const request: LLMRequest = {
             userMessage: "Create the character according to the descriptions and existing stats",
-            historyMessages: [{
-                role: "user",
-                content: "Description of the story: " + stringifyPretty(storyState)
-            },
+            historyMessages: [
+                {
+                    role: "user",
+                    content: "Description of the story: " + stringifyPretty(storyState)
+                },
                 {
                     role: "user",
                     content: "Description of the character: " + stringifyPretty(characterState)
                 },
-                {
-                    role: "user",
-                    content: "Already existing stats to be reused: " + stringifyPretty(statsOverwrites)
-                }],
+            ],
             systemInstruction: agentInstruction
+        }
+        if (statsOverwrites) {
+            request.historyMessages?.push({
+                role: "user",
+                content: "Already existing stats to be reused: " + stringifyPretty(statsOverwrites)
+            })
         }
         return await this.llm.generateContent(request);
     }

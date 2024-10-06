@@ -41,13 +41,14 @@
         }
         isGeneratingState = false;
     }
-    const removeEmptyValues = (object) =>
+    const removeEmptyValues = (object : object) =>
         Object.fromEntries(
             Object.entries(object)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 .filter(([_, value]) => value && Object.keys(value).length > 0)
         )
 
-    const onRandomizeSingle = async (stateValue, deepNested) => {
+    const onRandomizeSingle = async (stateValue : string, deepNested : string = '') => {
         isGeneratingState = true;
         const currentCharacterStats = $state.snapshot(characterStatsState.value);
         if (deepNested) {
@@ -59,6 +60,7 @@
         const singleAbilityOverwritten = filteredOverwrites.spells_and_abilities && filteredOverwrites.spells_and_abilities[deepNested];
         //TODO not generic
         filteredOverwrites.spells_and_abilities = filteredOverwrites.spells_and_abilities &&
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             Object.entries(removeEmptyValues(filteredOverwrites.spells_and_abilities)).map(([_, value]) => value);
         const characterStatsInput = {...currentCharacterStats, ...filteredOverwrites}
 
@@ -101,7 +103,7 @@
     <li class="step step-primary">Stats</li>
     <li class="step cursor-pointer" onclick={nextStepClicked}>Start</li>
 </ul>
-<form class="custom-main grid gap-2 m-6">
+<form class="grid gap-2 m-6">
     <p>Click on Randomize All to generate random Stats based on the Character settings</p>
     <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-3"
             disabled={isGeneratingState}
@@ -125,13 +127,13 @@
     </button>
 
 
-    {#each Object.keys(characterStatsState.value) as stateValue, i}
+    {#each Object.keys(characterStatsState.value) as stateValue}
         <label class="form-control w-full mt-3">
             <details class="collapse collapse-arrow border-base-300 bg-base-200 border">
                 <summary
                         class="collapse-title capitalize items-center text-center">{stateValue.replaceAll('_', ' ')}</summary>
                 <div class="collapse-content">
-                    {#each Object.keys(characterStatsState.value[stateValue]) as statValue, i}
+                    {#each Object.keys(characterStatsState.value[stateValue]) as statValue}
                         <label class="form-control w-full mt-3">
                             {#if isPlainObject(characterStatsState.value[stateValue][statValue])}
                                 <details class="collapse collapse-arrow bg-base-200 border textarea-bordered">
@@ -168,7 +170,7 @@
                                                             if(!characterStatsStateOverwrites[stateValue][statValue]){
                                                                 characterStatsStateOverwrites[stateValue][statValue] = {};
                                                             }
-                                                            characterStatsStateOverwrites[stateValue][statValue][deepNestedValue] = evt.target.value;
+                                                            characterStatsStateOverwrites[stateValue][statValue][deepNestedValue] = evt.target?.value;
                                                         }}"
                                                         class="mt-2 textarea textarea-bordered textarea-md w-full">
                                                      </textarea>

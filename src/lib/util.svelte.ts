@@ -2,17 +2,17 @@ import {errorState} from "./state/errorState.svelte";
 import isPlainObject from 'lodash.isplainobject';
 import isString from 'lodash.isstring';
 
-export function stringifyPretty(object) {
+export function stringifyPretty(object: unknown) {
     return JSON.stringify(object, null, 2);
 }
 
-export function handleError(e) {
+export function handleError(e: string) {
     console.log(e);
     errorState.exception = e;
     errorState.userMessage = e;
 }
 
-export function navigate(path) {
+export function navigate(path: string) {
     const a = document.createElement('a');
     a.href = '/game' + path;
     a.click();
@@ -39,17 +39,19 @@ export const downloadLocalStorageAsJson = () => {
     dlAnchorElem.click();
 }
 
-export const importJsonFromFile = (callback) => {
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+export const importJsonFromFile = (callback: Function) => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'application/json';
     fileInput.click();
-    fileInput.onchange
     fileInput.addEventListener('change', function (event) {
-        const file = event.target.files[0];
+        // @ts-expect-error can never be null
+        const file = (<HTMLInputElement>event.target).files[0];
         if (file) {
             const reader = new FileReader()
             reader.onload = (evt) => {
+                // @ts-expect-error can never be null
                 const parsed = JSON.parse(new TextDecoder("utf-8").decode(evt.target.result));
                 callback(parsed);
             }
@@ -58,15 +60,15 @@ export const importJsonFromFile = (callback) => {
     });
 }
 
-export function getRowsForTextarea(object) {
+export function getRowsForTextarea(object : object) {
     const mappedRows = {};
     if (!object) {
         return undefined;
     }
     Object.keys(object).forEach(key => {
-        if(isPlainObject(object[key])){
+        if (isPlainObject(object[key])) {
             mappedRows[key] = getRowsForTextarea(object[key]);
-        }else{
+        } else {
             const textLength = (object[key] + "").length;
             mappedRows[key] = 2;
             if (textLength >= 100) {
@@ -86,15 +88,14 @@ export function getRowsForTextarea(object) {
     return mappedRows;
 }
 
-export function parseState(newState) {
+export function parseState(newState: object) {
     Object.keys(newState).forEach(key => {
         if (isString(newState[key])) {
-            const parsedValue = JSON.parse(newState[key]);
-            newState[key] = parsedValue;
+            newState[key] = JSON.parse(newState[key]);
         }
     })
 }
 
-export function getRandomInteger(min, max) {
+export function getRandomInteger(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }

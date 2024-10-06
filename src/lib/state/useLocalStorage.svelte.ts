@@ -1,7 +1,7 @@
 import {onMount} from 'svelte';
 import cloneDeep from "lodash.clonedeep";
 
-const useLocalStorage = (key, initialValue = undefined) => {
+const useLocalStorage = (key: string, initialValue?: unknown) => {
 
     function getInitial() {
         return cloneDeep(initialValue);
@@ -11,6 +11,7 @@ const useLocalStorage = (key, initialValue = undefined) => {
     let isMounted = false;
 
     $effect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         value; //needed for triggering effect
         if (isMounted) {
             if (value !== undefined) {
@@ -36,7 +37,7 @@ const useLocalStorage = (key, initialValue = undefined) => {
         reset() {
             value = getInitial();
         },
-        resetProperty(stateRef) {
+        resetProperty(stateRef: string) {
             value[stateRef] = initialValue ? getInitial()[stateRef] : undefined;
         }
     };

@@ -1,14 +1,13 @@
 <script>
-    import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import {navigate, parseState} from "$lib/util.svelte.ts";
-    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
-    import {errorState} from "$lib/state/errorState.svelte.ts";
-    import {CharacterAgent} from "$lib/ai/agents/characterAgent.ts";
-    import {defaultLLMConfig, LLMProvider} from "$lib/ai/llmProvider";
-    import {StoryAgent} from "$lib/ai/agents/storyAgent.ts";
+    import useLocalStorage from "$lib/state/useLocalStorage.svelte";
+    import {navigate, parseState} from "$lib/util.svelte";
+    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates";
+    import {CharacterAgent} from "$lib/ai/agents/characterAgent";
+    import {LLMProvider} from "$lib/ai/llmProvider";
+    import {StoryAgent} from "$lib/ai/agents/storyAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import {goto} from "$app/navigation";
-    import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent.ts";
+    import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent";
 
     const apiKeyState = useLocalStorage('apiKeyState');
     const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -39,12 +38,7 @@
     }
 
     async function onQuickstartNew() {
-        if (!apiKeyState.value) {
-            errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.'
-            return;
-        }
         clearStates();
-        // TODO refactor
         const llm = LLMProvider.provideLLM({temperature: 2, apiKey: apiKeyState.value, language: aiLanguage.value});
         const storyAgent = new StoryAgent(llm);
         isGeneratingState = true;
@@ -52,7 +46,7 @@
         if (newStoryState) {
             storyState.value = newStoryState;
             const characterAgent = new CharacterAgent(llm);
-            const newCharacterState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value), undefined);
+            const newCharacterState = await characterAgent.generateCharacterDescription($state.snapshot(storyState.value));
             if (newCharacterState) {
                 characterState.value = newCharacterState;
                 const characterStatsAgent = new CharacterStatsAgent(llm);
@@ -67,9 +61,9 @@
         isGeneratingState = false;
     }
 
-    function onStartNew() {
+    function onStartCustom() {
         clearStates();
-        navigate('/new/tale')
+        navigate('/new/tale');
     }
 </script>
 
@@ -80,21 +74,22 @@
     <label class="form-control w-full sm:w-2/3">
         <p>Google Gemini API Key</p>
         <input type="text" id="apikey" bind:value={apiKeyState.value}
-               placeholder="Copy your API Key from Google AI Studio and Paste here"
+               placeholder="Copy your API Key from Google AI Studio and paste here"
                class="mt-2 input input-bordered"/>
-        <small class="m-auto mt-2">View the <a target="_blank"
-                                               href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
-                                               class="link text-blue-400 underline">guide to create the API
-            Key</a></small>
+        <small class="m-auto mt-2">View the
+            <a target="_blank"
+               href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
+               class="link text-blue-400 underline">
+                guide to create the API Key</a></small>
     </label>
     <button class="btn btn-accent w-1/2 mt-5 m-auto"
-            onclick="{onQuickstartNew}">
+            onclick={onQuickstartNew}>
         Quickstart:<br>New Random Tale
     </button>
     <small class="m-auto mt-2">Let the AI generate a Tale for you</small>
     <button class="btn btn-neutral m-auto w-1/2 mt-5"
             disabled={!apiKeyState.value}
-            onclick="{onStartNew}">
+            onclick={onStartCustom}>
         New Custom Tale
     </button>
     <small class="m-auto mt-2">Customize any setting of your Tale</small>

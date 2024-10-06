@@ -34,7 +34,7 @@
         return characterDescription;
     }
 
-    const onRandomize = async (evt) => {
+    const onRandomize = async () => {
         isGeneratingState = true;
 
         const newState = await storyAgent.generateRandomStorySettings(storyStateOverwrites, getCharacterDescription());
@@ -78,7 +78,7 @@
     <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
     <li class="step cursor-pointer" onclick={() => goto('character')}>Start</li>
 </ul>
-<form class="custom-main grid gap-2 m-6">
+<form class="grid gap-2 m-6">
     <p>Quickstart: Click on Randomize All to generate a random Tale.</p>
     <p>You can also customize any setting and play the Tale suited to your liking.</p>
     <p>The custom settings will be considered for the Randomize feature.</p>
@@ -110,7 +110,7 @@
         Next Step:<br> Customize Character
     </button>
     {#if storyState.value}
-        {#each Object.keys(storyStateForPrompt) as stateValue, i}
+        {#each Object.keys(storyStateForPrompt) as stateValue}
             <label class="form-control w-full mt-3">
                 <div class=" flex-row capitalize">
                     {stateValue.replaceAll('_', ' ')}

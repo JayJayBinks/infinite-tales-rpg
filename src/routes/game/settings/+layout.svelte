@@ -11,7 +11,7 @@
 </script>
 
 <a href="/">
-    <img src="{logo}" alt="Infinite Tales Logo"
+    <img src={logo} alt="Infinite Tales Logo"
          class="w-1/2 sm:w-1/4 mt-3 m-auto"/>
 </a>
 <nav class="btm-nav bottom-[6vh] h-[7vh] bg-base-300 max-w-7xl ml-auto mr-auto overflow-auto">
@@ -30,12 +30,12 @@
 <div class="mt-8">
     <a target="_blank" href="https://discord.gg/CUvgRQR77y" class="link m-auto flex flex-col items-center ">
         <span>Community Discussion at Discord</span>
-        <img class="w-2/3 sm:w-1/4 mt-3 m-auto" src="{discord}" alt="Discord invite"/>
+        <img class="w-2/3 sm:w-1/4 mt-3 m-auto" src={discord} alt="Discord invite"/>
     </a>
     <a target="_blank" class="link m-auto mt-3 flex flex-col items-center "
        href="https://github.com/JayJayBinks/infinite-tales-rpg">
         <span>Source Code at Github</span>
-        <img class="w-1/4 sm:w-1/12 mt-3 m-auto" src="{github}"
+        <img class="w-1/4 sm:w-1/12 mt-3 m-auto" src={github}
              alt="Github Logo"/>
     </a>
 </div>

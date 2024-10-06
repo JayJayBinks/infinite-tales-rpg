@@ -9,6 +9,7 @@ import {
 } from "@google/generative-ai";
 import {JsonFixingInterceptorAgent} from "./agents/jsonFixingInterceptorAgent";
 import {LLM, type LLMconfig, type LLMMessage, type LLMRequest} from "$lib/ai/llm";
+import {errorState} from "$lib/state/errorState.svelte";
 
 const safetySettings: Array<SafetySetting> = [
     {
@@ -48,6 +49,9 @@ export class GeminiProvider extends LLM {
 
     constructor(llmConfig : LLMconfig) {
         super(llmConfig);
+        if(!llmConfig.apiKey){
+            errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.'
+        }
         this.genAI = new GoogleGenerativeAI(this.llmConfig.apiKey || '');
         this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
     }
@@ -60,6 +64,10 @@ export class GeminiProvider extends LLM {
     }
 
     async generateContent(request: LLMRequest): Promise<any | undefined> {
+        if(!this.llmConfig.apiKey){
+            errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.'
+            return;
+        }
         const contents = this.buildGeminiContentsFormat(request.userMessage, request.historyMessages || []);
         const systemInstruction = this.buildSystemInstruction(request.systemInstruction || this.llmConfig.systemInstruction);
         const model = this.genAI.getGenerativeModel({
@@ -77,7 +85,7 @@ export class GeminiProvider extends LLM {
         try {
             result = await model.generateContent({contents, systemInstruction});
         } catch (e) {
-            handleError(e);
+            handleError(e as string);
             return undefined;
         }
         try {
@@ -99,14 +107,14 @@ export class GeminiProvider extends LLM {
                             console.log("Try json fix with llm agent")
                             return this.jsonFixingInterceptorAgent.fixJSON(responseText, (firstError as SyntaxError).message);
                         }
-                        handleError(firstError);
+                        handleError(firstError as string);
                         return undefined;
                     }
                 }
             }
             return responseText;
         } catch (e) {
-            handleError(e);
+            handleError(e as string);
         }
         return undefined;
     }
@@ -123,7 +131,7 @@ export class GeminiProvider extends LLM {
     }
 
     buildGeminiContentsFormat(actionText: string, historyMessages: Array<LLMMessage>): Content[] {
-        const contents = []
+        const contents: Content[] = []
         if (historyMessages) {
             historyMessages.forEach(message => {
                 contents.push({

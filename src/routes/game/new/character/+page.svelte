@@ -1,6 +1,6 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
     import {onMount} from "svelte";
-    import {CharacterAgent, characterStateForPrompt} from "$lib/ai/agents/characterAgent";
+    import {CharacterAgent, type CharacterState, characterStateForPrompt} from "$lib/ai/agents/characterAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
@@ -23,7 +23,7 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value))
 
-    let characterStateOverwrites = $state({});
+    let characterStateOverwrites : Partial<CharacterState> = $state({});
     let resetImageState = $state(false);
 
     const onRandomize = async () => {
@@ -60,7 +60,7 @@
     <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
     <li class="step cursor-pointer" onclick={() => goto('characterStats')}>Start</li>
 </ul>
-<form class="custom-main grid gap-2 m-6">
+<form class="grid gap-2 m-6">
     <p>Click on Randomize All to generate a random Character based on the Tale settings</p>
     <button class="btn w-3/4 sm:w-1/2 m-auto btn-accent mt-3"
             disabled={isGeneratingState}
@@ -72,21 +72,21 @@
         Clear All
     </button>
     <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
-            onclick="{() => {navigate('/new/tale')}}"
+            onclick={() => {navigate('/new/tale')}}
     >
         Previous Step:<br> Customize Tale
     </button>
     <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
-            onclick="{() => {navigate('/new/characterStats')}}"
+            onclick={() => {navigate('/new/characterStats')}}
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
         Next Step:<br> Customize Stats & Abilities
     </button>
 
 
-    {#each Object.keys(characterState.value) as stateValue, i}
+    {#each Object.keys(characterState.value) as stateValue}
         <label class="form-control w-full mt-3">
-            <div class=" flex-row capitalize">
+            <div class="flex-row capitalize">
                 {stateValue.replaceAll('_', ' ')}
                 {#if characterStateOverwrites[stateValue]}
                     <span class="badge badge-accent ml-2">overwritten</span>
@@ -95,7 +95,7 @@
             <textarea bind:value={characterState.value[stateValue]}
                       rows="{textAreaRowsDerived ? textAreaRowsDerived[stateValue] : 2}"
                       placeholder="{characterStateForPrompt[stateValue]}"
-                      oninput="{(evt) => {characterStateOverwrites[stateValue] = evt.currentTarget.value}}"
+                      oninput={(evt) => {characterStateOverwrites[stateValue] = evt.currentTarget.value}}
                       class="mt-2 textarea textarea-bordered textarea-md w-full">
             </textarea>
         </label>
@@ -121,14 +121,14 @@
                     storageKey='characterImageState'
                     showGenerateButton={true}
                     {resetImageState}
-                    onClickGenerate="{() => {resetImageState = false;}}"
+                    onClickGenerate={() => {resetImageState = false;}}
                     imagePrompt="{characterState.value.gender} {characterState.value.race} {characterState.value.appearance} {storyState.value.general_image_prompt}"
             />
         {/if}
 
     {/each}
     <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
-            onclick="{() => {navigate('/new/characterStats')}}"
+            onclick={() => {navigate('/new/characterStats')}}
             disabled={isEqual(characterState.value, initialCharacterState)}
     >
         Next Step:<br> Customize Stats & Abilities
