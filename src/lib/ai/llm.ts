@@ -30,7 +30,7 @@ export abstract class LLM {
     protected constructor(llmConfig : LLMconfig) {
         this.llmConfig = llmConfig;
     }
-    abstract generateContent(request: LLMRequest) : Promise<any | undefined>;
+    abstract generateContent(request: LLMRequest) : Promise<object | undefined>;
     abstract getDefaultTemperature() : number;
     abstract getMaxTemperature() : number;
 }

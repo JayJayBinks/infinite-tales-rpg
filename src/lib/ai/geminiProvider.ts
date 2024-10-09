@@ -33,7 +33,7 @@ const safetySettings: Array<SafetySetting> = [
 export const defaultGeminiJsonConfig: GenerationConfig = {
     temperature: 1,
     topP: 0.95,
-    topK: 64,
+    topK: 40,
     maxOutputTokens: 8192,
     responseMimeType: "application/json",
 };
@@ -63,7 +63,7 @@ export class GeminiProvider extends LLM {
         return 2;
     }
 
-    async generateContent(request: LLMRequest): Promise<any | undefined> {
+    async generateContent(request: LLMRequest): Promise<object | undefined> {
         if(!this.llmConfig.apiKey){
             errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.'
             return;
@@ -71,7 +71,7 @@ export class GeminiProvider extends LLM {
         const contents = this.buildGeminiContentsFormat(request.userMessage, request.historyMessages || []);
         const systemInstruction = this.buildSystemInstruction(request.systemInstruction || this.llmConfig.systemInstruction);
         const model = this.genAI.getGenerativeModel({
-            model: request.model || this.llmConfig.model || "gemini-1.5-flash-latest",
+            model: request.model || this.llmConfig.model || "gemini-1.5-flash-002",
             generationConfig: {...this.llmConfig.generationConfig, ...request.generationConfig,
                 temperature: Math.min(request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),  this.getMaxTemperature())},
             safetySettings

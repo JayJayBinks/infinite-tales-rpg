@@ -4,10 +4,11 @@
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {LLMProvider} from "$lib/ai/llmProvider";
-    import {downloadLocalStorageAsJson, getRowsForTextarea, importJsonFromFile, navigate} from "$lib/util.svelte";
+    import {getRowsForTextarea, navigate} from "$lib/util.svelte";
     import isEqual from 'lodash.isequal';
-    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates";
+    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
     import {goto} from "$app/navigation";
+    import ImportExportSaveGame from "$lib/components/ImportExportSaveGame.svelte";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -18,7 +19,6 @@
     const textAreaRowsDerived = $derived(getRowsForTextarea(storyState.value))
     let storyStateOverwrites = $state({});
     const characterState = useLocalStorage('characterState', {...initialCharacterState});
-    const characterStatsState = useLocalStorage('characterStatsState', {...initialCharacterStatsState});
 
     onMount(() => {
         storyAgent = new StoryAgent(
@@ -58,15 +58,6 @@
     function handleInput(evt, stateValue) {
         storyStateOverwrites[stateValue] = evt.target.value;
     }
-
-    const importSettings = () => {
-        importJsonFromFile((parsed) => {
-            storyState.value = parsed.storyState;
-            characterState.value = parsed.characterState;
-            characterStatsState.value = parsed.characterStatsState;
-            alert('Import successfull.');
-        });
-    };
 </script>
 
 {#if isGeneratingState}
@@ -97,14 +88,20 @@
             }>
         Clear All
     </button>
-    <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
-            onclick={downloadLocalStorageAsJson}>
-        Export All Settings
-    </button>
-    <button class="btn w-3/4 sm:w-1/2 m-auto btn-neutral"
-            onclick={importSettings}>
-        Import All Settings
-    </button>
+    <ImportExportSaveGame isSaveGame={false}>
+        {#snippet exportButton(onclick)}
+            <button {onclick}
+                    class="btn w-3/4 sm:w-1/2 m-auto btn-neutral">
+                Export Settings
+            </button>
+        {/snippet}
+        {#snippet importButton(onclick)}
+            <button {onclick}
+                    class="btn w-3/4 sm:w-1/2 m-auto btn-neutral">
+                Import Settings
+            </button>
+        {/snippet}
+    </ImportExportSaveGame>
     <button class="btn w-3/4 sm:w-1/2 m-auto btn-primary"
             onclick={() => {navigate('/new/character')}}>
         Next Step:<br> Customize Character

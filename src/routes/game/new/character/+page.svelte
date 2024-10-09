@@ -21,10 +21,17 @@
     });
     const storyState = useLocalStorage('storyState', initialStoryState);
     const characterState = useLocalStorage('characterState', initialCharacterState);
+    let characterStateOverwrites : Partial<CharacterState> = $state({});
     const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value))
 
     let characterStateOverwrites : Partial<CharacterState> = $state({});
     let resetImageState = $state(false);
+
+    let characterAgent: CharacterAgent;
+    onMount(() => {
+        characterAgent = new CharacterAgent(
+            LLMProvider.provideLLM({temperature: 2, apiKey: apiKeyState.value, language: aiLanguage.value}));
+    });
 
     const onRandomize = async () => {
         isGeneratingState = true;

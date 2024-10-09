@@ -4,6 +4,7 @@
     import discord from '$lib/assets/socials/discord-logo-blue.png';
     import github from '$lib/assets/socials/icone-github-jaune.png';
 
+    let {children} = $props();
     let activeUrl = $state('');
     $effect(() => {
         activeUrl = $page.url.pathname;
@@ -25,7 +26,7 @@
     </ul>
 </nav>
 
-<slot></slot>
+{@render children()}
 
 <div class="mt-8">
     <a target="_blank" href="https://discord.gg/CUvgRQR77y" class="link m-auto flex flex-col items-center ">

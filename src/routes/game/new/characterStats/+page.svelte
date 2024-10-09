@@ -136,6 +136,7 @@
                     {#each Object.keys(characterStatsState.value[stateValue]) as statValue}
                         <label class="form-control w-full mt-3">
                             {#if isPlainObject(characterStatsState.value[stateValue][statValue])}
+                                <!-- SpellsAndAbilities TODO refactor or leave for now?-->
                                 <details class="collapse collapse-arrow bg-base-200 border textarea-bordered">
                                     {#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i}
                                         {#if i === 0}
@@ -185,7 +186,9 @@
                                         statValue.replaceAll('_', ' ') : ''}
                                     </button>
                                 </details>
+                                <!-- SpellsAndAbilities -->
                             {:else}
+                                <!-- Resources Traits etc. TODO refactor or leave for now?-->
                                 <div class="flex-row capitalize">
                                     {statValue.replaceAll('_', ' ')}
 
@@ -202,6 +205,7 @@
                                           oninput="{(evt) => {characterStatsStateOverwrites[stateValue][statValue] = evt.currentTarget.value}}"
                                           class="mt-2 textarea textarea-bordered textarea-md w-full">
                                 </textarea>
+                                <!-- Resources Traits etc. -->
                             {/if}
                         </label>
                     {/each}

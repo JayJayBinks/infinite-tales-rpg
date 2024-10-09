@@ -1,18 +1,12 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {difficultyDiceRollModifier} from "../diceRollLogic";
-    import {downloadLocalStorageAsJson, importJsonFromFile, navigate} from "$lib/util.svelte";
+    import {navigate} from "$lib/util.svelte";
+    import ImportExportSaveGame from "$lib/components/ImportExportSaveGame.svelte";
 
     const difficultyState = useLocalStorage('difficultyState', 'Default');
     let useKarmicDice = useLocalStorage('useKarmicDice', true);
     let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
-
-    const importSavegame = () => {
-        importJsonFromFile((parsed) => {
-            Object.keys(parsed).forEach(key => localStorage.setItem(key, JSON.stringify(parsed[key])));
-            alert('Import successfull.');
-        });
-    };
 
 </script>
 
@@ -41,14 +35,20 @@
             Disable for faster, story-focused combat.</small>
     </label>
 
-    <button class="btn btn-neutral w-1/2 mt-4"
-            onclick={downloadLocalStorageAsJson}>
-        Export Tale
-    </button>
-    <button class="btn btn-neutral w-1/2 mt-2"
-            onclick={importSavegame}>
-        Import Tale
-    </button>
+    <ImportExportSaveGame isSaveGame={true}>
+        {#snippet exportButton(onclick)}
+            <button {onclick}
+                    class="btn w-3/4 sm:w-1/2 m-auto btn-neutral mt-4">
+                Export Save Game
+            </button>
+        {/snippet}
+        {#snippet importButton(onclick)}
+            <button {onclick}
+                    class="btn w-3/4 sm:w-1/2 m-auto btn-neutral mt-2">
+                Import Save Game
+            </button>
+        {/snippet}
+    </ImportExportSaveGame>
     <button class="btn btn-neutral w-1/2 mt-2"
             onclick={() => navigate('/new/tale')}>
         View Tale Settings
