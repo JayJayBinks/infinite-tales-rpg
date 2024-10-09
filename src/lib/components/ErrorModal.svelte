@@ -14,7 +14,7 @@
 </dialog>
 
 <script>
-    import {errorState} from "$lib/state/errorState.svelte.ts";
+    import {errorState} from "$lib/state/errorState.svelte";
     let dialog;
     let {onclose} = $props();
 </script>

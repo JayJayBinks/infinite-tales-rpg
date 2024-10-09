@@ -1,6 +1,6 @@
 import type {GenerationConfig, SafetySetting} from "@google/generative-ai";
 
-export interface LLMMessage { role: string, content: string }
+export interface LLMMessage { role: 'user' | 'model', content: string }
 
 export interface LLMRequest {
     userMessage : string,

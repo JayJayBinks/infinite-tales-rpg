@@ -39,7 +39,7 @@
             {#if targets?.hostile?.length === 0}
                 <span class="m-auto mt-2">-</span>
             {/if}
-            {#each targets?.hostile as target, i}
+            {#each targets?.hostile as target}
                 <div class="form-control">
                     <label class="label cursor-pointer">
                         <input type="checkbox" class="checkbox" value={target}/>
@@ -51,7 +51,7 @@
             {#if targets?.friendly?.length === 0}
                 <span class="m-auto mt-2">-</span>
             {/if}
-            {#each targets?.friendly as target, i}
+            {#each targets?.friendly as target}
                 <div class="form-control">
                     <label class="label cursor-pointer">
                         <input type="checkbox" class="checkbox" value={target}/>
@@ -63,7 +63,7 @@
             {#if targets?.neutral?.length === 0}
                 <span class="m-auto mt-2">-</span>
             {/if}
-            {#each targets?.neutral as target, i}
+            {#each targets?.neutral as target}
                 <div class="form-control">
                     <label class="label cursor-pointer">
                         <input type="checkbox" class="checkbox" value={target}/>

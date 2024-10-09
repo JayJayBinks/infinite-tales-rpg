@@ -13,15 +13,8 @@
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
     const aiLanguage = useLocalStorage('aiLanguage');
-
-    let characterAgent: CharacterAgent;
-    onMount(() => {
-        characterAgent = new CharacterAgent(
-            LLMProvider.provideLLM({temperature: 2, apiKey: apiKeyState.value, language: aiLanguage.value}));
-    });
     const storyState = useLocalStorage('storyState', initialStoryState);
     const characterState = useLocalStorage('characterState', initialCharacterState);
-    let characterStateOverwrites : Partial<CharacterState> = $state({});
     const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value))
 
     let characterStateOverwrites : Partial<CharacterState> = $state({});

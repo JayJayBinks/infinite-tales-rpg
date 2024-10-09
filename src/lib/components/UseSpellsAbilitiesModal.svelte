@@ -2,6 +2,7 @@
     import TargetModal from "$lib/components/TargetModal.svelte";
 
     let {abilities, currentMP, targets, onclose, dialogRef = $bindable()} = $props();
+    // eslint-disable-next-line svelte/valid-compile
     let targetModalRef;
     let abilityActionState = $state({});
 
@@ -23,7 +24,7 @@
             <span class="m-auto">Spells & Abilities</span>
             <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
         </form>
-        {#each abilities as ability, i}
+        {#each abilities as ability}
             <label class="form-control w-full mt-3">
                 <details class="collapse collapse-arrow bg-base-200 border textarea-bordered">
                     <summary class="collapse-title capitalize">

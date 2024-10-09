@@ -1,6 +1,6 @@
 <script>
     let disclaimer;
-    let {disclaimerOpen, onAgree} = $props();
+    let {disclaimerOpen = false, onAgree} = $props();
 </script>
 
 <dialog bind:this={disclaimer} open={disclaimerOpen} class="modal z-100" style="background: rgba(0, 0, 0, 0.3);">

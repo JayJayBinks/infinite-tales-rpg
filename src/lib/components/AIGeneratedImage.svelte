@@ -4,11 +4,11 @@
     import {onMount } from 'svelte';
     import LoadingIcon from "$lib/components/LoadingIcon.svelte";
 
-    let {className, storageKey, showGenerateButton = true,
+    let {className = '', storageKey = '', showGenerateButton = true,
         showLoadingSpinner = true,
         onClickGenerate = () => {},
-        resetImageState,
-        imagePrompt} = $props();
+        resetImageState = false,
+        imagePrompt = ''} = $props();
 
     const initialImageState = {
         prompt: imagePrompt,
@@ -26,7 +26,6 @@
     if (storageKey) {
         imageState = useLocalStorage(storageKey, {...initialImageState, prompt: imagePrompt});
     }
-    let imageToReplace;
 
     $effect(() => {
         if(imagePrompt?.trim()){
@@ -60,6 +59,7 @@
                 }
                 imageState.value = newImgState;
             }
+            // @ts-expect-error wrong type here dont care
             aiGeneratedImage.onerror = aiGeneratedImage.onload;
 
             aiGeneratedImage.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(imageState.value.prompt)
@@ -83,7 +83,7 @@
        class:hidden={showLoadingSpinner && imageState.value.isGenerating}
        title={imageState.value.link.title}
        href={imageState.value.link.href}>
-        <img bind:this={imageToReplace}
+        <img
              class="w-[296px] sm:w-[512px] m-auto"
              alt={imageState.value.image.alt}
              src={imageState.value.image.src}>
