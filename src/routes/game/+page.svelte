@@ -1,83 +1,82 @@
 <script>
-    import useLocalStorage from "$lib/state/useLocalStorage.svelte.ts";
-    import {GameAgent} from "$lib/ai/agents/gameAgent.ts";
-    import {DifficultyAgent} from "$lib/ai/agents/difficultyAgent.ts";
+    import useLocalStorage from "$lib/state/useLocalStorage.svelte";
+    import {GameAgent} from "$lib/ai/agents/gameAgent";
+    import {DifficultyAgent} from "$lib/ai/agents/difficultyAgent";
 
     import {onMount, tick} from "svelte";
-    import {handleError, stringifyPretty} from "$lib/util.svelte.ts";
+    import {handleError, stringifyPretty} from "$lib/util.svelte";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import StoryProgressionWithImage from "$lib/components/StoryProgressionWithImage.svelte";
-    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates.ts";
-    import {SummaryAgent} from "$lib/ai/agents/summaryAgent.ts";
-    import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent.ts";
-    import {errorState} from "$lib/state/errorState.svelte.ts";
+    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates";
+    import {SummaryAgent} from "$lib/ai/agents/summaryAgent";
+    import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent";
+    import {errorState} from "$lib/state/errorState.svelte";
     import ErrorDialog from "$lib/components/ErrorModal.svelte";
     import DiceBox from "@3d-dice/dice-box";
-    import * as gameLogic from "./gameLogic.ts";
-    import * as combatLogic from "./combatLogic.ts";
-    import * as diceRollLogic from "./diceRollLogic.ts";
-    import {goto} from "$app/navigation";
+    import * as gameLogic from "./gameLogic";
+    import {ActionDifficulty} from "./gameLogic";
+    import * as combatLogic from "./combatLogic";
+    import * as diceRollLogic from "./diceRollLogic";
     import UseSpellsAbilitiesModal from "$lib/components/UseSpellsAbilitiesModal.svelte";
-    import {CombatAgent} from "$lib/ai/agents/combatAgent.ts";
-    import {ActionDifficulty} from "./gameLogic.ts";
-    import {defaultLLMConfig, LLMProvider} from "$lib/ai/llmProvider.ts";
+    import {CombatAgent} from "$lib/ai/agents/combatAgent";
+    import {LLMProvider} from "$lib/ai/llmProvider";
 
+    //ui declerations
     let diceBox, svgDice;
+    // eslint-disable-next-line svelte/valid-compile
     let diceRollDialog, useSpellsAbilitiesModal, storyDiv, actionsDiv, customActionInput = {};
 
+    //ai state
+    const apiKeyState = useLocalStorage('apiKeyState');
+    const temperatureState = useLocalStorage('temperatureState');
+    const customSystemInstruction = useLocalStorage('customSystemInstruction');
+    const aiLanguage = useLocalStorage('aiLanguage');
+    let isAiGeneratingState = $state(false);
+    let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
+    let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent;
+
+    //game state
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
     const storyState = useLocalStorage('storyState', initialStoryState);
     const npcState = useLocalStorage('npcState', {});
-
-    const apiKeyState = useLocalStorage('apiKeyState');
-    const temperatureState = useLocalStorage('temperatureState', 1.3);
-    const customSystemInstruction = useLocalStorage('customSystemInstruction');
-    const aiLanguage = useLocalStorage('aiLanguage');
-
-    let didAIProcessDiceRollAction = useLocalStorage('didAIProcessDiceRollAction', true);
     let chosenActionState = useLocalStorage('chosenActionState', {});
     let additionalActionInputState = useLocalStorage('additionalActionInputState');
     let isGameEnded = useLocalStorage('isGameEnded', false);
-    let isAiGeneratingState = $state(false);
+    let derivedGameState = $state({currentHP: 0, currentMP: 0})
 
-    const difficultyState = useLocalStorage('difficultyState', 'Default');
-    let diceRollRequiredValueState = $derived(diceRollLogic.getRequiredValue(chosenActionState.value?.action_difficulty, difficultyState.value));
-    let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
-    let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
+    //dice roll state
     let rolledValueState = useLocalStorage('rolledValueState');
     let rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 
     //feature toggles
+    const difficultyState = useLocalStorage('difficultyState', 'Default');
     let useKarmicDice = useLocalStorage('useKarmicDice', true);
     let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
-    let karmaModifierState = $derived(!useKarmicDice.value ? 0 : diceRollLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState));
 
+    //derived states
+    let diceRollRequiredValueState = $derived(diceRollLogic.getRequiredValue(chosenActionState.value?.action_difficulty, difficultyState.value));
+    let modifierReasonState = $derived(chosenActionState.value?.dice_roll?.modifier_explanation);
+    let modifierState = $derived(Number.parseInt(chosenActionState.value?.dice_roll?.modifier_value) || 0);
+    let karmaModifierState = $derived(!useKarmicDice.value ? 0 : diceRollLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState));
     let diceRollResultState = $derived(diceRollLogic.determineDiceRollResult(diceRollRequiredValueState, rolledValueState.value, modifierState + karmaModifierState))
-    let derivedGameState = $state({currentHP: 0, currentMP: 0})
     const currentGameActionState = $derived((gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {});
 
-    let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent;
-
     onMount(async () => {
-        if (!apiKeyState.value) {
-            errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.'
-            goto('game/settings/ai');
-            return;
-        }
-        diceBox = new DiceBox("#dice-box", {
-            assetPath: "/assets/dice-box/", // required
-        });
-        diceBox.init();
-
         const llm = LLMProvider.provideLLM(
             {
                 temperature: temperatureState.value,
                 language: aiLanguage.value,
                 apiKey: apiKeyState.value,
             });
+
+        diceBox = new DiceBox("#dice-box", {
+            assetPath: "/assets/dice-box/", // required
+        });
+        diceBox.init();
+
         gameAgent = new GameAgent(llm);
         characterStatsAgent = new CharacterStatsAgent(llm);
         combatAgent = new CombatAgent(llm);
@@ -187,7 +186,6 @@
             "\nFor now only apply bonus to dice_roll";
     }
 
-    //TODO additionalActionInput is not applied again on reload, save as local state
     async function sendAction(action, rollDice = false, additionalActionInput) {
         additionalActionInputState.value = additionalActionInput;
         try {
@@ -328,7 +326,7 @@
         chosenActionState.value = action;
         await sendAction(action,
             gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
-            gameLogic.getTargetPromptAddtition(targets));
+            gameLogic.getTargetPromptAddition(targets));
         isAiGeneratingState = false;
     }
 </script>

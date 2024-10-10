@@ -2,6 +2,12 @@ import {stringifyPretty} from "$lib/util.svelte";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
 import {statsUpdatePromptObject} from "$lib/ai/agents/combatAgent";
 import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
+import type {CharacterDescription} from "$lib/ai/agents/characterAgent";
+import type {CharacterStats} from "$lib/ai/agents/characterStatsAgent";
+import type {Story} from "$lib/ai/agents/storyAgent";
+
+export type Action = { text: string; action_difficulty: string; type: string; };
+export type DerivedGameState = { currentHP: number, currentMP: number };
 
 export class GameAgent {
 
@@ -23,7 +29,7 @@ export class GameAgent {
      * @param derivedGameState
      */
     async generateStoryProgression(actionText: string, additionalActionInput: string, customSystemInstruction: string, historyMessages: Array<LLMMessage>,
-                                   storyState: object, characterState: object, characterStatsState: object, derivedGameState: object) {
+                                   storyState: Story, characterState: CharacterDescription, characterStatsState: CharacterStats, derivedGameState: DerivedGameState) {
         let combinedText = actionText;
         if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
         const gameAgent = [systemBehaviour,

@@ -37,11 +37,6 @@ export const defaultGeminiJsonConfig: GenerationConfig = {
     maxOutputTokens: 8192,
     responseMimeType: "application/json",
 };
-export const defaultGeminiTextConfig: GenerationConfig = {
-    ...defaultGeminiJsonConfig,
-    maxOutputTokens: 4000,
-    responseMimeType: "text/plain",
-};
 
 export class GeminiProvider extends LLM {
     genAI : GoogleGenerativeAI;

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {mustRollDice} from "./gameLogic.ts";
 
+
+//TODO recreate
 describe('determineDiceRollResult', () => {
     it('should return undefined when required_value is not provided or rolledValue is undefined', () => {
         expect(determineDiceRollResult(12, undefined, 2)).toBeUndefined();

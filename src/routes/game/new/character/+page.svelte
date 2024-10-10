@@ -1,6 +1,6 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
     import {onMount} from "svelte";
-    import {CharacterAgent, type CharacterState, characterStateForPrompt} from "$lib/ai/agents/characterAgent";
+    import {CharacterAgent, type CharacterDescription, characterStateForPrompt} from "$lib/ai/agents/characterAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
@@ -17,7 +17,7 @@
     const characterState = useLocalStorage('characterState', initialCharacterState);
     const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value))
 
-    let characterStateOverwrites : Partial<CharacterState> = $state({});
+    let characterStateOverwrites : Partial<CharacterDescription> = $state({});
     let resetImageState = $state(false);
 
     let characterAgent: CharacterAgent;

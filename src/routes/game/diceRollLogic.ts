@@ -8,7 +8,7 @@ export const difficultyDiceRollModifier = {
 
 export function getRequiredValue(action_difficulty: string | undefined, gameDifficulty: string) {
     let requiredValue = 0;
-    const difficulty: ActionDifficulty = ActionDifficulty[action_difficulty?.toLowerCase()];
+    const difficulty: ActionDifficulty = ActionDifficulty[action_difficulty?.toLowerCase() || 'medium'];
     switch (difficulty) {
         case ActionDifficulty.simple:
             return 0;
@@ -30,7 +30,7 @@ export function getRequiredValue(action_difficulty: string | undefined, gameDiff
     return requiredValue;
 }
 
-export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue) {
+export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue: number) {
     if (!rollDifferenceHistory || rollDifferenceHistory.length < 3) {
         return 0;
     }
@@ -41,17 +41,17 @@ export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredV
     return 0;
 }
 
-export function determineDiceRollResult(required_value, rolledValue, modifier) {
+export function determineDiceRollResult(required_value: number, rolledValue, modifier: string) {
     if (!required_value || !rolledValue) {
         return undefined;
     }
     const evaluatedModifier = isNaN(Number.parseInt(modifier)) ? 0 : Number.parseInt(modifier);
     const evaluatedRolledValue = isNaN(Number.parseInt(rolledValue)) ? 0 : Number.parseInt(rolledValue);
     const evaluatedValue = evaluatedRolledValue + evaluatedModifier;
-    if (rolledValue === 1) {
+    if (evaluatedRolledValue === 1) {
         return 'The action is a critical failure!';
     }
-    if (rolledValue === 20) {
+    if (evaluatedRolledValue === 20) {
         return 'The action is a critical success!';
     }
     const diff = evaluatedValue - required_value;

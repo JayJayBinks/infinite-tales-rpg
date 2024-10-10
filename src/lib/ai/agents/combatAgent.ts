@@ -2,6 +2,7 @@ import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 
 
+export type StatsUpdate = { sourceId: string, targetId: string, value: any, type: string };
 export const statsUpdatePromptObject = `
     "stats_update": [
         # You must include one object for each action

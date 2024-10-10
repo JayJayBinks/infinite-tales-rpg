@@ -12,7 +12,7 @@ Strong	33	65
 Boss	45	90
 Legendary	59	117
 */
-function calculateMaxResource(i, minRandom, maxRandom) {
+function calculateMaxResource(i: number, minRandom: number, maxRandom: number) {
     // Using logarithmic growth
     //TODO boss fight too difficult, limit HP
     if(i > 2){

@@ -7,15 +7,12 @@
     import {onMount} from "svelte";
     import { stringifyPretty } from "$lib/util.svelte";
 
+    let {children} = $props();
     let activeUrl = $state('');
     let hasSubMenu = $state(false);
     $effect(() => {
         activeUrl = $page.url.pathname;
-        if(activeUrl.includes('game/settings')){
-            hasSubMenu = true;
-        }else{
-            hasSubMenu = false;
-        }
+        hasSubMenu = activeUrl.includes('game/settings');
     })
 
     onMount(() => {
@@ -60,7 +57,7 @@
       class:max-h-[85vh]={!hasSubMenu}
       class:lg:max-h-[93vh]={!hasSubMenu}
       class='max-w-7xl ml-auto mr-auto overflow-auto'>
-    <slot></slot>
+    {@render children()}
 </main>
 
 

@@ -1,8 +1,5 @@
-export const getTargetPromptAddtition = function (targets) {
-    return "\n I target " + targets.join(' and ')
-        + "\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended."
-        + "\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.";
-}
+import type {Action} from "$lib/ai/agents/gameAgent";
+import type {StatsUpdate} from "$lib/ai/agents/combatAgent";
 
 export enum ActionDifficulty {
     simple = 'simple',
@@ -11,8 +8,9 @@ export enum ActionDifficulty {
     very_difficult = 'very_difficult'
 }
 
+
 //TODO implement parsing to enums directly from json
-export function mustRollDice(action, isInCombat) {
+export function mustRollDice(action: Action, isInCombat: boolean) {
     const difficulty: ActionDifficulty = ActionDifficulty[action.action_difficulty?.toLowerCase()];
     if (!difficulty || difficulty === ActionDifficulty.simple) {
         return false;
@@ -24,14 +22,20 @@ export function mustRollDice(action, isInCombat) {
     }
 
     const listOfDiceRollingActions = ['attempt', 'try', 'seek', 'search', 'investigate']
-    let includesTrying = listOfDiceRollingActions.some(value => actionText.includes(value));
+    const includesTrying = listOfDiceRollingActions.some(value => actionText.includes(value));
     if (action.type.toLowerCase() === 'social_manipulation' || action.type.toLowerCase() === 'spell') {
         return true;
     }
     return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
-export function renderStatUpdates(statsUpdate: Array<object>) {
+export const getTargetPromptAddition = function (targets: Array<string>) {
+    return "\n I target " + targets.join(' and ')
+        + "\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended."
+        + "\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.";
+}
+
+export function renderStatUpdates(statsUpdate: Array<StatsUpdate>) {
     if (statsUpdate) {
         return statsUpdate.toSorted((a, b) => a.targetId < b.targetId ? -1 : 1)
             .map(statsUpdate => {
@@ -52,7 +56,7 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                         changeText = " loose ";
                         resourceText = statsUpdate.value * -1;
                     }
-                    if(!changeText){
+                    if (!changeText) {
                         changeText = ' are '
                     }
                 } else {
@@ -65,11 +69,11 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
                         changeText = " looses ";
                         resourceText = statsUpdate.value * -1;
                     }
-                    if(!changeText){
+                    if (!changeText) {
                         changeText = ' is '
                     }
                 }
-                if(!resourceText){
+                if (!resourceText) {
                     resourceText = statsUpdate.value?.replaceAll("_", " ");
                 }
                 responseText += changeText;
@@ -80,7 +84,10 @@ export function renderStatUpdates(statsUpdate: Array<object>) {
     return [];
 }
 
-export function applyStatsUpdate(derivedGameState: object, npcState: object, state: object, prohibitNPCChange = false) {
+export function applyStatsUpdate(derivedGameState: {
+    currentHP: number,
+    currentMP: number
+}, npcState: object, state: object, prohibitNPCChange = false) {
     for (const statUpdate of (state.stats_update || [])) {
         if (statUpdate.targetId.toLowerCase() === 'player_character') {
             switch (statUpdate.type) {

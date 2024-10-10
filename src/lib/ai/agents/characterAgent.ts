@@ -1,7 +1,7 @@
 import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMRequest} from "$lib/ai/llm";
 
-export type CharacterState = typeof characterStateForPrompt;
+export type CharacterDescription = typeof characterStateForPrompt;
 export const characterStateForPrompt = {
     name: "",
     class: "",
@@ -21,7 +21,7 @@ export class CharacterAgent {
         this.llm = llm;
     }
 
-    async generateCharacterDescription(storyState: object, characterOverwrites: Partial<CharacterState> | undefined = undefined) : Promise<CharacterState> {
+    async generateCharacterDescription(storyState: object, characterOverwrites: Partial<CharacterDescription> | undefined = undefined) : Promise<CharacterDescription> {
         const agentInstruction = "You are RPG character agent, describing a character according to game system, adventure and character description.\n" +
             "Always respond with following JSON!\n" +
             stringifyPretty(characterStateForPrompt);
@@ -34,7 +34,7 @@ export class CharacterAgent {
             userMessage: "Create the character: " + stringifyPretty(preset),
             systemInstruction: agentInstruction,
         }
-        return await this.llm.generateContent(request);
+        return await this.llm.generateContent(request) as CharacterDescription;
     }
 
 }

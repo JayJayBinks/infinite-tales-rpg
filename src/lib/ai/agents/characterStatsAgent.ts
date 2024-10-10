@@ -1,8 +1,11 @@
 import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
+import type {CharacterDescription} from "$lib/ai/agents/characterAgent";
 
+export type Ability = { name: string, effect: string, mp_cost: string }
 export const abilityFormat = '{"name": "", "effect": "Clearly state the effect caused. If causing damage include a notation like 2d6", "mp_cost": integer}'
 
+export type CharacterStats = typeof characterStatsStateForPrompt;
 export const characterStatsStateForPrompt = {
     resources: 'Starting maximum HP and MP in range 20 - 100, based on overall description of the character. Format: {"MAX_HP": startingHP, "MAX_MP": startingMP}',
     traits: 'list of the beginning traits of the character in following format: {"trait1": startingValue1, "trait2": startingValue2, ...}',
@@ -20,6 +23,8 @@ export const npcRank = [
     "Legendary"
 ]
 
+export type NPC = {uniqueNpcName: NPCStats}
+export type NPCStats = typeof npcStatsStateForPrompt;
 export const npcStatsStateForPrompt = {
     class: "",
     rank: "Power ranking of the NPC. Can be one of " + npcRank.join('|'),
@@ -34,7 +39,7 @@ export class CharacterStatsAgent {
         this.llm = llm;
     }
 
-    async generateCharacterStats(storyState: any, characterState: any, statsOverwrites: any = undefined) {
+    async generateCharacterStats(storyState: any, characterState: CharacterDescription, statsOverwrites: Partial<CharacterStats> | undefined = undefined) : Promise<CharacterStats> {
         const agentInstruction = "You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n" +
             "Always respond with following JSON!\n" +
             stringifyPretty(characterStatsStateForPrompt);
@@ -59,17 +64,17 @@ export class CharacterStatsAgent {
                 content: "Already existing stats to be reused: " + stringifyPretty(statsOverwrites)
             })
         }
-        return await this.llm.generateContent(request);
+        return await this.llm.generateContent(request) as CharacterStats;
     }
 
-    async generateNPCStats(storyState: any, historyMessages: LLMMessage[], npcsToGenerate: any, customSystemInstruction: string) {
+    async generateNPCStats(storyState: any, historyMessages: LLMMessage[], npcsToGenerate: Array<string>, customSystemInstruction: string) : Promise<Array<NPC>> {
         const latestHistoryTextOnly = historyMessages.map((m: LLMMessage) => m.content).join("\n");
         const agent = [
             "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.",
             "Description of the adventure: " + stringifyPretty(storyState),
             "Latest story progression:\n" + latestHistoryTextOnly,
             `Most important instruction! You must always respond with following JSON format! 
-                            {"uniqueNpcName": ${stringifyPretty(npcStatsStateForPrompt)}}`,
+                            [{"uniqueNpcName": ${stringifyPretty(npcStatsStateForPrompt)}}, ...]`,
         ];
         if (customSystemInstruction) {
             agent.push(customSystemInstruction);
@@ -79,10 +84,10 @@ export class CharacterStatsAgent {
             userMessage: action,
             systemInstruction: agent
         }
-        return await this.llm.generateContent(request);
+        return await this.llm.generateContent(request) as Array<NPC>;
     }
 
-    async generateSingleAbility(storyState: any, characterState: any, characterStats: any, ability: any) {
+    async generateSingleAbility(storyState: any, characterState: CharacterDescription, characterStats: CharacterStats, ability: Ability) : Promise<Ability> {
         const agentInstruction = "You are RPG character stats agent, generating a single new ability for a character according to game system, adventure and character description.\n" +
             "Important instruction! The new ability must be based on the following: " + stringifyPretty(ability) + "\n" +
             "Always respond with following JSON!\n" +
@@ -104,7 +109,7 @@ export class CharacterStatsAgent {
                 }],
             systemInstruction: agentInstruction
         }
-        return await this.llm.generateContent(request);
+        return await this.llm.generateContent(request) as Ability;
     }
 
 }

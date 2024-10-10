@@ -1,6 +1,7 @@
 import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMRequest} from "$lib/ai/llm";
 
+export type Story = typeof storyStateForPrompt;
 export const storyStateForPrompt = {
     game: "Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons",
     adventure_and_main_event: "Generate a random adventure with a random main story line. It does not have to be a quest, it can also be an event. It should be extraordinary and not cliche.",
@@ -17,7 +18,7 @@ export class StoryAgent {
         this.llm = llm;
     }
 
-    async generateRandomStorySettings(overwrites = {}, characterDescription = undefined) : Promise<object> {
+    async generateRandomStorySettings(overwrites = {}, characterDescription = undefined) : Promise<Story> {
         const storyAgent = "You are RPG story agent, crafting captivating, limitless GAME experiences using BOOKS, THEME, TONALITY for CHARACTER.\n" +
             "Always respond with following JSON!\n" +
             stringifyPretty(storyStateForPrompt);
@@ -37,7 +38,7 @@ export class StoryAgent {
                 "content": "Character description: " + stringifyPretty(characterDescription)
             })
         }
-        return await this.llm.generateContent(request);
+        return await this.llm.generateContent(request) as Story;
     }
 
 }
