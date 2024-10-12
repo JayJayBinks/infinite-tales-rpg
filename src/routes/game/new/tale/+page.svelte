@@ -1,14 +1,14 @@
-<script>
+<script lang="ts">
     import {onMount} from "svelte";
-    import {StoryAgent, storyStateForPrompt} from "$lib/ai/agents/storyAgent";
+    import {initialStoryState, StoryAgent, storyStateForPrompt} from "$lib/ai/agents/storyAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {LLMProvider} from "$lib/ai/llmProvider";
     import {getRowsForTextarea, navigate} from "$lib/util.svelte";
     import isEqual from 'lodash.isequal';
-    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
     import {goto} from "$app/navigation";
     import ImportExportSaveGame from "$lib/components/ImportExportSaveGame.svelte";
+    import {initialCharacterState} from "$lib/ai/agents/characterAgent";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');

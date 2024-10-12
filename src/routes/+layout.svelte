@@ -1,8 +1,8 @@
-<script>
+<script lang="ts">
     import {inject} from '@vercel/analytics';
     import {injectSpeedInsights} from '@vercel/speed-insights/sveltekit';
 
-    export let data;
+    let {children, data} = $props();
     const mode = data.VERCEL_ENV || 'development';
     if (mode === 'production') {
         injectSpeedInsights();
@@ -10,4 +10,4 @@
     }
 </script>
 
-<slot></slot>
+{@render children()}

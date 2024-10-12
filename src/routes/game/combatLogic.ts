@@ -1,6 +1,5 @@
 import {getRandomInteger} from "$lib/util.svelte";
-import {npcRank} from "$lib/ai/agents/characterStatsAgent";
-
+import {npcRank, type NPCState} from "$lib/ai/agents/characterStatsAgent";
 
 /*
 Logarithmic Modifier Calculation
@@ -29,14 +28,14 @@ function getMaxHPFromRank(rank: string) {
 }
 
 //TODO consider class?
-function getMaxMPFromRank(rank: string) {
+function getMaxMPFromRank(rank: string): number {
     let i = npcRank.indexOf(rank);
     //Average if not found
     if (i === -1) i = 2;
     return calculateMaxResource(i, 7, 13);
 }
 
-export function addResourceValues(npcState: object) {
+export function addResourceValues(npcState: NPCState) {
     Object.keys(npcState).forEach(key => npcState[key] = {
         ...npcState[key],
         resources: {

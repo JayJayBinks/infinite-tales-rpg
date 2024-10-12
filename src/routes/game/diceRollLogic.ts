@@ -6,7 +6,7 @@ export const difficultyDiceRollModifier = {
     Default: 0
 }
 
-export function getRequiredValue(action_difficulty: string | undefined, gameDifficulty: string) {
+export function getRequiredValue(action_difficulty: string | undefined, gameDifficulty: string): number {
     let requiredValue = 0;
     const difficulty: ActionDifficulty = ActionDifficulty[action_difficulty?.toLowerCase() || 'medium'];
     switch (difficulty) {
@@ -30,7 +30,7 @@ export function getRequiredValue(action_difficulty: string | undefined, gameDiff
     return requiredValue;
 }
 
-export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue: number) {
+export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredValue: number): number {
     if (!rollDifferenceHistory || rollDifferenceHistory.length < 3) {
         return 0;
     }
@@ -41,7 +41,7 @@ export function getKarmaModifier(rollDifferenceHistory: Array<number>, requiredV
     return 0;
 }
 
-export function determineDiceRollResult(required_value: number, rolledValue, modifier: string) {
+export function determineDiceRollResult(required_value: number, rolledValue, modifier): string | undefined {
     if (!required_value || !rolledValue) {
         return undefined;
     }

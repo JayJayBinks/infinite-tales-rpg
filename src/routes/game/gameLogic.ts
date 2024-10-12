@@ -1,5 +1,6 @@
-import type {Action} from "$lib/ai/agents/gameAgent";
+import type {Action, DerivedGameState, GameActionState, Targets} from "$lib/ai/agents/gameAgent";
 import type {StatsUpdate} from "$lib/ai/agents/combatAgent";
+import type {NPCState, NPCStats} from "$lib/ai/agents/characterStatsAgent";
 
 export enum ActionDifficulty {
     simple = 'simple',
@@ -8,10 +9,20 @@ export enum ActionDifficulty {
     very_difficult = 'very_difficult'
 }
 
+export function getAllTargetsAsList(targets: Targets) {
+    if (!targets || !targets.hostile) {
+        return []
+    }
+    return [...targets.hostile, ...targets.neutral, ...targets.friendly];
+}
+
+export function getNewNPCs(targets: Targets, npcState: NPCState) {
+    return getAllTargetsAsList(targets).filter(newNPC => !Object.keys(npcState).includes(newNPC));
+}
 
 //TODO implement parsing to enums directly from json
-export function mustRollDice(action: Action, isInCombat: boolean) {
-    const difficulty: ActionDifficulty = ActionDifficulty[action.action_difficulty?.toLowerCase()];
+export function mustRollDice(action: Action, isInCombat?: boolean) {
+    const difficulty: ActionDifficulty = ActionDifficulty[action.action_difficulty?.toLowerCase() || ''];
     if (!difficulty || difficulty === ActionDifficulty.simple) {
         return false;
     }
@@ -23,19 +34,20 @@ export function mustRollDice(action: Action, isInCombat: boolean) {
 
     const listOfDiceRollingActions = ['attempt', 'try', 'seek', 'search', 'investigate']
     const includesTrying = listOfDiceRollingActions.some(value => actionText.includes(value));
-    if (action.type.toLowerCase() === 'social_manipulation' || action.type.toLowerCase() === 'spell') {
+    if (action.type?.toLowerCase() === 'social_manipulation' || action.type?.toLowerCase() === 'spell') {
         return true;
     }
     return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
-export const getTargetPromptAddition = function (targets: Array<string>) {
+export const getTargetPromptAddition = function (targets: string[]) {
     return "\n I target " + targets.join(' and ')
         + "\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended."
         + "\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.";
 }
 
-export function renderStatUpdates(statsUpdate: Array<StatsUpdate>) {
+export type RenderedStatsUpdate = {text: string, resourceText: string, color: string};
+export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<RenderedStatsUpdate> {
     if (statsUpdate) {
         return statsUpdate.toSorted((a, b) => a.targetId < b.targetId ? -1 : 1)
             .map(statsUpdate => {
@@ -84,10 +96,7 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>) {
     return [];
 }
 
-export function applyStatsUpdate(derivedGameState: {
-    currentHP: number,
-    currentMP: number
-}, npcState: object, state: object, prohibitNPCChange = false) {
+export function applyStatsUpdate(derivedGameState: DerivedGameState, npcState: NPCState, state: GameActionState, prohibitNPCChange = false) {
     for (const statUpdate of (state.stats_update || [])) {
         if (statUpdate.targetId.toLowerCase() === 'player_character') {
             switch (statUpdate.type) {
@@ -100,14 +109,18 @@ export function applyStatsUpdate(derivedGameState: {
             }
         } else {
             if (!prohibitNPCChange) {
-                const npc = npcState[statUpdate.targetId];
+                const npc : NPCStats = npcState[statUpdate.targetId];
                 if (npc) {
                     switch (statUpdate.type) {
                         case 'hp_change':
-                            npc.resources.current_hp += Number.parseInt(statUpdate.value);
+                            if(npc.resources){
+                                npc.resources.current_hp += Number.parseInt(statUpdate.value);
+                            }
                             break;
                         case 'mp_change':
-                            npc.resources.current_mp += Number.parseInt(statUpdate.value);
+                            if(npc.resources){
+                                npc.resources.current_mp += Number.parseInt(statUpdate.value);
+                            }
                             break;
                     }
                 }
@@ -116,8 +129,8 @@ export function applyStatsUpdate(derivedGameState: {
     }
 }
 
-export function removeDeadNPCs(npcState) {
-    return Object.keys(npcState).filter(npc => npcState[npc].resources.current_hp <= 0)
+export function removeDeadNPCs(npcState: NPCState): string[] {
+    return Object.keys(npcState).filter(npc => npcState[npc].resources && npcState[npc].resources.current_hp <= 0)
         .map(deadNPC => {
             delete npcState[deadNPC];
             return deadNPC;
@@ -125,7 +138,7 @@ export function removeDeadNPCs(npcState) {
 }
 
 
-export function applyGameActionStates(derivedGameState, npcState, states: Array<object>) {
+export function applyGameActionStates(derivedGameState: DerivedGameState, npcState: NPCState, states: Array<GameActionState>) {
     for (const state of states) {
         //TODO because of prohibitNPCChange we can not revert actions anymore, introduce derived aswell?
         applyStatsUpdate(derivedGameState, npcState, state, true);

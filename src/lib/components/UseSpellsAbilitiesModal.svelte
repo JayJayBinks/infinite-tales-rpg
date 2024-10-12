@@ -1,12 +1,21 @@
-<script>
+<script lang="ts">
     import TargetModal from "$lib/components/TargetModal.svelte";
+    import type {Ability} from "$lib/ai/agents/characterStatsAgent";
+    import type {Action, Targets} from "$lib/ai/agents/gameAgent";
 
-    let {abilities, currentMP, targets, onclose, dialogRef = $bindable()} = $props();
+    let {abilities, currentMP, targets, onclose, dialogRef = $bindable()}: {
+        abilities: Array<Ability>,
+        currentMP: number,
+        targets: Targets,
+        onclose,
+        dialogRef
+    } = $props();
+
     // eslint-disable-next-line svelte/valid-compile
     let targetModalRef;
-    let abilityActionState = $state({});
+    let abilityActionState = $state({} as Action);
 
-    function mapAbilityToAction(ability) {
+    function mapAbilityToAction(ability: Ability) {
         abilityActionState = {
             ...ability,
             type: 'Spell',

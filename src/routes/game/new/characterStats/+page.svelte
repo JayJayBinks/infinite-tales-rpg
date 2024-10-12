@@ -7,9 +7,10 @@
     import isEqual from 'lodash.isequal';
     import cloneDeep from "lodash.clonedeep";
     import isPlainObject from 'lodash.isplainobject';
-    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates";
-    import {CharacterStatsAgent} from "$lib/ai/agents/characterStatsAgent";
+    import {CharacterStatsAgent, initialCharacterStatsState} from "$lib/ai/agents/characterStatsAgent";
     import {goto} from "$app/navigation";
+    import {initialStoryState} from "$lib/ai/agents/storyAgent";
+    import {initialCharacterState} from "$lib/ai/agents/characterAgent";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');

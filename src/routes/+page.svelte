@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import '../app.css';
     import discord from '$lib/assets/socials/discord-logo-blue.png';
     import github from '$lib/assets/socials/icone-github-jaune.png';
@@ -64,5 +64,5 @@
         <p class="mb-2">Favicon is created by <a class="link" href="https://icons8.com" target="_blank">icons8.com</a></p>
     </section>
 
-    <Disclaimer {disclaimerOpen} onAgree="{() => {disclaimerOpen = false; goto('game/settings/ai')}}"></Disclaimer>
+    <Disclaimer {disclaimerOpen} onAgree={() => {disclaimerOpen = false; goto('game/settings/ai')}}></Disclaimer>
 </main>

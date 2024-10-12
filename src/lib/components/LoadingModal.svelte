@@ -1,4 +1,4 @@
-<script>
+<script type="ts">
     import LoadingIcon from "$lib/components/LoadingIcon.svelte";
     let {loadingText = 'Asking the AI'} = $props();
 </script>

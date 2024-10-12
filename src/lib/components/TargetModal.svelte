@@ -1,5 +1,13 @@
-<script>
-    let {targets, abilityActionState, onclose, dialogRef = $bindable()} = $props();
+<script lang="ts">
+    import type {Action, Targets} from "$lib/ai/agents/gameAgent";
+
+    let {targets, abilityActionState, onclose, dialogRef = $bindable()}: {
+        targets: Targets,
+        abilityActionState: Action,
+        onclose,
+        dialogRef
+    } = $props();
+
     let targetForm;
     let customTargetState = $state();
 

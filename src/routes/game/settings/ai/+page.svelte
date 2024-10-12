@@ -1,7 +1,6 @@
 <script>
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {navigate, parseState} from "$lib/util.svelte";
-    import {initialCharacterState, initialCharacterStatsState, initialStoryState} from "$lib/state/initialStates";
     import {CharacterAgent} from "$lib/ai/agents/characterAgent";
     import {LLMProvider} from "$lib/ai/llmProvider";
     import {StoryAgent} from "$lib/ai/agents/storyAgent";
@@ -16,11 +15,11 @@
 
     const gameActionsState = useLocalStorage('gameActionsState', []);
     const historyMessagesState = useLocalStorage('historyMessagesState', []);
-    const characterState = useLocalStorage('characterState', initialCharacterState);
+    const characterState = useLocalStorage('characterState');
     const characterImageState = useLocalStorage('characterImageState');
-    const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
+    const characterStatsState = useLocalStorage('characterStatsState');
     const npcState = useLocalStorage('npcState', []);
-    const storyState = useLocalStorage('storyState', initialStoryState);
+    const storyState = useLocalStorage('storyState');
     const isGameEnded = useLocalStorage('isGameEnded', false);
     const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
     let isGeneratingState = $state(false);

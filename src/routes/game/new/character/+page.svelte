@@ -1,14 +1,14 @@
 <script lang="ts" xmlns="http://www.w3.org/1999/html">
     import {onMount} from "svelte";
-    import {CharacterAgent, type CharacterDescription, characterStateForPrompt} from "$lib/ai/agents/characterAgent";
+    import {CharacterAgent, type CharacterDescription, initialCharacterState} from "$lib/ai/agents/characterAgent";
     import LoadingModal from "$lib/components/LoadingModal.svelte";
     import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
     import useLocalStorage from "$lib/state/useLocalStorage.svelte";
     import {getRowsForTextarea, navigate} from "$lib/util.svelte";
     import isEqual from 'lodash.isequal';
-    import {initialCharacterState, initialStoryState} from "$lib/state/initialStates";
     import {goto} from "$app/navigation";
     import {LLMProvider} from "$lib/ai/llmProvider";
+    import {initialStoryState} from "$lib/ai/agents/storyAgent";
 
     let isGeneratingState = $state(false);
     const apiKeyState = useLocalStorage('apiKeyState');
@@ -94,7 +94,7 @@
             </div>
             <textarea bind:value={characterState.value[stateValue]}
                       rows="{textAreaRowsDerived ? textAreaRowsDerived[stateValue] : 2}"
-                      placeholder="{characterStateForPrompt[stateValue]}"
+                      placeholder=""
                       oninput={(evt) => {characterStateOverwrites[stateValue] = evt.currentTarget.value}}
                       class="mt-2 textarea textarea-bordered textarea-md w-full">
             </textarea>

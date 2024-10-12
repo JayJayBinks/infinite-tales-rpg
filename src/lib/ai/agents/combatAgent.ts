@@ -1,5 +1,7 @@
 import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
+import type {Action, DerivedGameState} from "$lib/ai/agents/gameAgent";
+import {ActionDifficulty} from "../../../routes/game/gameLogic";
 
 
 export type StatsUpdate = { sourceId: string, targetId: string, value: any, type: string };
@@ -71,6 +73,37 @@ export class CombatAgent {
             systemInstruction: agent
         }
         return await this.llm.generateContent(request);
+    }
+
+    getAdditionalActionInput(actions: Array<Action>, deadNPCs: string[], aliveNPCs: string[], derivedGameState: DerivedGameState) {
+        // let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
+        //     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
+        return "\nNPCs can never be finished off with a single attack!" +
+            "\nYou must not apply stats_update for following actions, as this was already done!" +
+            "\nDescribe the following actions in the story progression:\n" + stringifyPretty(actions) +
+            "\n\nMost important! " + this.getNPCsHealthStatePrompt(deadNPCs, aliveNPCs, derivedGameState)
+    }
+
+    getNPCsHealthStatePrompt(deadNPCs: Array<string>, aliveNPCs: Array<string>, derivedGameState?: DerivedGameState) {
+        let text = ''
+        if (aliveNPCs && aliveNPCs.length > 0) {
+            text += '\n ' + "Following NPCs are still alive after the attacks!" +
+                "\n" + stringifyPretty(aliveNPCs)
+        }
+        if (deadNPCs && deadNPCs.length > 0) {
+            text += '\n ' + "Following NPCs have died, describe their death in the story progression." +
+                "\n" + stringifyPretty(deadNPCs)
+        }
+        if (derivedGameState && derivedGameState.currentHP > 0) text += "\n player_character is alive after the attacks!";
+        return text;
+    }
+
+    getCombatPromptAddition() {
+        //TODO rather do this programatically? Keep an eye on if influence future actions, it is not used in the history
+        // but very_difficult may not be used anymore even when fight has finished
+        const combatDifficulties = [ActionDifficulty.simple, ActionDifficulty.medium, ActionDifficulty.difficult];
+        return "\nFor now only use following difficulties: " + combatDifficulties.join('|') +
+            "\nFor now only apply bonus to dice_roll";
     }
 
 }

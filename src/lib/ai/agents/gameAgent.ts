@@ -1,13 +1,32 @@
 import {stringifyPretty} from "$lib/util.svelte";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
-import {statsUpdatePromptObject} from "$lib/ai/agents/combatAgent";
+import {type StatsUpdate, statsUpdatePromptObject} from "$lib/ai/agents/combatAgent";
 import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 import type {CharacterDescription} from "$lib/ai/agents/characterAgent";
 import type {CharacterStats} from "$lib/ai/agents/characterStatsAgent";
 import type {Story} from "$lib/ai/agents/storyAgent";
 
-export type Action = { text: string; action_difficulty: string; type: string; };
+export type Action = { text: string; action_difficulty?: string; type?: string; mp_cost?: number};
 export type DerivedGameState = { currentHP: number, currentMP: number };
+export type Targets = { "hostile": Array<string>, "friendly": Array<string>, "neutral": Array<string> };
+export type GameActionState = {
+    "story": string,
+    "image_prompt": string,
+    "inventory_update": [
+        {
+            "type": string,
+            "item_id": string,
+            "item_added"?: {
+                "description": string,
+                "effect": string,
+            }
+        }
+    ],
+    "stats_update": Array<StatsUpdate>,
+    "is_character_in_combat": boolean,
+    "targets": Targets,
+    "actions": Array<Action>
+}
 
 export class GameAgent {
 
@@ -29,7 +48,7 @@ export class GameAgent {
      * @param derivedGameState
      */
     async generateStoryProgression(actionText: string, additionalActionInput: string, customSystemInstruction: string, historyMessages: Array<LLMMessage>,
-                                   storyState: Story, characterState: CharacterDescription, characterStatsState: CharacterStats, derivedGameState: DerivedGameState) {
+                                   storyState: Story, characterState: CharacterDescription, characterStatsState: CharacterStats, derivedGameState: DerivedGameState) : Promise<GameActionState> {
         let combinedText = actionText;
         if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
         const gameAgent = [systemBehaviour,
@@ -49,7 +68,11 @@ export class GameAgent {
             historyMessages: historyMessages,
             systemInstruction: gameAgent,
         }
-        return await this.llm.generateContent(request);
+        return await this.llm.generateContent(request) as GameActionState;
+    }
+
+   getGameEndedPrompt() {
+        return 'The CHARACTER has fallen to 0 HP and is dying.';
     }
 
     getStartingPrompt() {
@@ -153,7 +176,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "targets_explanation": "For each NPC explain why they are or are not present in list of targets",
-  "targets": List of NPCs that can be targeted by attacks or friendly spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
+  "targets": List of NPCs that can be targeted by attacks or friendly spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]},
   "actions": [
     {
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
@@ -161,7 +184,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "required_trait": "the skill the dice is rolled for",
       "difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
       "action_difficulty": "${Object.keys(ActionDifficulty)}",
-      "mp_cost": cost of this action, 0 if this action does not use mp
+      "mp_cost": cost of this action as integer, 0 if this action does not use mp
       "dice_roll": {
         "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an in game story explanation why a modifier is applied or not and how you decided that.",
         # If action_difficulty is difficult apply a bonus.

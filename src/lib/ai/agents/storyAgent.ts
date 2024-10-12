@@ -2,6 +2,8 @@ import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMRequest} from "$lib/ai/llm";
 
 export type Story = typeof storyStateForPrompt;
+// stringifyPretty(storyStateForPrompt) works because no json included in the values
+//TODO if we remove this as object new tale form placeholder wont work anymore...
 export const storyStateForPrompt = {
     game: "Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons",
     adventure_and_main_event: "Generate a random adventure with a random main story line. It does not have to be a quest, it can also be an event. It should be extraordinary and not cliche.",
@@ -10,6 +12,15 @@ export const storyStateForPrompt = {
     theme: "THEME of the story telling, e.g. world the story is located in",
     tonality: "TONALITY of the story telling, writing style, must fit GAME system",
 };
+
+export const initialStoryState: Story = {
+    game: "",
+    adventure_and_main_event: "",
+    character_simple_description: "",
+    general_image_prompt: "",
+    theme: "",
+    tonality: "",
+}
 
 export class StoryAgent {
 
