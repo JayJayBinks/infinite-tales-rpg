@@ -5,8 +5,8 @@ import type {CharacterStats} from "$lib/ai/agents/characterStatsAgent";
 import type {CharacterDescription} from "$lib/ai/agents/characterAgent";
 
 export type DiceRollDifficulty = {
-    action_difficulty: ActionDifficulty,
-    dice_roll: { modifier: 'none' | 'bonus' | 'malus', modifier_value: number }
+    action_difficulty?: ActionDifficulty,
+    dice_roll?: { modifier: 'none' | 'bonus' | 'malus', modifier_value: number, modifier_explanation: string }
 }
 
 export class DifficultyAgent {
@@ -17,7 +17,7 @@ export class DifficultyAgent {
         this.llm = llm;
     }
 
-    async generateDifficulty(actionText: string, customSystemInstruction: string, historyMessages: Array<LLMMessage>, characterState: CharacterDescription, characterStats: CharacterStats) {
+    async generateDifficulty(actionText: string, customSystemInstruction: string, historyMessages: Array<LLMMessage>, characterState: CharacterDescription, characterStats: CharacterStats) : Promise<DiceRollDifficulty>{
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const {["spells_and_abilities"]: _, ...characterStatsStateMapped} = characterStats;
         const agent = ["You are RPG difficulty agent, the player will try to perform an action " +
@@ -48,7 +48,7 @@ export class DifficultyAgent {
             systemInstruction: agent,
             temperature: this.llm.getDefaultTemperature(),
         }
-        return await this.llm.generateContent(request);
+        return await this.llm.generateContent(request) as DiceRollDifficulty;
     }
 
 }

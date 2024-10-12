@@ -1,6 +1,7 @@
 import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 import type {CharacterDescription} from "$lib/ai/agents/characterAgent";
+import type {Story} from "$lib/ai/agents/storyAgent";
 
 export type Ability = { name: string, effect: string, mp_cost: number }
 export const abilityFormatForPrompt = '{"name": string, "effect": "Clearly state the effect caused. If causing damage include a notation like 2d6", "mp_cost": integer}'
@@ -60,7 +61,7 @@ export class CharacterStatsAgent {
         this.llm = llm;
     }
 
-    async generateCharacterStats(storyState: any, characterState: CharacterDescription, statsOverwrites: Partial<CharacterStats> | undefined = undefined): Promise<CharacterStats> {
+    async generateCharacterStats(storyState: Story, characterState: CharacterDescription, statsOverwrites: Partial<CharacterStats> | undefined = undefined): Promise<CharacterStats> {
         const agentInstruction = "You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n" +
             "Always respond with following JSON!\n" +
             characterStatsStateForPrompt;
@@ -88,7 +89,7 @@ export class CharacterStatsAgent {
         return await this.llm.generateContent(request) as CharacterStats;
     }
 
-    async generateNPCStats(storyState: any, historyMessages: LLMMessage[], npcsToGenerate: Array<string>, customSystemInstruction: string): Promise<NPCState> {
+    async generateNPCStats(storyState: Story, historyMessages: LLMMessage[], npcsToGenerate: Array<string>, customSystemInstruction: string): Promise<NPCState> {
         const latestHistoryTextOnly = historyMessages.map((m: LLMMessage) => m.content).join("\n");
         const agent = [
             "You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.",
@@ -108,7 +109,7 @@ export class CharacterStatsAgent {
         return await this.llm.generateContent(request) as NPCState;
     }
 
-    async generateSingleAbility(storyState: any, characterState: CharacterDescription, characterStats: CharacterStats, ability: Ability): Promise<Ability> {
+    async generateSingleAbility(storyState: Story, characterState: CharacterDescription, characterStats: CharacterStats, ability: Ability): Promise<Ability> {
         const agentInstruction = "You are RPG character stats agent, generating a single new ability for a character according to game system, adventure and character description.\n" +
             "Important instruction! The new ability must be based on the following: " + stringifyPretty(ability) + "\n" +
             "Always respond with following JSON!\n" +

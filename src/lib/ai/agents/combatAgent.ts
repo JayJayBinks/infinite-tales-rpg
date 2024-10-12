@@ -2,6 +2,7 @@ import {stringifyPretty} from "$lib/util.svelte";
 import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 import type {Action, DerivedGameState} from "$lib/ai/agents/gameAgent";
 import {ActionDifficulty} from "../../../routes/game/gameLogic";
+import type {Story} from "$lib/ai/agents/storyAgent";
 
 
 export type StatsUpdate = { sourceId: string, targetId: string, value: any, type: string };
@@ -37,7 +38,7 @@ export class CombatAgent {
 
     //TODO are effects like stunned etc. considered via historyMessages?
     //TODO far future improvement, include initiative with chain of actions, some actions then are skipped due to stun, death etc.
-    async generateActionsFromContext(actionText: string, npcsList: Array<object>, customSystemInstruction: string, historyMessages: Array<LLMMessage>, storyState: any) {
+    async generateActionsFromContext(actionText: string, npcsList: Array<object>, customSystemInstruction: string, historyMessages: Array<LLMMessage>, storyState: Story) {
         const agent = ["You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
         "and what the consequences of these actions are. " +
         "\n You must not apply self damage to player_character because of a failed action unless explicitly stated!" +

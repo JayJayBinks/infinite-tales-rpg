@@ -13,7 +13,7 @@
     </div>
 </dialog>
 
-<script type="ts">
+<script lang="ts">
     import {errorState} from "$lib/state/errorState.svelte";
     let dialog;
     let {onclose} = $props();

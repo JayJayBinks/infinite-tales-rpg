@@ -3,7 +3,7 @@
     import {marked} from "marked";
     import type {RenderedStatsUpdate} from "../../routes/game/gameLogic";
 
-    type Props = { story: string, statsUpdates?: Array<RenderedStatsUpdate>, imagePrompt?: string }
+    type Props = { story: string, statsUpdates?: Array<RenderedStatsUpdate>, imagePrompt?: string };
     let {story, statsUpdates = [], imagePrompt = ''}: Props = $props();
     let rendered = (marked(story) as string).replaceAll('\\n', '<br>').replaceAll(' n ', '<br>').replaceAll('\\&quot;', '&quot;');
 </script>

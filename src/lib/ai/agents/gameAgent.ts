@@ -5,8 +5,9 @@ import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
 import type {CharacterDescription} from "$lib/ai/agents/characterAgent";
 import type {CharacterStats} from "$lib/ai/agents/characterStatsAgent";
 import type {Story} from "$lib/ai/agents/storyAgent";
+import type {DiceRollDifficulty} from "$lib/ai/agents/difficultyAgent";
 
-export type Action = { text: string; action_difficulty?: string; type?: string; mp_cost?: number};
+export type Action = { text: string; action_difficulty?: ActionDifficulty, type?: string; mp_cost?: number} & DiceRollDifficulty;
 export type DerivedGameState = { currentHP: number, currentMP: number };
 export type Targets = { "hostile": Array<string>, "friendly": Array<string>, "neutral": Array<string> };
 export type GameActionState = {

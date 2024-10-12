@@ -1,4 +1,4 @@
-<script type="ts">
+<script lang="ts">
     let disclaimer;
     let {disclaimerOpen = false, onAgree} = $props();
 </script>

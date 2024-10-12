@@ -1,4 +1,4 @@
-<script type="ts">
+<script lang="ts">
     let { additionalClass = '' } = $props()
 </script>
 
