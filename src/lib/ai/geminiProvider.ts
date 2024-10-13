@@ -66,7 +66,7 @@ export class GeminiProvider extends LLM {
         const contents = this.buildGeminiContentsFormat(request.userMessage, request.historyMessages || []);
         const systemInstruction = this.buildSystemInstruction(request.systemInstruction || this.llmConfig.systemInstruction);
         const model = this.genAI.getGenerativeModel({
-            model: request.model || this.llmConfig.model || "gemini-1.5-flash-002",
+            model: request.model || this.llmConfig.model || "gemini-1.5-flash-latest",
             generationConfig: {...this.llmConfig.generationConfig, ...request.generationConfig,
                 temperature: Math.min(request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),  this.getMaxTemperature())},
             safetySettings
@@ -98,7 +98,8 @@ export class GeminiProvider extends LLM {
                         return JSON.parse("{" + responseText.replaceAll("\\", ""));
                         // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     } catch (secondError) {
-                        if (request.tryAutoFixJSONError || this.llmConfig.tryAutoFixJSONError) {
+                        console.log(request.tryAutoFixJSONError)
+                        if (request.tryAutoFixJSONError && this.llmConfig.tryAutoFixJSONError) {
                             console.log("Try json fix with llm agent")
                             return this.jsonFixingInterceptorAgent.fixJSON(responseText, (firstError as SyntaxError).message);
                         }

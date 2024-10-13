@@ -36,11 +36,12 @@
         return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${(rolledValueState.value + modifierState + karmaModifierState) || '?'}`;
     }
 
-    let onRollResult = (evt) => {
+    let onRoll = (evt) => {
         evt.currentTarget.disabled = true;
         diceBox.roll("1d20").then(results => {
             rolledValueState.value = results[0].value;
-            rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2), rolledValueState.value - diceRollRequiredValueState];
+            rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2),
+                (rolledValueState.value + modifierState + karmaModifierState) - diceRollRequiredValueState];
         })
     };
 </script>
@@ -57,7 +58,7 @@
         <button id="roll-dice-button"
                 class="btn btn-ghost m-3 "
                 disabled={!!rolledValueState.value}
-                onclick={onRollResult}>
+                onclick={onRoll}>
             <div class="flex justify-center flex-col items-center">
                 <svg
                         fill="black"
