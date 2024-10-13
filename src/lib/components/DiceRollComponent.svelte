@@ -40,10 +40,15 @@
         evt.currentTarget.disabled = true;
         diceBox.roll("1d20").then(results => {
             rolledValueState.value = results[0].value;
-            rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2),
-                (rolledValueState.value + modifierState + karmaModifierState) - diceRollRequiredValueState];
         })
     };
+
+    const onClose = () => {
+        diceBox.clear();
+        diceRollDialog.close($state.snapshot(diceRollResultState));
+        rollDifferenceHistoryState.value = [...rollDifferenceHistoryState.value.slice(-2),
+            (rolledValueState.value + modifierState + karmaModifierState) - diceRollRequiredValueState];
+    }
 </script>
 
 
@@ -79,7 +84,7 @@
         <p>Result:</p>
         <output id="dice-roll-result" class="mt-2">{getRollResult()}</output>
         <output>{diceRollResultState}</output>
-        <button onclick={() => {diceBox.clear(); diceRollDialog.close($state.snapshot(diceRollResultState))}}
+        <button onclick={onClose}
                 id="dice-rolling-dialog-continue"
                 disabled={!rolledValueState.value}
                 class="btn btn-neutral m-3">Continue
