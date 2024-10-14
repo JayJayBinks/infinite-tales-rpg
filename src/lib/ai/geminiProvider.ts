@@ -98,8 +98,9 @@ export class GeminiProvider extends LLM {
                         return JSON.parse("{" + responseText.replaceAll("\\", ""));
                         // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     } catch (secondError) {
-                        console.log(request.tryAutoFixJSONError)
-                        if (request.tryAutoFixJSONError && this.llmConfig.tryAutoFixJSONError) {
+                        //autofix if true or not set and llm allows it
+                        if ((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined)
+                            && this.llmConfig.tryAutoFixJSONError) {
                             console.log("Try json fix with llm agent")
                             return this.jsonFixingInterceptorAgent.fixJSON(responseText, (firstError as SyntaxError).message);
                         }
