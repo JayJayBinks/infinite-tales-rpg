@@ -114,8 +114,8 @@
 		gameLogic.applyStatsUpdate(derivedGameState, npcState.value, determinedActionsAndStatsUpdate);
 		const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
 		const aliveNPCs = allNpcsDetailsAsList
-			.filter((npc) => npc.resources.current_hp > 0)
-			.map((npc) => npc.nameId);
+			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
+			.map((npc) => npc?.nameId);
 
 		let additionalActionInput = combatAgent.getAdditionalActionInput(
 			determinedActionsAndStatsUpdate.actions,

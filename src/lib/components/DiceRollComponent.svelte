@@ -7,14 +7,13 @@
 
 	type Props = { diceRollDialog; action: Action; resetState: boolean };
 	let { diceRollDialog = $bindable(), action, resetState }: Props = $props();
+
+	let previousActionText: string;
 	const rolledValueState = useLocalStorage('rolledValueState');
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 	const difficultyState = useLocalStorage('difficultyState', 'Default');
 	const useKarmicDice = useLocalStorage('useKarmicDice', true);
-
-	let diceRollRequiredValueState = $derived(
-		diceRollLogic.getRequiredValue(action?.action_difficulty, difficultyState.value)
-	);
+	const diceRollRequiredValueState = useLocalStorage('diceRollRequiredValueState');
 	let modifierReasonState = $derived(action?.dice_roll?.modifier_explanation);
 	let modifierState = $derived(
 		Number.parseInt(action?.dice_roll?.modifier_value as unknown as string) || 0
@@ -22,19 +21,32 @@
 	let karmaModifierState = $derived(
 		!useKarmicDice.value
 			? 0
-			: diceRollLogic.getKarmaModifier(rollDifferenceHistoryState.value, diceRollRequiredValueState)
+			: diceRollLogic.getKarmaModifier(
+					rollDifferenceHistoryState.value,
+					diceRollRequiredValueState.value
+				)
 	);
 	let diceRollResultState = $derived(
 		diceRollLogic.determineDiceRollResult(
-			diceRollRequiredValueState,
+			diceRollRequiredValueState.value,
 			rolledValueState.value,
 			modifierState + karmaModifierState
 		)
 	);
+	let isMounted = $state(false);
 
 	$effect(() => {
 		if (resetState) {
 			rolledValueState.reset();
+			diceRollRequiredValueState.reset();
+		}
+	});
+	$effect(() => {
+		if (isMounted && action && !diceRollRequiredValueState.value && !resetState) {
+			diceRollRequiredValueState.value = diceRollLogic.getRequiredValue(
+				action?.action_difficulty,
+				difficultyState.value
+			);
 		}
 	});
 	let diceBox;
@@ -43,6 +55,7 @@
 			assetPath: '/assets/dice-box/' // required
 		});
 		diceBox.init();
+		isMounted = true;
 	});
 
 	function getRollResult() {
@@ -61,7 +74,7 @@
 		diceRollDialog.close($state.snapshot(diceRollResultState));
 		rollDifferenceHistoryState.value = [
 			...rollDifferenceHistoryState.value.slice(-2),
-			rolledValueState.value + modifierState + karmaModifierState - diceRollRequiredValueState
+			rolledValueState.value + modifierState + karmaModifierState - diceRollRequiredValueState.value
 		];
 	};
 </script>
@@ -76,7 +89,7 @@
 	<div class="modal-box flex flex-col items-center text-center">
 		<p class="mt-3 text-xl">Difficulty class:</p>
 		<output id="dice-roll-difficulty" class="text-xl font-semibold"
-			>{diceRollRequiredValueState}</output
+			>{diceRollRequiredValueState.value}</output
 		>
 
 		<button
