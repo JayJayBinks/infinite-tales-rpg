@@ -11,11 +11,9 @@ export default {
 		}
 	},
 	daisyui: {
-		themes: ["business"],
+		themes: ['business']
 	},
 
-	plugins: [
-		require('@tailwindcss/typography'),
-		require('daisyui'),
-	],
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	plugins: [require('@tailwindcss/typography'), require('daisyui')]
 } as Config;

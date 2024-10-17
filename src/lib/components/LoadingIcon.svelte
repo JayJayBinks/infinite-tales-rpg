@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { additionalClass = '' } = $props()
+	let { additionalClass = '' } = $props();
 </script>
 
 <span class="{additionalClass} loading loading-infinity loading-lg bg-infinity-blue"></span>

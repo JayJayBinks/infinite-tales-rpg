@@ -1,112 +1,130 @@
-import {stringifyPretty} from "$lib/util.svelte";
-import {ActionDifficulty} from "../../../routes/game/gameLogic";
-import {type StatsUpdate, statsUpdatePromptObject} from "$lib/ai/agents/combatAgent";
-import type {LLM, LLMMessage, LLMRequest} from "$lib/ai/llm";
-import type {CharacterDescription} from "$lib/ai/agents/characterAgent";
-import type {CharacterStats} from "$lib/ai/agents/characterStatsAgent";
-import type {Story} from "$lib/ai/agents/storyAgent";
-import type {DiceRollDifficulty} from "$lib/ai/agents/difficultyAgent";
+import { stringifyPretty } from '$lib/util.svelte';
+import { ActionDifficulty } from '../../../routes/game/gameLogic';
+import { type StatsUpdate, statsUpdatePromptObject } from '$lib/ai/agents/combatAgent';
+import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
+import type { Story } from '$lib/ai/agents/storyAgent';
+import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 
-export type Action = { text: string; action_difficulty?: ActionDifficulty, type?: string; mp_cost?: number} & DiceRollDifficulty;
-export type DerivedGameState = { currentHP: number, currentMP: number };
-export type Targets = { "hostile": Array<string>, "friendly": Array<string>, "neutral": Array<string> };
+export type Action = {
+	text: string;
+	action_difficulty?: ActionDifficulty;
+	type?: string;
+	mp_cost?: number;
+} & DiceRollDifficulty;
+export type DerivedGameState = { currentHP: number; currentMP: number };
+export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
-    "story": string,
-    "image_prompt": string,
-    "inventory_update": [
-        {
-            "type": string,
-            "item_id": string,
-            "item_added"?: {
-                "description": string,
-                "effect": string,
-            }
-        }
-    ],
-    "stats_update": Array<StatsUpdate>,
-    "is_character_in_combat": boolean,
-    "targets": Targets,
-    "actions": Array<Action>
-}
+	story: string;
+	image_prompt: string;
+	inventory_update: [
+		{
+			type: string;
+			item_id: string;
+			item_added?: {
+				description: string;
+				effect: string;
+			};
+		}
+	];
+	stats_update: Array<StatsUpdate>;
+	is_character_in_combat: boolean;
+	targets: Targets;
+	actions: Array<Action>;
+};
 
 export class GameAgent {
+	llm: LLM;
 
-    llm: LLM;
+	constructor(llm: LLM) {
+		this.llm = llm;
+	}
 
-    constructor(llm: LLM) {
-        this.llm = llm;
-    }
+	/**
+	 *
+	 * @param actionText text from the user action, will be added to the historyMessages
+	 * @param additionalActionInput additional text to act as asinge message system instruction, e.g combat, not added to historyMessages
+	 * @param customSystemInstruction
+	 * @param historyMessages
+	 * @param storyState
+	 * @param characterState
+	 * @param characterStatsState
+	 * @param derivedGameState
+	 */
+	async generateStoryProgression(
+		actionText: string,
+		additionalActionInput: string,
+		customSystemInstruction: string,
+		historyMessages: Array<LLMMessage>,
+		storyState: Story,
+		characterState: CharacterDescription,
+		characterStatsState: CharacterStats,
+		derivedGameState: DerivedGameState
+	): Promise<GameActionState> {
+		let combinedText = actionText;
+		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
+		const gameAgent = [
+			systemBehaviour,
+			stringifyPretty(storyState),
+			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
+				'\n' +
+				stringifyPretty(characterStatsState),
+			"The following are the character's CURRENT resources, consider it in your response\n" +
+				stringifyPretty(derivedGameState),
+			jsonSystemInstruction
+		];
+		if (customSystemInstruction) {
+			gameAgent.push(customSystemInstruction);
+		}
+		const request: LLMRequest = {
+			userMessage: combinedText,
+			historyMessages: historyMessages,
+			systemInstruction: gameAgent
+		};
+		return (await this.llm.generateContent(request)) as GameActionState;
+	}
 
-    /**
-     *
-     * @param actionText text from the user action, will be added to the historyMessages
-     * @param additionalActionInput additional text to act as asinge message system instruction, e.g combat, not added to historyMessages
-     * @param customSystemInstruction
-     * @param historyMessages
-     * @param storyState
-     * @param characterState
-     * @param characterStatsState
-     * @param derivedGameState
-     */
-    async generateStoryProgression(actionText: string, additionalActionInput: string, customSystemInstruction: string, historyMessages: Array<LLMMessage>,
-                                   storyState: Story, characterState: CharacterDescription, characterStatsState: CharacterStats, derivedGameState: DerivedGameState) : Promise<GameActionState> {
-        let combinedText = actionText;
-        if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
-        const gameAgent = [systemBehaviour,
-            stringifyPretty(storyState),
-            "The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc." +
-            "\n" + stringifyPretty(characterState),
-            "The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
-            "\n" + stringifyPretty(characterStatsState),
-            "The following are the character's CURRENT resources, consider it in your response\n" + stringifyPretty(derivedGameState),
-            jsonSystemInstruction,
-        ];
-        if (customSystemInstruction) {
-            gameAgent.push(customSystemInstruction);
-        }
-        const request: LLMRequest = {
-            userMessage: combinedText,
-            historyMessages: historyMessages,
-            systemInstruction: gameAgent,
-        }
-        return await this.llm.generateContent(request) as GameActionState;
-    }
+	getGameEndedPrompt() {
+		return 'The CHARACTER has fallen to 0 HP and is dying.';
+	}
 
-   getGameEndedPrompt() {
-        return 'The CHARACTER has fallen to 0 HP and is dying.';
-    }
+	getStartingPrompt() {
+		return (
+			'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
+			'  At the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
+			' CHARACTER starts with some random items.'
+		);
+	}
 
-    getStartingPrompt() {
-        return 'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
-            '  At the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
-            ' CHARACTER starts with some random items.'
-    }
+	buildHistoryMessages = function (userText: string, modelStateObject: object) {
+		const userMessage: LLMMessage = { role: 'user', content: userText };
+		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
+		return { userMessage, modelMessage };
+	};
 
-    buildHistoryMessages = function (userText: string, modelStateObject: object) {
-        const userMessage: LLMMessage = {"role": "user", "content": userText}
-        const modelMessage: LLMMessage = {"role": "model", "content": stringifyPretty(modelStateObject)}
-        return {userMessage, modelMessage};
-    }
-
-    getStartingResourcesUpdateObject(hp: number, mp: number) {
-        return {
-            stats_update: [{
-                "sourceId": "player_character",
-                "targetId": "player_character",
-                "type": "hp_change",
-                "value": hp
-            },
-                {
-                    "sourceId": "player_character",
-                    "targetId": "player_character",
-                    "type": "mp_change",
-                    "value": mp
-                }]
-        }
-    }
-
+	getStartingResourcesUpdateObject(hp: number, mp: number) {
+		return {
+			stats_update: [
+				{
+					sourceId: 'player_character',
+					targetId: 'player_character',
+					type: 'hp_change',
+					value: hp
+				},
+				{
+					sourceId: 'player_character',
+					targetId: 'player_character',
+					type: 'mp_change',
+					value: mp
+				}
+			]
+		};
+	}
 }
-
 
 const systemBehaviour = `
 You are a Pen & Paper Game Master, crafting captivating, limitless GAME experiences using ADVENTURE_AND_MAIN_EVENT, THEME, TONALITY for CHARACTER.
