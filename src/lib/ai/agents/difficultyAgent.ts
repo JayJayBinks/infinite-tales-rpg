@@ -1,34 +1,46 @@
-import {stringifyPretty} from "$lib/util.svelte.ts";
-import {buildAIContentsFormat, GeminiProvider} from "../llmProvider";
-import {ActionDifficulty} from "../../../routes/game/gameLogic";
+import { stringifyPretty } from '$lib/util.svelte';
+import { ActionDifficulty } from '../../../routes/game/gameLogic';
+import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
+import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+
+export type DiceRollDifficulty = {
+	action_difficulty?: ActionDifficulty;
+	dice_roll?: {
+		modifier: 'none' | 'bonus' | 'malus';
+		modifier_value: number;
+		modifier_explanation: string;
+	};
+};
 
 export class DifficultyAgent {
+	llm: LLM;
 
-    llmProvider: GeminiProvider;
+	constructor(llm: LLM) {
+		this.llm = llm;
+	}
 
-    constructor(llmProvider: GeminiProvider) {
-        this.llmProvider = llmProvider;
-    }
-
-    async generateDifficulty(actionText, customSystemInstruction, historyMessages, characterState, characterStatsState) {
-        let {["spells_and_abilities"]: _, ...characterStatsStateMapped} = characterStatsState;
-        let agent = {
-            parts: [{
-                "text": "You are RPG difficulty agent, the player will try to perform an action " +
-                    "and you determine how difficult it is in the current situation, considering the story, action effect, number of targets and character description. " +
-                    " The difficulty increases with more targets. If player_character is in combat apply a bonus to dice_roll" +
-                    " Any action is allowed to target anything per game rules."
-            },
-                {
-                    "text": "The following is a description of the player character" +
-                        "\n" + stringifyPretty(characterState)
-                },
-                {
-                    "text": "The following are the character's stats " +
-                        "\n" + stringifyPretty(characterStatsStateMapped)
-                },
-                {
-                    "text": `Most important instruction! You must always respond with following JSON format! 
+	async generateDifficulty(
+		actionText: string,
+		customSystemInstruction: string,
+		historyMessages: Array<LLMMessage>,
+		characterState: CharacterDescription,
+		characterStats: CharacterStats
+	): Promise<DiceRollDifficulty> {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { ['spells_and_abilities']: _, ...characterStatsStateMapped } = characterStats;
+		const agent = [
+			'You are RPG difficulty agent, the player will try to perform an action ' +
+				'and you determine how difficult it is in the current situation, considering the story, action effect, number of targets and character description. ' +
+				' The difficulty increases with more targets. If player_character is in combat apply a bonus to dice_roll' +
+				' Any action is allowed to target anything per game rules.',
+			'The following is a description of the player character' +
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are the character's stats " +
+				'\n' +
+				stringifyPretty(characterStatsStateMapped),
+			`Most important instruction! You must always respond with following JSON format! 
                {
                    "difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
                    "action_difficulty": "${Object.keys(ActionDifficulty)}",
@@ -38,15 +50,16 @@ export class DifficultyAgent {
                       "modifier_value": "positive or negative value (-5 to +5)"
                     }
                 }`
-                },
-            ]
-        }
-        if (customSystemInstruction) {
-            agent.parts.push({"text": customSystemInstruction});
-        }
-
-        let contents = buildAIContentsFormat(actionText, historyMessages);
-        return await this.llmProvider.sendToAI(contents, agent, 1);
-    }
-
+		];
+		if (customSystemInstruction) {
+			agent.push(customSystemInstruction);
+		}
+		const request: LLMRequest = {
+			userMessage: actionText,
+			historyMessages: historyMessages,
+			systemInstruction: agent,
+			temperature: this.llm.getDefaultTemperature()
+		};
+		return (await this.llm.generateContent(request)) as DiceRollDifficulty;
+	}
 }

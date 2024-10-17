@@ -1,17 +1,17 @@
 {
- "name": "App",
- "icons": [
-  {
-   "src": "/icons8-infinity-ios-17-filled-72.png",
-   "sizes": "72×72",
-   "type": "image/png",
-   "density": "1.5"
-  },
-  {
-   "src": "/icons8-infinity-ios-17-filled-96.png",
-   "sizes": "96×96",
-   "type": "image/png",
-   "density": "2.0"
-  }
- ]
+	"name": "App",
+	"icons": [
+		{
+			"src": "/icons8-infinity-ios-17-filled-72.png",
+			"sizes": "72×72",
+			"type": "image/png",
+			"density": "1.5"
+		},
+		{
+			"src": "/icons8-infinity-ios-17-filled-96.png",
+			"sizes": "96×96",
+			"type": "image/png",
+			"density": "2.0"
+		}
+	]
 }
