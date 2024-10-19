@@ -96,7 +96,7 @@
 
 	async function getActionPromptForCombat(playerAction: Action) {
 		const allNpcsDetailsAsList = gameLogic
-			.getAllTargetsAsList(currentGameActionState.targets)
+			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
 			.map((npcName) => ({
 				nameId: npcName,
 				...npcState.value[npcName]
@@ -183,7 +183,7 @@
 	}
 
 	function checkForNewNPCs(newState: GameActionState) {
-		const newNPCs = gameLogic.getNewNPCs(newState.targets, npcState.value);
+		const newNPCs = gameLogic.getNewNPCs(newState.currently_present_npcs, npcState.value);
 		if (newNPCs.length > 0) {
 			characterStatsAgent
 				.generateNPCStats(
@@ -348,7 +348,7 @@
 		bind:dialogRef={useSpellsAbilitiesModal}
 		currentMP={derivedGameState.currentMP}
 		abilities={characterStatsState.value?.spells_and_abilities}
-		targets={currentGameActionState.targets}
+		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
 	></UseSpellsAbilitiesModal>
 

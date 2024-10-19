@@ -30,7 +30,7 @@ export type GameActionState = {
 	];
 	stats_update: Array<StatsUpdate>;
 	is_character_in_combat: boolean;
-	targets: Targets;
+	currently_present_npcs: Targets;
 	actions: Array<Action>;
 };
 
@@ -194,8 +194,8 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   ],
   ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
-  "targets_explanation": "For each NPC explain why they are or are not present in list of targets",
-  "targets": List of NPCs that can be targeted by attacks or friendly spells in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]},
+  "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
+  "currently_present_npcs": List of NPCs that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]},
   "actions": [
     {
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
