@@ -8,7 +8,6 @@
 	type Props = { diceRollDialog; action: Action; resetState: boolean };
 	let { diceRollDialog = $bindable(), action, resetState }: Props = $props();
 
-	let previousActionText: string;
 	const rolledValueState = useLocalStorage('rolledValueState');
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 	const difficultyState = useLocalStorage('difficultyState', 'Default');

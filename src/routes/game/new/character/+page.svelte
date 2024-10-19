@@ -152,17 +152,18 @@
 			Clear {stateValue.replaceAll('_', ' ')}
 		</button>
 		{#if stateValue === 'appearance'}
-			<AIGeneratedImage
-				className="m-auto w-full flex flex-col "
-				storageKey="characterImageState"
-				showGenerateButton={true}
-				{resetImageState}
-				onClickGenerate={() => {
-					resetImageState = false;
-				}}
-				imagePrompt="{characterState.value.gender} {characterState.value.race} {characterState.value
-					.appearance} {storyState.value.general_image_prompt}"
-			/>
+			<div class="m-auto flex w-full flex-col">
+				<AIGeneratedImage
+					storageKey="characterImageState"
+					showGenerateButton={true}
+					{resetImageState}
+					onClickGenerate={() => {
+						resetImageState = false;
+					}}
+					imagePrompt="{characterState.value.gender} {characterState.value.race} {characterState
+						.value.appearance} {storyState.value.general_image_prompt}"
+				/>
+			</div>
 		{/if}
 	{/each}
 	<button

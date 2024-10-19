@@ -5,13 +5,16 @@
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 
 	let {
-		className = '',
 		storageKey = '',
 		showGenerateButton = true,
+		generateButtonSize = 'md',
 		showLoadingSpinner = true,
+		noLogo = false,
+		enhance = true,
 		onClickGenerate = () => {},
 		resetImageState = false,
-		imagePrompt = ''
+		imagePrompt = '',
+		imageClassesString = 'm-auto h-[296px] sm:h-[512px]'
 	} = $props();
 
 	const initialImageState = {
@@ -67,10 +70,7 @@
 			// @ts-expect-error wrong type here dont care
 			aiGeneratedImage.onerror = aiGeneratedImage.onload;
 
-			aiGeneratedImage.src =
-				'https://image.pollinations.ai/prompt/' +
-				encodeURIComponent(imageState.value.prompt) +
-				'?width=768&height=768&enhance=true';
+			aiGeneratedImage.src = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageState.value.prompt)}?width=768&height=768&enhance=${enhance}&nologo=${noLogo}`;
 		}
 	}
 
@@ -84,33 +84,28 @@
 	});
 </script>
 
-<div class={className}>
-	{#if showLoadingSpinner && imageState.value.isGenerating}
-		<LoadingIcon additionalClass="h-[296px] sm:h-[512px] m-auto" />
-	{/if}
-	<a
-		target="_blank"
-		class:hidden={showLoadingSpinner && imageState.value.isGenerating}
-		title={imageState.value.link.title}
-		href={imageState.value.link.href}
-	>
-		<img
-			class="m-auto w-[296px] sm:w-[512px]"
-			alt={imageState.value.image.alt}
-			src={imageState.value.image.src}
-		/>
-	</a>
+{#if showLoadingSpinner && imageState.value.isGenerating}
+	<div class={'content-center ' + imageClassesString}>
+		<LoadingIcon/>
+	</div>
+{/if}
 
-	{#if showGenerateButton}
-		<button
-			class="btn btn-accent mt-3"
-			disabled={imageState.value.isGenerating}
-			onclick={(e) => {
-				replaceWithAiGenerated();
-				onClickGenerate(e);
-			}}
-		>
-			Generate Image
-		</button>
-	{/if}
-</div>
+<img
+	class:hidden={showLoadingSpinner && imageState.value.isGenerating}
+	class={imageClassesString}
+	alt={imageState.value.image.alt}
+	src={imageState.value.image.src}
+/>
+
+{#if showGenerateButton}
+	<button
+		class="btn btn-{generateButtonSize} btn-accent mt-3"
+		disabled={imageState.value.isGenerating}
+		onclick={(e) => {
+			replaceWithAiGenerated();
+			onClickGenerate(e);
+		}}
+	>
+		Generate Image
+	</button>
+{/if}

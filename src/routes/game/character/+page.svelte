@@ -14,12 +14,13 @@
 			<h1 id="name" class="class mb-4 border-b border-gray-600 text-center text-3xl font-bold">
 				{characterState.value.name}
 			</h1>
-			<AIGeneratedImage
-				className="w-full m-auto mt-3 flex flex-col"
-				imagePrompt="{characterState.value.gender} {characterState.value.race} {characterState.value
-					.appearance} {storyState.value.general_image_prompt}"
-				storageKey="characterImageState"
-			></AIGeneratedImage>
+			<div class="m-auto flex w-full flex-col">
+				<AIGeneratedImage
+					imagePrompt="{characterState.value.gender} {characterState.value.race} {characterState
+						.value.appearance} {storyState.value.general_image_prompt}"
+					storageKey="characterImageState"
+				></AIGeneratedImage>
+			</div>
 			<div class="section mb-6">
 				<h2 class="mb-2 mt-2 border-b border-gray-600 pb-1 text-xl font-semibold">
 					Basic Information

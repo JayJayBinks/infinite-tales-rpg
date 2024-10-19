@@ -14,6 +14,7 @@
 	import { goto } from '$app/navigation';
 	import { initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage('apiKeyState');
@@ -169,21 +170,36 @@
 									{#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i}
 										{#if i === 0}
 											<summary class="collapse-title capitalize">
-												<div class="flex flex-col items-center text-center">
-													<p class="content-center">
-														{isNaN(parseInt(statValue))
-															? statValue.replaceAll('_', ' ')
-															: `${characterStatsState.value[stateValue][statValue][deepNestedValue] || 'Enter A Name'}`}
-													</p>
-													<button
-														class="components btn btn-error no-animation btn-sm mt-2"
-														onclick={(evt) => {
-															evt.preventDefault();
-															characterStatsState.value[stateValue].splice(statValue, 1);
-														}}
-													>
-														Delete
-													</button>
+												<div
+													class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
+												>
+													<div class="m-auto sm:col-span-2">
+														<AIGeneratedImage
+															noLogo={true}
+															enhance={false}
+															imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+															imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+																characterStatsState.value[stateValue][statValue]
+															)}
+															generateButtonSize="xs"
+														></AIGeneratedImage>
+													</div>
+													<div class="m-auto w-full sm:col-span-2">
+														<p class="content-center overflow-hidden overflow-ellipsis">
+															{isNaN(parseInt(statValue))
+																? statValue.replaceAll('_', ' ')
+																: `${characterStatsState.value[stateValue][statValue][deepNestedValue] || 'Enter A Name'}`}
+														</p>
+														<button
+															class="components btn btn-error no-animation btn-sm m-auto mt-2"
+															onclick={(evt) => {
+																evt.preventDefault();
+																characterStatsState.value[stateValue].splice(statValue, 1);
+															}}
+														>
+															Delete
+														</button>
+													</div>
 												</div>
 											</summary>
 										{/if}

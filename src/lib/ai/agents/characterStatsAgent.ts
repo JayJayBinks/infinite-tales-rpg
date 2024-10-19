@@ -3,9 +3,9 @@ import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
-export type Ability = { name: string; effect: string; mp_cost: number };
+export type Ability = { name: string; effect: string; mp_cost: number; image_prompt: string };
 export const abilityFormatForPrompt =
-	'{"name": string, "effect": "Clearly state the effect caused. If causing damage include a notation like 2d6", "mp_cost": integer}';
+	'{"name": string, "effect": "Clearly state the effect caused. If causing damage include a notation like 2d6", "mp_cost": integer, "image_prompt": short prompt for an image ai that generates an RPG game icon}';
 
 export type CharacterStats = {
 	resources: { MAX_HP: number; MAX_MP: number };
@@ -148,5 +148,9 @@ export class CharacterStatsAgent {
 			systemInstruction: agentInstruction
 		};
 		return (await this.llm.generateContent(request)) as Ability;
+	}
+
+	static getSpellImagePrompt(ability: Ability): string {
+		return 'RPG game icon ' + ability.image_prompt;
 	}
 }

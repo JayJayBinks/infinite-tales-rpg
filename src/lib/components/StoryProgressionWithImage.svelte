@@ -21,10 +21,7 @@
 	{/each}
 </article>
 {#if imagePrompt}
-	<AIGeneratedImage
-		className="m-auto mt-3"
-		showLoadingSpinner={false}
-		{imagePrompt}
-		showGenerateButton={false}
-	/>
+	<div class="m-auto mt-3">
+		<AIGeneratedImage showLoadingSpinner={false} {imagePrompt} showGenerateButton={false} />
+	</div>
 {/if}
