@@ -181,7 +181,7 @@
 															imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
 																characterStatsState.value[stateValue][statValue]
 															)}
-															generateButtonSize="xs"
+															buttonClassesString="btn-xs no-animation"
 														></AIGeneratedImage>
 													</div>
 													<div class="m-auto w-full sm:col-span-2">

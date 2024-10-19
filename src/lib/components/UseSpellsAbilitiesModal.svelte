@@ -62,7 +62,7 @@
 								<p class="mt-2 overflow-hidden overflow-ellipsis">{ability.name}</p>
 								<button
 									type="button"
-									class="components btn btn-neutral mt-2"
+									class="components btn btn-neutral mt-2 no-animation"
 									disabled={ability.mp_cost > 0 && ability.mp_cost > currentMP}
 									onclick={() => {
 										mapAbilityToAction(ability);

@@ -7,7 +7,7 @@
 	let {
 		storageKey = '',
 		showGenerateButton = true,
-		generateButtonSize = 'md',
+		buttonClassesString = 'btn-md',
 		showLoadingSpinner = true,
 		noLogo = false,
 		enhance = true,
@@ -99,7 +99,7 @@
 
 {#if showGenerateButton}
 	<button
-		class="btn btn-{generateButtonSize} btn-accent mt-3"
+		class="btn btn-accent mt-3 {buttonClassesString}"
 		disabled={imageState.value.isGenerating}
 		onclick={(e) => {
 			replaceWithAiGenerated();
