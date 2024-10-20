@@ -182,15 +182,12 @@ export function applyGameActionState(
 
 	for (const inventoryUpdate of state.inventory_update || []) {
 		if (inventoryUpdate.type === 'remove_item') {
-			delete inventoryState.value[inventoryUpdate.item_id];
+			delete inventoryState[inventoryUpdate.item_id];
 		}
 		if (inventoryUpdate.type === 'add_item') {
 			if (inventoryUpdate.item_added) {
 				//TODO for some reason we cannot directly change only if we pass real state instead value proxy
-				inventoryState.value = {
-					...inventoryState.value,
-					[inventoryUpdate.item_id]: inventoryUpdate.item_added
-				};
+				inventoryState[inventoryUpdate.item_id] =  inventoryUpdate.item_added;
 			} else {
 				console.error('item_added with no item', JSON.stringify(inventoryUpdate));
 			}

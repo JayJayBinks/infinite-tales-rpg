@@ -1,12 +1,12 @@
 <script>
 	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
 	import { navigate, parseState } from '$lib/util.svelte';
-	import { CharacterAgent } from '$lib/ai/agents/characterAgent';
+	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { StoryAgent } from '$lib/ai/agents/storyAgent';
+	import { initialStoryState, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
-	import { CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
+	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
 
 	const apiKeyState = useLocalStorage('apiKeyState');
 	const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -15,12 +15,12 @@
 
 	const gameActionsState = useLocalStorage('gameActionsState', []);
 	const historyMessagesState = useLocalStorage('historyMessagesState', []);
-	const characterState = useLocalStorage('characterState');
-	const inventoryState = useLocalStorage('inventoryState');
+	const characterState = useLocalStorage('characterState', initialCharacterState);
+	const inventoryState = useLocalStorage('inventoryState', {});
 	const characterImageState = useLocalStorage('characterImageState');
-	const characterStatsState = useLocalStorage('characterStatsState');
+	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
 	const npcState = useLocalStorage('npcState', []);
-	const storyState = useLocalStorage('storyState');
+	const storyState = useLocalStorage('storyState', initialStoryState);
 	const isGameEnded = useLocalStorage('isGameEnded', false);
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 	let isGeneratingState = $state(false);

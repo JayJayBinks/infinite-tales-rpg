@@ -80,7 +80,7 @@
 			gameLogic.applyGameActionStates(
 				derivedGameState,
 				npcState.value,
-				inventoryState,
+				inventoryState.value,
 				gameActionsState.value
 			);
 			await renderGameState(currentGameActionState);
@@ -122,7 +122,7 @@
 		gameLogic.applyGameActionState(
 			derivedGameState,
 			npcState.value,
-			inventoryState,
+			inventoryState.value,
 			determinedActionsAndStatsUpdate
 		);
 		const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
@@ -255,7 +255,7 @@
 						gameLogic.applyGameActionState(
 							derivedGameState,
 							npcState.value,
-							inventoryState,
+							inventoryState.value,
 							newState
 						);
 					}
