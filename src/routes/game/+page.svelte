@@ -25,9 +25,10 @@
 	import { initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/DiceRollComponent.svelte';
+	import UseItemsModal from '$lib/components/UseItemsModal.svelte';
 
 	// eslint-disable-next-line svelte/valid-compile
-	let diceRollDialog, useSpellsAbilitiesModal, actionsDiv, customActionInput;
+	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
 	//ai state
 	const apiKeyState = useLocalStorage('apiKeyState');
@@ -43,6 +44,7 @@
 	const historyMessagesState = useLocalStorage('historyMessagesState', []);
 	const characterState = useLocalStorage('characterState', initialCharacterState);
 	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
+	const inventoryState = useLocalStorage('inventoryState', {});
 	const storyState = useLocalStorage('storyState', initialStoryState);
 	const npcState = useLocalStorage('npcState', {});
 	const chosenActionState = useLocalStorage('chosenActionState', {});
@@ -75,7 +77,12 @@
 				text: gameAgent.getStartingPrompt()
 			});
 		} else {
-			gameLogic.applyGameActionStates(derivedGameState, npcState.value, gameActionsState.value);
+			gameLogic.applyGameActionStates(
+				derivedGameState,
+				npcState.value,
+				inventoryState,
+				gameActionsState.value
+			);
 			await renderGameState(currentGameActionState);
 			tick().then(() => customActionInput.scrollIntoView(false));
 		}
@@ -104,6 +111,7 @@
 
 		const determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(
 			playerAction.text,
+			inventoryState.value,
 			allNpcsDetailsAsList,
 			customSystemInstruction.value,
 			getLatestStoryMessages(),
@@ -111,7 +119,12 @@
 		);
 
 		//need to apply already here to have most recent allResources
-		gameLogic.applyStatsUpdate(derivedGameState, npcState.value, determinedActionsAndStatsUpdate);
+		gameLogic.applyGameActionState(
+			derivedGameState,
+			npcState.value,
+			inventoryState,
+			determinedActionsAndStatsUpdate
+		);
 		const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
 		const aliveNPCs = allNpcsDetailsAsList
 			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
@@ -228,7 +241,8 @@
 					storyState.value,
 					characterState.value,
 					characterStatsState.value,
-					derivedGameState
+					derivedGameState,
+					inventoryState.value
 				);
 
 				if (newState) {
@@ -238,7 +252,12 @@
 							combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
 					} else {
 						//StatsUpdate did not come from combat agent
-						gameLogic.applyStatsUpdate(derivedGameState, npcState.value, newState);
+						gameLogic.applyGameActionState(
+							derivedGameState,
+							npcState.value,
+							inventoryState,
+							newState
+						);
 					}
 					updateMessagesHistory(action, newState);
 					checkForNewNPCs(newState);
@@ -348,9 +367,17 @@
 		bind:dialogRef={useSpellsAbilitiesModal}
 		currentMP={derivedGameState.currentMP}
 		abilities={characterStatsState.value?.spells_and_abilities}
+		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
 	></UseSpellsAbilitiesModal>
+	<UseItemsModal
+		bind:dialogRef={useItemsModal}
+		inventoryState={inventoryState.value}
+		storyImagePrompt={storyState.value.general_image_prompt}
+		targets={currentGameActionState.currently_present_npcs}
+		onclose={onTargetedSpellsOrAbility}
+	></UseItemsModal>
 
 	<DiceRollComponent
 		bind:diceRollDialog
@@ -373,9 +400,9 @@
 			<StoryProgressionWithImage
 				story={gameActionState.story}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
-				statsUpdates={gameActionState.id === 0
-					? []
-					: gameLogic.renderStatUpdates(gameActionState.stats_update)}
+				gameUpdates={gameLogic
+					.renderStatUpdates(gameActionState.stats_update)
+					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
 		{/each}
 		{#if isGameEnded.value}
@@ -392,6 +419,13 @@
 					}}
 					class="text-md btn btn-primary w-full"
 					>Spells & Abilities
+				</button>
+				<button
+					onclick={() => {
+						useItemsModal.showModal();
+					}}
+					class="text-md btn btn-primary mt-3 w-full"
+					>Inventory
 				</button>
 			</div>
 		{/if}

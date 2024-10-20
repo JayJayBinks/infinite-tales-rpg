@@ -7,6 +7,13 @@ import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 
+export type InventoryUpdate = {
+	type: 'add_item' | 'remove_item';
+	item_id: string;
+	item_added?: Item;
+};
+export type InventoryState = { [item_id: string]: Item };
+export type Item = { description: string; effect: string };
 export type Action = {
 	text: string;
 	action_difficulty?: ActionDifficulty;
@@ -18,16 +25,7 @@ export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral
 export type GameActionState = {
 	story: string;
 	image_prompt: string;
-	inventory_update: [
-		{
-			type: string;
-			item_id: string;
-			item_added?: {
-				description: string;
-				effect: string;
-			};
-		}
-	];
+	inventory_update: Array<InventoryUpdate>;
 	stats_update: Array<StatsUpdate>;
 	is_character_in_combat: boolean;
 	currently_present_npcs: Targets;
@@ -60,7 +58,8 @@ export class GameAgent {
 		storyState: Story,
 		characterState: CharacterDescription,
 		characterStatsState: CharacterStats,
-		derivedGameState: DerivedGameState
+		derivedGameState: DerivedGameState,
+		inventoryState: InventoryState
 	): Promise<GameActionState> {
 		let combinedText = actionText;
 		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
@@ -73,6 +72,8 @@ export class GameAgent {
 			"The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
 				'\n' +
 				stringifyPretty(characterStatsState),
+			"The following is the character's inventory, if an item is relevant for the current story progression then apply it's effect.\n" +
+				stringifyPretty(inventoryState),
 			"The following are the character's CURRENT resources, consider it in your response\n" +
 				stringifyPretty(derivedGameState),
 			jsonSystemInstruction
@@ -123,6 +124,10 @@ export class GameAgent {
 				}
 			]
 		};
+	}
+
+	static getItemImagePrompt(item_id: string, item: Item, storyImagePrompt: string): string {
+		return `${storyImagePrompt} RPG game icon ${item_id} ${item.description}`;
 	}
 }
 
@@ -181,7 +186,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
         #The starting items are also listed here as add_item
     {
       "type": "add_item",
-      "item_id": "unique id of the item to identify it",
+      "item_id": "unique name of the item to identify it",
       "item_added": {
         "description": "A description of the item",
         "effect": "The effect the item"
@@ -189,7 +194,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
     },
     {
       "type": "remove_item",
-      "item_id": "unique id of the item to identify it"
+      "item_id": "unique name of the item to identify it"
     }
   ],
   ${statsUpdatePromptObject},

@@ -150,7 +150,7 @@ export class CharacterStatsAgent {
 		return (await this.llm.generateContent(request)) as Ability;
 	}
 
-	static getSpellImagePrompt(ability: Ability): string {
-		return 'RPG game icon ' + ability.image_prompt;
+	static getSpellImagePrompt(ability: Ability, storyImagePrompt: string): string {
+		return storyImagePrompt + ' RPG game icon ' + (ability.image_prompt || ability.name);
 	}
 }

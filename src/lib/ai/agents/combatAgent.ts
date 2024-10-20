@@ -1,6 +1,6 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
-import type { Action, DerivedGameState } from '$lib/ai/agents/gameAgent';
+import type { Action, DerivedGameState, InventoryState } from '$lib/ai/agents/gameAgent';
 import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
@@ -38,6 +38,7 @@ export class CombatAgent {
 	//TODO far future improvement, include initiative with chain of actions, some actions then are skipped due to stun, death etc.
 	async generateActionsFromContext(
 		actionText: string,
+		inventoryState: InventoryState,
 		npcsList: Array<object>,
 		customSystemInstruction: string,
 		historyMessages: Array<LLMMessage>,
@@ -49,6 +50,9 @@ export class CombatAgent {
 				'\n You must not apply self damage to player_character because of a failed action unless explicitly stated!' +
 				'\n You must include an action for each NPC from the list. You must also describe one action for the player_character, even if the action is a failure.' +
 				'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
+			"\n The following is the character's inventory, if an item is relevant in the current situation then apply it's effect." +
+				'\n' +
+				stringifyPretty(inventoryState),
 			'The following is a description of the story setting to keep the actions consistent on.' +
 				'\n' +
 				stringifyPretty(storyState),

@@ -167,7 +167,7 @@
 							{#if isPlainObject(characterStatsState.value[stateValue][statValue])}
 								<!-- SpellsAndAbilities TODO refactor or leave for now?-->
 								<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
-									{#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i}
+									{#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i (deepNestedValue)}
 										{#if i === 0}
 											<summary class="collapse-title capitalize">
 												<div
@@ -179,7 +179,8 @@
 															enhance={false}
 															imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
 															imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-																characterStatsState.value[stateValue][statValue]
+																characterStatsState.value[stateValue][statValue],
+																storyState.value.general_image_prompt
 															)}
 															buttonClassesString="btn-xs no-animation"
 														></AIGeneratedImage>

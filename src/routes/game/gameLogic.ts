@@ -1,4 +1,10 @@
-import type { Action, DerivedGameState, GameActionState, Targets } from '$lib/ai/agents/gameAgent';
+import type {
+	Action,
+	DerivedGameState,
+	GameActionState,
+	InventoryUpdate,
+	Targets
+} from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
 import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
 
@@ -53,8 +59,12 @@ export const getTargetPromptAddition = function (targets: string[]) {
 	);
 };
 
-export type RenderedStatsUpdate = { text: string; resourceText: string; color: string };
-export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<RenderedStatsUpdate> {
+export function formatItemId(item_id: string) {
+	return item_id.replaceAll('_id', '').replaceAll('_', ' ');
+}
+
+export type RenderedGameUpdate = { text: string; resourceText: string; color: string };
+export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<RenderedGameUpdate> {
 	if (statsUpdate) {
 		return statsUpdate
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
@@ -108,10 +118,34 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<Render
 	}
 	return [];
 }
+export function renderInventoryUpdate(
+	inventoryUpdate: Array<InventoryUpdate>
+): Array<RenderedGameUpdate> {
+	if (inventoryUpdate) {
+		return inventoryUpdate
+			.toSorted((a, b) => (a.type < b.type ? -1 : 1))
+			.map((inventoryUpdate) => {
+				const mappedId = formatItemId(inventoryUpdate.item_id);
+				let text = '';
+				const color = 'text-yellow-500',
+					resourceText = mappedId;
+				if (inventoryUpdate.type === 'add_item') {
+					text = 'You gain ';
+				}
+				if (inventoryUpdate.type === 'remove_item') {
+					text = 'You loose ';
+				}
+				return { text, resourceText, color };
+			})
+			.filter((value) => !!value);
+	}
+	return [];
+}
 
-export function applyStatsUpdate(
+export function applyGameActionState(
 	derivedGameState: DerivedGameState,
 	npcState: NPCState,
+	inventoryState,
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
@@ -145,6 +179,23 @@ export function applyStatsUpdate(
 			}
 		}
 	}
+
+	for (const inventoryUpdate of state.inventory_update || []) {
+		if (inventoryUpdate.type === 'remove_item') {
+			delete inventoryState.value[inventoryUpdate.item_id];
+		}
+		if (inventoryUpdate.type === 'add_item') {
+			if (inventoryUpdate.item_added) {
+				//TODO for some reason we cannot directly change only if we pass real state instead value proxy
+				inventoryState.value = {
+					...inventoryState.value,
+					[inventoryUpdate.item_id]: inventoryUpdate.item_added
+				};
+			} else {
+				console.error('item_added with no item', JSON.stringify(inventoryUpdate));
+			}
+		}
+	}
 }
 
 export function removeDeadNPCs(npcState: NPCState): string[] {
@@ -159,11 +210,12 @@ export function removeDeadNPCs(npcState: NPCState): string[] {
 export function applyGameActionStates(
 	derivedGameState: DerivedGameState,
 	npcState: NPCState,
+	inventoryState,
 	states: Array<GameActionState>
 ) {
 	for (const state of states) {
 		//TODO because of prohibitNPCChange we can not revert actions anymore, introduce derived aswell?
-		applyStatsUpdate(derivedGameState, npcState, state, true);
+		applyGameActionState(derivedGameState, npcState, inventoryState, state, true);
 	}
 }
 

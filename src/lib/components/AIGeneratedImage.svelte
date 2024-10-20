@@ -86,7 +86,7 @@
 
 {#if showLoadingSpinner && imageState.value.isGenerating}
 	<div class={'content-center ' + imageClassesString}>
-		<LoadingIcon/>
+		<LoadingIcon />
 	</div>
 {/if}
 

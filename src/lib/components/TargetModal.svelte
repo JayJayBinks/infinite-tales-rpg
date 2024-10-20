@@ -3,12 +3,12 @@
 
 	let {
 		targets,
-		abilityActionState,
+		action,
 		onclose,
 		dialogRef = $bindable()
 	}: {
 		targets: Targets;
-		abilityActionState: Action;
+		action: Action;
 		onclose;
 		dialogRef;
 	} = $props();
@@ -100,7 +100,7 @@
 				class="btn btn-neutral m-auto mt-5"
 				onclick={() => {
 					dialogRef.close();
-					onclose(abilityActionState, mapTargets());
+					onclose(action, mapTargets());
 				}}
 			>
 				Continue

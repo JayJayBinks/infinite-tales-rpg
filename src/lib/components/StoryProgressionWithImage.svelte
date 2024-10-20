@@ -1,10 +1,10 @@
 <script lang="ts">
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { marked } from 'marked';
-	import type { RenderedStatsUpdate } from '../../routes/game/gameLogic';
+	import type { RenderedGameUpdate } from '../../routes/game/gameLogic';
 
-	type Props = { story: string; statsUpdates?: Array<RenderedStatsUpdate>; imagePrompt?: string };
-	let { story, statsUpdates = [], imagePrompt = '' }: Props = $props();
+	type Props = { story: string; gameUpdates?: Array<RenderedGameUpdate>; imagePrompt?: string };
+	let { story, gameUpdates = [], imagePrompt = '' }: Props = $props();
 	let rendered = (marked(story) as string)
 		.replaceAll('\\n', '<br>')
 		.replaceAll(' n ', '<br>')
@@ -14,9 +14,9 @@
 <article class="prose prose-neutral m-auto mt-2" style="color: unset">
 	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html rendered}
-	{#each statsUpdates as statsUpdate}
+	{#each gameUpdates as gameUpdate}
 		<p class="m-1 text-center text-sm capitalize">
-			{statsUpdate.text} <span class={statsUpdate.color}>{statsUpdate.resourceText}</span>
+			{gameUpdate.text} <span class={gameUpdate.color}>{gameUpdate.resourceText}</span>
 		</p>
 	{/each}
 </article>
