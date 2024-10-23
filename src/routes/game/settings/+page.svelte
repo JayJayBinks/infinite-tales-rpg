@@ -6,7 +6,7 @@
 
 	const difficultyState = useLocalStorage('difficultyState', 'Default');
 	let useKarmicDice = useLocalStorage('useKarmicDice', true);
-	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
+	let useDynamicCombat = useLocalStorage('useDynamicCombat', false);
 </script>
 
 <form class="m-6 flex flex-col items-center text-center">

@@ -72,7 +72,7 @@ export class GameAgent {
 			"The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
 				'\n' +
 				stringifyPretty(characterStatsState),
-			"The following is the character's inventory, if an item is relevant for the current story progression then apply it's effect.\n" +
+			"The following is the character's inventory, check items for relevant passive effects for the story progression.\n" +
 				stringifyPretty(inventoryState),
 			"The following are the character's CURRENT resources, consider it in your response\n" +
 				stringifyPretty(derivedGameState),
@@ -161,12 +161,14 @@ Actions:
 - Keep the actions text short, max 30 words.
 - Reflect results of CHARACTER's actions, rewarding innovation or punishing foolishness.
 - CHARACTER actions are only chosen by the player and not by ROLE
+- Before an action, review the character's inventory for items and skills that passively affect attributes that could alter the story progression or interactions with NPCs.
 
 Combat:
 
 - Combat is slow paced and only ends when the hostile NPCs are dead.
 - Never decide on your own that NPCs or CHARACTER die, apply appropriate damage instead. Only the player will tell you when they die.
 - NPCs and CHARACTER can never simply be finished off with a single attack.
+- Before each combat action, review the character's inventory for items and skills that have passive effects such as defense, health regeneration, or attack bonuses.
 
 NPC Interactions:
 
@@ -189,7 +191,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "item_id": "unique name of the item to identify it",
       "item_added": {
         "description": "A description of the item",
-        "effect": "The effect the item"
+        "effect": "Clearly state effect(s) and whether an effect is active or passive"
       }
     },
     {
