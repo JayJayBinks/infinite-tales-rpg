@@ -178,14 +178,13 @@
 	}
 
 	async function checkGameEnded() {
-		const hp = derivedGameState.currentHP;
-		if (!isGameEnded.value && hp <= 0) {
+		if (!isGameEnded.value && derivedGameState.currentHP <= 0) {
 			isGameEnded.value = true;
 			await sendAction({
 				text: gameAgent.getGameEndedPrompt()
 			});
 		}
-		isGameEnded.value = hp <= 0;
+		isGameEnded.value = derivedGameState.currentHP <= 0;
 	}
 
 	function resetStatesAfterActionProcessed() {
@@ -213,10 +212,8 @@
 		}
 	}
 
-	function updateMessagesHistory(action: Action, newState: GameActionState) {
-		const { userMessage, modelMessage } = gameAgent.buildHistoryMessages(action.text, newState);
-		console.log(stringifyPretty(newState));
-		historyMessagesState.value = [...historyMessagesState.value, userMessage, modelMessage];
+	function updateMessagesHistory(updatedHistoryMessages: Array<LLMMessage>) {
+		historyMessagesState.value = updatedHistoryMessages;
 	}
 
 	async function sendAction(action: Action, rollDice = false, additionalActionInput = '') {
@@ -233,7 +230,7 @@
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 
 				console.log(action.text, additionalActionInput);
-				const newState = await gameAgent.generateStoryProgression(
+				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 					action.text,
 					additionalActionInput,
 					customSystemInstruction.value,
@@ -259,7 +256,8 @@
 							newState
 						);
 					}
-					updateMessagesHistory(action, newState);
+					console.log('new state', stringifyPretty(newState));
+					updateMessagesHistory(updatedHistoryMessages);
 					checkForNewNPCs(newState);
 					resetStatesAfterActionProcessed();
 					//ai can more easily remember the middle part and prevents undesired writing style, action values etc...
@@ -353,8 +351,6 @@
 		isAiGeneratingState = false;
 	};
 </script>
-
-<!--TODO refactor to component with dialog-->
 
 <div id="game-container" class="container mx-auto p-4">
 	{#if isAiGeneratingState}

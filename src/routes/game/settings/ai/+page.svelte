@@ -6,7 +6,10 @@
 	import { initialStoryState, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
-	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
+	import {
+		CharacterStatsAgent,
+		initialCharacterStatsState
+	} from '$lib/ai/agents/characterStatsAgent';
 
 	const apiKeyState = useLocalStorage('apiKeyState');
 	const temperatureState = useLocalStorage('temperatureState', 1.3);

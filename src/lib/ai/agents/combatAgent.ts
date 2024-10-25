@@ -3,8 +3,10 @@ import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { Action, DerivedGameState, InventoryState } from '$lib/ai/agents/gameAgent';
 import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
+import { mapStatsUpdates } from '$lib/ai/agents/mappers';
 
-export type StatsUpdate = { sourceId: string; targetId: string; value: any; type: string };
+export type DiceRoll = { result, number?: number, type?: number, modifier?: number, rolls?: number[]  };
+export type StatsUpdate = { sourceId: string; targetId: string; value: DiceRoll; type: string };
 export const statsUpdatePromptObject = `
     "stats_update": [
         # You must include one object for each action
@@ -14,15 +16,8 @@ export const statsUpdatePromptObject = `
             "sourceId": "NPC id or player_character, which is the initiator of this action",
             "targetId": "NPC id or player_character, which stats must be updated.",
             "explanation": "Short explanation for the reason of this change",
-            "type": "hp_change",
-            "value": positive integer if character recovers hp, negative if character looses hp
-        },
-        {
-            "sourceId": "NPC id or player_character, which is the initiator of this action",
-            "targetId": "NPC id or player_character, which stats must be updated.",
-            "explanation": "Short explanation for the reason of this change",
-            "type": "mp_change",
-            "value": positive integer if character recovers mp, negative if character looses mp
+            "type": "hp_lost|hp_gained|mp_lost|mp_gained",
+            "value": "dice roll notation in format 1d6+3 or 3d4 etc."
         },
         ...
         ]`;
@@ -87,7 +82,10 @@ export class CombatAgent {
 			historyMessages: historyMessages,
 			systemInstruction: agent
 		};
-		return await this.llm.generateContent(request);
+
+		const state = await this.llm.generateContent(request) as any;
+		mapStatsUpdates(state);
+		return state;
 	}
 
 	getAdditionalActionInput(

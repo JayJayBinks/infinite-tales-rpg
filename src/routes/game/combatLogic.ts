@@ -24,7 +24,7 @@ function calculateMaxResource(i: number, minRandom: number, maxRandom: number) {
 function getMaxHPFromRank(rank: string) {
 	let i = npcRank.indexOf(rank);
 	if (i === -1) i = 2; // Default to average if rank not found
-	return calculateMaxResource(i, 5, 10);
+	return calculateMaxResource(i, 5, 8);
 }
 
 //TODO consider class?
