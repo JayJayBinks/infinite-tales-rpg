@@ -75,8 +75,15 @@
 {/if}
 <ul class="steps mt-3 w-full">
 	<li class="step step-primary">Tale</li>
+	<!--TODO  -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={() => goto('character')}>Character</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions  -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions  -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={() => goto('character')}>Start</li>
 </ul>
 <form class="m-6 grid gap-2">

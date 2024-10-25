@@ -61,22 +61,22 @@ export class GameAgent {
 		characterStatsState: CharacterStats,
 		derivedGameState: DerivedGameState,
 		inventoryState: InventoryState
-	): Promise<{ newState: GameActionState, updatedHistoryMessages: Array<LLMMessage> }> {
+	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let combinedText = actionText;
 		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
 		const gameAgent = [
 			systemBehaviour,
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-			'\n' +
-			stringifyPretty(characterState),
-			'The following are the character\'s stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. ' +
-			'\n' +
-			stringifyPretty(characterStatsState),
-			'The following is the character\'s inventory, check items for relevant passive effects for the story progression.\n' +
-			stringifyPretty(inventoryState),
-			'The following are the character\'s CURRENT resources, consider it in your response\n' +
-			stringifyPretty(derivedGameState),
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
+				'\n' +
+				stringifyPretty(characterStatsState),
+			"The following is the character's inventory, check items for relevant passive effects for the story progression.\n" +
+				stringifyPretty(inventoryState),
+			"The following are the character's CURRENT resources, consider it in your response\n" +
+				stringifyPretty(derivedGameState),
 			jsonSystemInstruction
 		];
 		if (customSystemInstruction) {
@@ -87,7 +87,7 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		const newState = await this.llm.generateContent(request) as GameActionState;
+		const newState = (await this.llm.generateContent(request)) as GameActionState;
 		const { userMessage, modelMessage } = this.buildHistoryMessages(actionText, newState);
 		const updatedHistoryMessages = [...historyMessages, userMessage, modelMessage];
 		mapGameState(newState);
@@ -106,7 +106,7 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function(userText: string, modelStateObject: object) {
+	buildHistoryMessages = function (userText: string, modelStateObject: object) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };

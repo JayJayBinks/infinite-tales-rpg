@@ -1,4 +1,4 @@
-<script lang="ts" xmlns="http://www.w3.org/1999/html">
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import {
 		CharacterAgent,
@@ -70,9 +70,16 @@
 	<LoadingModal />
 {/if}
 <ul class="steps mt-3 w-full">
+	<!--TODO  -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
 	<li class="step step-primary">Character</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={() => goto('characterStats')}>Start</li>
 </ul>
 <form class="m-6 grid gap-2">

@@ -74,8 +74,17 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<Render
 				}
 				let responseText: string;
 				let resourceText = ('' + statsUpdate.value.result).replaceAll('_', ' ');
-				let changeText = statsUpdate.type?.includes("_gained") ? 'gain' : statsUpdate.type?.includes("_lost") ? 'loose' : undefined;
-				const mappedType = statsUpdate.type?.replace('gained', '').replace('lost', '').replaceAll('_', ' ').toUpperCase() || '';
+				let changeText = statsUpdate.type?.includes('_gained')
+					? 'gain'
+					: statsUpdate.type?.includes('_lost')
+						? 'loose'
+						: undefined;
+				const mappedType =
+					statsUpdate.type
+						?.replace('gained', '')
+						.replace('lost', '')
+						.replaceAll('_', ' ')
+						.toUpperCase() || '';
 				const color = mappedType.includes('HP')
 					? 'text-red-500'
 					: mappedType.includes('MP')
@@ -84,16 +93,16 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<Render
 
 				if (statsUpdate.targetId.toLowerCase() === 'player_character') {
 					responseText = 'You ';
-					if(!changeText) {
+					if (!changeText) {
 						//probably unhandled status effect
-						changeText = 'are'
+						changeText = 'are';
 					}
 				} else {
 					responseText = statsUpdate.targetId.replaceAll('_', ' ').replaceAll('id', '') + ' ';
-					if(!changeText){
+					if (!changeText) {
 						//probably unhandled status effect
-						changeText = 'is'
-					}else{
+						changeText = 'is';
+					} else {
 						//third person
 						changeText += 's';
 					}

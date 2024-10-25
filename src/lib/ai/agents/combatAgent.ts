@@ -5,7 +5,13 @@ import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { mapStatsUpdates } from '$lib/ai/agents/mappers';
 
-export type DiceRoll = { result, number?: number, type?: number, modifier?: number, rolls?: number[]  };
+export type DiceRoll = {
+	result;
+	number?: number;
+	type?: number;
+	modifier?: number;
+	rolls?: number[];
+};
 export type StatsUpdate = { sourceId: string; targetId: string; value: DiceRoll; type: string };
 export const statsUpdatePromptObject = `
     "stats_update": [
@@ -83,7 +89,7 @@ export class CombatAgent {
 			systemInstruction: agent
 		};
 
-		const state = await this.llm.generateContent(request) as any;
+		const state = (await this.llm.generateContent(request)) as never;
 		mapStatsUpdates(state);
 		return state;
 	}
