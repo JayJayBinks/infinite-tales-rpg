@@ -64,9 +64,9 @@ export function formatItemId(item_id: string) {
 }
 
 export type RenderedGameUpdate = { text: string; resourceText: string; color: string };
-export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<RenderedGameUpdate> {
-	if (statsUpdate) {
-		return statsUpdate
+export function renderStatUpdates(statsUpdates: Array<StatsUpdate>): Array<RenderedGameUpdate> {
+	if (statsUpdates) {
+		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
 			.map((statsUpdate) => {
 				if (Number.parseInt(statsUpdate.value.result) === 0) {
@@ -93,6 +93,9 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<Render
 
 				if (statsUpdate.targetId.toLowerCase() === 'player_character') {
 					responseText = 'You ';
+					resourceText =
+						'' +
+						getTakeLessDamageForManyHits(statsUpdates, Number.parseInt(statsUpdate.value.result));
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'are';
@@ -115,6 +118,7 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<Render
 	}
 	return [];
 }
+
 export function renderInventoryUpdate(
 	inventoryUpdate: Array<InventoryUpdate>
 ): Array<RenderedGameUpdate> {
@@ -139,6 +143,18 @@ export function renderInventoryUpdate(
 	return [];
 }
 
+//TODO too difficult if too many hits
+function getTakeLessDamageForManyHits(stats_update: Array<StatsUpdate>, damage: number) {
+	if (damage <= 2) {
+		return damage;
+	}
+	const allPlayerHits = stats_update
+		.filter((update) => update.targetId.toLowerCase() === 'player_character')
+		.filter((update) => update.type === 'hp_lost');
+
+	return Math.max(1, Math.round(damage / Math.min(3, allPlayerHits?.length || 1)));
+}
+
 export function applyGameActionState(
 	derivedGameState: DerivedGameState,
 	npcState: NPCState,
@@ -153,7 +169,10 @@ export function applyGameActionState(
 					derivedGameState.currentHP += Number.parseInt(statUpdate.value.result);
 					break;
 				case 'hp_lost':
-					derivedGameState.currentHP -= Number.parseInt(statUpdate.value.result);
+					derivedGameState.currentHP -= getTakeLessDamageForManyHits(
+						state.stats_update,
+						Number.parseInt(statUpdate.value.result)
+					);
 					break;
 				case 'mp_gained':
 					derivedGameState.currentMP += Number.parseInt(statUpdate.value.result);
