@@ -1,4 +1,4 @@
-<script lang="ts" xmlns="http://www.w3.org/1999/html">
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
@@ -114,9 +114,15 @@
 	<LoadingModal />
 {/if}
 <ul class="steps mt-3 w-full">
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step step-primary cursor-pointer" onclick={() => goto('character')}>Character</li>
 	<li class="step step-primary">Stats</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={nextStepClicked}>Start</li>
 </ul>
 <form class="m-6 grid gap-2">

@@ -6,6 +6,7 @@ import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
+import { mapGameState } from '$lib/ai/agents/mappers';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -60,7 +61,7 @@ export class GameAgent {
 		characterStatsState: CharacterStats,
 		derivedGameState: DerivedGameState,
 		inventoryState: InventoryState
-	): Promise<GameActionState> {
+	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let combinedText = actionText;
 		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
 		const gameAgent = [
@@ -86,7 +87,11 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		return (await this.llm.generateContent(request)) as GameActionState;
+		const newState = (await this.llm.generateContent(request)) as GameActionState;
+		const { userMessage, modelMessage } = this.buildHistoryMessages(actionText, newState);
+		const updatedHistoryMessages = [...historyMessages, userMessage, modelMessage];
+		mapGameState(newState);
+		return { newState, updatedHistoryMessages };
 	}
 
 	getGameEndedPrompt() {
@@ -107,20 +112,20 @@ export class GameAgent {
 		return { userMessage, modelMessage };
 	};
 
-	getStartingResourcesUpdateObject(hp: number, mp: number) {
+	getStartingResourcesUpdateObject(hp: number, mp: number): Pick<GameActionState, 'stats_update'> {
 		return {
 			stats_update: [
 				{
 					sourceId: 'player_character',
 					targetId: 'player_character',
-					type: 'hp_change',
-					value: hp
+					type: 'hp_gained',
+					value: { result: hp }
 				},
 				{
 					sourceId: 'player_character',
 					targetId: 'player_character',
-					type: 'mp_change',
-					value: mp
+					type: 'mp_gained',
+					value: { result: mp }
 				}
 			]
 		};

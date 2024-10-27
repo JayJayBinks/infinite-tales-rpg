@@ -64,16 +64,27 @@ export function formatItemId(item_id: string) {
 }
 
 export type RenderedGameUpdate = { text: string; resourceText: string; color: string };
-export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<RenderedGameUpdate> {
-	if (statsUpdate) {
-		return statsUpdate
+export function renderStatUpdates(statsUpdates: Array<StatsUpdate>): Array<RenderedGameUpdate> {
+	if (statsUpdates) {
+		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
 			.map((statsUpdate) => {
-				if (statsUpdate.value == 0) {
+				if (Number.parseInt(statsUpdate.value.result) === 0) {
 					return undefined;
 				}
-				let responseText, changeText, resourceText;
-				const mappedType = statsUpdate.type?.replace('_change', '').toUpperCase() || '';
+				let responseText: string;
+				let resourceText = ('' + statsUpdate.value.result).replaceAll('_', ' ');
+				let changeText = statsUpdate.type?.includes('_gained')
+					? 'gain'
+					: statsUpdate.type?.includes('_lost')
+						? 'loose'
+						: undefined;
+				const mappedType =
+					statsUpdate.type
+						?.replace('gained', '')
+						.replace('lost', '')
+						.replaceAll('_', ' ')
+						.toUpperCase() || '';
 				const color = mappedType.includes('HP')
 					? 'text-red-500'
 					: mappedType.includes('MP')
@@ -82,33 +93,22 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<Render
 
 				if (statsUpdate.targetId.toLowerCase() === 'player_character') {
 					responseText = 'You ';
-					if (statsUpdate.value > 0) {
-						changeText = ' gain ';
-						resourceText = statsUpdate.value;
-					}
-					if (statsUpdate.value < 0) {
-						changeText = ' loose ';
-						resourceText = statsUpdate.value * -1;
-					}
+					resourceText =
+						'' +
+						getTakeLessDamageForManyHits(statsUpdates, Number.parseInt(statsUpdate.value.result));
 					if (!changeText) {
-						changeText = ' are ';
+						//probably unhandled status effect
+						changeText = 'are';
 					}
 				} else {
 					responseText = statsUpdate.targetId.replaceAll('_', ' ').replaceAll('id', '') + ' ';
-					if (statsUpdate.value > 0) {
-						changeText = ' gains ';
-						resourceText = statsUpdate.value;
-					}
-					if (statsUpdate.value < 0) {
-						changeText = ' looses ';
-						resourceText = statsUpdate.value * -1;
-					}
 					if (!changeText) {
-						changeText = ' is ';
+						//probably unhandled status effect
+						changeText = 'is';
+					} else {
+						//third person
+						changeText += 's';
 					}
-				}
-				if (!resourceText) {
-					resourceText = statsUpdate.value?.replaceAll('_', ' ');
 				}
 				responseText += changeText;
 				resourceText += ' ' + mappedType;
@@ -118,6 +118,7 @@ export function renderStatUpdates(statsUpdate: Array<StatsUpdate>): Array<Render
 	}
 	return [];
 }
+
 export function renderInventoryUpdate(
 	inventoryUpdate: Array<InventoryUpdate>
 ): Array<RenderedGameUpdate> {
@@ -142,6 +143,18 @@ export function renderInventoryUpdate(
 	return [];
 }
 
+//TODO too difficult if too many hits
+function getTakeLessDamageForManyHits(stats_update: Array<StatsUpdate>, damage: number) {
+	if (damage <= 2) {
+		return damage;
+	}
+	const allPlayerHits = stats_update
+		.filter((update) => update.targetId.toLowerCase() === 'player_character')
+		.filter((update) => update.type === 'hp_lost');
+
+	return Math.max(1, Math.round(damage / Math.min(3, allPlayerHits?.length || 1)));
+}
+
 export function applyGameActionState(
 	derivedGameState: DerivedGameState,
 	npcState: NPCState,
@@ -152,27 +165,38 @@ export function applyGameActionState(
 	for (const statUpdate of state.stats_update || []) {
 		if (statUpdate.targetId.toLowerCase() === 'player_character') {
 			switch (statUpdate.type) {
-				case 'hp_change':
-					derivedGameState.currentHP += Number.parseInt(statUpdate.value);
+				case 'hp_gained':
+					derivedGameState.currentHP += Number.parseInt(statUpdate.value.result);
 					break;
-				case 'mp_change':
-					derivedGameState.currentMP += Number.parseInt(statUpdate.value);
+				case 'hp_lost':
+					derivedGameState.currentHP -= getTakeLessDamageForManyHits(
+						state.stats_update,
+						Number.parseInt(statUpdate.value.result)
+					);
+					break;
+				case 'mp_gained':
+					derivedGameState.currentMP += Number.parseInt(statUpdate.value.result);
+					break;
+				case 'mp_lost':
+					derivedGameState.currentMP -= Number.parseInt(statUpdate.value.result);
 					break;
 			}
 		} else {
 			if (!prohibitNPCChange) {
 				const npc: NPCStats = npcState[statUpdate.targetId];
-				if (npc) {
+				if (npc && npc.resources) {
 					switch (statUpdate.type) {
-						case 'hp_change':
-							if (npc.resources) {
-								npc.resources.current_hp += Number.parseInt(statUpdate.value);
-							}
+						case 'hp_gained':
+							npc.resources.current_hp += Number.parseInt(statUpdate.value.result);
 							break;
-						case 'mp_change':
-							if (npc.resources) {
-								npc.resources.current_mp += Number.parseInt(statUpdate.value);
-							}
+						case 'hp_lost':
+							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result);
+							break;
+						case 'mp_gained':
+							npc.resources.current_mp += Number.parseInt(statUpdate.value.result);
+							break;
+						case 'mp_lost':
+							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result);
 							break;
 					}
 				}
@@ -186,8 +210,7 @@ export function applyGameActionState(
 		}
 		if (inventoryUpdate.type === 'add_item') {
 			if (inventoryUpdate.item_added) {
-				//TODO for some reason we cannot directly change only if we pass real state instead value proxy
-				inventoryState[inventoryUpdate.item_id] =  inventoryUpdate.item_added;
+				inventoryState[inventoryUpdate.item_id] = inventoryUpdate.item_added;
 			} else {
 				console.error('item_added with no item', JSON.stringify(inventoryUpdate));
 			}

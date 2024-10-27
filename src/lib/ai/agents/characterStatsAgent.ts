@@ -5,7 +5,7 @@ import type { Story } from '$lib/ai/agents/storyAgent';
 
 export type Ability = { name: string; effect: string; mp_cost: number; image_prompt: string };
 export const abilityFormatForPrompt =
-	'{"name": string, "effect": "Clearly state the effect caused. If causing damage include a notation like 2d6", "mp_cost": integer, "image_prompt": short prompt for an image ai that generates an RPG game icon}';
+	'{"name": string, "effect": "Clearly state the effect caused. If causing damage include the dice notation like 1d6+2 or 2d4", "mp_cost": integer, "image_prompt": short prompt for an image ai that generates an RPG game icon}';
 
 export type CharacterStats = {
 	resources: { MAX_HP: number; MAX_MP: number };
@@ -41,10 +41,11 @@ export type NPCStats = {
 	spells_and_abilities: Array<Ability>;
 };
 
+//TODO limited damage always only 1 dice
 export const npcStatsStateForPromptAsString = `{
     "class": "",
     "rank": "Power ranking of the NPC. Can be one of " + ${npcRank.join('|')},
-    "spells_and_abilities": "Array of spells and abilities. List 2 actively usable spells or abilities. At last include a 'Standard Attack'. Format: [${abilityFormatForPrompt}]"
+    "spells_and_abilities": "Array of spells and abilities. List 2 actively usable spells or abilities. At last include a 'Standard Attack'. The damage must be limited to only 1 dice, 1d6 or 1d8 etc. Format: [${abilityFormatForPrompt}]"
 }`;
 
 export class CharacterStatsAgent {
