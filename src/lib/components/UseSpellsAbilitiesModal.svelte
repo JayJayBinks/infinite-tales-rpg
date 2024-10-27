@@ -6,6 +6,7 @@
 
 	let {
 		abilities,
+		playerName,
 		storyImagePrompt,
 		currentMP,
 		targets,
@@ -13,6 +14,7 @@
 		dialogRef = $bindable()
 	}: {
 		abilities: Array<Ability>;
+		playerName: string;
 		storyImagePrompt: string;
 		currentMP: number;
 		targets: Targets;
@@ -26,9 +28,10 @@
 
 	function mapAbilityToAction(ability: Ability) {
 		abilityActionState = {
+			characterName: playerName,
 			...ability,
 			type: 'Spell',
-			text: 'I cast ' + ability.name + ': ' + ability.effect + ' (' + ability.mp_cost + ' MP)'
+			text: playerName + ' casts ' + ability.name + ': ' + ability.effect + ' (' + ability.mp_cost + ' MP)'
 		};
 	}
 </script>

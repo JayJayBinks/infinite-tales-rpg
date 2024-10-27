@@ -1,6 +1,6 @@
 import type {
 	Action,
-	DerivedGameState,
+	PlayerCharactersGameState,
 	GameActionState,
 	InventoryUpdate,
 	Targets
@@ -51,12 +51,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 }
 
 export const getTargetPromptAddition = function (targets: string[]) {
-	return (
-		'\n I target ' +
-		targets.join(' and ') +
-		'\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended.' +
-		'\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.'
-	);
+	return '\n I target ' + targets.join(' and ');
 };
 
 export function formatItemId(item_id: string) {
@@ -64,7 +59,7 @@ export function formatItemId(item_id: string) {
 }
 
 export type RenderedGameUpdate = { text: string; resourceText: string; color: string };
-export function renderStatUpdates(statsUpdates: Array<StatsUpdate>): Array<RenderedGameUpdate> {
+export function renderStatUpdates(statsUpdates: Array<StatsUpdate>, playerName: string): Array<RenderedGameUpdate> {
 	if (statsUpdates) {
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
@@ -91,11 +86,11 @@ export function renderStatUpdates(statsUpdates: Array<StatsUpdate>): Array<Rende
 						? 'text-blue-500'
 						: '';
 
-				if (statsUpdate.targetId.toLowerCase() === 'player_character') {
+				if (statsUpdate.targetId === playerName) {
 					responseText = 'You ';
 					resourceText =
 						'' +
-						getTakeLessDamageForManyHits(statsUpdates, Number.parseInt(statsUpdate.value.result));
+						getTakeLessDamageForManyHits(statsUpdates, Number.parseInt(statsUpdate.value.result), playerName);
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'are';
@@ -144,41 +139,42 @@ export function renderInventoryUpdate(
 }
 
 //TODO too difficult if too many hits
-function getTakeLessDamageForManyHits(stats_update: Array<StatsUpdate>, damage: number) {
+function getTakeLessDamageForManyHits(stats_update: Array<StatsUpdate>, damage: number, playerName: string) {
 	if (damage <= 2) {
 		return damage;
 	}
 	const allPlayerHits = stats_update
-		.filter((update) => update.targetId.toLowerCase() === 'player_character')
+		.filter((update) => update.targetId === playerName)
 		.filter((update) => update.type === 'hp_lost');
 
 	return Math.max(1, Math.round(damage / Math.min(3, allPlayerHits?.length || 1)));
 }
 
 export function applyGameActionState(
-	derivedGameState: DerivedGameState,
+	playerCharactersGameState: PlayerCharactersGameState,
 	npcState: NPCState,
 	inventoryState,
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
 	for (const statUpdate of state.stats_update || []) {
-		if (statUpdate.targetId.toLowerCase() === 'player_character') {
+		if (playerCharactersGameState[statUpdate.targetId]) {
 			switch (statUpdate.type) {
 				case 'hp_gained':
-					derivedGameState.currentHP += Number.parseInt(statUpdate.value.result);
+					playerCharactersGameState[statUpdate.targetId].currentHP += Number.parseInt(statUpdate.value.result);
 					break;
 				case 'hp_lost':
-					derivedGameState.currentHP -= getTakeLessDamageForManyHits(
+					playerCharactersGameState[statUpdate.targetId].currentHP -= getTakeLessDamageForManyHits(
 						state.stats_update,
-						Number.parseInt(statUpdate.value.result)
+						Number.parseInt(statUpdate.value.result),
+						statUpdate.targetId
 					);
 					break;
 				case 'mp_gained':
-					derivedGameState.currentMP += Number.parseInt(statUpdate.value.result);
+					playerCharactersGameState[statUpdate.targetId].currentMP += Number.parseInt(statUpdate.value.result);
 					break;
 				case 'mp_lost':
-					derivedGameState.currentMP -= Number.parseInt(statUpdate.value.result);
+					playerCharactersGameState[statUpdate.targetId].currentMP -= Number.parseInt(statUpdate.value.result);
 					break;
 			}
 		} else {
@@ -228,14 +224,14 @@ export function removeDeadNPCs(npcState: NPCState): string[] {
 }
 
 export function applyGameActionStates(
-	derivedGameState: DerivedGameState,
+	playerCharactersGameState: PlayerCharactersGameState,
 	npcState: NPCState,
 	inventoryState,
 	states: Array<GameActionState>
 ) {
 	for (const state of states) {
 		//TODO because of prohibitNPCChange we can not revert actions anymore, introduce derived aswell?
-		applyGameActionState(derivedGameState, npcState, inventoryState, state, true);
+		applyGameActionState(playerCharactersGameState, npcState, inventoryState, state, true);
 	}
 }
 

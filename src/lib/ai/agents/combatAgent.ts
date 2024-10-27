@@ -1,6 +1,6 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
-import type { Action, DerivedGameState, InventoryState } from '$lib/ai/agents/gameAgent';
+import type { Action, PlayerCharactersGameState, InventoryState } from '$lib/ai/agents/gameAgent';
 import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { mapStatsUpdates } from '$lib/ai/agents/mappers';
@@ -16,11 +16,11 @@ export type StatsUpdate = { sourceId: string; targetId: string; value: DiceRoll;
 export const statsUpdatePromptObject = `
     "stats_update": [
         # You must include one object for each action
-        # Do not apply self damage to player_character because of a failed action unless explicitly stated
+        # Do not apply self damage to CHARACTER because of a failed action unless explicitly stated
         # Also include one object per turn effect like poisoned or bleeding
         {
-            "sourceId": "NPC id or player_character, which is the initiator of this action",
-            "targetId": "NPC id or player_character, which stats must be updated.",
+            "sourceId": "NPC id or player CHARACTER name, who is the initiator of this action",
+            "targetId": "NPC id or player CHARACTER name, whose stats must be updated.",
             "explanation": "Short explanation for the reason of this change",
             "type": "hp_lost|hp_gained|mp_lost|mp_gained",
             "value": "dice roll notation in format 1d6+3 or 3d4 etc."
@@ -38,7 +38,7 @@ export class CombatAgent {
 	//TODO are effects like stunned etc. considered via historyMessages?
 	//TODO far future improvement, include initiative with chain of actions, some actions then are skipped due to stun, death etc.
 	async generateActionsFromContext(
-		actionText: string,
+		action: Action,
 		inventoryState: InventoryState,
 		npcsList: Array<object>,
 		customSystemInstruction: string,
@@ -46,24 +46,24 @@ export class CombatAgent {
 		storyState: Story
 	) {
 		const agent = [
-			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
-				'and what the consequences of these actions are. ' +
-				'\n You must not apply self damage to player_character because of a failed action unless explicitly stated!' +
-				'\n You must include an action for each NPC from the list. You must also describe one action for the player_character, even if the action is a failure.' +
-				'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
-			"\n The following is the character's inventory, if an item is relevant in the current situation then apply it's effect." +
-				'\n' +
-				stringifyPretty(inventoryState),
+			'You are RPG combat agent, you decide which actions the NPCs take in response to the player character\'s action ' +
+			'and what the consequences of these actions are. ' +
+			'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
+			'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
+			'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
+			'\n The following is the character\'s inventory, if an item is relevant in the current situation then apply it\'s effect.' +
+			'\n' +
+			stringifyPretty(inventoryState),
 			'The following is a description of the story setting to keep the actions consistent on.' +
-				'\n' +
-				stringifyPretty(storyState),
+			'\n' +
+			stringifyPretty(storyState),
 			`Most important instruction! You must always respond with following JSON format! 
                  {
                   "actions": [
-                    # You must include one object for each npc and one for the player_character
+                    # You must include one object for each npc and one for the player character
                     {
-                      "sourceId": "NPC id or player_character, which is the initiator of this action",
-                      "targetId": "NPC id or player_character, which stats must be updated. can be same as sourceId",
+                      "sourceId": "NPC id or player character name, who is the initiator of this action",
+                      "targetId": "NPC id or player character name, whose stats must be updated. if sourceId targets self then same as sourceId",
                       "text": "description of the action the NPC takes",
                       "explanation": "Short explanation for the reason of this action"
                     },
@@ -75,16 +75,16 @@ export class CombatAgent {
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		const action =
-			'The player takes following action: ' +
-			actionText +
+		const actionToSend =
+			'player character named ' + action.characterName + ' takes following action: ' +
+			action.text +
 			'\n' +
 			'Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action.' +
 			'\n' +
 			stringifyPretty(npcsList);
-		console.log('combat', action);
+		console.log('combat', actionToSend);
 		const request: LLMRequest = {
-			userMessage: action,
+			userMessage: actionToSend,
 			historyMessages: historyMessages,
 			systemInstruction: agent
 		};
@@ -98,7 +98,7 @@ export class CombatAgent {
 		actions: Array<Action>,
 		deadNPCs: string[],
 		aliveNPCs: string[],
-		derivedGameState: DerivedGameState
+		playerCharactersGameState: PlayerCharactersGameState
 	) {
 		// let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
 		//     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
@@ -108,14 +108,14 @@ export class CombatAgent {
 			'\nDescribe the following actions in the story progression:\n' +
 			stringifyPretty(actions) +
 			'\n\nMost important! ' +
-			this.getNPCsHealthStatePrompt(deadNPCs, aliveNPCs, derivedGameState)
+			this.getNPCsHealthStatePrompt(deadNPCs, aliveNPCs, playerCharactersGameState)
 		);
 	}
 
 	getNPCsHealthStatePrompt(
 		deadNPCs: Array<string>,
 		aliveNPCs: Array<string>,
-		derivedGameState?: DerivedGameState
+		playerCharactersGameState?: PlayerCharactersGameState
 	) {
 		let text = '';
 		if (aliveNPCs && aliveNPCs.length > 0) {
@@ -132,8 +132,12 @@ export class CombatAgent {
 				'\n' +
 				stringifyPretty(deadNPCs);
 		}
-		if (derivedGameState && derivedGameState.currentHP > 0)
-			text += '\n player_character is alive after the attacks!';
+		if (playerCharactersGameState) {
+			const aliveChars = Object.keys(playerCharactersGameState)
+				.filter(playerName => playerCharactersGameState[playerName].currentHP > 0);
+			text += '\n Player Characters ' + aliveChars.join(', ') + ' are alive after the attacks!';
+		}
+
 		return text;
 	}
 

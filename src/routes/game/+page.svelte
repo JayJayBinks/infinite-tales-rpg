@@ -1,6 +1,6 @@
 <script lang="ts">
 	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
-	import type { Action, DerivedGameState, GameActionState } from '$lib/ai/agents/gameAgent';
+	import type { Action, PlayerCharactersGameState, GameActionState } from '$lib/ai/agents/gameAgent';
 	import { GameAgent } from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
 
@@ -50,7 +50,7 @@
 	const chosenActionState = useLocalStorage('chosenActionState', {});
 	const additionalActionInputState = useLocalStorage('additionalActionInputState');
 	const isGameEnded = useLocalStorage('isGameEnded', false);
-	let derivedGameState = $state({ currentHP: 0, currentMP: 0 });
+	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {}
 	);
@@ -71,14 +71,16 @@
 		difficultyAgent = new DifficultyAgent(llm);
 		summaryAgent = new SummaryAgent(llm);
 		//Start game when not already started
+		playerCharactersGameState = { [characterState.value.name]: { currentHP: 0, currentMP: 0 } };
 		if (gameActionsState.value.length === 0) {
-			handleStartingStats(derivedGameState);
+			handleStartingStats(playerCharactersGameState, characterState.value.name);
 			await sendAction({
+				characterName: characterState.value.name,
 				text: gameAgent.getStartingPrompt()
 			});
 		} else {
 			gameLogic.applyGameActionStates(
-				derivedGameState,
+				playerCharactersGameState,
 				npcState.value,
 				inventoryState.value,
 				gameActionsState.value
@@ -91,13 +93,14 @@
 		}
 	});
 
-	function handleStartingStats(derivedGameState: DerivedGameState) {
+	function handleStartingStats(playerCharactersGameState: PlayerCharactersGameState, playerName: string) {
 		const startingResourcesUpdateObject = gameAgent.getStartingResourcesUpdateObject(
 			characterStatsState.value.resources.MAX_HP,
-			characterStatsState.value.resources.MAX_MP
+			characterStatsState.value.resources.MAX_MP,
+			playerName
 		);
-		derivedGameState.currentHP = characterStatsState.value.resources.MAX_HP;
-		derivedGameState.currentMP = characterStatsState.value.resources.MAX_MP;
+		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
+		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
 		gameActionsState.value.push(startingResourcesUpdateObject);
 	}
 
@@ -110,7 +113,7 @@
 			}));
 
 		const determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(
-			playerAction.text,
+			playerAction,
 			inventoryState.value,
 			allNpcsDetailsAsList,
 			customSystemInstruction.value,
@@ -120,7 +123,7 @@
 
 		//need to apply already here to have most recent allResources
 		gameLogic.applyGameActionState(
-			derivedGameState,
+			playerCharactersGameState,
 			npcState.value,
 			inventoryState.value,
 			determinedActionsAndStatsUpdate
@@ -134,7 +137,7 @@
 			determinedActionsAndStatsUpdate.actions,
 			deadNPCs,
 			aliveNPCs,
-			derivedGameState
+			playerCharactersGameState
 		);
 		return { additionalActionInput, determinedActionsAndStatsUpdate };
 	}
@@ -146,7 +149,7 @@
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			let actionText = chosenActionState.value.text + '\n ' + diceRollDialog.returnValue;
-			sendAction({ text: actionText }, false, additionalActionInput);
+			sendAction({ characterName: characterState.value.name, text: actionText }, false, additionalActionInput);
 		});
 	}
 
@@ -178,13 +181,14 @@
 	}
 
 	async function checkGameEnded() {
-		if (!isGameEnded.value && derivedGameState.currentHP <= 0) {
+		if (!isGameEnded.value && playerCharactersGameState[characterState.value.name].currentHP <= 0) {
 			isGameEnded.value = true;
 			await sendAction({
+				characterName: characterState.value.name,
 				text: gameAgent.getGameEndedPrompt()
 			});
 		}
-		isGameEnded.value = derivedGameState.currentHP <= 0;
+		isGameEnded.value = playerCharactersGameState[characterState.value.name].currentHP <= 0;
 	}
 
 	function resetStatesAfterActionProcessed() {
@@ -229,16 +233,15 @@
 				const combatAndNPCState = await getCombatAndNPCState(action);
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 
-				console.log(action.text, additionalActionInput);
 				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
-					action.text,
+					action,
 					additionalActionInput,
 					customSystemInstruction.value,
 					historyMessagesState.value,
 					storyState.value,
 					characterState.value,
 					characterStatsState.value,
-					derivedGameState,
+					playerCharactersGameState,
 					inventoryState.value
 				);
 
@@ -250,7 +253,7 @@
 					} else {
 						//StatsUpdate did not come from combat agent
 						gameLogic.applyGameActionState(
-							derivedGameState,
+							playerCharactersGameState,
 							npcState.value,
 							inventoryState.value,
 							newState
@@ -285,10 +288,10 @@
 	async function renderGameState(state: GameActionState, addContinueStory = true) {
 		actionsDiv.innerHTML = '';
 		if (!isGameEnded.value) {
-			state.actions = state?.actions || [];
 			state.actions.forEach((action) => addActionButton(action, state.is_character_in_combat));
 			if (addContinueStory) {
 				addActionButton({
+					characterName: characterState.value.name,
 					text: 'Continue The Tale'
 				});
 			}
@@ -299,7 +302,7 @@
 		const button = document.createElement('button');
 		button.className = 'btn btn-neutral mb-3 w-full text-md ';
 		const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-		const isEnoughMP = mpCost === 0 || derivedGameState.currentMP >= mpCost;
+		const isEnoughMP = mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
 		if (mpCost > 0 && !action.text.includes('MP')) {
 			action.text += ' (' + mpCost + ' MP)';
 		}
@@ -331,8 +334,9 @@
 
 	const onTargetedSpellsOrAbility = async (action: Action, targets: string[]) => {
 		isAiGeneratingState = true;
+		const targetAddition = gameLogic.getTargetPromptAddition(targets);
 		const difficultyResponse = await difficultyAgent.generateDifficulty(
-			action.text,
+			action.text + targetAddition,
 			customSystemInstruction.value,
 			getLatestStoryMessages(),
 			characterState.value,
@@ -343,10 +347,13 @@
 		}
 		console.log('difficultyResponse', stringifyPretty(difficultyResponse));
 		chosenActionState.value = action;
+		const abilityAddition = '\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended.' +
+			'\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.';
+
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
-			gameLogic.getTargetPromptAddition(targets)
+			targetAddition + abilityAddition
 		);
 		isAiGeneratingState = false;
 	};
@@ -361,7 +368,8 @@
 	{/if}
 	<UseSpellsAbilitiesModal
 		bind:dialogRef={useSpellsAbilitiesModal}
-		currentMP={derivedGameState.currentMP}
+		playerName={characterState.value.name}
+		currentMP={playerCharactersGameState[characterState.value.name]?.currentMP}
 		abilities={characterStatsState.value?.spells_and_abilities}
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
@@ -369,6 +377,7 @@
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
+		playerName={characterState.value.name}
 		inventoryState={inventoryState.value}
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
@@ -382,10 +391,10 @@
 	></DiceRollComponent>
 	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
 		<output id="hp" class="ml-1 text-lg font-semibold text-red-500">
-			HP: {derivedGameState.currentHP}</output
+			HP: {playerCharactersGameState[characterState.value.name]?.currentHP}</output
 		>
 		<output id="mp" class="ml-1 text-lg font-semibold text-blue-500">
-			MP: {derivedGameState.currentMP}</output
+			MP: {playerCharactersGameState[characterState.value.name]?.currentMP}</output
 		>
 	</div>
 	<div id="story" class="mt-4 rounded-lg bg-base-100 p-4 shadow-md">
@@ -397,7 +406,7 @@
 				story={gameActionState.story}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
 				gameUpdates={gameLogic
-					.renderStatUpdates(gameActionState.stats_update)
+					.renderStatUpdates(gameActionState.stats_update, characterState.value.name)
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
 		{/each}
@@ -414,14 +423,14 @@
 						useSpellsAbilitiesModal.showModal();
 					}}
 					class="text-md btn btn-primary w-full"
-					>Spells & Abilities
+				>Spells & Abilities
 				</button>
 				<button
 					onclick={() => {
 						useItemsModal.showModal();
 					}}
 					class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
+				>Inventory
 				</button>
 			</div>
 		{/if}
@@ -437,25 +446,25 @@
 				<button
 					type="submit"
 					onclick={() => {
-						sendAction({ text: customActionInput.value });
+						sendAction({ characterName: characterState.value.name, text: customActionInput.value });
 					}}
 					class="btn btn-neutral"
 					id="submit-button"
-					>Submit
+				>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-		.btn {
-			height: fit-content;
-			padding: 1rem;
-		}
+      .btn {
+          height: fit-content;
+          padding: 1rem;
+      }
 
-		canvas {
-			height: 100%;
-			width: 100%;
-		}
+      canvas {
+          height: 100%;
+          width: 100%;
+      }
 	</style>
 </div>

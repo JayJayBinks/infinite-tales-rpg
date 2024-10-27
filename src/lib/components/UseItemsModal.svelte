@@ -12,12 +12,14 @@
 
 	let {
 		inventoryState,
+		playerName,
 		storyImagePrompt,
 		targets,
 		onclose,
 		dialogRef = $bindable()
 	}: {
 		inventoryState: InventoryState;
+		playerName: string;
 		storyImagePrompt: string;
 		targets: Targets;
 		onclose;
@@ -32,7 +34,8 @@
 		action = {
 			...item,
 			type: 'Misc.',
-			text: 'I use ' + item_id + ': ' + item.effect
+			characterName: playerName,
+			text: playerName + ' uses ' + item_id + ': ' + item.effect
 		};
 	}
 </script>

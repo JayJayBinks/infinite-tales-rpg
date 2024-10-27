@@ -16,12 +16,13 @@ export type InventoryUpdate = {
 export type InventoryState = { [item_id: string]: Item };
 export type Item = { description: string; effect: string };
 export type Action = {
+	characterName: string;
 	text: string;
 	action_difficulty?: ActionDifficulty;
 	type?: string;
 	mp_cost?: number;
 } & DiceRollDifficulty;
-export type DerivedGameState = { currentHP: number; currentMP: number };
+export type PlayerCharactersGameState = { [playerCharacterName: string]: { currentHP: number, currentMP: number } };
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
 	story: string;
@@ -49,46 +50,48 @@ export class GameAgent {
 	 * @param storyState
 	 * @param characterState
 	 * @param characterStatsState
-	 * @param derivedGameState
+	 * @param playerCharactersGameState
 	 */
 	async generateStoryProgression(
-		actionText: string,
+		action: Action,
 		additionalActionInput: string,
 		customSystemInstruction: string,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
 		characterState: CharacterDescription,
 		characterStatsState: CharacterStats,
-		derivedGameState: DerivedGameState,
+		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
-		let combinedText = actionText;
+		const playerActionText = action.characterName + ": " + action.text;
+		let combinedText = playerActionText;
 		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
 		const gameAgent = [
 			systemBehaviour,
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-				'\n' +
-				stringifyPretty(characterState),
-			"The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
-				'\n' +
-				stringifyPretty(characterStatsState),
-			"The following is the character's inventory, check items for relevant passive effects for the story progression.\n" +
-				stringifyPretty(inventoryState),
-			"The following are the character's CURRENT resources, consider it in your response\n" +
-				stringifyPretty(derivedGameState),
+			'\n' +
+			stringifyPretty(characterState),
+			'The following are the character\'s stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. ' +
+			'\n' +
+			stringifyPretty(characterStatsState),
+			'The following is the character\'s inventory, check items for relevant passive effects for the story progression.\n' +
+			stringifyPretty(inventoryState),
+			'The following are the character\'s CURRENT resources, consider it in your response\n' +
+			stringifyPretty(playerCharactersGameState),
 			jsonSystemInstruction
 		];
 		if (customSystemInstruction) {
 			gameAgent.push(customSystemInstruction);
 		}
+		console.log(combinedText);
 		const request: LLMRequest = {
 			userMessage: combinedText,
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
 		const newState = (await this.llm.generateContent(request)) as GameActionState;
-		const { userMessage, modelMessage } = this.buildHistoryMessages(actionText, newState);
+		const { userMessage, modelMessage } = this.buildHistoryMessages(playerActionText, newState);
 		const updatedHistoryMessages = [...historyMessages, userMessage, modelMessage];
 		mapGameState(newState);
 		return { newState, updatedHistoryMessages };
@@ -106,24 +109,24 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function (userText: string, modelStateObject: object) {
+	buildHistoryMessages = function(userText: string, modelStateObject: object) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
 	};
 
-	getStartingResourcesUpdateObject(hp: number, mp: number): Pick<GameActionState, 'stats_update'> {
+	getStartingResourcesUpdateObject(hp: number, mp: number, playerName: string): Pick<GameActionState, 'stats_update'> {
 		return {
 			stats_update: [
 				{
-					sourceId: 'player_character',
-					targetId: 'player_character',
+					sourceId: playerName,
+					targetId: playerName,
 					type: 'hp_gained',
 					value: { result: hp }
 				},
 				{
-					sourceId: 'player_character',
-					targetId: 'player_character',
+					sourceId: playerName,
+					targetId: playerName,
 					type: 'mp_gained',
 					value: { result: mp }
 				}
@@ -210,6 +213,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   "currently_present_npcs": List of NPCs that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]},
   "actions": [
     {
+      "characterName": "Player character name who performs this action",
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
       "type": "Misc|Attack|Spell|Conversation|Social_Manipulation",
       "required_trait": "the skill the dice is rolled for",
