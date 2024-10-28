@@ -50,7 +50,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
-export const getTargetPromptAddition = function (targets: string[]) {
+export const getTargetPromptAddition = function(targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -59,6 +59,7 @@ export function formatItemId(item_id: string) {
 }
 
 export type RenderedGameUpdate = { text: string; resourceText: string; color: string };
+
 export function renderStatUpdates(statsUpdates: Array<StatsUpdate>, playerName: string): Array<RenderedGameUpdate> {
 	if (statsUpdates) {
 		return statsUpdates
@@ -90,7 +91,8 @@ export function renderStatUpdates(statsUpdates: Array<StatsUpdate>, playerName: 
 					responseText = 'You ';
 					resourceText =
 						'' +
-						getTakeLessDamageForManyHits(statsUpdates, Number.parseInt(statsUpdate.value.result), playerName);
+						(getTakeLessDamageForManyHits(statsUpdates, Number.parseInt(statsUpdate.value.result), playerName)
+							|| statsUpdate.value.result);
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'are';
