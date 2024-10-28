@@ -1,19 +1,27 @@
-<script>
-    import AIGeneratedImage from "$lib/components/AIGeneratedImage.svelte";
-    import {marked} from "marked";
+<script lang="ts">
+	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
+	import { marked } from 'marked';
+	import type { RenderedGameUpdate } from '../../routes/game/gameLogic';
 
-    let {story, statsUpdates, imagePrompt} = $props();
-    let rendered = marked(story).replaceAll('\\n', '<br>').replaceAll(' n ', '<br>').replaceAll('\\&quot;', '&quot;');
+	type Props = { story: string; gameUpdates?: Array<RenderedGameUpdate>; imagePrompt?: string };
+	let { story, gameUpdates = [], imagePrompt = '' }: Props = $props();
+	let rendered = (marked(story) as string)
+		.replaceAll('\\n', '<br>')
+		.replaceAll(' n ', '<br>')
+		.replaceAll('\\&quot;', '&quot;');
 </script>
-<article class="m-auto prose prose-neutral mt-2" style="color: unset">
-    {@html rendered}
-    {#each statsUpdates as statsUpdate}
-        <p class="capitalize text-center text-sm m-1">{statsUpdate.text} <span class="{statsUpdate.color}">{statsUpdate.resourceText}</span></p>
-    {/each}
+
+<article class="prose prose-neutral m-auto mt-2" style="color: unset">
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+	{@html rendered}
+	{#each gameUpdates as gameUpdate}
+		<p class="m-1 text-center text-sm capitalize">
+			{gameUpdate.text} <span class={gameUpdate.color}>{gameUpdate.resourceText}</span>
+		</p>
+	{/each}
 </article>
 {#if imagePrompt}
-    <AIGeneratedImage className="m-auto mt-3"
-                      showLoadingSpinner={false}
-                      imagePrompt="{imagePrompt}" showGenerateButton={false}
-    />
+	<div class="m-auto mt-3">
+		<AIGeneratedImage showLoadingSpinner={false} {imagePrompt} showGenerateButton={false} />
+	</div>
 {/if}

@@ -1,168 +1,25 @@
-import {handleError} from "../util.svelte";
-import {GoogleGenerativeAI} from "@google/generative-ai";
-import {JsonFixingInterceptorAgent} from "./agents/jsonFixingInterceptorAgent";
+import { defaultGeminiJsonConfig, GeminiProvider } from '$lib/ai/geminiProvider';
+import { LLM, type LLMconfig } from '$lib/ai/llm';
 
-const safetySettings = [
-    {
-        category: "HARM_CATEGORY_HARASSMENT",
-        threshold: "BLOCK_NONE",
-    },
-    {
-        category: "HARM_CATEGORY_HATE_SPEECH",
-        threshold: "BLOCK_NONE",
-    },
-    {
-        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        threshold: "BLOCK_NONE",
-    },
-    {
-        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-        threshold: "BLOCK_NONE",
-    },
-];
-
-export const generationConfig = {
-    temperature: 1,
-    topP: 0.95,
-    topK: 40,
-    maxOutputTokens: 8192,
-    responseMimeType: "application/json",
-};
-export const generationConfigText = {
-    ...generationConfig,
-    maxOutputTokens: 4000,
-    responseMimeType: "text/plain",
+export const defaultLLMConfig: LLMconfig = {
+	provider: 'gemini',
+	temperature: defaultGeminiJsonConfig.temperature,
+	generationConfig: defaultGeminiJsonConfig,
+	tryAutoFixJSONError: true
 };
 
-export interface LLMProvider {
+export class LLMProvider {
+	static provideLLM(llmConfig: LLMconfig): LLM {
+		const configToUse = { ...defaultLLMConfig, ...llmConfig };
+		if (llmConfig.provider === 'pollinations') {
+			//TODO impl pollinations
+			return new GeminiProvider(configToUse);
+		} else {
+			return new GeminiProvider(configToUse);
+		}
+	}
 
-    sendToAI(contents,
-             systemInstruction,
-             temperature,
-             tryAutoFixJSONError);
-
-    sendToAI(contents,
-             systemInstruction,
-             temperature,
-             useGenerationConfig,
-             useSafetySettings,
-             tryAutoFixJSONError);
-}
-
-
-export class GeminiProvider implements LLMProvider {
-    apiKey: string;
-    language: string;
-    systemInstruction: any; // TODO The requested module '@google/generative-ai' does not provide an export named 'Part'
-    temperature: number;
-    generationConfig;
-    safetySettings;
-
-    genAI;
-    jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
-
-
-    constructor(apiKey, temperature: number = generationConfig.temperature, language, systemInstruction = undefined, useGenerationConfig = generationConfig, useSafetySettings = safetySettings) {
-        this.apiKey = apiKey;
-        this.temperature = temperature;
-        this.language = language;
-        this.systemInstruction = systemInstruction;
-        this.generationConfig = useGenerationConfig;
-        this.safetySettings = useSafetySettings;
-
-        this.genAI = new GoogleGenerativeAI(this.apiKey);
-        this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
-    }
-
-    async sendToAINoAutoFix(contents,
-                            systemInstruction = this.systemInstruction,
-                            temperature = this.temperature) {
-        return this.sendToAI(contents,
-            systemInstruction,
-            temperature,
-            this.generationConfig,
-            this.safetySettings,
-            false);
-    }
-
-    async sendToAI(contents,
-                   systemInstruction = this.systemInstruction,
-                   temperature = this.temperature,
-                   useGenerationConfig = this.generationConfig,
-                   useSafetySettings = this.safetySettings,
-                   tryAutoFixJSONError = true) {
-
-        const model = this.genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-latest",
-            generationConfig: {...useGenerationConfig, temperature},
-            safetySettings: useSafetySettings
-        });
-        if (this.language) {
-            const languageInstruction = 'Important! You must respond in the following language: ' + this.language;
-            if (systemInstruction.parts) {
-                systemInstruction.parts.push({"text": languageInstruction})
-            } else {
-                systemInstruction += "\n" + languageInstruction;
-            }
-        }
-
-        let result;
-        try {
-            result = await model.generateContent({contents, systemInstruction});
-        } catch (e) {
-            if (e.message.includes('not available in your country')) {
-                e.message = "The Google Gemini Free Tier is not available in your country. :( Better move to a different country, there are browser extensions which support you!";
-            }
-            handleError(e);
-            return undefined;
-        }
-        try {
-            const responseText = result.response.text();
-            if (useGenerationConfig.responseMimeType === 'application/json') {
-                try {
-                    return JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''));
-                } catch (firstError) {
-                    try {
-                        console.log("Error parsing JSON: " + responseText, firstError)
-                        console.log("Try json simple fix 1")
-                        if (firstError.message.includes('Bad control character in string literal')) {
-                            return JSON.parse(responseText.replaceAll("\\", ""));
-                        }
-                        return JSON.parse("{" + responseText.replaceAll("\\", ""));
-                    } catch (secondError) {
-                        if (tryAutoFixJSONError) {
-                            console.log("Try json fix with llm agent")
-                            return this.jsonFixingInterceptorAgent.fixJSON(responseText, firstError.message);
-                        }
-                        handleError(firstError);
-                        return undefined;
-                    }
-                }
-            }
-            return responseText;
-        } catch (e) {
-            handleError(e);
-        }
-        return undefined;
-    }
-}
-
-export function buildAIContentsFormat(actionText, historyMessages) {
-    let contents = []
-    if (historyMessages) {
-        historyMessages.forEach(message => {
-            contents.push({
-                "role": message["role"],
-                "parts": [{"text": message["content"]}]
-            })
-        });
-    }
-    if (actionText) {
-        let message = {"role": "user", "content": actionText}
-        contents.push({
-            "role": message["role"],
-            "parts": [{"text": message["content"]}]
-        })
-    }
-    return contents;
+	static provideDefaultLLM(): LLM {
+		return new GeminiProvider(defaultLLMConfig);
+	}
 }
