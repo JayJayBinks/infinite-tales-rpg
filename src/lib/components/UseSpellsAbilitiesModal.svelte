@@ -31,7 +31,15 @@
 			characterName: playerName,
 			...ability,
 			type: 'Spell',
-			text: playerName + ' casts ' + ability.name + ': ' + ability.effect + ' (' + ability.mp_cost + ' MP)'
+			text:
+				playerName +
+				' casts ' +
+				ability.name +
+				': ' +
+				ability.effect +
+				' (' +
+				ability.mp_cost +
+				' MP)'
 		};
 	}
 </script>

@@ -50,7 +50,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
-export const getTargetPromptAddition = function(targets: string[]) {
+export const getTargetPromptAddition = function (targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -60,7 +60,10 @@ export function formatItemId(item_id: string) {
 
 export type RenderedGameUpdate = { text: string; resourceText: string; color: string };
 
-export function renderStatUpdates(statsUpdates: Array<StatsUpdate>, playerName: string): Array<RenderedGameUpdate> {
+export function renderStatUpdates(
+	statsUpdates: Array<StatsUpdate>,
+	playerName: string
+): Array<RenderedGameUpdate> {
 	if (statsUpdates) {
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
@@ -91,8 +94,11 @@ export function renderStatUpdates(statsUpdates: Array<StatsUpdate>, playerName: 
 					responseText = 'You ';
 					resourceText =
 						'' +
-						(getTakeLessDamageForManyHits(statsUpdates, Number.parseInt(statsUpdate.value.result), playerName)
-							|| statsUpdate.value.result);
+						(getTakeLessDamageForManyHits(
+							statsUpdates,
+							Number.parseInt(statsUpdate.value.result),
+							playerName
+						) || statsUpdate.value.result);
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'are';
@@ -141,7 +147,11 @@ export function renderInventoryUpdate(
 }
 
 //TODO too difficult if too many hits
-function getTakeLessDamageForManyHits(stats_update: Array<StatsUpdate>, damage: number, playerName: string) {
+function getTakeLessDamageForManyHits(
+	stats_update: Array<StatsUpdate>,
+	damage: number,
+	playerName: string
+) {
 	if (damage <= 2) {
 		return damage;
 	}
@@ -163,7 +173,9 @@ export function applyGameActionState(
 		if (playerCharactersGameState[statUpdate.targetId]) {
 			switch (statUpdate.type) {
 				case 'hp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentHP += Number.parseInt(statUpdate.value.result);
+					playerCharactersGameState[statUpdate.targetId].currentHP += Number.parseInt(
+						statUpdate.value.result
+					);
 					break;
 				case 'hp_lost':
 					playerCharactersGameState[statUpdate.targetId].currentHP -= getTakeLessDamageForManyHits(
@@ -173,10 +185,14 @@ export function applyGameActionState(
 					);
 					break;
 				case 'mp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentMP += Number.parseInt(statUpdate.value.result);
+					playerCharactersGameState[statUpdate.targetId].currentMP += Number.parseInt(
+						statUpdate.value.result
+					);
 					break;
 				case 'mp_lost':
-					playerCharactersGameState[statUpdate.targetId].currentMP -= Number.parseInt(statUpdate.value.result);
+					playerCharactersGameState[statUpdate.targetId].currentMP -= Number.parseInt(
+						statUpdate.value.result
+					);
 					break;
 			}
 		} else {

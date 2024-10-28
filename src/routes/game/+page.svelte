@@ -1,6 +1,10 @@
 <script lang="ts">
 	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
-	import type { Action, PlayerCharactersGameState, GameActionState } from '$lib/ai/agents/gameAgent';
+	import type {
+		Action,
+		PlayerCharactersGameState,
+		GameActionState
+	} from '$lib/ai/agents/gameAgent';
 	import { GameAgent } from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
 
@@ -93,7 +97,10 @@
 		}
 	});
 
-	function handleStartingStats(playerCharactersGameState: PlayerCharactersGameState, playerName: string) {
+	function handleStartingStats(
+		playerCharactersGameState: PlayerCharactersGameState,
+		playerName: string
+	) {
 		const startingResourcesUpdateObject = gameAgent.getStartingResourcesUpdateObject(
 			characterStatsState.value.resources.MAX_HP,
 			characterStatsState.value.resources.MAX_MP,
@@ -149,7 +156,11 @@
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			let actionText = chosenActionState.value.text + '\n ' + diceRollDialog.returnValue;
-			sendAction({ characterName: characterState.value.name, text: actionText }, false, additionalActionInput);
+			sendAction(
+				{ characterName: characterState.value.name, text: actionText },
+				false,
+				additionalActionInput
+			);
 		});
 	}
 
@@ -302,7 +313,8 @@
 		const button = document.createElement('button');
 		button.className = 'btn btn-neutral mb-3 w-full text-md ';
 		const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-		const isEnoughMP = mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
+		const isEnoughMP =
+			mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
 		if (mpCost > 0 && !action.text.includes('MP')) {
 			action.text += ' (' + mpCost + ' MP)';
 		}
@@ -347,7 +359,8 @@
 		}
 		console.log('difficultyResponse', stringifyPretty(difficultyResponse));
 		chosenActionState.value = action;
-		const abilityAddition = '\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended.' +
+		const abilityAddition =
+			'\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended.' +
 			'\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.';
 
 		await sendAction(
@@ -423,14 +436,14 @@
 						useSpellsAbilitiesModal.showModal();
 					}}
 					class="text-md btn btn-primary w-full"
-				>Spells & Abilities
+					>Spells & Abilities
 				</button>
 				<button
 					onclick={() => {
 						useItemsModal.showModal();
 					}}
 					class="text-md btn btn-primary mt-3 w-full"
-				>Inventory
+					>Inventory
 				</button>
 			</div>
 		{/if}
@@ -450,21 +463,21 @@
 					}}
 					class="btn btn-neutral"
 					id="submit-button"
-				>Submit
+					>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-      .btn {
-          height: fit-content;
-          padding: 1rem;
-      }
+		.btn {
+			height: fit-content;
+			padding: 1rem;
+		}
 
-      canvas {
-          height: 100%;
-          width: 100%;
-      }
+		canvas {
+			height: 100%;
+			width: 100%;
+		}
 	</style>
 </div>

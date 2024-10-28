@@ -22,7 +22,9 @@ export type Action = {
 	type?: string;
 	mp_cost?: number;
 } & DiceRollDifficulty;
-export type PlayerCharactersGameState = { [playerCharacterName: string]: { currentHP: number, currentMP: number } };
+export type PlayerCharactersGameState = {
+	[playerCharacterName: string]: { currentHP: number; currentMP: number };
+};
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
 	story: string;
@@ -63,22 +65,22 @@ export class GameAgent {
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
-		const playerActionText = action.characterName + ": " + action.text;
+		const playerActionText = action.characterName + ': ' + action.text;
 		let combinedText = playerActionText;
 		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
 		const gameAgent = [
 			systemBehaviour,
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-			'\n' +
-			stringifyPretty(characterState),
-			'The following are the character\'s stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. ' +
-			'\n' +
-			stringifyPretty(characterStatsState),
-			'The following is the character\'s inventory, check items for relevant passive effects for the story progression.\n' +
-			stringifyPretty(inventoryState),
-			'The following are the character\'s CURRENT resources, consider it in your response\n' +
-			stringifyPretty(playerCharactersGameState),
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are the character's stats and abilities, always refer to it when making decisions regarding dice rolls, modifier_explanation etc. " +
+				'\n' +
+				stringifyPretty(characterStatsState),
+			"The following is the character's inventory, check items for relevant passive effects for the story progression.\n" +
+				stringifyPretty(inventoryState),
+			"The following are the character's CURRENT resources, consider it in your response\n" +
+				stringifyPretty(playerCharactersGameState),
 			jsonSystemInstruction
 		];
 		if (customSystemInstruction) {
@@ -109,13 +111,17 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function(userText: string, modelStateObject: object) {
+	buildHistoryMessages = function (userText: string, modelStateObject: object) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
 	};
 
-	getStartingResourcesUpdateObject(hp: number, mp: number, playerName: string): Pick<GameActionState, 'stats_update'> {
+	getStartingResourcesUpdateObject(
+		hp: number,
+		mp: number,
+		playerName: string
+	): Pick<GameActionState, 'stats_update'> {
 		return {
 			stats_update: [
 				{

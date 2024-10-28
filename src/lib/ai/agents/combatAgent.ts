@@ -46,17 +46,17 @@ export class CombatAgent {
 		storyState: Story
 	) {
 		const agent = [
-			'You are RPG combat agent, you decide which actions the NPCs take in response to the player character\'s action ' +
-			'and what the consequences of these actions are. ' +
-			'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
-			'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
-			'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
-			'\n The following is the character\'s inventory, if an item is relevant in the current situation then apply it\'s effect.' +
-			'\n' +
-			stringifyPretty(inventoryState),
+			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
+				'and what the consequences of these actions are. ' +
+				'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
+				'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
+				'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
+			"\n The following is the character's inventory, if an item is relevant in the current situation then apply it's effect." +
+				'\n' +
+				stringifyPretty(inventoryState),
 			'The following is a description of the story setting to keep the actions consistent on.' +
-			'\n' +
-			stringifyPretty(storyState),
+				'\n' +
+				stringifyPretty(storyState),
 			`Most important instruction! You must always respond with following JSON format! 
                  {
                   "actions": [
@@ -76,7 +76,9 @@ export class CombatAgent {
 			agent.push(customSystemInstruction);
 		}
 		const actionToSend =
-			'player character named ' + action.characterName + ' takes following action: ' +
+			'player character named ' +
+			action.characterName +
+			' takes following action: ' +
 			action.text +
 			'\n' +
 			'Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action.' +
@@ -133,8 +135,9 @@ export class CombatAgent {
 				stringifyPretty(deadNPCs);
 		}
 		if (playerCharactersGameState) {
-			const aliveChars = Object.keys(playerCharactersGameState)
-				.filter(playerName => playerCharactersGameState[playerName].currentHP > 0);
+			const aliveChars = Object.keys(playerCharactersGameState).filter(
+				(playerName) => playerCharactersGameState[playerName].currentHP > 0
+			);
 			text += '\n Player Characters ' + aliveChars.join(', ') + ' are alive after the attacks!';
 		}
 
