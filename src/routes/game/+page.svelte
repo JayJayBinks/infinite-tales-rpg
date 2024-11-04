@@ -30,6 +30,7 @@
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/UseItemsModal.svelte';
+	import { type Campaign, CampaignAgent } from '$lib/ai/agents/campaignAgent';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -41,7 +42,7 @@
 	const aiLanguage = useLocalStorage('aiLanguage');
 	let isAiGeneratingState = $state(false);
 	let didAIProcessDiceRollActionState = useLocalStorage('didAIProcessDiceRollAction');
-	let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent;
+	let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent, campaignAgent;
 
 	//game state
 	const gameActionsState = useLocalStorage('gameActionsState', []);
@@ -50,6 +51,10 @@
 	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
 	const inventoryState = useLocalStorage('inventoryState', {});
 	const storyState = useLocalStorage('storyState', initialStoryState);
+	const currentChapterState = useLocalStorage('currentChapterState');
+	const campaignState = useLocalStorage('campaignState', {});
+	const eventTriggeredState = useLocalStorage('eventTriggeredState');
+
 	const npcState = useLocalStorage('npcState', {});
 	const chosenActionState = useLocalStorage('chosenActionState', {});
 	const additionalActionInputState = useLocalStorage('additionalActionInputState');
@@ -74,6 +79,7 @@
 		combatAgent = new CombatAgent(llm);
 		difficultyAgent = new DifficultyAgent(llm);
 		summaryAgent = new SummaryAgent(llm);
+		campaignAgent = new CampaignAgent(llm);
 		//Start game when not already started
 		playerCharactersGameState = { [characterState.value.name]: { currentHP: 0, currentMP: 0 } };
 		if (gameActionsState.value.length === 0) {
@@ -231,8 +237,29 @@
 		historyMessagesState.value = updatedHistoryMessages;
 	}
 
+	function startNextChapter() {
+		currentChapterState.value += 1;
+		const newChapter = (campaignState.value as Campaign).chapters.find(
+			(chapter) => chapter.chapterId === currentChapterState.value
+		);
+
+		if (newChapter) {
+			const newChapterJson = stringifyPretty(newChapter);
+			storyState.value = {
+				...storyState.value,
+				adventure_and_main_event: newChapterJson
+			};
+			//TODO set waitingForEventTrigger manually?
+			return (
+				'\nA new chapter begins, use the new waitingForEventTrigger and nudge the players into the first plotPoint: ' +
+				'\n' +
+				newChapterJson
+			);
+		}
+		return '\nNotify the players that the campaign has ended with a glorious message. But they can continue with free exploration.';
+	}
+
 	async function sendAction(action: Action, rollDice = false, additionalActionInput = '') {
-		additionalActionInputState.value = additionalActionInput;
 		try {
 			if (rollDice) {
 				openDiceRollDialog(additionalActionInput);
@@ -244,6 +271,54 @@
 				const combatAndNPCState = await getCombatAndNPCState(action);
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 
+				eventTriggeredState.value = currentGameActionState.eventTriggered;
+				if (didAIProcessDiceRollActionState.value &&
+					campaignState.value.chapters && !currentGameActionState.is_character_in_combat) {
+
+					let campaignAdjustments;
+					if (
+						eventTriggeredState.value ||
+						gameActionsState.value.length % 5 === 0
+					) {
+						campaignAdjustments = await campaignAgent.adjustCampaignToCharacterActions(
+							action,
+							campaignState.value,
+							historyMessagesState.value
+						);
+						console.log(stringifyPretty(campaignAdjustments));
+
+						if (campaignAdjustments.deviation > 70) {
+							additionalActionInput +=
+								'\n' +
+								campaignAdjustments.plotNudge.nudgeExplanation +
+								'\n' +
+								campaignAdjustments.plotNudge.nudgeStory;
+
+							//TODO
+							if (campaignAdjustments.deviation > 100) {
+								const newChapters = campaignAdjustments.adjustedChapters?.chapters;
+								if (newChapters) {
+									campaignState.value = { ...campaignState.value, chapters: newChapters };
+									if (newChapters[campaignAdjustments.chapterReference]) {
+										storyState.value = {
+											...storyState.value,
+											adventure_and_main_event: newChapters[campaignAdjustments.chapterReference]
+										};
+									}
+								}
+							}
+						}
+					}
+					if (
+						didAIProcessDiceRollActionState.value &&
+						(campaignAdjustments?.eventTriggered ||
+						campaignAdjustments?.chapterReference > currentChapterState.value)
+					) {
+						additionalActionInput += startNextChapter();
+					}
+				}
+
+				additionalActionInputState.value = additionalActionInput;
 				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 					action,
 					additionalActionInput,
@@ -326,7 +401,8 @@
 			chosenActionState.value = $state.snapshot(action);
 			sendAction(
 				chosenActionState.value,
-				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat)
+				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat),
+				additionalActionInputState.value
 			);
 		});
 		actionsDiv.appendChild(button);
@@ -366,7 +442,7 @@
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
-			targetAddition + abilityAddition
+			targetAddition + abilityAddition + additionalActionInputState.value
 		);
 		isAiGeneratingState = false;
 	};
@@ -459,7 +535,7 @@
 				<button
 					type="submit"
 					onclick={() => {
-						sendAction({ characterName: characterState.value.name, text: customActionInput.value });
+						sendAction({ characterName: characterState.value.name, text: customActionInput.value }, false, additionalActionInputState.value);
 					}}
 					class="btn btn-neutral"
 					id="submit-button"

@@ -27,6 +27,7 @@ export type PlayerCharactersGameState = {
 };
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
+	eventTriggered: boolean;
 	story: string;
 	image_prompt: string;
 	inventory_update: Array<InventoryUpdate>;
@@ -171,7 +172,7 @@ Storytelling:
 Actions:
 
 - Let me guide actions and story relevance.
-- Always provide at least 3 potential actions the CHARACTER can take, fitting the THEME and CHARACTER's abilities per GAME rules. One should randomly be brilliant, ridiculous, or dangerous. Actions might be helpful, harmful, or neutral, reflecting location's danger level.
+- Always provide at least 3 potential actions the CHARACTER can take, fitting the THEME and CHARACTER's abilities per GAME rules. Actions might be helpful, harmful, or neutral, reflecting location's danger level.
 - Keep the actions text short, max 30 words.
 - Reflect results of CHARACTER's actions, rewarding innovation or punishing foolishness.
 - CHARACTER actions are only chosen by the player and not by ROLE
@@ -194,7 +195,9 @@ Always review context from system instructions and my last message before respon
 
 const jsonSystemInstruction = `Important Instruction! You must always respond with valid JSON in the following format:
 {
-  "story": "DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES. For character speech use single quotes.",
+	"waitingForEventTrigger": "the eventTrigger that is waited to be triggered according to ADVENTURE_AND_MAIN_EVENT",
+	"eventTriggered": true if the eventTrigger from ADVENTURE_AND_MAIN_EVENT is triggered,
+	"story": "DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES. For character speech use single quotes.",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
   "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory

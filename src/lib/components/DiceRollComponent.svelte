@@ -62,10 +62,12 @@
 	}
 
 	let onRoll = (evt) => {
-		evt.currentTarget.disabled = true;
-		diceBox.roll('1d20').then((results) => {
-			rolledValueState.value = results[0].value;
-		});
+		//TODO rollback later
+		rolledValueState.value = 12;
+		// evt.currentTarget.disabled = true;
+		// diceBox.roll('1d20').then((results) => {
+		// 	rolledValueState.value = results[0].value;
+		// });
 	};
 
 	const onClose = () => {

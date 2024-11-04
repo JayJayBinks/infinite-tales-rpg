@@ -26,6 +26,8 @@
 	const storyState = useLocalStorage('storyState', initialStoryState);
 	const isGameEnded = useLocalStorage('isGameEnded', false);
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
+	const campaignState = useLocalStorage('campaignState', {});
+	const currentChapterState = useLocalStorage('currentChapterState');
 	let isGeneratingState = $state(false);
 
 	function clearStates() {
@@ -39,6 +41,8 @@
 		rollDifferenceHistoryState.reset();
 		npcState.reset();
 		inventoryState.reset();
+		campaignState.reset();
+		currentChapterState.reset();
 	}
 
 	async function onQuickstartNew() {
@@ -78,6 +82,11 @@
 		clearStates();
 		navigate('/new/tale');
 	}
+
+	function onNewCampaign() {
+		clearStates();
+		navigate('/new/campaign');
+	}
 </script>
 
 {#if isGeneratingState}
@@ -114,6 +123,13 @@
 		onclick={onStartCustom}
 	>
 		New Custom Tale
+	</button>
+	<button
+		class="btn btn-neutral m-auto mt-5 w-1/2"
+		disabled={!apiKeyState.value}
+		onclick={onNewCampaign}
+	>
+		New Campaign
 	</button>
 	<small class="m-auto mt-2">Customize any setting of your Tale</small>
 	<div class="divider mt-7">Advanced Settings</div>
