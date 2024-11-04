@@ -273,7 +273,7 @@
 
 				eventTriggeredState.value = currentGameActionState.eventTriggered;
 				if (didAIProcessDiceRollActionState.value &&
-					campaignState.value.chapters && !currentGameActionState.is_character_in_combat) {
+					campaignState.value.chapters && currentGameActionState.plotPointReference > campaignState.value.chapters[currentChapterState.value] ) {
 
 					let campaignAdjustments;
 					if (

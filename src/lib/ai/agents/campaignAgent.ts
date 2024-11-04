@@ -97,7 +97,8 @@ export class CampaignAgent {
 				content: 'Character description: ' + stringifyPretty(characterDescription)
 			});
 		}
-		return (await this.llm.generateContent(request)) as Campaign;
+		let campaign = (await this.llm.generateContent(request)) as Campaign;
+		return ;
 	}
 
 	'If actionHistory has deviated too much from currentCampaign, return the adjusted campaign chapters to fit again to the character actions.\n';
@@ -132,8 +133,6 @@ export class CampaignAgent {
 				"chapterReference": chapterId that the story is currently developed at according to actionHistory,
 				"plotPointReferenceExplanation": "short reasoning why the story is currently at plotPointReference",
 				"plotPointReference": plotId that the story is currently developed at according to actionHistory,
-				"waitingForEventTrigger": "the eventTrigger that is waited to be triggered for chapterReference",
-				"eventTriggered": true if the eventTrigger from chapterReference is triggered,
 				"deviationExplanation": string,
 				"deviation": integer 0 - 100 how much the characterActions deviated from currentCampaign,
 				#only include plotNudge object if deviation > 50, else null

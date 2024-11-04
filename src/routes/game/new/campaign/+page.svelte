@@ -55,7 +55,13 @@
 
 	const onStory = async () => {
 		isGeneratingState = true;
-		const firstChapter: CampaignChapter = campaignState.value.chapters[0];
+		const firstChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[0]);
+		//chapterId is actually next chapter as it starts with 1
+		firstChapter.plotPoints.push(
+				{...campaignState.value.chapters[firstChapter.chapterId]?.plotPoints[0],
+							plotId: firstChapter.plotPoints.length + 1 }
+		);
+
 		const overwrites: Partial<Story> = {
 			game: campaignState.value.game,
 			adventure_and_main_event: stringifyPretty(firstChapter)
