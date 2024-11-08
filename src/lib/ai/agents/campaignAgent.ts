@@ -98,7 +98,7 @@ export class CampaignAgent {
 			});
 		}
 		let campaign = (await this.llm.generateContent(request)) as Campaign;
-		return ;
+		return campaign;
 	}
 
 	'If actionHistory has deviated too much from currentCampaign, return the adjusted campaign chapters to fit again to the character actions.\n';
@@ -129,10 +129,10 @@ export class CampaignAgent {
 			'Do not micro manage every single plot point but only take care that the overall chapter and campaign stay on track.\n' +
 			'Always respond with following JSON!\n' +
 			`{
-				"chapterReferenceExplanation": "short reasoning why the story is currently at chapterReference",
-				"chapterReference": chapterId that the story is currently developed at according to actionHistory,
-				"plotPointReferenceExplanation": "short reasoning why the story is currently at plotPointReference",
-				"plotPointReference": plotId that the story is currently developed at according to actionHistory,
+				"currentChapterExplanation": how actionHistory fulfill objective with chapterReference,
+				"currentChapter": Identify the most relevant chapterId that the actionHistory aligns with,
+				"currentPlotPointExplanation": how actionHistory fulfill plot with plotPointReference,
+  			"currentPlotPoint": Identify the most relevant plotId that the actionHistory aligns with,
 				"deviationExplanation": string,
 				"deviation": integer 0 - 100 how much the characterActions deviated from currentCampaign,
 				#only include plotNudge object if deviation > 50, else null

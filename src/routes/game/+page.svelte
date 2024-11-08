@@ -1,9 +1,9 @@
 <script lang="ts">
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type {
 		Action,
 		PlayerCharactersGameState,
-		GameActionState
+		GameActionState, InventoryState
 	} from '$lib/ai/agents/gameAgent';
 	import { GameAgent } from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
@@ -14,6 +14,7 @@
 	import StoryProgressionWithImage from '$lib/components/StoryProgressionWithImage.svelte';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import {
+		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
 		type NPCState
@@ -26,8 +27,8 @@
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import type { LLMMessage } from '$lib/ai/llm';
-	import { initialStoryState } from '$lib/ai/agents/storyAgent';
-	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
+	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/UseItemsModal.svelte';
 	import { type Campaign, CampaignAgent } from '$lib/ai/agents/campaignAgent';
@@ -36,32 +37,32 @@
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
 	//ai state
-	const apiKeyState = useLocalStorage('apiKeyState');
-	const temperatureState = useLocalStorage('temperatureState');
-	const customSystemInstruction = useLocalStorage('customSystemInstruction');
-	const aiLanguage = useLocalStorage('aiLanguage');
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const temperatureState = useLocalStorage<number>('temperatureState');
+	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let isAiGeneratingState = $state(false);
-	let didAIProcessDiceRollActionState = useLocalStorage('didAIProcessDiceRollAction');
+	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
+	let didAIProcessActionState = useLocalStorage<boolean>('didAIProcessActionState', true);
 	let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent, campaignAgent;
 
 	//game state
-	const gameActionsState = useLocalStorage('gameActionsState', []);
-	const historyMessagesState = useLocalStorage('historyMessagesState', []);
-	const characterState = useLocalStorage('characterState', initialCharacterState);
-	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
-	const inventoryState = useLocalStorage('inventoryState', {});
-	const storyState = useLocalStorage('storyState', initialStoryState);
-	const currentChapterState = useLocalStorage('currentChapterState');
-	const campaignState = useLocalStorage('campaignState', {});
-	const eventTriggeredState = useLocalStorage('eventTriggeredState');
+	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
+	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
+	const characterState = useLocalStorage<CharacterDescription>('characterState', initialCharacterState);
+	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState', initialCharacterStatsState);
+	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
+	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
+	const currentChapterState = useLocalStorage<number>('currentChapterState');
+	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
 
-	const npcState = useLocalStorage('npcState', {});
-	const chosenActionState = useLocalStorage('chosenActionState', {});
-	const additionalActionInputState = useLocalStorage('additionalActionInputState');
-	const isGameEnded = useLocalStorage('isGameEnded', false);
+	const npcState = useLocalStorage<NPCState>('npcState', {});
+	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
+	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState');
+	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	const currentGameActionState: GameActionState = $derived(
-		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {}
+		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {} as GameActionState
 	);
 
 	//feature toggles
@@ -239,21 +240,24 @@
 
 	function startNextChapter() {
 		currentChapterState.value += 1;
-		const newChapter = (campaignState.value as Campaign).chapters.find(
+		const newChapter = $state.snapshot(campaignState.value).chapters.find(
 			(chapter) => chapter.chapterId === currentChapterState.value
 		);
 
 		if (newChapter) {
+			newChapter.plotPoints.push(
+				{...campaignState.value.chapters[newChapter.chapterId]?.plotPoints[0],
+					plotId: newChapter.plotPoints.length + 1 }
+			);
 			const newChapterJson = stringifyPretty(newChapter);
 			storyState.value = {
 				...storyState.value,
 				adventure_and_main_event: newChapterJson
 			};
-			//TODO set waitingForEventTrigger manually?
 			return (
-				'\nA new chapter begins, use the new waitingForEventTrigger and nudge the players into the first plotPoint: ' +
-				'\n' +
-				newChapterJson
+				'\nA new chapter begins, ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.' +
+				'\nReevaluate the currentPlotPoint and nudge the players into the first plotPoint: ' +
+				'\n' + newChapterJson
 			);
 		}
 		return '\nNotify the players that the campaign has ended with a glorious message. But they can continue with free exploration.';
@@ -271,13 +275,9 @@
 				const combatAndNPCState = await getCombatAndNPCState(action);
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 
-				eventTriggeredState.value = currentGameActionState.eventTriggered;
-				if (didAIProcessDiceRollActionState.value &&
-					campaignState.value.chapters && currentGameActionState.plotPointReference > campaignState.value.chapters[currentChapterState.value] ) {
-
+				if (didAIProcessActionState.value && campaignState.value.chapters && !currentGameActionState.is_character_in_combat) {
 					let campaignAdjustments;
 					if (
-						eventTriggeredState.value ||
 						gameActionsState.value.length % 5 === 0
 					) {
 						campaignAdjustments = await campaignAgent.adjustCampaignToCharacterActions(
@@ -287,7 +287,7 @@
 						);
 						console.log(stringifyPretty(campaignAdjustments));
 
-						if (campaignAdjustments.deviation > 70) {
+						if (campaignAdjustments.deviation > 50) {
 							additionalActionInput +=
 								'\n' +
 								campaignAdjustments.plotNudge.nudgeExplanation +
@@ -310,15 +310,16 @@
 						}
 					}
 					if (
-						didAIProcessDiceRollActionState.value &&
-						(campaignAdjustments?.eventTriggered ||
-						campaignAdjustments?.chapterReference > currentChapterState.value)
+						currentGameActionState.currentPlotPoint > campaignState.value.chapters[currentChapterState.value - 1].plotPoints.length
+						||
+						campaignAdjustments?.currentChapter > currentChapterState.value
 					) {
 						additionalActionInput += startNextChapter();
 					}
 				}
 
 				additionalActionInputState.value = additionalActionInput;
+				didAIProcessActionState.value = false;
 				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 					action,
 					additionalActionInput,
@@ -330,7 +331,7 @@
 					playerCharactersGameState,
 					inventoryState.value
 				);
-
+				didAIProcessActionState.value = true;
 				if (newState) {
 					if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 						//override the gameActionsState stat update with the combat one

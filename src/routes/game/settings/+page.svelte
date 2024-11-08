@@ -1,5 +1,5 @@
 <script>
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage }  from '$lib/state/useLocalStorage.svelte';
 	import { difficultyDiceRollModifier } from '../diceRollLogic';
 	import { navigate } from '$lib/util.svelte';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';

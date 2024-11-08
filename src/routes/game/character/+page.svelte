@@ -1,5 +1,5 @@
 <script>
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage }  from '$lib/state/useLocalStorage.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { stringifyPretty } from '$lib/util.svelte';
 

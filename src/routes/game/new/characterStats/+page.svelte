@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage }  from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { getRowsForTextarea, navigate, parseState } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';

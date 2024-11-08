@@ -1,6 +1,6 @@
 <script>
 	import { stringifyPretty } from '$lib/util.svelte';
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage }  from '$lib/state/useLocalStorage.svelte';
 
 	const gameActionsState = useLocalStorage('gameActionsState');
 	const npcState = useLocalStorage('npcState', {});

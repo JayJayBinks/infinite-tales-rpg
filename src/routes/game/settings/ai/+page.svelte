@@ -1,5 +1,5 @@
 <script>
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { navigate, parseState } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';

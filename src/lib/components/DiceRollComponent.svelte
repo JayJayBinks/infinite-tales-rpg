@@ -2,7 +2,7 @@
 	import DiceBox from '@3d-dice/dice-box';
 	import * as diceRollLogic from '../../routes/game/diceRollLogic';
 	import type { Action } from '$lib/ai/agents/gameAgent';
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage }  from '$lib/state/useLocalStorage.svelte';
 	import { onMount } from 'svelte';
 
 	type Props = { diceRollDialog; action: Action; resetState: boolean };

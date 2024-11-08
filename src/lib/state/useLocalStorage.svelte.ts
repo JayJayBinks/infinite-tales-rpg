@@ -1,17 +1,17 @@
 import { onMount } from 'svelte';
 import cloneDeep from 'lodash.clonedeep';
 
-const useLocalStorage = (key: string, initialValue?: unknown) => {
-	function getInitial() {
+export function useLocalStorage<T>(key: string, initialValue?: T) {
+	function getInitial(): T | undefined {
 		return cloneDeep(initialValue);
 	}
 
-	let value = $state(getInitial());
+	let value = $state<T>(getInitial() as T) as T;
 	let isMounted = false;
 
 	$effect(() => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		value; //needed for triggering effect
+		value; // needed for triggering effect
 		if (isMounted) {
 			if (value !== undefined) {
 				localStorage.setItem(key, JSON.stringify(value));
@@ -20,6 +20,7 @@ const useLocalStorage = (key: string, initialValue?: unknown) => {
 			}
 		}
 	});
+
 	onMount(() => {
 		const currentValue = localStorage.getItem(key);
 		if (currentValue) value = JSON.parse(currentValue);
@@ -30,16 +31,17 @@ const useLocalStorage = (key: string, initialValue?: unknown) => {
 		get value() {
 			return value;
 		},
-		set value(v) {
-			value = v;
+		set value(v: T) {
+			value = v as T;
 		},
 		reset() {
-			value = getInitial();
+			value = getInitial() as T;
 		},
-		resetProperty(stateRef: string) {
-			value[stateRef] = initialValue ? getInitial()[stateRef] : undefined;
+		resetProperty(stateRef: keyof T) {
+			if (value && initialValue) {
+				// @ts-expect-error can never be undefined
+				value[stateRef] = getInitial()?.[stateRef];
+			}
 		}
 	};
-};
-
-export default useLocalStorage;
+}

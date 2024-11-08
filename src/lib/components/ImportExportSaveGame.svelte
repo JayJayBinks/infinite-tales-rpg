@@ -1,5 +1,5 @@
 <script lang="ts">
-	import useLocalStorage from '../state/useLocalStorage.svelte';
+	import { useLocalStorage }  from '../state/useLocalStorage.svelte';
 	import { downloadLocalStorageAsJson, importJsonFromFile } from '$lib/util.svelte';
 	import type { Snippet } from 'svelte';
 

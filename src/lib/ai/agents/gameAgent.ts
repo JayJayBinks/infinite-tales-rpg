@@ -27,7 +27,8 @@ export type PlayerCharactersGameState = {
 };
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
-	eventTriggered: boolean;
+	id: number;
+	currentPlotPoint: number;
 	story: string;
 	image_prompt: string;
 	inventory_update: Array<InventoryUpdate>;
@@ -195,8 +196,8 @@ Always review context from system instructions and my last message before respon
 
 const jsonSystemInstruction = `Important Instruction! You must always respond with valid JSON in the following format:
 {
-  "plotPointReferenceExplanation": "short reasoning why the story is currently at plotPointReference",
-  "plotPointReference": plotId that the story is currently developed at according to actionHistory,
+  "currentPlotPointExplanation": how recent events fulfill plot with plotPointReference,
+  "currentPlotPoint": Identify the most relevant plotId that the story aligns with,
   "story": "DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES. For character speech use single quotes.",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
   "inventory_update": [
