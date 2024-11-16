@@ -34,13 +34,13 @@ const chaptersPrompt = `{
 		"title": string,
 		"description": string,
 		"objective": string,
-		"completenessTrigger": trigger description when this chapter is considered successfull and failed,
 		"plotPoints": [
 			{
-				"plotId": number,
+				"plotId": always start at 1 again for each new chapter,
 				"location": string,
 				"description": string,
 				"objective": string,
+				"mainObstacle": Can be a negotiation, puzzle or fight,
 			},
 			...
 		]
@@ -97,7 +97,7 @@ export class CampaignAgent {
 				content: 'Character description: ' + stringifyPretty(characterDescription)
 			});
 		}
-		let campaign = (await this.llm.generateContent(request)) as Campaign;
+		const campaign = (await this.llm.generateContent(request)) as Campaign;
 		return campaign;
 	}
 
@@ -129,16 +129,14 @@ export class CampaignAgent {
 			'Do not micro manage every single plot point but only take care that the overall chapter and campaign stay on track.\n' +
 			'Always respond with following JSON!\n' +
 			`{
-				"currentChapterExplanation": how actionHistory fulfill objective with chapterReference,
-				"currentChapter": Identify the most relevant chapterId that the actionHistory aligns with,
-				"currentPlotPointExplanation": how actionHistory fulfill plot with plotPointReference,
-  			"currentPlotPoint": Identify the most relevant plotId that the actionHistory aligns with,
-				"deviationExplanation": string,
-				"deviation": integer 0 - 100 how much the characterActions deviated from currentCampaign,
+				"currentChapter": Identify the most relevant chapterId in currentCampaign that the story aligns with; Format "chapterId: {chapterId} - Reasoning why story is currently at this chapterId",
+				"currentPlotPoint": Identify the most relevant plotId in currentCampaign that the story aligns with; Format "plotId: {plotId} - Reasoning why story is currently at this plotId",
+  			"deviationExplanation": why the characterActions deviated from currentPlotPoint,
+				"deviation": integer 0 - 100 how much the characterActions deviated from currentPlotPoint,
 				#only include plotNudge object if deviation > 50, else null
 				"plotNudge": {
-					"nudgeExplanation": Explain why the characters are guided back to follow the chapter plot,
-					"nudgeStory": Create an NPC or event that gently guides the character back to follow the chapter plot. It must fit to the last character action.
+					"nudgeExplanation": Explain why the characters are guided back to follow the currentChapter plot,
+					"nudgeStory": Create an NPC or event that gently guides the character back to follow the currentChapter plot. It must fit to the last character action.
 				}
 			}`;
 

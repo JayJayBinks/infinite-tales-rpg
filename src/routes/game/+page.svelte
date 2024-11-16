@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import type {
-		Action,
-		PlayerCharactersGameState,
-		GameActionState, InventoryState
+	import {
+		type Action,
+		type PlayerCharactersGameState,
+		type GameActionState,
+		type InventoryState,
+		SLOW_STORY_PROMPT
 	} from '$lib/ai/agents/gameAgent';
 	import { GameAgent } from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
@@ -49,8 +51,14 @@
 	//game state
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
-	const characterState = useLocalStorage<CharacterDescription>('characterState', initialCharacterState);
-	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState', initialCharacterStatsState);
+	const characterState = useLocalStorage<CharacterDescription>(
+		'characterState',
+		initialCharacterState
+	);
+	const characterStatsState = useLocalStorage<CharacterStats>(
+		'characterStatsState',
+		initialCharacterStatsState
+	);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
@@ -62,7 +70,8 @@
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	const currentGameActionState: GameActionState = $derived(
-		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {} as GameActionState
+		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
+			({} as GameActionState)
 	);
 
 	//feature toggles
@@ -240,27 +249,41 @@
 
 	function startNextChapter() {
 		currentChapterState.value += 1;
-		const newChapter = $state.snapshot(campaignState.value).chapters.find(
-			(chapter) => chapter.chapterId === currentChapterState.value
-		);
+		const newChapter = $state
+			.snapshot(campaignState.value)
+			.chapters.find((chapter) => chapter.chapterId === currentChapterState.value);
 
 		if (newChapter) {
-			newChapter.plotPoints.push(
-				{...campaignState.value.chapters[newChapter.chapterId]?.plotPoints[0],
-					plotId: newChapter.plotPoints.length + 1 }
-			);
+			newChapter.plotPoints.push({
+				...campaignState.value.chapters[newChapter.chapterId]?.plotPoints[0],
+				plotId: newChapter.plotPoints.length + 1
+			});
 			const newChapterJson = stringifyPretty(newChapter);
 			storyState.value = {
 				...storyState.value,
 				adventure_and_main_event: newChapterJson
 			};
 			return (
-				'\nA new chapter begins, ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.' +
-				'\nReevaluate the currentPlotPoint and nudge the players into the first plotPoint: ' +
-				'\n' + newChapterJson
+				'\nA new chapter begins, ' +
+				SLOW_STORY_PROMPT +
+				'\nSet currentPlotPoint to 1, nextPlotPoint to 2 and nudge the story into plotId 1: ' +
+				'\n' +
+				newChapterJson
 			);
 		}
 		return '\nNotify the players that the campaign has ended with a glorious message. But they can continue with free exploration.';
+	}
+
+	function mapPlotStringToId(plotPoint: string, splitDelimeter: string = 'plotId: ') {
+		if (!plotPoint) {
+			return 0;
+		}
+		try {
+			return Number.parseInt(plotPoint.split(splitDelimeter)[1].split(' - ')[0]);
+		} catch (e) {
+			console.log('can not mapPlotStringToId', e);
+			return 0;
+		}
 	}
 
 	async function sendAction(action: Action, rollDice = false, additionalActionInput = '') {
@@ -269,17 +292,17 @@
 				openDiceRollDialog(additionalActionInput);
 			} else {
 				isAiGeneratingState = true;
-				//const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
-				// + slowStory
 				additionalActionInput = additionalActionInput || '';
 				const combatAndNPCState = await getCombatAndNPCState(action);
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 
-				if (didAIProcessActionState.value && campaignState.value.chapters && !currentGameActionState.is_character_in_combat) {
+				if (
+					didAIProcessActionState.value &&
+					campaignState.value.chapters &&
+					!currentGameActionState.is_character_in_combat
+				) {
 					let campaignAdjustments;
-					if (
-						gameActionsState.value.length % 5 === 0
-					) {
+					if (gameActionsState.value.length % 5 === 0) {
 						campaignAdjustments = await campaignAgent.adjustCampaignToCharacterActions(
 							action,
 							campaignState.value,
@@ -287,7 +310,7 @@
 						);
 						console.log(stringifyPretty(campaignAdjustments));
 
-						if (campaignAdjustments.deviation > 50) {
+						if (campaignAdjustments.deviation > 60) {
 							additionalActionInput +=
 								'\n' +
 								campaignAdjustments.plotNudge.nudgeExplanation +
@@ -309,12 +332,35 @@
 							}
 						}
 					}
+					const mappedCurrentPlotPoint: number = mapPlotStringToId(
+						currentGameActionState.currentPlotPoint,
+						'plotId: '
+					);
+					const mappedCampaignChapterId: number = mapPlotStringToId(
+						campaignAdjustments?.currentChapter,
+						'chapterId: '
+					);
 					if (
-						currentGameActionState.currentPlotPoint > campaignState.value.chapters[currentChapterState.value - 1].plotPoints.length
-						||
-						campaignAdjustments?.currentChapter > currentChapterState.value
+						mappedCurrentPlotPoint >
+							campaignState.value.chapters[currentChapterState.value - 1].plotPoints.length ||
+						mappedCampaignChapterId > currentChapterState.value
 					) {
 						additionalActionInput += startNextChapter();
+					} else {
+						const mappedCampaignPlotPointId: number = mapPlotStringToId(
+							campaignAdjustments?.currentPlotPoint,
+							'plotId: '
+						);
+						if (
+							mappedCampaignChapterId === currentChapterState.value &&
+							mappedCampaignPlotPointId > mappedCurrentPlotPoint
+						) {
+							additionalActionInput +=
+								'Update currentPlotPoint to plotId: ' +
+								mappedCampaignPlotPointId +
+								'. ' +
+								SLOW_STORY_PROMPT;
+						}
 					}
 				}
 
@@ -536,7 +582,11 @@
 				<button
 					type="submit"
 					onclick={() => {
-						sendAction({ characterName: characterState.value.name, text: customActionInput.value }, false, additionalActionInputState.value);
+						sendAction(
+							{ characterName: characterState.value.name, text: customActionInput.value },
+							false,
+							additionalActionInputState.value
+						);
 					}}
 					class="btn btn-neutral"
 					id="submit-button"

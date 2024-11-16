@@ -28,7 +28,7 @@ export type PlayerCharactersGameState = {
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
 	id: number;
-	currentPlotPoint: number;
+	currentPlotPoint: string;
 	story: string;
 	image_prompt: string;
 	inventory_update: Array<InventoryUpdate>;
@@ -108,8 +108,8 @@ export class GameAgent {
 	getStartingPrompt() {
 		return (
 			'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
-			'  At the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
-			' CHARACTER starts with some random items.'
+			'\nAt the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
+			'\nCHARACTER starts with some random items.'
 		);
 	}
 
@@ -147,6 +147,8 @@ export class GameAgent {
 	}
 }
 
+export const SLOW_STORY_PROMPT =
+	'Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.';
 const systemBehaviour = `
 You are a Pen & Paper Game Master, crafting captivating, limitless GAME experiences using ADVENTURE_AND_MAIN_EVENT, THEME, TONALITY for CHARACTER.
 
@@ -168,7 +170,7 @@ Storytelling:
 - Gradually introduce small, suspenseful events that build tension and hint at larger secrets or challenges to come. 
 - Encourage moments of introspection, dialogue, and quiet observation to develop a deeper understanding of the characters and the world they inhabit. 
 - Slowly unveil clues and strange occurrences that deepen the mystery, allowing the story to evolve at a measured pace. 
-- Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.
+- ${SLOW_STORY_PROMPT}
 
 Actions:
 
@@ -194,10 +196,14 @@ NPC Interactions:
 
 Always review context from system instructions and my last message before responding.`;
 
+const saved =
+	'plotPointAdvancingNudgeExplanation: Explain the currentPlotPoint and how plotPointAdvancingNudge helps advancing the plot in ADVENTURE_AND_MAIN_EVENT,';
 const jsonSystemInstruction = `Important Instruction! You must always respond with valid JSON in the following format:
 {
-  "currentPlotPointExplanation": how recent events fulfill plot with plotPointReference,
-  "currentPlotPoint": Identify the most relevant plotId that the story aligns with,
+  "currentPlotPoint": Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Format "plotId: {plotId} - Reasoning why story is currently at this plotId",
+  "nextPlotPoint": What is the next plotId according to ADVENTURE_AND_MAIN_EVENT, must be greater than currentPlotPoint or null if there is no next plot point; Format "plotId: {plotId} - Reasoning why story is currently at this plotId",
+  "plotPointAdvancingNudge": What could happen next to advance the story towards the next plot point in ADVENTURE_AND_MAIN_EVENT,
+  "currentObstacle": The obstacle CHARACTERS are currently facing,
   "story": "DEPENDING ON If The Action Is A Success Or Failure PROGRESS THE STORY FURTHER WITH APPROPRIATE CONSEQUENCES. For character speech use single quotes.",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
   "inventory_update": [
@@ -222,6 +228,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
   "currently_present_npcs": List of NPCs that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]},
   "actions": [
+  	# Suggest concise actions the CHARACTER can actively take, making use of their unique skills, items, and abilities; each action should include specific steps or choices (like exploring a path, negotiating with an NPC, or using an item) that fit the story’s theme and setting
     {
       "characterName": "Player character name who performs this action",
       "text": "Keep the text short, max 30 words. Description of the action to display to the player, do not include modifier or difficulty here.",
@@ -234,7 +241,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
         "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an in game story explanation why a modifier is applied or not and how you decided that.",
         # If action_difficulty is difficult apply a bonus.
         "modifier": "none|bonus|malus",
-        "modifier_value": positive or negative value (-5 to +5)      
+        "modifier_value": positive or negative value (-5 to +5)
       }
     }
   ]

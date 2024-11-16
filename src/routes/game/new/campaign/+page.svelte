@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import { useLocalStorage }  from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { getRowsForTextarea, navigate, stringifyPretty } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
@@ -57,10 +57,10 @@
 		isGeneratingState = true;
 		const firstChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[0]);
 		//chapterId is actually next chapter as it starts with 1
-		firstChapter.plotPoints.push(
-				{...campaignState.value.chapters[firstChapter.chapterId]?.plotPoints[0],
-							plotId: firstChapter.plotPoints.length + 1 }
-		);
+		firstChapter.plotPoints.push({
+			...campaignState.value.chapters[firstChapter.chapterId]?.plotPoints[0],
+			plotId: firstChapter.plotPoints.length + 1
+		});
 
 		const overwrites: Partial<Story> = {
 			game: campaignState.value.game,
