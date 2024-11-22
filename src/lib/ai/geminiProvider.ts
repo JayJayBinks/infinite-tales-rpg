@@ -93,8 +93,14 @@ export class GeminiProvider extends LLM {
 		try {
 			result = await model.generateContent({ contents, systemInstruction });
 		} catch (e) {
-			handleError(e as string);
-			return undefined;
+			if (e instanceof Error && e.message.includes('try again later')) {
+				//TODO
+				e.message = "Gemini is overloaded!. Fallback AI should be used";
+				return undefined;
+			}else{
+				handleError(e as string);
+				return undefined;
+			}
 		}
 		try {
 			const responseText = result.response.text();

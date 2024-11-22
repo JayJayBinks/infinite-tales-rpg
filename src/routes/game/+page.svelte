@@ -309,24 +309,25 @@
 							historyMessagesState.value
 						);
 						console.log(stringifyPretty(campaignAdjustments));
+						if(campaignAdjustments){
+							if (campaignAdjustments.deviation > 60) {
+								additionalActionInput +=
+									'\n' +
+									campaignAdjustments.plotNudge.nudgeExplanation +
+									'\n' +
+									campaignAdjustments.plotNudge.nudgeStory;
 
-						if (campaignAdjustments.deviation > 60) {
-							additionalActionInput +=
-								'\n' +
-								campaignAdjustments.plotNudge.nudgeExplanation +
-								'\n' +
-								campaignAdjustments.plotNudge.nudgeStory;
-
-							//TODO
-							if (campaignAdjustments.deviation > 100) {
-								const newChapters = campaignAdjustments.adjustedChapters?.chapters;
-								if (newChapters) {
-									campaignState.value = { ...campaignState.value, chapters: newChapters };
-									if (newChapters[campaignAdjustments.chapterReference]) {
-										storyState.value = {
-											...storyState.value,
-											adventure_and_main_event: newChapters[campaignAdjustments.chapterReference]
-										};
+								//TODO
+								if (campaignAdjustments.deviation > 100) {
+									const newChapters = campaignAdjustments.adjustedChapters?.chapters;
+									if (newChapters) {
+										campaignState.value = { ...campaignState.value, chapters: newChapters };
+										if (newChapters[campaignAdjustments.chapterReference]) {
+											storyState.value = {
+												...storyState.value,
+												adventure_and_main_event: newChapters[campaignAdjustments.chapterReference]
+											};
+										}
 									}
 								}
 							}

@@ -16,8 +16,8 @@
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 
 	let isGeneratingState = $state(false);
-	const apiKeyState = useLocalStorage('apiKeyState');
-	const aiLanguage = useLocalStorage('aiLanguage');
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let campaignAgent: CampaignAgent;
 	let storyAgent: StoryAgent;
 
