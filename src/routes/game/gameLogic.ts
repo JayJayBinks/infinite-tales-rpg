@@ -50,7 +50,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
 }
 
-export const getTargetPromptAddition = function (targets: string[]) {
+export const getTargetPromptAddition = function(targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -175,24 +175,24 @@ export function applyGameActionState(
 				case 'hp_gained':
 					playerCharactersGameState[statUpdate.targetId].currentHP += Number.parseInt(
 						statUpdate.value.result
-					);
+					) || 0;
 					break;
 				case 'hp_lost':
 					playerCharactersGameState[statUpdate.targetId].currentHP -= getTakeLessDamageForManyHits(
 						state.stats_update,
 						Number.parseInt(statUpdate.value.result),
 						statUpdate.targetId
-					);
+					) || 0;
 					break;
 				case 'mp_gained':
 					playerCharactersGameState[statUpdate.targetId].currentMP += Number.parseInt(
 						statUpdate.value.result
-					);
+					) || 0;
 					break;
 				case 'mp_lost':
 					playerCharactersGameState[statUpdate.targetId].currentMP -= Number.parseInt(
 						statUpdate.value.result
-					);
+					) || 0;
 					break;
 			}
 		} else {
@@ -201,16 +201,16 @@ export function applyGameActionState(
 				if (npc && npc.resources) {
 					switch (statUpdate.type) {
 						case 'hp_gained':
-							npc.resources.current_hp += Number.parseInt(statUpdate.value.result);
+							npc.resources.current_hp += Number.parseInt(statUpdate.value.result) || 0;
 							break;
 						case 'hp_lost':
-							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result);
+							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result) || 0;
 							break;
 						case 'mp_gained':
-							npc.resources.current_mp += Number.parseInt(statUpdate.value.result);
+							npc.resources.current_mp += Number.parseInt(statUpdate.value.result) || 0;
 							break;
 						case 'mp_lost':
-							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result);
+							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result) || 0;
 							break;
 					}
 				}

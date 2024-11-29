@@ -5,7 +5,7 @@
 		type PlayerCharactersGameState,
 		type GameActionState,
 		type InventoryState,
-		SLOW_STORY_PROMPT
+		SLOW_STORY_PROMPT, OBSTACLE_SLOW_SOLVING_PROMPT
 	} from '$lib/ai/agents/gameAgent';
 	import { GameAgent } from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
@@ -71,7 +71,7 @@
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-			({} as GameActionState)
+		({} as GameActionState)
 	);
 
 	//feature toggles
@@ -173,7 +173,7 @@
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			let actionText = chosenActionState.value.text + '\n ' + diceRollDialog.returnValue;
 			sendAction(
-				{ characterName: characterState.value.name, text: actionText },
+				{ ...chosenActionState.value, characterName: characterState.value.name, text: actionText },
 				false,
 				additionalActionInput
 			);
@@ -236,9 +236,11 @@
 					customSystemInstruction.value
 				)
 				.then((newState: NPCState) => {
-					combatLogic.addResourceValues(newState);
-					npcState.value = { ...npcState.value, ...newState };
-					console.log(stringifyPretty(npcState.value));
+					if(newState){
+						combatLogic.addResourceValues(newState);
+						npcState.value = { ...npcState.value, ...newState };
+						console.log(stringifyPretty(npcState.value));
+					}
 				});
 		}
 	}
@@ -279,7 +281,7 @@
 			return 0;
 		}
 		try {
-			return Number.parseInt(plotPoint.split(splitDelimeter)[1].split(' - ')[0]);
+			return Number.parseInt(plotPoint.split(splitDelimeter)[1]); // .split(' - ')[0]
 		} catch (e) {
 			console.log('can not mapPlotStringToId', e);
 			return 0;
@@ -309,13 +311,19 @@
 							historyMessagesState.value
 						);
 						console.log(stringifyPretty(campaignAdjustments));
-						if(campaignAdjustments){
+						if (campaignAdjustments) {
 							if (campaignAdjustments.deviation > 60) {
 								additionalActionInput +=
 									'\n' +
 									campaignAdjustments.plotNudge.nudgeExplanation +
 									'\n' +
-									campaignAdjustments.plotNudge.nudgeStory;
+									campaignAdjustments.plotNudge.nudgeStory +
+									'\n' +
+									//'Set currentPlotPoint to: ' + campaignAdjustments.currentPlotPoint +
+									//'\n' +
+									//'Set nextPlotPoint to: ' + campaignAdjustments.nextPlotPoint +
+									//'\n' +
+									'Always describe the story as a Game Master and never mention meta elements such as plot points or story progression.';
 
 								//TODO
 								if (campaignAdjustments.deviation > 100) {
@@ -337,13 +345,17 @@
 						currentGameActionState.currentPlotPoint,
 						'plotId: '
 					);
+					const mappedNextPlotPoint: number = mapPlotStringToId(
+						currentGameActionState.nextPlotPoint,
+						'plotId: '
+					);
 					const mappedCampaignChapterId: number = mapPlotStringToId(
 						campaignAdjustments?.currentChapter,
 						'chapterId: '
 					);
 					if (
 						mappedCurrentPlotPoint >
-							campaignState.value.chapters[currentChapterState.value - 1].plotPoints.length ||
+						campaignState.value.chapters[currentChapterState.value - 1].plotPoints.length ||
 						mappedCampaignChapterId > currentChapterState.value
 					) {
 						additionalActionInput += startNextChapter();
@@ -356,15 +368,20 @@
 							mappedCampaignChapterId === currentChapterState.value &&
 							mappedCampaignPlotPointId > mappedCurrentPlotPoint
 						) {
-							additionalActionInput +=
-								'Update currentPlotPoint to plotId: ' +
-								mappedCampaignPlotPointId +
-								'. ' +
-								SLOW_STORY_PROMPT;
+							additionalActionInput += 'Update currentPlotPoint to plotId: ' + mappedCampaignPlotPointId;
+						}else{
+							if(mappedCurrentPlotPoint && mappedCurrentPlotPoint >= mappedNextPlotPoint){
+								additionalActionInput += 'Update nextPlotPoint to plotId: ' + (mappedCurrentPlotPoint + 1);
+							}
 						}
 					}
 				}
-
+				if ((action.is_straightforward + '').includes('false')) {
+					additionalActionInput += '\n' + SLOW_STORY_PROMPT + '\n' + OBSTACLE_SLOW_SOLVING_PROMPT;
+					//add the reasoning as prompt to make it consider for next actions
+					//additionalActionInput += '\n' + action.is_straightforward?.toLowerCase().replace('reasoning:', '').replace('false', '').replace('true', '');
+				}
+				additionalActionInput += '\nSuggest specific actions the CHARACTER can take, fully utilizing their unique skills, items, and abilities. Each action must clearly outline what the character does and how they do it';
 				additionalActionInputState.value = additionalActionInput;
 				didAIProcessActionState.value = false;
 				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
@@ -560,14 +577,14 @@
 						useSpellsAbilitiesModal.showModal();
 					}}
 					class="text-md btn btn-primary w-full"
-					>Spells & Abilities
+				>Spells & Abilities
 				</button>
 				<button
 					onclick={() => {
 						useItemsModal.showModal();
 					}}
 					class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
+				>Inventory
 				</button>
 			</div>
 		{/if}
@@ -591,21 +608,21 @@
 					}}
 					class="btn btn-neutral"
 					id="submit-button"
-					>Submit
+				>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-		.btn {
-			height: fit-content;
-			padding: 1rem;
-		}
+      .btn {
+          height: fit-content;
+          padding: 1rem;
+      }
 
-		canvas {
-			height: 100%;
-			width: 100%;
-		}
+      canvas {
+          height: 100%;
+          width: 100%;
+      }
 	</style>
 </div>

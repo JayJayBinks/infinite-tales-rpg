@@ -40,7 +40,10 @@ const chaptersPrompt = `{
 				"location": string,
 				"description": string,
 				"objective": string,
-				"mainObstacle": Can be a negotiation, puzzle or fight,
+				"obstacles": [
+					"One specific obstacle including detailed description e.g. a negotiation; a puzzle; an enemy; ...",
+					...
+				]
 			},
 			...
 		]
@@ -116,23 +119,26 @@ export class CampaignAgent {
 
 	async adjustCampaignToCharacterActions(
 		nextAction: Action,
-		currentCampaign: Campaign,
+		plannedCampaign: Campaign,
 		actionHistory: Array<LLMMessage>
 	): Promise<any> {
 		//carefu as these are proxies, adding is fine
-		const actionHistoryCopy = [...actionHistory];
-		actionHistoryCopy.push({ role: 'user', content: nextAction.text });
+		const actionHistoryStoryOnly = actionHistory.filter(message => message.role === 'model')
+			.map(message => ({ role: 'model', content: JSON.parse(message.content).story }));
+
+		actionHistoryStoryOnly.push({ role: 'user', content: nextAction.text });
 		const agent =
 			mainAgent +
-			'You will be given an existing campaign and the past character actions as actionHistory.\n' +
-			'Then you must decide if the actionHistory has deviated too much from currentCampaign and create a nudge that gently guides the character back to follow the chapter plot.\n' +
+			'You will be given a plan for a campaign as plannedCampaign and how the actual campaign unfolded during the play session as actualCampaign.\n' +
+			'Then you must decide if the actualCampaign has deviated too much from plannedCampaign and create a nudge that gently guides the character back to follow the chapter plot.\n' +
 			'Do not micro manage every single plot point but only take care that the overall chapter and campaign stay on track.\n' +
 			'Always respond with following JSON!\n' +
 			`{
-				"currentChapter": Identify the most relevant chapterId in currentCampaign that the story aligns with; Format "chapterId: {chapterId} - Reasoning why story is currently at this chapterId",
-				"currentPlotPoint": Identify the most relevant plotId in currentCampaign that the story aligns with; Format "plotId: {plotId} - Reasoning why story is currently at this plotId",
-  			"deviationExplanation": why the characterActions deviated from currentPlotPoint,
-				"deviation": integer 0 - 100 how much the characterActions deviated from currentPlotPoint,
+				"currentChapter": Identify the most relevant chapterId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - chapterId: {chapterId}",
+				"currentPlotPoint": Identify the most relevant plotId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
+  			"nextPlotPoint": Identify the next plotId in plannedCampaign, must be greater than currentPlotPoint or null if there is no next plot point; Format: "Reasoning why story is currently at this plotId - plotId: {plotId}",
+  			"deviationExplanation": why the actualCampaign deviated from currentPlotPoint,
+				"deviation": integer 0 - 100 how much the actualCampaign deviated from currentChapter,
 				#only include plotNudge object if deviation > 50, else null
 				"plotNudge": {
 					"nudgeExplanation": Explain why the characters are guided back to follow the currentChapter plot,
@@ -142,17 +148,17 @@ export class CampaignAgent {
 
 		//TODO
 		const saved =
-			'If you determine that the currentCampaign needs to be adjusted, make sure the adjusted chapters adhere to campaignDescription.\n';
+			'If you determine that the plannedCampaign needs to be adjusted, make sure the adjusted chapters adhere to campaignDescription.\n';
 		const request: LLMRequest = {
-			userMessage: 'Check if the actionHistory is on course with the currentCampaign.',
+			userMessage: 'Check if the actualCampaign is on course with the plannedCampaign.',
 			historyMessages: [
 				{
 					role: 'user',
-					content: 'currentCampaign: ' + stringifyPretty(currentCampaign)
+					content: 'plannedCampaign: ' + stringifyPretty(plannedCampaign)
 				},
 				{
 					role: 'user',
-					content: 'actionHistory: ' + stringifyPretty(actionHistoryCopy)
+					content: 'actualCampaign: ' + stringifyPretty(actionHistoryStoryOnly)
 				}
 			],
 			systemInstruction: agent

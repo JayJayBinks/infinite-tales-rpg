@@ -4,6 +4,7 @@
 	import type { Action } from '$lib/ai/agents/gameAgent';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { onMount } from 'svelte';
+	import { getRandomInteger } from '$lib/util.svelte';
 
 	type Props = { diceRollDialog; action: Action; resetState: boolean };
 	let { diceRollDialog = $bindable(), action, resetState }: Props = $props();
@@ -63,7 +64,7 @@
 
 	let onRoll = (evt) => {
 		//TODO rollback later
-		rolledValueState.value = 12;
+		rolledValueState.value = getRandomInteger(1, 20);
 		// evt.currentTarget.disabled = true;
 		// diceBox.roll('1d20').then((results) => {
 		// 	rolledValueState.value = results[0].value;
