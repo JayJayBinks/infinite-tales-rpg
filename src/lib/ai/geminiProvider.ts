@@ -71,15 +71,23 @@ export class GeminiProvider extends LLM {
 		const systemInstruction = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
 		);
+
+		let temperature: number;
+		if (request.temperature === 0 || this.llmConfig.temperature === 0) {
+			temperature = 0;
+		} else {
+			temperature = Math.min(
+				request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
+				this.getMaxTemperature()
+			);
+		}
+
 		const model = this.genAI.getGenerativeModel({
 			model: request.model || this.llmConfig.model || 'gemini-1.5-flash-latest',
 			generationConfig: {
 				...this.llmConfig.generationConfig,
 				...request.generationConfig,
-				temperature: Math.min(
-					request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
-					this.getMaxTemperature()
-				)
+				temperature
 			},
 			safetySettings
 		});
@@ -93,11 +101,11 @@ export class GeminiProvider extends LLM {
 		try {
 			result = await model.generateContent({ contents, systemInstruction });
 		} catch (e) {
-			if (e instanceof Error && e.message.includes('try again later')) {
+			if (e instanceof Error && e.message.includes('503')) {
 				//TODO
-				e.message = "Gemini is overloaded!. Fallback AI should be used";
+				e.message = 'Gemini is overloaded!. Fallback AI should be used';
 				return undefined;
-			}else{
+			} else {
 				handleError(e as string);
 				return undefined;
 			}
