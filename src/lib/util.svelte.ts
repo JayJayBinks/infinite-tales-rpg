@@ -101,3 +101,10 @@ export function parseState(newState: object) {
 export function getRandomInteger(min: number, max: number) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+export const removeEmptyValues = (object: object) =>
+	Object.fromEntries(
+		Object.entries(object)
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			.filter(([_, value]) => value && Object.keys(value).length > 0)
+	);

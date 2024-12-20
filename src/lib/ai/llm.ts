@@ -17,7 +17,7 @@ export interface LLMRequest {
 }
 
 export interface LLMconfig {
-	provider?: 'gemini' | 'pollinations';
+	provider?: 'gemini' | 'gpt4';
 	temperature?: number;
 	generationConfig?: GenerationConfig;
 	language?: string;

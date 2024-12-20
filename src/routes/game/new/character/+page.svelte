@@ -7,18 +7,23 @@
 	} from '$lib/ai/agents/characterAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import { goto } from '$app/navigation';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { initialStoryState } from '$lib/ai/agents/storyAgent';
+	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
+	import type { Campaign } from '$lib/ai/agents/campaignAgent';
 
 	let isGeneratingState = $state(false);
-	const apiKeyState = useLocalStorage('apiKeyState');
-	const aiLanguage = useLocalStorage('aiLanguage');
-	const storyState = useLocalStorage('storyState', initialStoryState);
-	const characterState = useLocalStorage('characterState', initialCharacterState);
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
+	const campaignState = useLocalStorage<Campaign>('campaignState');
+	const characterState = useLocalStorage<CharacterDescription>(
+		'characterState',
+		initialCharacterState
+	);
 	const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value));
 
 	let characterStateOverwrites: Partial<CharacterDescription> = $state({});
@@ -73,7 +78,11 @@
 	<!--TODO  -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
-	<li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
+	{#if campaignState.value?.campaign_title}
+		<li class="step step-primary cursor-pointer" onclick={() => history.back()}>Campaign</li>
+	{:else}
+		<li class="step step-primary cursor-pointer" onclick={() => history.back()}>Tale</li>
+	{/if}
 	<li class="step step-primary">Character</li>
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
@@ -82,7 +91,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={() => goto('characterStats')}>Start</li>
 </ul>
-<form class="m-6 grid gap-2">
+<form class="m-6 grid items-center gap-2 text-center">
 	<p>Click on Randomize All to generate a random Character based on the Tale settings</p>
 	<button
 		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
@@ -101,14 +110,26 @@
 	>
 		Clear All
 	</button>
-	<button
-		class="btn btn-primary m-auto w-3/4 sm:w-1/2"
-		onclick={() => {
-			navigate('/new/tale');
-		}}
-	>
-		Previous Step:<br /> Customize Tale
-	</button>
+	{#if campaignState.value?.campaign_title}
+		<button
+			class="btn btn-primary m-auto w-3/4 sm:w-1/2"
+			onclick={() => {
+				navigate('/new/campaign');
+			}}
+		>
+			Previous Step:<br /> Customize Campaign
+		</button>
+	{:else}
+		<button
+			class="btn btn-primary m-auto w-3/4 sm:w-1/2"
+			onclick={() => {
+				navigate('/new/tale');
+			}}
+		>
+			Previous Step:<br /> Customize Tale
+		</button>
+	{/if}
+
 	<button
 		class="btn btn-primary m-auto w-3/4 sm:w-1/2"
 		onclick={() => {

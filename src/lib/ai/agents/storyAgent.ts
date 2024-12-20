@@ -1,5 +1,6 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 
 export type Story = typeof storyStateForPrompt;
 // stringifyPretty(storyStateForPrompt) works because no json included in the values
@@ -33,7 +34,7 @@ export class StoryAgent {
 
 	async generateRandomStorySettings(
 		overwrites = {},
-		characterDescription = undefined
+		characterDescription: CharacterDescription | undefined = undefined
 	): Promise<Story> {
 		const storyAgent =
 			'You are RPG story agent, crafting captivating, limitless GAME experiences using BOOKS, THEME, TONALITY for CHARACTER.\n' +

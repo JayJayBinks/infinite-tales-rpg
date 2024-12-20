@@ -45,7 +45,7 @@ export type NPCStats = {
 export const npcStatsStateForPromptAsString = `{
     "class": "",
     "rank": "Power ranking of the NPC. Can be one of " + ${npcRank.join('|')},
-    "spells_and_abilities": "Array of spells and abilities. List 2 actively usable spells or abilities. At last include a 'Standard Attack'. The damage must be limited to only 1 dice, 1d6 or 1d8 etc. Format: [${abilityFormatForPrompt}]"
+    "spells_and_abilities": List 2 actively usable spells or abilities. At last include a 'Standard Attack'. The damage must be limited to only 1 dice, 1d6 or 1d8 etc. Format: [${abilityFormatForPrompt}]
 }`;
 
 export class CharacterStatsAgent {
@@ -96,11 +96,11 @@ export class CharacterStatsAgent {
 	): Promise<NPCState> {
 		const latestHistoryTextOnly = historyMessages.map((m: LLMMessage) => m.content).join('\n');
 		const agent = [
-			'You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.',
+			'You are RPG NPC stats agent, generating the stats for NPCs according to game system, adventure and story progression.',
 			'Description of the adventure: ' + stringifyPretty(storyState),
 			'Latest story progression:\n' + latestHistoryTextOnly,
 			`Most important instruction! You must always respond with following JSON format! 
-                            {"uniqueNpcName": ${npcStatsStateForPromptAsString}`
+                            {"uniqueNpcName": ${npcStatsStateForPromptAsString}, ...}`
 		];
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);

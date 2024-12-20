@@ -17,7 +17,7 @@ export class SummaryAgent {
 	async summarizeStoryIfTooLong(
 		historyMessages: Array<LLMMessage>,
 		startSummaryAtSize = 12 * 2,
-		numOfLastActions = 4 * 2
+		numOfLastActions = 3 * 2
 	): Promise<Array<LLMMessage>> {
 		if (historyMessages.length < startSummaryAtSize) {
 			return historyMessages;
@@ -25,7 +25,7 @@ export class SummaryAgent {
 		const agent =
 			'You are a Summary Agent for a RPG adventure, who is responsible for summarizing the most important bits of a continuous story.' +
 			' Summarize the story so the most important events and characters can be introduced to a storytelling AI.\n' +
-			'Always respond with following JSON! {"summary": ""}';
+			'Always respond with following JSON! {"story": ""}';
 
 		const toSummarize = historyMessages.slice(2, (numOfLastActions + 1) * -1);
 		const request: LLMRequest = {
@@ -33,13 +33,11 @@ export class SummaryAgent {
 			systemInstruction: agent,
 			temperature: 1
 		};
-		const response = (await this.llm.generateContent(request)) as { summary: string };
+		const response = (await this.llm.generateContent(request)) as { story: string };
 		console.log('Summary returned ' + stringifyPretty(response));
 		const newHistory = historyMessages.slice(0, 2);
-		newHistory.push({ role: 'user', content: response.summary });
-		historyMessages
-			.slice((numOfLastActions + 1) * -1)
-			.forEach((message) => newHistory.push(message));
+		newHistory.push({ role: 'model', content: JSON.stringify(response) });
+		historyMessages.slice(numOfLastActions * -1).forEach((message) => newHistory.push(message));
 		return newHistory;
 	}
 }

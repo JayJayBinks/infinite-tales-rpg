@@ -1,5 +1,5 @@
 <script>
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { navigate, parseState } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
@@ -10,6 +10,7 @@
 		CharacterStatsAgent,
 		initialCharacterStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
+	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 
 	const apiKeyState = useLocalStorage('apiKeyState');
 	const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -26,6 +27,8 @@
 	const storyState = useLocalStorage('storyState', initialStoryState);
 	const isGameEnded = useLocalStorage('isGameEnded', false);
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
+	const campaignState = useLocalStorage('campaignState', initialCampaignState);
+	const currentChapterState = useLocalStorage('currentChapterState');
 	let isGeneratingState = $state(false);
 
 	function clearStates() {
@@ -39,6 +42,8 @@
 		rollDifferenceHistoryState.reset();
 		npcState.reset();
 		inventoryState.reset();
+		campaignState.reset();
+		currentChapterState.reset();
 	}
 
 	async function onQuickstartNew() {
@@ -78,6 +83,11 @@
 		clearStates();
 		navigate('/new/tale');
 	}
+
+	function onNewCampaign() {
+		clearStates();
+		navigate('/new/campaign');
+	}
 </script>
 
 {#if isGeneratingState}
@@ -115,7 +125,15 @@
 	>
 		New Custom Tale
 	</button>
-	<small class="m-auto mt-2">Customize any setting of your Tale</small>
+	<small class="m-auto mt-2">Customize your Tale with a brief, open-ended plot</small>
+	<button
+		class="btn btn-neutral m-auto mt-5 w-1/2"
+		disabled={!apiKeyState.value}
+		onclick={onNewCampaign}
+	>
+		New Campaign
+	</button>
+	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>
 	<div class="divider mt-7">Advanced Settings</div>
 	<label class="form-control mt-3 w-full sm:w-2/3">
 		AI Language

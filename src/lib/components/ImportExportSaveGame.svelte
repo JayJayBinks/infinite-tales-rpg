@@ -1,5 +1,5 @@
 <script lang="ts">
-	import useLocalStorage from '../state/useLocalStorage.svelte';
+	import { useLocalStorage } from '../state/useLocalStorage.svelte';
 	import { downloadLocalStorageAsJson, importJsonFromFile } from '$lib/util.svelte';
 	import type { Snippet } from 'svelte';
 
@@ -13,6 +13,8 @@
 		importButton: Snippet<[() => void]>;
 	} = $props();
 	const storyState = useLocalStorage('storyState');
+	const campaignState = useLocalStorage('campaignState');
+	const currentChapterState = useLocalStorage('currentChapterState');
 	const characterState = useLocalStorage('characterState');
 	const characterStatsState = useLocalStorage('characterStatsState');
 	const difficultyState = useLocalStorage('difficultyState');
@@ -27,6 +29,8 @@
 				);
 				alert('Import successfull.');
 			} else {
+				campaignState.value = parsed.campaignState;
+				currentChapterState.value = 1;
 				storyState.value = parsed.storyState;
 				characterState.value = parsed.characterState;
 				characterStatsState.value = parsed.characterStatsState;

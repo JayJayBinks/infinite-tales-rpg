@@ -1,11 +1,13 @@
 <script lang="ts">
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
-	import type {
-		Action,
-		PlayerCharactersGameState,
-		GameActionState
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import {
+		type Action,
+		type GameActionState,
+		GameAgent,
+		type InventoryState,
+		type PlayerCharactersGameState,
+		SLOW_STORY_PROMPT
 	} from '$lib/ai/agents/gameAgent';
-	import { GameAgent } from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
 
 	import { onMount, tick } from 'svelte';
@@ -14,6 +16,7 @@
 	import StoryProgressionWithImage from '$lib/components/StoryProgressionWithImage.svelte';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import {
+		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
 		type NPCState
@@ -26,38 +29,62 @@
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import type { LLMMessage } from '$lib/ai/llm';
-	import { initialStoryState } from '$lib/ai/agents/storyAgent';
-	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
+	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/UseItemsModal.svelte';
+	import { type Campaign, CampaignAgent } from '$lib/ai/agents/campaignAgent';
+	import { ActionAgent } from '$lib/ai/agents/actionAgent';
+	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
 	//ai state
-	const apiKeyState = useLocalStorage('apiKeyState');
-	const temperatureState = useLocalStorage('temperatureState');
-	const customSystemInstruction = useLocalStorage('customSystemInstruction');
-	const aiLanguage = useLocalStorage('aiLanguage');
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const temperatureState = useLocalStorage<number>('temperatureState');
+	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let isAiGeneratingState = $state(false);
-	let didAIProcessDiceRollActionState = useLocalStorage('didAIProcessDiceRollAction');
-	let gameAgent, difficultyAgent, summaryAgent, characterStatsAgent, combatAgent;
+	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
+	let didAIProcessActionState = useLocalStorage<boolean>('didAIProcessActionState', true);
+	let gameAgent,
+		difficultyAgent,
+		summaryAgent,
+		characterStatsAgent,
+		combatAgent,
+		campaignAgent: CampaignAgent,
+		actionAgent: ActionAgent;
 
 	//game state
-	const gameActionsState = useLocalStorage('gameActionsState', []);
-	const historyMessagesState = useLocalStorage('historyMessagesState', []);
-	const characterState = useLocalStorage('characterState', initialCharacterState);
-	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
-	const inventoryState = useLocalStorage('inventoryState', {});
-	const storyState = useLocalStorage('storyState', initialStoryState);
-	const npcState = useLocalStorage('npcState', {});
-	const chosenActionState = useLocalStorage('chosenActionState', {});
-	const additionalActionInputState = useLocalStorage('additionalActionInputState');
-	const isGameEnded = useLocalStorage('isGameEnded', false);
+	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
+	const characterActionsState = useLocalStorage<Action[]>('characterActionsState', []);
+	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
+	const characterState = useLocalStorage<CharacterDescription>(
+		'characterState',
+		initialCharacterState
+	);
+	const characterStatsState = useLocalStorage<CharacterStats>(
+		'characterStatsState',
+		initialCharacterStatsState
+	);
+	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
+	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
+	const currentChapterState = useLocalStorage<number>('currentChapterState');
+	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
+
+	const npcState = useLocalStorage<NPCState>('npcState', {});
+	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
+	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState');
+	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	const currentGameActionState: GameActionState = $derived(
-		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) || {}
+		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
+			({} as GameActionState)
 	);
+	//TODO const lastCombatSinceXActions: number = $derived(
+	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
+	//);
 
 	//feature toggles
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
@@ -74,6 +101,8 @@
 		combatAgent = new CombatAgent(llm);
 		difficultyAgent = new DifficultyAgent(llm);
 		summaryAgent = new SummaryAgent(llm);
+		campaignAgent = new CampaignAgent(llm);
+		actionAgent = new ActionAgent(llm);
 		//Start game when not already started
 		playerCharactersGameState = { [characterState.value.name]: { currentHP: 0, currentMP: 0 } };
 		if (gameActionsState.value.length === 0) {
@@ -89,7 +118,18 @@
 				inventoryState.value,
 				gameActionsState.value
 			);
-			await renderGameState(currentGameActionState);
+			if (characterActionsState.value.length === 0) {
+				characterActionsState.value = await actionAgent.generateActions(
+					currentGameActionState,
+					historyMessagesState.value,
+					storyState.value,
+					characterState.value,
+					characterStatsState.value,
+					inventoryState.value,
+					additionalActionInputState.value
+				);
+			}
+			renderGameState(currentGameActionState, characterActionsState.value);
 			tick().then(() => customActionInput.scrollIntoView(false));
 		}
 		if (!didAIProcessDiceRollActionState.value) {
@@ -157,7 +197,7 @@
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			let actionText = chosenActionState.value.text + '\n ' + diceRollDialog.returnValue;
 			sendAction(
-				{ characterName: characterState.value.name, text: actionText },
+				{ ...chosenActionState.value, characterName: characterState.value.name, text: actionText },
 				false,
 				additionalActionInput
 			);
@@ -205,6 +245,8 @@
 	function resetStatesAfterActionProcessed() {
 		chosenActionState.reset();
 		additionalActionInputState.reset();
+		characterActionsState.reset();
+		actionsDiv.innerHTML = '';
 		customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
 	}
@@ -220,9 +262,11 @@
 					customSystemInstruction.value
 				)
 				.then((newState: NPCState) => {
-					combatLogic.addResourceValues(newState);
-					npcState.value = { ...npcState.value, ...newState };
-					console.log(stringifyPretty(npcState.value));
+					if (newState) {
+						combatLogic.addResourceValues(newState);
+						npcState.value = { ...npcState.value, ...newState };
+						console.log(stringifyPretty(npcState.value));
+					}
 				});
 		}
 	}
@@ -231,19 +275,133 @@
 		historyMessagesState.value = updatedHistoryMessages;
 	}
 
+	function startNextChapter() {
+		currentChapterState.value += 1;
+		const newChapter = $state
+			.snapshot(campaignState.value)
+			.chapters.find((chapter) => chapter.chapterId === currentChapterState.value);
+
+		if (newChapter) {
+			newChapter.plot_points.push({
+				...campaignState.value.chapters[newChapter.chapterId]?.plot_points[0],
+				plotId: newChapter.plot_points.length + 1
+			});
+			const newChapterJson = stringifyPretty(newChapter);
+			storyState.value = {
+				...storyState.value,
+				adventure_and_main_event: newChapterJson
+			};
+			return (
+				'\nA new chapter begins, ' +
+				SLOW_STORY_PROMPT +
+				'\nSet currentPlotPoint to 1, nextPlotPoint to 2 and nudge the story into plotId 1: ' +
+				'\n' +
+				newChapterJson
+			);
+		}
+		return '\nNotify the players that the campaign has ended but they can continue with free exploration.';
+	}
+
+	function mapPlotStringToIds(text: string, splitDelimeter: string = 'plotId: ') {
+		if (!text) {
+			return [0];
+		}
+		try {
+			//allow reasoning to stay in the current plot point and trigger to get to the next
+			const regex = new RegExp(`${splitDelimeter}(\\d+)`, 'g');
+			let match;
+			const plotIds: number[] = [];
+			// Extract matches
+			while ((match = regex.exec(text)) !== null) {
+				plotIds.push(Number(match[1]));
+			}
+			return plotIds;
+		} catch (e) {
+			console.log('can not mapPlotStringToId', e);
+			return [0];
+		}
+	}
+
+	async function advanceChapterIfApplicable(action: Action, additionalActionInput: string) {
+		if (
+			didAIProcessActionState.value &&
+			campaignState.value.chapters &&
+			!currentGameActionState.is_character_in_combat
+		) {
+			let campaignDeviations;
+			if (gameActionsState.value.length % 5 === 0) {
+				campaignDeviations = await campaignAgent.checkCampaignDeviations(
+					action,
+					campaignState.value,
+					historyMessagesState.value
+				);
+				console.log(stringifyPretty(campaignDeviations));
+				if (campaignDeviations) {
+					if (campaignDeviations.deviation > 70) {
+						additionalActionInput +=
+							'\n' +
+							campaignDeviations.plotNudge.nudgeExplanation +
+							'\n' +
+							campaignDeviations.plotNudge.nudgeStory +
+							'Always describe the story as a Game Master and never mention meta elements such as plot points or story progression.';
+					}
+				}
+			}
+			const mappedCurrentPlotPoint: number = mapPlotStringToIds(
+				currentGameActionState.currentPlotPoint,
+				'plotId: '
+			)[0];
+			const mappedCampaignChapterId: number = mapPlotStringToIds(
+				campaignDeviations?.currentChapter,
+				'chapterId: '
+			)[0];
+			if (
+				mappedCurrentPlotPoint >
+					campaignState.value.chapters[currentChapterState.value - 1].plot_points.length ||
+				mappedCampaignChapterId > currentChapterState.value
+			) {
+				additionalActionInput += startNextChapter();
+			}
+		}
+		return additionalActionInput;
+	}
+
+	function addAdditionsFromActionSideeffects(action: Action, additionalActionInput: string) {
+		if ((action.is_straightforward + '').includes('false')) {
+			additionalActionInput += '\n' + SLOW_STORY_PROMPT;
+		}
+		const encounterString = '' + action.enemyEncounterExplanation;
+		if (encounterString.includes('high') && !encounterString.includes('low')) {
+			additionalActionInput +=
+				'\nenemyEncounter: ' +
+				action.enemyEncounterExplanation +
+				' Players take first turn, wait for their action.';
+		}
+		if (action.text.includes('sudo')) {
+			additionalActionInput += '\nPlay out this action even if it is not plausible!';
+		} else {
+			additionalActionInput +=
+				'\n' +
+				'For the story narration never mention game meta elements like dice rolls; Only describe the narrative the character experiences.';
+		}
+		return additionalActionInput;
+	}
+
 	async function sendAction(action: Action, rollDice = false, additionalActionInput = '') {
-		additionalActionInputState.value = additionalActionInput;
 		try {
 			if (rollDice) {
 				openDiceRollDialog(additionalActionInput);
 			} else {
 				isAiGeneratingState = true;
-				//const slowStory = '\n Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.'
-				// + slowStory
 				additionalActionInput = additionalActionInput || '';
 				const combatAndNPCState = await getCombatAndNPCState(action);
-				additionalActionInput += combatAndNPCState.additionalActionInput;
 
+				additionalActionInput = await advanceChapterIfApplicable(action, additionalActionInput);
+				additionalActionInput += combatAndNPCState.additionalActionInput;
+				additionalActionInput = addAdditionsFromActionSideeffects(action, additionalActionInput);
+
+				additionalActionInputState.value = additionalActionInput;
+				didAIProcessActionState.value = false;
 				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 					action,
 					additionalActionInput,
@@ -251,11 +409,10 @@
 					historyMessagesState.value,
 					storyState.value,
 					characterState.value,
-					characterStatsState.value,
 					playerCharactersGameState,
 					inventoryState.value
 				);
-
+				didAIProcessActionState.value = true;
 				if (newState) {
 					if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 						//override the gameActionsState stat update with the combat one
@@ -286,7 +443,25 @@
 						}
 					];
 					await checkGameEnded();
-					await renderGameState(newState);
+					if (!isGameEnded.value) {
+						actionAgent
+							.generateActions(
+								currentGameActionState,
+								historyMessagesState.value,
+								storyState.value,
+								characterState.value,
+								characterStatsState.value,
+								inventoryState.value,
+								additionalActionInput
+							)
+							.then((actions) => {
+								if (actions) {
+									console.log(stringifyPretty(actions));
+									characterActionsState.value = actions;
+									renderGameState(currentGameActionState, actions);
+								}
+							});
+					}
 				}
 				isAiGeneratingState = false;
 			}
@@ -296,10 +471,13 @@
 		}
 	}
 
-	async function renderGameState(state: GameActionState, addContinueStory = true) {
-		actionsDiv.innerHTML = '';
+	function renderGameState(
+		state: GameActionState,
+		actions: Array<Action>,
+		addContinueStory = true
+	) {
 		if (!isGameEnded.value) {
-			state.actions.forEach((action) => addActionButton(action, state.is_character_in_combat));
+			actions.forEach((action) => addActionButton(action, state.is_character_in_combat));
 			if (addContinueStory) {
 				addActionButton({
 					characterName: characterState.value.name,
@@ -326,7 +504,8 @@
 			chosenActionState.value = $state.snapshot(action);
 			sendAction(
 				chosenActionState.value,
-				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat)
+				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat),
+				additionalActionInputState.value
 			);
 		});
 		actionsDiv.appendChild(button);
@@ -346,7 +525,10 @@
 
 	const onTargetedSpellsOrAbility = async (action: Action, targets: string[]) => {
 		isAiGeneratingState = true;
-		const targetAddition = gameLogic.getTargetPromptAddition(targets);
+		let targetAddition = '';
+		if (targets?.length > 0 && !targets.includes('No specific target')) {
+			targetAddition = targets?.length === 0 ? '' : gameLogic.getTargetPromptAddition(targets);
+		}
 		const difficultyResponse = await difficultyAgent.generateDifficulty(
 			action.text + targetAddition,
 			customSystemInstruction.value,
@@ -361,12 +543,13 @@
 		chosenActionState.value = action;
 		const abilityAddition =
 			'\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended.' +
-			'\n Hostile beings stay hostile unless explicitly described otherwise by the actions effect.';
+			'\n Hostile NPCs stay hostile unless explicitly described otherwise by the actions effect.' +
+			'\n Friendly NPCs turn hostile if attacked.';
 
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
-			targetAddition + abilityAddition
+			targetAddition + abilityAddition + additionalActionInputState.value
 		);
 		isAiGeneratingState = false;
 	};
@@ -430,22 +613,31 @@
 	<div id="actions" bind:this={actionsDiv} class="mt-4 p-4 pb-0"></div>
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}
-			<div id="static-actions" class="p-4 pb-0 pt-0">
-				<button
-					onclick={() => {
-						useSpellsAbilitiesModal.showModal();
-					}}
-					class="text-md btn btn-primary w-full"
-					>Spells & Abilities
-				</button>
-				<button
-					onclick={() => {
-						useItemsModal.showModal();
-					}}
-					class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
-				</button>
-			</div>
+			{#if characterActionsState.value?.length > 0}
+				<div id="static-actions" class="p-4 pb-0 pt-0">
+					<button
+						onclick={() => {
+							useSpellsAbilitiesModal.showModal();
+						}}
+						class="text-md btn btn-primary w-full"
+						>Spells & Abilities
+					</button>
+					<button
+						onclick={() => {
+							useItemsModal.showModal();
+						}}
+						class="text-md btn btn-primary mt-3 w-full"
+						>Inventory
+					</button>
+				</div>
+			{:else}
+				<div class="flex flex-col">
+					<span class="m-auto">Generating next actions...</span>
+					<div class="m-auto">
+						<LoadingIcon />
+					</div>
+				</div>
+			{/if}
 		{/if}
 		<form id="input-form" class="p-4 pb-2">
 			<div class="join w-full">
@@ -459,7 +651,11 @@
 				<button
 					type="submit"
 					onclick={() => {
-						sendAction({ characterName: characterState.value.name, text: customActionInput.value });
+						sendAction(
+							{ characterName: characterState.value.name, text: customActionInput.value },
+							false,
+							additionalActionInputState.value
+						);
 					}}
 					class="btn btn-neutral"
 					id="submit-button"

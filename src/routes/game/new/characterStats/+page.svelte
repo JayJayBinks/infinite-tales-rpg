@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { getRowsForTextarea, navigate, parseState } from '$lib/util.svelte';
+	import { getRowsForTextarea, navigate, parseState, removeEmptyValues } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import cloneDeep from 'lodash.clonedeep';
 	import isPlainObject from 'lodash.isplainobject';
@@ -15,6 +15,7 @@
 	import { initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
+	import type { Campaign } from '$lib/ai/agents/campaignAgent';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage('apiKeyState');
@@ -33,6 +34,7 @@
 	const storyState = useLocalStorage('storyState', initialStoryState);
 	const characterState = useLocalStorage('characterState', initialCharacterState);
 	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
+	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const textAreaRowsDerived = $derived(getRowsForTextarea(characterStatsState.value));
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
@@ -51,12 +53,6 @@
 		}
 		isGeneratingState = false;
 	};
-	const removeEmptyValues = (object: object) =>
-		Object.fromEntries(
-			Object.entries(object)
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				.filter(([_, value]) => value && Object.keys(value).length > 0)
-		);
 
 	const onRandomizeSingle = async (stateValue: string, deepNested: string = '') => {
 		isGeneratingState = true;
@@ -114,9 +110,14 @@
 	<LoadingModal />
 {/if}
 <ul class="steps mt-3 w-full">
+	<!--TODO  -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
-	<li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
+	{#if campaignState.value?.campaign_title}
+		<li class="step step-primary cursor-pointer" onclick={() => goto('campaign')}>Campaign</li>
+	{:else}
+		<li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
+	{/if}
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step step-primary cursor-pointer" onclick={() => goto('character')}>Character</li>
@@ -125,7 +126,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={nextStepClicked}>Start</li>
 </ul>
-<form class="m-6 grid gap-2">
+<form class="m-6 grid items-center gap-2 text-center">
 	<p>Click on Randomize All to generate random Stats based on the Character settings</p>
 	<button
 		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"

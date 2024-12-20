@@ -1,24 +1,31 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { initialStoryState, StoryAgent, storyStateForPrompt } from '$lib/ai/agents/storyAgent';
+	import {
+		initialStoryState,
+		type Story,
+		StoryAgent,
+		storyStateForPrompt
+	} from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import useLocalStorage from '$lib/state/useLocalStorage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import { goto } from '$app/navigation';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
-	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 
 	let isGeneratingState = $state(false);
-	const apiKeyState = useLocalStorage('apiKeyState');
-	const aiLanguage = useLocalStorage('aiLanguage');
-	let storyAgent;
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	let storyAgent: StoryAgent;
 
-	const storyState = useLocalStorage('storyState', { ...initialStoryState });
+	const storyState = useLocalStorage<Story>('storyState', { ...initialStoryState });
 	const textAreaRowsDerived = $derived(getRowsForTextarea(storyState.value));
 	let storyStateOverwrites = $state({});
-	const characterState = useLocalStorage('characterState', { ...initialCharacterState });
+	const characterState = useLocalStorage<CharacterDescription>('characterState', {
+		...initialCharacterState
+	});
 
 	onMount(() => {
 		storyAgent = new StoryAgent(
@@ -33,7 +40,7 @@
 	function getCharacterDescription() {
 		let characterDescription = $state.snapshot(characterState.value);
 		if (isEqual(characterDescription, initialCharacterState)) {
-			characterDescription = undefined;
+			return undefined;
 		}
 		return characterDescription;
 	}
@@ -86,7 +93,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	<li class="step cursor-pointer" onclick={() => goto('character')}>Start</li>
 </ul>
-<form class="m-6 grid gap-2">
+<form class="m-6 grid items-center gap-2 text-center">
 	<p>Quickstart: Click on Randomize All to generate a random Tale.</p>
 	<p>You can also customize any setting and play the Tale suited to your liking.</p>
 	<p>The custom settings will be considered for the Randomize feature.</p>

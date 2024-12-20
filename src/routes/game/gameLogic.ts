@@ -47,7 +47,12 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	) {
 		return true;
 	}
-	return difficulty !== ActionDifficulty.medium || isInCombat || includesTrying;
+	return (
+		difficulty !== ActionDifficulty.medium ||
+		('' + action.is_straightforward).includes('false') ||
+		isInCombat ||
+		includesTrying
+	);
 }
 
 export const getTargetPromptAddition = function (targets: string[]) {
@@ -68,7 +73,7 @@ export function renderStatUpdates(
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
 			.map((statsUpdate) => {
-				if (Number.parseInt(statsUpdate.value.result) === 0) {
+				if (Number.parseInt(statsUpdate.value.result) === 0 || statsUpdate.type === 'null') {
 					return undefined;
 				}
 				let responseText: string;
@@ -173,26 +178,24 @@ export function applyGameActionState(
 		if (playerCharactersGameState[statUpdate.targetId]) {
 			switch (statUpdate.type) {
 				case 'hp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentHP += Number.parseInt(
-						statUpdate.value.result
-					);
+					playerCharactersGameState[statUpdate.targetId].currentHP +=
+						Number.parseInt(statUpdate.value.result) || 0;
 					break;
 				case 'hp_lost':
-					playerCharactersGameState[statUpdate.targetId].currentHP -= getTakeLessDamageForManyHits(
-						state.stats_update,
-						Number.parseInt(statUpdate.value.result),
-						statUpdate.targetId
-					);
+					playerCharactersGameState[statUpdate.targetId].currentHP -=
+						getTakeLessDamageForManyHits(
+							state.stats_update,
+							Number.parseInt(statUpdate.value.result),
+							statUpdate.targetId
+						) || 0;
 					break;
 				case 'mp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentMP += Number.parseInt(
-						statUpdate.value.result
-					);
+					playerCharactersGameState[statUpdate.targetId].currentMP +=
+						Number.parseInt(statUpdate.value.result) || 0;
 					break;
 				case 'mp_lost':
-					playerCharactersGameState[statUpdate.targetId].currentMP -= Number.parseInt(
-						statUpdate.value.result
-					);
+					playerCharactersGameState[statUpdate.targetId].currentMP -=
+						Number.parseInt(statUpdate.value.result) || 0;
 					break;
 			}
 		} else {
@@ -201,16 +204,16 @@ export function applyGameActionState(
 				if (npc && npc.resources) {
 					switch (statUpdate.type) {
 						case 'hp_gained':
-							npc.resources.current_hp += Number.parseInt(statUpdate.value.result);
+							npc.resources.current_hp += Number.parseInt(statUpdate.value.result) || 0;
 							break;
 						case 'hp_lost':
-							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result);
+							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result) || 0;
 							break;
 						case 'mp_gained':
-							npc.resources.current_mp += Number.parseInt(statUpdate.value.result);
+							npc.resources.current_mp += Number.parseInt(statUpdate.value.result) || 0;
 							break;
 						case 'mp_lost':
-							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result);
+							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result) || 0;
 							break;
 					}
 				}

@@ -3,7 +3,9 @@ import type { DiceRoll, StatsUpdate } from '$lib/ai/agents/combatAgent';
 import Dice from 'dice-notation-js';
 
 export function mapGameState(state: GameActionState) {
-	mapStatsUpdates(state);
+	if (state) {
+		mapStatsUpdates(state);
+	}
 }
 
 export function mapStatsUpdates(object: Pick<GameActionState, 'stats_update'>) {

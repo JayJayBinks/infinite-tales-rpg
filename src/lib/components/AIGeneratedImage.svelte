@@ -1,5 +1,5 @@
 <script lang="ts">
-	import useLocalStorage from '../state/useLocalStorage.svelte';
+	import { useLocalStorage } from '../state/useLocalStorage.svelte';
 	import isEqual from 'lodash.isequal';
 	import { onMount } from 'svelte';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
