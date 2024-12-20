@@ -17,10 +17,10 @@ export function getRequiredValue(
 		case ActionDifficulty.simple:
 			return 0;
 		case ActionDifficulty.medium:
-			requiredValue = getRandomInteger(6, 10);
+			requiredValue = getRandomInteger(7, 11);
 			break;
 		case ActionDifficulty.difficult:
-			requiredValue = getRandomInteger(11, 15);
+			requiredValue = getRandomInteger(12, 15);
 			break;
 		case ActionDifficulty.very_difficult:
 			requiredValue = getRandomInteger(16, 20);

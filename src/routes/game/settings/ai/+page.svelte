@@ -10,6 +10,7 @@
 		CharacterStatsAgent,
 		initialCharacterStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
+	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 
 	const apiKeyState = useLocalStorage('apiKeyState');
 	const temperatureState = useLocalStorage('temperatureState', 1.3);
@@ -26,7 +27,7 @@
 	const storyState = useLocalStorage('storyState', initialStoryState);
 	const isGameEnded = useLocalStorage('isGameEnded', false);
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
-	const campaignState = useLocalStorage('campaignState', {});
+	const campaignState = useLocalStorage('campaignState', initialCampaignState);
 	const currentChapterState = useLocalStorage('currentChapterState');
 	let isGeneratingState = $state(false);
 

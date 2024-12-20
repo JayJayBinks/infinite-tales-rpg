@@ -1,12 +1,22 @@
-<script>
+<script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { difficultyDiceRollModifier } from '../diceRollLogic';
 	import { navigate } from '$lib/util.svelte';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
+	import type { Campaign } from '$lib/ai/agents/campaignAgent';
 
-	const difficultyState = useLocalStorage('difficultyState', 'Default');
-	let useKarmicDice = useLocalStorage('useKarmicDice', true);
-	let useDynamicCombat = useLocalStorage('useDynamicCombat', false);
+	const difficultyState = useLocalStorage<string>('difficultyState', 'Default');
+	let useKarmicDice = useLocalStorage<boolean>('useKarmicDice', true);
+	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
+	const campaignState = useLocalStorage<Campaign>('campaignState');
+
+	const taleSettingsClicked = () => {
+		if (campaignState.value?.chapters.length > 0) {
+			navigate('/new/campaign');
+		} else {
+			navigate('/new/tale');
+		}
+	};
 </script>
 
 <form class="m-6 flex flex-col items-center text-center">
@@ -62,7 +72,7 @@
 			</button>
 		{/snippet}
 	</ImportExportSaveGame>
-	<button class="btn btn-neutral mt-2 w-1/2" onclick={() => navigate('/new/tale')}>
+	<button class="btn btn-neutral mt-2 w-1/2" onclick={taleSettingsClicked}>
 		View Tale Settings
 	</button>
 </form>

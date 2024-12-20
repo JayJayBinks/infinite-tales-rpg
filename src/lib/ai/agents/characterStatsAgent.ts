@@ -96,11 +96,11 @@ export class CharacterStatsAgent {
 	): Promise<NPCState> {
 		const latestHistoryTextOnly = historyMessages.map((m: LLMMessage) => m.content).join('\n');
 		const agent = [
-			'You are RPG NPC stats agent, generating the stats for a NPC according to game system, adventure and story progression.',
+			'You are RPG NPC stats agent, generating the stats for NPCs according to game system, adventure and story progression.',
 			'Description of the adventure: ' + stringifyPretty(storyState),
 			'Latest story progression:\n' + latestHistoryTextOnly,
 			`Most important instruction! You must always respond with following JSON format! 
-                            {"uniqueNpcName": ${npcStatsStateForPromptAsString}`
+                            {"uniqueNpcName": ${npcStatsStateForPromptAsString}, ...}`
 		];
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);

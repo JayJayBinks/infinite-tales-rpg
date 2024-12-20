@@ -1,7 +1,5 @@
 import { handleError } from '../util.svelte';
-import {
-	type GenerationConfig,
-} from '@google/generative-ai';
+import { type GenerationConfig } from '@google/generative-ai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
 import { LLM, type LLMconfig, type LLMMessage, type LLMRequest } from '$lib/ai/llm';
 
@@ -29,10 +27,7 @@ export class GPT4Provider extends LLM {
 	}
 
 	async generateContent(request: LLMRequest): Promise<object | undefined> {
-		const contents = this.buildContentsFormat(
-			request.userMessage,
-			request.historyMessages || []
-		);
+		const contents = this.buildContentsFormat(request.userMessage, request.historyMessages || []);
 		const systemInstructions = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
 		);
@@ -42,26 +37,26 @@ export class GPT4Provider extends LLM {
 			systemInstructions.push({ role: 'system', text: languageInstruction });
 		}
 
-		let temperature =  Math.min(
+		let temperature = Math.min(
 			request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
 			this.getMaxTemperature()
 		);
 		temperature = this.getDefaultTemperature();
-		console.log("calling llm with temperature", temperature)
+		console.log('calling llm with temperature', temperature);
 		const url = `https://text.pollinations.ai/openai`;
 		const body = JSON.stringify({
 			messages: [...systemInstructions, ...contents],
 			temperature,
 			model: 'openai',
 			seed: Math.floor(Math.random() * 1000000),
-			response_format: { type: 'json_object' },
+			response_format: { type: 'json_object' }
 		});
 		let result;
 		try {
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
+					'Content-Type': 'application/json'
 				},
 				body: body
 			});
@@ -123,7 +118,7 @@ export class GPT4Provider extends LLM {
 		return instructions;
 	}
 	buildContentsFormat(actionText: string, historyMessages: Array<LLMMessage>) {
-		const contents : any[] = [];
+		const contents: any[] = [];
 		if (historyMessages) {
 			historyMessages.forEach((message) => {
 				contents.push({
@@ -134,7 +129,7 @@ export class GPT4Provider extends LLM {
 		}
 		if (actionText) {
 			contents.push({
-				role:  'user',
+				role: 'user',
 				content: actionText
 			});
 		}

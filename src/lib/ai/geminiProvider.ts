@@ -83,7 +83,7 @@ export class GeminiProvider extends LLM {
 		}
 
 		const model = this.genAI.getGenerativeModel({
-			model: request.model || this.llmConfig.model || 'gemini-1.5-flash-latest',
+			model: request.model || this.llmConfig.model || 'gemini-2.0-flash-exp',
 			generationConfig: {
 				...this.llmConfig.generationConfig,
 				...request.generationConfig,
@@ -104,6 +104,7 @@ export class GeminiProvider extends LLM {
 			if (e instanceof Error && e.message.includes('503')) {
 				//TODO
 				e.message = 'Gemini is overloaded!. Fallback AI should be used';
+				handleError(e.message);
 				return undefined;
 			} else {
 				handleError(e as string);

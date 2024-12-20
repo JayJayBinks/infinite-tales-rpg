@@ -1,47 +1,71 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { Action } from '$lib/ai/agents/gameAgent';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 
 export type CampaignChapterPlotPoint = {
 	plotId: number;
 	objective: string;
 	location: string;
+	description: string;
+	important_NPCs: Array<string>;
+	steps: Array<string>;
 };
 
 export type CampaignChapter = {
 	chapterId: number;
 	title: string;
 	description: string;
-	plotPoints: Array<CampaignChapterPlotPoint>;
+	plot_points: Array<CampaignChapterPlotPoint>;
 };
 export type Campaign = {
-	campaignTitle: string;
-	campaignDescription: string;
+	game: string;
+	campaign_title: string;
+	campaign_description: string;
+	character_simple_description: string;
 	chapters: Array<CampaignChapter>;
 };
 
-//TODO for triggers we would need to ask AI after ever action right?
-// #outcomes can be positive or negative, depending on the trigger
-// "outcomes": [{
-// 	"trigger": "Condition to trigger this outcome",
-// 	"result": "Outcome result"
-// },
-// 	...
-// ]
+export const getNewChapterObject = (chapterId: number) => {
+	return {
+		chapterId: chapterId,
+		title: '',
+		description: '',
+		objective: '',
+		plot_points: []
+	};
+};
+
+export const getNewPlotPointObject = (plotId) => {
+	return {
+		plotId: plotId,
+		location: '',
+		description: '',
+		objective: '',
+		important_NPCs:
+			'Give a detailed description and character traits for NPCs that are important to this plot point',
+		steps:
+			'A specific step to reach the objective ensuring a gradual narrative with meaningful moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.'
+	};
+};
 
 const chaptersPrompt = `{
 		"chapterId": number,
 		"title": string,
 		"description": string,
 		"objective": string,
-		"plotPoints": [
+		"plot_points": [
 			{
 				"plotId": always start at 1 again for each new chapter,
 				"location": string,
 				"description": string,
 				"objective": string,
-				"obstacles": [
-					"One specific obstacle including detailed description e.g. a negotiation; a puzzle; an enemy; ...",
+				"important_NPCs": [
+					"Give a detailed description and character traits for NPCs that are important to this plot point",
+					...
+				],
+				"steps": [
+					"A specific step to reach the objective ensuring a gradual narrative with meaningful moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
 					...
 				]
 			},
@@ -51,8 +75,9 @@ const chaptersPrompt = `{
 
 const jsonPrompt = `{
 	"game": "Pick Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons",
-	"campaignTitle": string,
-	"campaignDescription": string,
+	"campaign_title": string,
+	"campaign_description": string,
+	"character_simple_description": "Generate a random character fitting the game system and campaignDescription, only provide a simple description and not every detail",
 	"chapters": [
 		${chaptersPrompt},
 		...
@@ -61,17 +86,18 @@ const jsonPrompt = `{
 
 export const initialCampaignState = {
 	game: '',
-	campaignTitle: '',
-	campaignDescription: '',
+	campaign_title: '',
+	campaign_description: '',
+	character_simple_description: '',
 	chapters: []
 };
 
+const plotPointNumberPrompt = 'Each chapter with 2 - 4 plot points';
 const mainAgent =
 	'You are Pen & Paper campaign agent, crafting an epic, overarching campaign with chapters. Each chapter is an own adventure with an own climax and then fades gradually into the next chapter.\n' +
 	'Design the Campaign to gradually increase the complexity of chapters as the players progress.\n' +
 	'Include at least one major obstacle or antagonist in each chapter that ties into the overall campaign theme.\n' +
-	'Include important events, locations, or encounters that can adapt based on player choices, like alliances, moral dilemmas, or major battles..\n' +
-	'Each chapter must include secrets for the characters to discover on how to get to the next chapter.\n';
+	'Include important events, locations, NPCs and encounters that can adapt based on player choices, like alliances, moral dilemmas, or major battles.';
 
 export class CampaignAgent {
 	llm: LLM;
@@ -80,8 +106,16 @@ export class CampaignAgent {
 		this.llm = llm;
 	}
 
-	async generateCampaign(overwrites = {}, characterDescription = undefined): Promise<Campaign> {
-		const agent = mainAgent + 'Always respond with following JSON!\n' + jsonPrompt;
+	async generateCampaign(
+		overwrites = {},
+		characterDescription: CharacterDescription | undefined = undefined
+	): Promise<Campaign> {
+		const agent =
+			mainAgent +
+			'\nProvide 3 - 6 chapters.\n' +
+			plotPointNumberPrompt +
+			'\nAlways respond with following JSON!\n' +
+			jsonPrompt;
 
 		const preset = {
 			...overwrites
@@ -104,31 +138,19 @@ export class CampaignAgent {
 		return campaign;
 	}
 
-	'If actionHistory has deviated too much from currentCampaign, return the adjusted campaign chapters to fit again to the character actions.\n';
-	'If you determine that the currentCampaign needs to be adjusted, make sure the adjusted chapters adhere to campaignDescription.\n';
-	'Then you must decide if the current and upcoming campaign chapters need to be adjusted to fit to the character actions again.\n';
-	savedForLater = `,
-	#only include adjustedChapters object if deviation > 80, else null
-	"adjustedChapters": {
-		"adjustedChaptersExplanation": Explain why the chapters where adjusted,
-		"chapters": [
-			${chaptersPrompt},
-...
-]
-}`;
-
-	async adjustCampaignToCharacterActions(
+	async checkCampaignDeviations(
 		nextAction: Action,
 		plannedCampaign: Campaign,
 		actionHistory: Array<LLMMessage>
 	): Promise<any> {
-		//carefu as these are proxies, adding is fine
-		const actionHistoryStoryOnly = actionHistory.filter(message => message.role === 'model')
-			.map(message => ({ role: 'model', content: JSON.parse(message.content).story }));
+		//careful as these are proxies, adding is fine
+		const actionHistoryStoryOnly = actionHistory
+			.filter((message) => message.role === 'model')
+			.map((message) => ({ role: 'model', content: JSON.parse(message.content).story }));
 
 		actionHistoryStoryOnly.push({ role: 'user', content: nextAction.text });
 		const agent =
-			mainAgent +
+			'You are Pen & Paper campaign agent, crafting an epic, overarching campaign with chapters. Each chapter is an own adventure with an own climax and then fades gradually into the next chapter.\n' +
 			'You will be given a plan for a campaign as plannedCampaign and how the actual campaign unfolded during the play session as actualCampaign.\n' +
 			'Then you must decide if the actualCampaign has deviated too much from plannedCampaign and create a nudge that gently guides the character back to follow the chapter plot.\n' +
 			'Do not micro manage every single plot point but only take care that the overall chapter and campaign stay on track.\n' +
@@ -137,8 +159,10 @@ export class CampaignAgent {
 				"currentChapter": Identify the most relevant chapterId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - chapterId: {chapterId}",
 				"currentPlotPoint": Identify the most relevant plotId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
   			"nextPlotPoint": Identify the next plotId in plannedCampaign, must be greater than currentPlotPoint or null if there is no next plot point; Format: "Reasoning why story is currently at this plotId - plotId: {plotId}",
-  			"deviationExplanation": why the actualCampaign deviated from currentPlotPoint,
+  			"deviationExplanation": is the currentChapter still on track; if not include reasons why the actualCampaign deviated from currentChapter,
 				"deviation": integer 0 - 100 how much the actualCampaign deviated from currentChapter,
+				"pacingExplanation": reasoning on how quickly the characters are proceeding through the currentChapter,
+				"pacing": integer 0 - 100 value increases/decreases depending on how quickly the characters are proceeding through the currentChapter,
 				#only include plotNudge object if deviation > 50, else null
 				"plotNudge": {
 					"nudgeExplanation": Explain why the characters are guided back to follow the currentChapter plot,
@@ -146,9 +170,6 @@ export class CampaignAgent {
 				}
 			}`;
 
-		//TODO
-		const saved =
-			'If you determine that the plannedCampaign needs to be adjusted, make sure the adjusted chapters adhere to campaignDescription.\n';
 		const request: LLMRequest = {
 			userMessage: 'Check if the actualCampaign is on course with the plannedCampaign.',
 			historyMessages: [
@@ -164,5 +185,43 @@ export class CampaignAgent {
 			systemInstruction: agent
 		};
 		return (await this.llm.generateContent(request)) as Campaign;
+	}
+
+	async generateSingleChapter(
+		campaignState: Campaign,
+		characterState: CharacterDescription,
+		chapterNumberToGenerate: number,
+		chapter: CampaignChapter
+	): Promise<CampaignChapter> {
+		const agentInstruction =
+			mainAgent +
+			'\n' +
+			plotPointNumberPrompt +
+			'\nImportant instruction! The new chapter must be based on the following: ' +
+			stringifyPretty(chapter) +
+			'\nThe new chapter must fit within the other chapters, generate a chapter with chapterId: ' +
+			chapterNumberToGenerate +
+			'\n' +
+			'Always respond with following JSON!\n' +
+			chaptersPrompt;
+
+		const request: LLMRequest = {
+			userMessage:
+				'Important! The new chapter must be based on the following: ' + stringifyPretty(chapter),
+			historyMessages: [
+				{
+					role: 'user',
+					content: 'Description of the campaign: ' + stringifyPretty(campaignState)
+				}
+			],
+			systemInstruction: agentInstruction
+		};
+		if (characterState) {
+			request.historyMessages?.push({
+				role: 'user',
+				content: 'Description of the character: ' + stringifyPretty(characterState)
+			});
+		}
+		return (await this.llm.generateContent(request)) as CampaignChapter;
 	}
 }
