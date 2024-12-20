@@ -42,10 +42,8 @@ export const getNewPlotPointObject = (plotId) => {
 		location: '',
 		description: '',
 		objective: '',
-		important_NPCs:
-			'Give a detailed description and character traits for NPCs that are important to this plot point',
-		steps:
-			'A specific step to reach the objective ensuring a gradual narrative with meaningful moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.'
+		important_NPCs: '',
+		steps: ''
 	};
 };
 

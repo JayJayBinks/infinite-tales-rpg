@@ -125,6 +125,7 @@
 	>
 		New Custom Tale
 	</button>
+	<small class="m-auto mt-2">Customize your Tale with a brief, open ended plot</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
 		disabled={!apiKeyState.value}
@@ -132,7 +133,7 @@
 	>
 		New Campaign
 	</button>
-	<small class="m-auto mt-2">Customize any setting of your Tale</small>
+	<small class="m-auto mt-2">A Campaign is a structured Tale with planned plot</small>
 	<div class="divider mt-7">Advanced Settings</div>
 	<label class="form-control mt-3 w-full sm:w-2/3">
 		AI Language
