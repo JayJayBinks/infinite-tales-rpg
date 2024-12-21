@@ -126,7 +126,8 @@
 					characterState.value,
 					characterStatsState.value,
 					inventoryState.value,
-					additionalActionInputState.value
+					additionalActionInputState.value,
+					customSystemInstruction.value
 				);
 			}
 			renderGameState(currentGameActionState, characterActionsState.value);
@@ -396,7 +397,9 @@
 				additionalActionInput = additionalActionInput || '';
 				const combatAndNPCState = await getCombatAndNPCState(action);
 
-				additionalActionInput = await advanceChapterIfApplicable(action, additionalActionInput);
+				if (campaignState.value?.chapters?.length > 0) {
+					additionalActionInput = await advanceChapterIfApplicable(action, additionalActionInput);
+				}
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 				additionalActionInput = addAdditionsFromActionSideeffects(action, additionalActionInput);
 
@@ -452,7 +455,8 @@
 								characterState.value,
 								characterStatsState.value,
 								inventoryState.value,
-								additionalActionInput
+								additionalActionInput,
+								customSystemInstruction.value
 							)
 							.then((actions) => {
 								if (actions) {

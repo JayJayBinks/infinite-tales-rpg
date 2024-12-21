@@ -1,6 +1,8 @@
 import { errorState } from './state/errorState.svelte';
 import isPlainObject from 'lodash.isplainobject';
 import isString from 'lodash.isstring';
+import * as pdfjs from 'pdfjs-dist';
+import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 
 export function stringifyPretty(object: unknown) {
 	return JSON.stringify(object, null, 2);
@@ -61,6 +63,43 @@ export const importJsonFromFile = (callback: Function) => {
 		}
 	});
 };
+
+let worker;
+
+export async function loadPDF(file: File) {
+	if (!worker) {
+		worker = new pdfjs.PDFWorker({
+			port: new Worker(new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url), {
+				type: 'module'
+			}) as unknown as null
+		});
+	}
+	const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer(), worker }).promise;
+	const maxPages = pdf._pdfInfo.numPages;
+	const countPromises: Array<Promise<string>> = []; // collecting all page promises
+	for (let j = 1; j <= maxPages; j++) {
+		const page = pdf.getPage(j);
+
+		countPromises.push(
+			page.then(function (page) {
+				// add page promise
+				const textContent = page.getTextContent();
+				return textContent.then(function (text) {
+					// return content promise
+					return text.items
+						.map(function (s) {
+							return (s as TextItem).str;
+						})
+						.join(''); // value page text
+				});
+			})
+		);
+	}
+	// Wait for all pages and join text
+	return Promise.all(countPromises).then(function (texts) {
+		return texts.join('\n');
+	});
+}
 
 export function getRowsForTextarea(object: object) {
 	const mappedRows = {};

@@ -55,7 +55,8 @@
 		"lodash.clonedeep": "^4.5.0",
 		"lodash.isequal": "^4.5.0",
 		"lodash.isplainobject": "^4.0.6",
-		"marked": "^14.1.3"
+		"marked": "^14.1.3",
+		"pdfjs-dist": "^4.9.155"
 	},
 	"release-it": {
 		"$schema": "https://unpkg.com/release-it/schema/release-it.json",

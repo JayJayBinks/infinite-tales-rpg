@@ -5,6 +5,7 @@
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import {
 		getRowsForTextarea,
+		loadPDF,
 		navigate,
 		removeEmptyValues,
 		stringifyPretty
@@ -68,6 +69,27 @@
 		}
 	});
 
+	function onUploadClicked() {
+		const fileInput = document.createElement('input');
+		fileInput.type = 'file';
+		fileInput.accept = 'application/pdf';
+		fileInput.click();
+		fileInput.addEventListener('change', function (event) {
+			// @ts-expect-error can never be null
+			const file = event.target.files[0];
+			if (file) {
+				const reader = new FileReader();
+				reader.onload = async () => {
+					const text = await loadPDF(file);
+					campaignStateOverwrites = { gameBook: text };
+					await onRandomize();
+					campaignStateOverwrites = {};
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		});
+	}
+
 	function getCharacterDescription() {
 		let characterDescription = $state.snapshot(characterState.value);
 		if (isEqual(characterDescription, initialCharacterState)) {
@@ -76,7 +98,7 @@
 		return characterDescription;
 	}
 
-	const onStory = async () => {
+	const generateStory = async () => {
 		isGeneratingState = true;
 		const firstChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[0]);
 		//chapterId is actually next chapter as it starts with 1
@@ -92,6 +114,7 @@
 		};
 		const newState = await storyAgent.generateRandomStorySettings(overwrites);
 		if (newState) {
+			newState.adventure_and_main_event = stringifyPretty(firstChapter);
 			console.log(stringifyPretty(newState));
 			storyState.value = newState;
 			currentChapterState.value = 1;
@@ -102,7 +125,7 @@
 		isGeneratingState = true;
 
 		const newState = await campaignAgent.generateCampaign(
-			campaignStateOverwrites,
+			$state.snapshot(campaignStateOverwrites),
 			getCharacterDescription()
 		);
 		if (newState) {
@@ -170,8 +193,8 @@
 		if (!isCampaignSet()) {
 			await onRandomize();
 		}
-		if (!storyState.value?.adventure_and_main_event) {
-			await onStory();
+		if (!storyState.value?.character_simple_description) {
+			await generateStory();
 		}
 		navigate('/new/' + page);
 	}
@@ -200,6 +223,9 @@
 		onclick={onRandomize}
 	>
 		Randomize All
+	</button>
+	<button class="btn btn-neutral m-auto w-3/4 sm:w-1/2" onclick={onUploadClicked}>
+		Generate Campaign from PDF
 	</button>
 	<button
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"

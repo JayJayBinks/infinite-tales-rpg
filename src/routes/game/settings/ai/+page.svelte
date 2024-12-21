@@ -29,6 +29,7 @@
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 	const campaignState = useLocalStorage('campaignState', initialCampaignState);
 	const currentChapterState = useLocalStorage('currentChapterState');
+	const characterActionsState = useLocalStorage('characterActionsState');
 	let isGeneratingState = $state(false);
 
 	function clearStates() {
@@ -44,6 +45,7 @@
 		inventoryState.reset();
 		campaignState.reset();
 		currentChapterState.reset();
+		characterActionsState.reset();
 	}
 
 	async function onQuickstartNew() {
