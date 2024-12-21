@@ -193,9 +193,7 @@
 		if (!isCampaignSet()) {
 			await onRandomize();
 		}
-		if (!storyState.value?.character_simple_description) {
-			await generateStory();
-		}
+		await generateStory();
 		navigate('/new/' + page);
 	}
 </script>
@@ -231,6 +229,7 @@
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
 		onclick={() => {
 			campaignState.reset();
+			storyState.reset();
 			campaignStateOverwrites = {};
 		}}
 	>
