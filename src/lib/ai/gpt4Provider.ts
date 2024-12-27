@@ -33,7 +33,8 @@ export class GPT4Provider extends LLM {
 		);
 		if (this.llmConfig.language) {
 			const languageInstruction =
-				'Important! For every JSON property you must respond in the following language: ' + this.llmConfig.language;
+				'Important! For every JSON property you must respond in the following language: ' +
+				this.llmConfig.language;
 			systemInstructions.push({ role: 'system', text: languageInstruction });
 		}
 

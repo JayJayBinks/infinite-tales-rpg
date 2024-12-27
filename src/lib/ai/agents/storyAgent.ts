@@ -7,7 +7,8 @@ export type Story = typeof storyStateForPrompt;
 //TODO if we remove this as object new tale form placeholder wont work anymore...
 export const storyStateForPrompt = {
 	game: 'Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons',
-	world_details: 'Provide a concise yet vivid description of the world\'s key characteristics, highlighting its most distinctive features such as geography, culture, history, or any unique elements that define its essence. Focus on creating a snapshot that inspires and supports storytelling.',
+	world_details:
+		"Provide a concise yet vivid description of the world's key characteristics, highlighting its most distinctive features such as geography, culture, history, or any unique elements that define its essence. Focus on creating a snapshot that inspires and supports storytelling.",
 	adventure_and_main_event:
 		'Generate a random adventure with a random main story line. It does not have to be a quest, it can also be an event. It should be extraordinary and not cliche.',
 	character_simple_description:
@@ -57,7 +58,9 @@ export class StoryAgent {
 		if (characterDescription) {
 			request.historyMessages?.push({
 				role: 'user',
-				content: 'The adventure_and_main_event must have the character_simple_description as player character protagonist: ' + stringifyPretty(characterDescription)
+				content:
+					'The adventure_and_main_event must have the character_simple_description as player character protagonist: ' +
+					stringifyPretty(characterDescription)
 			});
 		}
 		return (await this.llm.generateContent(request)) as Story;

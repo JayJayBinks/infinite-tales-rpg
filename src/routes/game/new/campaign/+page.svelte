@@ -190,7 +190,7 @@
 	}
 
 	async function _goto(page: string) {
-		if(!isEqual(initialCampaignState, campaignState.value)){
+		if (!isEqual(initialCampaignState, campaignState.value)) {
 			if (!isCampaignSet()) {
 				await onRandomize();
 			}
