@@ -105,8 +105,10 @@
 		actionAgent = new ActionAgent(llm);
 		//Start game when not already started
 		playerCharactersGameState = { [characterState.value.name]: { currentHP: 0, currentMP: 0 } };
-		if (gameActionsState.value.length === 0) {
-			handleStartingStats(playerCharactersGameState, characterState.value.name);
+		if (!currentGameActionState?.story) {
+			if(!currentGameActionState?.stats_update){
+				handleStartingStats(playerCharactersGameState, characterState.value.name);
+			}
 			await sendAction({
 				characterName: characterState.value.name,
 				text: gameAgent.getStartingPrompt()

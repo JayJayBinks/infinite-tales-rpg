@@ -22,6 +22,7 @@ export type Campaign = {
 	game: string;
 	campaign_title: string;
 	campaign_description: string;
+	world_details: string;
 	character_simple_description: string;
 	chapters: Array<CampaignChapter>;
 };
@@ -75,7 +76,8 @@ const jsonPrompt = `{
 	"game": "Pick Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons",
 	"campaign_title": string,
 	"campaign_description": string,
-	"character_simple_description": "Generate a random character fitting the game system and campaignDescription, only provide a simple description and not every detail",
+	"world_details": "Provide a vivid and in-depth description of the world's important details, including its geography, cultures, history, key events, technologies, political systems, and any unique elements that set it apart. Ensure the description creates an immersive setting that supports and enhances storytelling.",
+	"character_simple_description": "Generate a random character fitting the game system, world_details and campaignDescription, only provide a simple description and not every detail",
 	"chapters": [
 		${chaptersPrompt},
 		...
@@ -86,6 +88,7 @@ export const initialCampaignState = {
 	game: '',
 	campaign_title: '',
 	campaign_description: '',
+	world_details: '',
 	character_simple_description: '',
 	chapters: []
 };
@@ -95,6 +98,7 @@ const mainAgent =
 	'You are Pen & Paper campaign agent, crafting an epic, overarching campaign with chapters. Each chapter is an own adventure with an own climax and then fades gradually into the next chapter.\n' +
 	'Design the Campaign to gradually increase the complexity of chapters as the players progress.\n' +
 	'Include at least one major obstacle or antagonist in each chapter that ties into the overall campaign theme.\n' +
+	'Provide a vivid and in-depth description of the world\'s important details, including its geography, cultures, history, key events, technologies, political systems, and any unique elements that set it apart.\n' +
 	'Include important events, locations, NPCs and encounters that can adapt based on player choices, like alliances, moral dilemmas, or major battles.';
 
 export class CampaignAgent {
@@ -126,10 +130,10 @@ export class CampaignAgent {
 			systemInstruction: agent,
 			temperature: 1
 		};
-		if (characterDescription) {
+		if (characterDescription?.name) {
 			request.historyMessages?.push({
 				role: 'user',
-				content: 'Character description: ' + stringifyPretty(characterDescription)
+				content: 'The campaign story must have the character_simple_description as player character protagonist: ' + stringifyPretty(characterDescription)
 			});
 		}
 		const campaign = (await this.llm.generateContent(request)) as Campaign;
@@ -214,7 +218,7 @@ export class CampaignAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		if (characterState) {
+		if (characterState?.name) {
 			request.historyMessages?.push({
 				role: 'user',
 				content: 'Description of the character: ' + stringifyPretty(characterState)

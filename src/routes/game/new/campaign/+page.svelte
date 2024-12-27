@@ -81,9 +81,8 @@
 				const reader = new FileReader();
 				reader.onload = async () => {
 					const text = await loadPDF(file);
-					campaignStateOverwrites = { gameBook: text };
+					campaignStateOverwrites = { ...campaignStateOverwrites, gameBook: text };
 					await onRandomize();
-					campaignStateOverwrites = {};
 				};
 				reader.readAsArrayBuffer(file);
 			}
@@ -110,6 +109,7 @@
 		const overwrites: Partial<Story> = {
 			game: campaignState.value.game,
 			adventure_and_main_event: stringifyPretty(firstChapter),
+			world_details: campaignState.value.world_details,
 			character_simple_description: campaignState.value.character_simple_description
 		};
 		const newState = await storyAgent.generateRandomStorySettings(overwrites);
@@ -190,10 +190,12 @@
 	}
 
 	async function _goto(page: string) {
-		if (!isCampaignSet()) {
-			await onRandomize();
+		if(!isEqual(initialCampaignState, campaignState.value)){
+			if (!isCampaignSet()) {
+				await onRandomize();
+			}
+			await generateStory();
 		}
-		await generateStory();
 		navigate('/new/' + page);
 	}
 </script>
