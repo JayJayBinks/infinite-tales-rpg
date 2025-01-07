@@ -110,6 +110,7 @@ export class GameAgent {
 		return (
 			'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
 			'\nAt the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
+			'\nIf the player character is accompanied by party members, give them names and add them to currently_present_npcs' +
 			'\nCHARACTER starts with some random items.'
 		);
 	}
@@ -148,6 +149,8 @@ export class GameAgent {
 	}
 }
 
+const storyWordLimit = 'must be between 100 and 150 words, do not exceed this range.';
+
 export const SLOW_STORY_PROMPT =
 	'Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.';
 const systemBehaviour = `
@@ -161,7 +164,7 @@ The Game Master's General Responsibilities Include:
 - Never skip ahead in time unless the player has indicated to.
 - Never narrate events briefly or summarize; Always describe detailed scenes with character conversation in direct speech
 - Use GAME's core knowledge and rules.
-- The story narration should be between 100 and 180 words.
+- The story narration ${storyWordLimit}
 - Balance role-play, combat, and puzzles.
 - Craft varied NPCs, ranging from good to evil.
 
@@ -203,7 +206,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   "nextPlotPoint": Identify the next plotId according to ADVENTURE_AND_MAIN_EVENT, must be greater than currentPlotPoint or null if there is no next plot point; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
   "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
   "plotPointAdvancingNudgeExplanation": "Explain the currentPlotPoint and what could happen next to advance the story towards nextPlotPoint",
-  "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. For character speech use single quotes. Use HTML to properly format the narration.",
+  "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${storyWordLimit} For character speech use single quotes. Format the different parts of the narration using HTML tags for easier reading.",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
   "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
@@ -225,5 +228,5 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
-  "currently_present_npcs": List of NPCs that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
+  "currently_present_npcs": List of NPCs or party members that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
 }`;

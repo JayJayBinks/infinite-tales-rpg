@@ -49,7 +49,7 @@ export class CharacterAgent {
 		characterOverwrites: Partial<CharacterDescription> | undefined = undefined
 	): Promise<CharacterDescription> {
 		const agentInstruction =
-			'You are RPG character agent, describing a character according to game system, adventure and character description.\n' +
+			'You are RPG character agent, describing a single character according to game system, adventure and character description.\n' +
 			'Always respond with following JSON!\n' +
 			characterDescriptionForPrompt;
 

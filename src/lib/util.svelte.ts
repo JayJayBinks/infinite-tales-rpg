@@ -147,3 +147,17 @@ export const removeEmptyValues = (object: object) =>
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			.filter(([_, value]) => value && Object.keys(value).length > 0)
 	);
+
+export function playAudioFromStream(text, voice, onended?): HTMLAudioElement {
+	const audio = new Audio();
+	audio.src = getTTSUrl(text, voice);
+	audio.autoplay = true;
+	if (onended) {
+		audio.onended = onended;
+	}
+	return audio;
+}
+
+export function getTTSUrl(text, voice) {
+	return '/api/edgeTTSStream?voice=' + encodeURI(voice) + '&text=' + encodeURI(text);
+}

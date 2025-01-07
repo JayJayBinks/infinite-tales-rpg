@@ -35,7 +35,7 @@ export class GPT4Provider extends LLM {
 			const languageInstruction =
 				'Important! For every JSON property you must respond in the following language: ' +
 				this.llmConfig.language;
-			systemInstructions.push({ role: 'system', text: languageInstruction });
+			systemInstructions.push({ role: 'system', content: languageInstruction });
 		}
 
 		let temperature = Math.min(
@@ -123,7 +123,7 @@ export class GPT4Provider extends LLM {
 		if (historyMessages) {
 			historyMessages.forEach((message) => {
 				contents.push({
-					role: message['role'] === 'model' ? 'system' : 'user',
+					role: message['role'] === 'model' ? 'assistant' : 'user',
 					content: message['content']
 				});
 			});

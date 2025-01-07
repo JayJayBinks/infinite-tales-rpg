@@ -9,7 +9,6 @@
 		SLOW_STORY_PROMPT
 	} from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
-
 	import { onMount, tick } from 'svelte';
 	import { handleError, stringifyPretty } from '$lib/util.svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
@@ -36,6 +35,7 @@
 	import { type Campaign, CampaignAgent } from '$lib/ai/agents/campaignAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
+	import TTSComponent from '$lib/components/TTSComponent.svelte';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -82,12 +82,14 @@
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
 			({} as GameActionState)
 	);
+	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
 
 	//feature toggles
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
+	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM({
@@ -95,7 +97,6 @@
 			language: aiLanguage.value,
 			apiKey: apiKeyState.value
 		});
-
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);
 		combatAgent = new CombatAgent(llm);
@@ -199,11 +200,7 @@
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			let actionText = chosenActionState.value.text + '\n ' + diceRollDialog.returnValue;
-			sendAction(
-				{ ...chosenActionState.value, characterName: characterState.value.name, text: actionText },
-				false,
-				additionalActionInput
-			);
+			sendAction({ ...chosenActionState.value, text: actionText }, false, additionalActionInput);
 		});
 	}
 
@@ -405,6 +402,8 @@
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 				additionalActionInput = addAdditionsFromActionSideeffects(action, additionalActionInput);
 
+				//TODO additionalActionInput += '\nInclude the actions for this scene of all currently_present_npcs';
+
 				additionalActionInputState.value = additionalActionInput;
 				didAIProcessActionState.value = false;
 				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
@@ -483,26 +482,38 @@
 		addContinueStory = true
 	) {
 		if (!isGameEnded.value) {
-			actions.forEach((action) => addActionButton(action, state.is_character_in_combat));
+			actions.forEach((action) =>
+				addActionButton(action, state.is_character_in_combat, 'ai-gen-action')
+			);
 			if (addContinueStory) {
 				addActionButton({
 					characterName: characterState.value.name,
 					text: 'Continue The Tale'
 				});
 			}
+			actionsTextForTTS =
+				Array.from(document.querySelectorAll('.ai-gen-action'))
+					.map((elm) => elm.textContent || '')
+					.join(' ') || '';
 		}
 	}
 
-	function addActionButton(action: Action, is_character_in_combat?: boolean) {
+	function addActionButton(action: Action, is_character_in_combat?: boolean, addClass?: string) {
 		const button = document.createElement('button');
-		button.className = 'btn btn-neutral mb-3 w-full text-md ';
+		button.className = 'btn btn-neutral mb-3 w-full text-md';
+		if (addClass) {
+			button.className += ' ' + addClass;
+		}
 		const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
 		const isEnoughMP =
 			mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
-		if (mpCost > 0 && !action.text.includes('MP')) {
-			action.text += ' (' + mpCost + ' MP)';
+		if (mpCost > 0) {
+			const mpString = ' (' + mpCost + ' MP).';
+			button.textContent = action.text.replaceAll('.', '');
+			button.textContent += mpString;
+		} else {
+			button.textContent = action.text.endsWith('.') ? action.text : action.text + '.';
 		}
-		button.textContent = action.text;
 		if (!isEnoughMP) {
 			button.disabled = true;
 		}
@@ -599,7 +610,7 @@
 			MP: {playerCharactersGameState[characterState.value.name]?.currentMP}</output
 		>
 	</div>
-	<div id="story" class="mt-4 rounded-lg bg-base-100 p-4 shadow-md">
+	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		<!-- For proper updating, need to use gameActionsState.id as each block id -->
 		{#each gameActionsState.value
 			.filter((s) => s.story)
@@ -616,7 +627,14 @@
 			<StoryProgressionWithImage story={gameLogic.getGameEndedMessage()} />
 		{/if}
 	</div>
-	<div id="actions" bind:this={actionsDiv} class="mt-4 p-4 pb-0"></div>
+	<div class="mt-4 flex">
+		<TTSComponent
+			text={actionsTextForTTS}
+			voice={ttsVoiceState.value}
+			hidden={characterActionsState.value?.length === 0}
+		></TTSComponent>
+	</div>
+	<div id="actions" bind:this={actionsDiv} class="mt-2 p-4 pb-0 pt-0"></div>
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}
 			{#if characterActionsState.value?.length > 0}

@@ -1,14 +1,18 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { difficultyDiceRollModifier } from '../diceRollLogic';
-	import { navigate } from '$lib/util.svelte';
+	import { navigate, playAudioFromStream } from '$lib/util.svelte';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
+	import { onMount } from 'svelte';
+	import { type Voice } from 'msedge-tts';
 
 	const difficultyState = useLocalStorage<string>('difficultyState', 'Default');
 	let useKarmicDice = useLocalStorage<boolean>('useKarmicDice', true);
 	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
+	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
+	let ttsVoices: Voice[] = $state([]);
 
 	const taleSettingsClicked = () => {
 		if (campaignState.value?.chapters.length > 0) {
@@ -17,6 +21,11 @@
 			navigate('/new/tale');
 		}
 	};
+	onMount(async () => {
+		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
+			a.Locale === b.Locale ? 0 : a.Locale.includes(navigator.language) ? -1 : 1
+		);
+	});
 </script>
 
 <form class="m-6 flex flex-col items-center text-center">
@@ -59,7 +68,20 @@
 			Disable for faster, story-focused combat.</small
 		>
 	</label>
-
+	<label class="form-control w-full sm:w-1/2">
+		<p>Choose voice for Text To Speech</p>
+		<button
+			onclick={() => {
+				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
+			}}
+			>Test Voice
+		</button>
+		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
+			{#each ttsVoices as v}
+				<option value={v.ShortName}>{v.FriendlyName} - {v.Gender}</option>
+			{/each}
+		</select>
+	</label>
 	<ImportExportSaveGame isSaveGame={true}>
 		{#snippet exportButton(onclick)}
 			<button {onclick} class="btn btn-neutral m-auto mt-4 w-3/4 sm:w-1/2">
