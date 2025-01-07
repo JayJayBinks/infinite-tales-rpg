@@ -1,6 +1,6 @@
-<script>
+<script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { navigate, parseState } from '$lib/util.svelte';
+	import { navigate, parseState, playAudioFromStream } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, StoryAgent } from '$lib/ai/agents/storyAgent';
@@ -11,11 +11,13 @@
 		initialCharacterStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
+	import type { Voice } from 'msedge-tts';
+	import { onMount } from 'svelte';
 
-	const apiKeyState = useLocalStorage('apiKeyState');
-	const temperatureState = useLocalStorage('temperatureState', 1.3);
-	const customSystemInstruction = useLocalStorage('customSystemInstruction');
-	const aiLanguage = useLocalStorage('aiLanguage');
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const temperatureState = useLocalStorage<number>('temperatureState', 1.3);
+	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
 
 	const gameActionsState = useLocalStorage('gameActionsState', []);
 	const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -30,7 +32,16 @@
 	const campaignState = useLocalStorage('campaignState', initialCampaignState);
 	const currentChapterState = useLocalStorage('currentChapterState');
 	const characterActionsState = useLocalStorage('characterActionsState');
+
+	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
+	let ttsVoices: Voice[] = $state([]);
 	let isGeneratingState = $state(false);
+
+	onMount(async () => {
+		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
+			a.Locale === b.Locale ? 0 : a.Locale.includes(navigator.language) ? -1 : 1
+		);
+	});
 
 	function clearStates() {
 		historyMessagesState.reset();
@@ -137,6 +148,20 @@
 	</button>
 	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>
 	<div class="divider mt-7">Advanced Settings</div>
+	<label class="form-control w-full sm:w-1/2">
+		<p>Voice For Text To Speech</p>
+		<button
+			onclick={() => {
+				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
+			}}
+		>Test Voice
+		</button>
+		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
+			{#each ttsVoices as v}
+				<option value={v.ShortName}>{v.FriendlyName} - {v.Gender}</option>
+			{/each}
+		</select>
+	</label>
 	<label class="form-control mt-3 w-full sm:w-2/3">
 		AI Language
 		<input
