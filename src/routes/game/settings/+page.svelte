@@ -10,7 +10,6 @@
 	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 
-
 	const taleSettingsClicked = () => {
 		if (campaignState.value?.chapters.length > 0) {
 			navigate('/new/campaign');

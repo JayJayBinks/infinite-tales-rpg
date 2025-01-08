@@ -154,7 +154,7 @@
 			onclick={() => {
 				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
 			}}
-		>Test Voice
+			>Test Voice
 		</button>
 		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
 			{#each ttsVoices as v}

@@ -1,8 +1,24 @@
-import { stringifyPretty } from '$lib/util.svelte';
+import { getRandomInteger, stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 
 export type Story = typeof storyStateForPrompt;
+
+export const exampleGameSystems = [
+	'Pathfinder',
+	'Call of Cthulhu',
+	'Star Wars',
+	'Fate Core',
+	'Harry Potter',
+	'Discworld',
+	'World of Darkness',
+	'GURPS',
+	'Mutants & Masterminds',
+	'Dungeons & Dragons'
+];
+const gameSystemPrompt =
+	'Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons';
+
 // stringifyPretty(storyStateForPrompt) works because no json included in the values
 //TODO if we remove this as object new tale form placeholder wont work anymore...
 export const storyStateForPrompt = {
@@ -31,6 +47,7 @@ export const initialStoryState: Story = {
 
 export class StoryAgent {
 	llm: LLM;
+
 	constructor(llm: LLM) {
 		this.llm = llm;
 	}
@@ -48,6 +65,9 @@ export class StoryAgent {
 			...storyStateForPrompt,
 			...overwrites
 		};
+		if (preset.game === gameSystemPrompt) {
+			preset.game = exampleGameSystems[getRandomInteger(0, exampleGameSystems.length - 1)];
+		}
 		const request: LLMRequest = {
 			userMessage:
 				'Create a new randomized story considering the following settings: ' +

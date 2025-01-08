@@ -11,11 +11,12 @@
 	let rendered = (marked(story) as string)
 		.replaceAll('\\n', '<br>')
 		.replaceAll(' n ', '<br>')
-		.replaceAll('\\&quot;', '&quot;');
+		.replaceAll('\\&quot;', '&quot;')
+		.replaceAll('_', ' ');
 </script>
 
 <div class="mt-4 flex">
-	<TTSComponent text={story} voice={ttsVoiceState.value}></TTSComponent>
+	<TTSComponent text={story.replaceAll('_', ' ')} voice={ttsVoiceState.value}></TTSComponent>
 </div>
 <article class="prose prose-neutral m-auto mb-2 mt-2" style="color: unset">
 	<div id="story">

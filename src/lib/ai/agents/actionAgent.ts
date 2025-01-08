@@ -81,9 +81,10 @@ export class ActionAgent {
 		}
 		const userMessage =
 			'Suggest specific actions the CHARACTER can take, fully utilizing their unique skills, items, and abilities. ' +
-				'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
-				stringifyPretty(currentGameState) +
-				'\n' + (additionalActionInput || '');
+			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
+			stringifyPretty(currentGameState) +
+			'\n' +
+			(additionalActionInput || '');
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
