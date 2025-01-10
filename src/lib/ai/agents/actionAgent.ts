@@ -26,8 +26,15 @@ export class ActionAgent {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { ['spells_and_abilities']: __, ...characterStatsMapped } = characterStats;
+		const characterStatsMapped = characterStats;
+		const currentGameStateMapped = {
+			currently_present_npcs_explanation: currentGameState['currently_present_npcs_explanation'],
+			currently_present_npcs: currentGameState.currently_present_npcs,
+			plotPointAdvancingNudgeExplanation: currentGameState['plotPointAdvancingNudgeExplanation'],
+			gradualNarrativeExplanation: currentGameState['gradualNarrativeExplanation'],
+			story: currentGameState.story,
+			is_character_in_combat: currentGameState.is_character_in_combat
+		};
 		const agent = [
 			`You are RPG action agent, you are given a RPG story and then suggest the next action the player character can take, considering the story, currently_present_npcs and character traits.
 				Action Rules:
@@ -49,7 +56,7 @@ export class ActionAgent {
 			'As an action, the character can make use of items from the inventory:' +
 				'\n' +
 				stringifyPretty(inventoryState),
-			"Consider the following character's stats only for dice_roll modifiers" +
+			'Consider the following character stats only for dice_roll modifiers' +
 				'\n' +
 				stringifyPretty(characterStatsMapped),
 			`Most important instruction! You must always respond with following JSON format! 
@@ -82,7 +89,9 @@ export class ActionAgent {
 		const userMessage =
 			'Suggest specific actions the CHARACTER can take, fully utilizing their unique skills, items, and abilities. ' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
-			stringifyPretty(currentGameState) +
+			stringifyPretty(currentGameStateMapped) +
+			'\n' +
+			'The actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.' +
 			'\n' +
 			(additionalActionInput || '');
 		console.log('actions prompt: ', userMessage);

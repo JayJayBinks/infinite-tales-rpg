@@ -67,7 +67,11 @@ export class GameAgent {
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
-		const playerActionText = action.characterName + ': ' + action.text;
+		let playerActionText = action.characterName + ': ' + action.text;
+		const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
+		if (mpCost > 0) {
+			playerActionText += '\nMP cost ' + mpCost;
+		}
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
 		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;

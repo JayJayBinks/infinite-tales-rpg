@@ -14,7 +14,6 @@ export async function GET({ url }) {
 			// Use a default voice
 			data.voice = 'de-DE-SeraphinaMultilingualNeural';
 		}
-		console.log(data);
 
 		const tts = new MsEdgeTTS();
 		await tts.setMetadata(data.voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);

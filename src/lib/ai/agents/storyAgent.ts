@@ -1,6 +1,7 @@
 import { getRandomInteger, stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+import isEqual from 'lodash.isequal';
 
 export type Story = typeof storyStateForPrompt;
 
@@ -16,8 +17,6 @@ export const exampleGameSystems = [
 	'Mutants & Masterminds',
 	'Dungeons & Dragons'
 ];
-const gameSystemPrompt =
-	'Any Pen & Paper System e.g. Pathfinder, Call of Cthulhu, Star Wars, Fate Core, World of Darkness, GURPS, Mutants & Masterminds, Dungeons & Dragons';
 
 // stringifyPretty(storyStateForPrompt) works because no json included in the values
 //TODO if we remove this as object new tale form placeholder wont work anymore...
@@ -65,7 +64,7 @@ export class StoryAgent {
 			...storyStateForPrompt,
 			...overwrites
 		};
-		if (preset.game === gameSystemPrompt) {
+		if (isEqual(overwrites, {})) {
 			preset.game = exampleGameSystems[getRandomInteger(0, exampleGameSystems.length - 1)];
 		}
 		const request: LLMRequest = {

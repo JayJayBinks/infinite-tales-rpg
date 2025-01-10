@@ -1,7 +1,9 @@
-import { stringifyPretty } from '$lib/util.svelte';
+import { getRandomInteger, stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { Action } from '$lib/ai/agents/gameAgent';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+import isEqual from 'lodash.isequal';
+import { exampleGameSystems } from '$lib/ai/agents/storyAgent';
 
 export type CampaignChapterPlotPoint = {
 	plotId: number;
@@ -119,9 +121,12 @@ export class CampaignAgent {
 			'\nAlways respond with following JSON!\n' +
 			jsonPrompt;
 
-		const preset = {
+		const preset: Partial<Campaign> = {
 			...overwrites
 		};
+		if (isEqual(overwrites, {})) {
+			preset.game = exampleGameSystems[getRandomInteger(0, exampleGameSystems.length - 1)];
+		}
 		const request: LLMRequest = {
 			userMessage:
 				'Create a new randomized campaign considering the following settings: ' +
