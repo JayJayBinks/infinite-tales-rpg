@@ -26,7 +26,8 @@ export class ActionAgent {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
-		const characterStatsMapped = characterStats;
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { ['spells_and_abilities']: __, ...characterStatsMapped } = characterStats;
 		const currentGameStateMapped = {
 			currently_present_npcs_explanation: currentGameState['currently_present_npcs_explanation'],
 			currently_present_npcs: currentGameState.currently_present_npcs,
@@ -87,11 +88,10 @@ export class ActionAgent {
 			agent.push(customSystemInstruction);
 		}
 		const userMessage =
-			'Suggest specific actions the CHARACTER can take, fully utilizing their unique skills, items, and abilities. ' +
+			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
-			'\n' +
-			'The actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.' +
+			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.' +
 			'\n' +
 			(additionalActionInput || '');
 		console.log('actions prompt: ', userMessage);
