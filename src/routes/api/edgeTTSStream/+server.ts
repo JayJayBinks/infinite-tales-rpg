@@ -18,7 +18,7 @@ export async function GET({ url }) {
 		const tts = new MsEdgeTTS();
 		await tts.setMetadata(data.voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
 
-		const readable = tts.toStream(data.text);
+		const readable = tts.toStream(data.text).audioStream;
 
 		let isStreamClosed = false; // Flag to track stream state
 
