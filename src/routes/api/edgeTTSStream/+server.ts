@@ -48,7 +48,8 @@ export async function GET({ url }) {
 		return new Response(stream, {
 			headers: {
 				'Content-Type': 'audio/mp3', // MIME type for MP3
-				'Transfer-Encoding': 'chunked' // Ensure the response is streamed
+				'Transfer-Encoding': 'chunked', // Ensure the response is streamed
+				'cache-control': 'public, max-age=604800, immutable' //cache one year and never revalidate
 			}
 		});
 	} catch (err) {
