@@ -44,16 +44,12 @@ export async function GET({ url }) {
 			}
 		});
 
-		//cache one year and never revalidate
-		const cacheControlString = 'public, max-age=604800, immutable';
 		// Return the stream as the response with the correct content-type for the audio format
 		return new Response(stream, {
 			headers: {
 				'Content-Type': 'audio/mp3', // MIME type for MP3
 				'Transfer-Encoding': 'chunked', // Ensure the response is streamed
-				'cache-control': cacheControlString,
-				'CDN-Cache-Control': cacheControlString,
-				'Vercel-CDN-Cache-Control': cacheControlString
+				'cache-control': 'public, max-age=604800, immutable' //cache one year and never revalidate
 			}
 		});
 	} catch (err) {
