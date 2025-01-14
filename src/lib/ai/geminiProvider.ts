@@ -103,7 +103,7 @@ export class GeminiProvider extends LLM {
 		} catch (e) {
 			if (e instanceof Error && e.message.includes('503')) {
 				//TODO
-				e.message = 'Gemini is overloaded!. Fallback AI should be used';
+				e.message = 'The Gemini AI is overloaded! You can try again or wait some time if this happens often now.';
 				handleError(e.message);
 				return undefined;
 			} else {
@@ -168,17 +168,20 @@ export class GeminiProvider extends LLM {
 		const contents: Content[] = [];
 		if (historyMessages) {
 			historyMessages.forEach((message) => {
-				contents.push({
-					role: message['role'],
-					parts: [{ text: message['content'] }]
-				});
+				//TODO why can one of these not be present?
+				if(message && message.role && message.content){
+					contents.push({
+						role: message.role,
+						parts: [{ text: message.content }]
+					});
+				}
 			});
 		}
 		if (actionText) {
 			const message = { role: 'user', content: actionText };
 			contents.push({
-				role: message['role'],
-				parts: [{ text: message['content'] }]
+				role: message.role,
+				parts: [{ text: message.content || '' }]
 			});
 		}
 		return contents;

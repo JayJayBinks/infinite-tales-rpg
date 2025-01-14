@@ -103,10 +103,10 @@ export class ActionAgent {
 		const response = (await this.llm.generateContent(request)) as any;
 
 		//can get not directly arrays but wrapped responses from ai sometimes...
-		if (response.actions) {
+		if (response && response.actions) {
 			return response.actions as Array<Action>;
 		}
-		if (response.jsonArray) {
+		if (response && response.jsonArray) {
 			return response.jsonArray as Array<Action>;
 		}
 		return response as Array<Action>;
