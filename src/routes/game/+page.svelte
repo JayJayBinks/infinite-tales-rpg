@@ -512,7 +512,14 @@
 			button.textContent = action.text.replaceAll('.', '');
 			button.textContent += mpString;
 		} else {
-			button.textContent = action.text.endsWith('.') ? action.text : action.text + '.';
+			const hasEndingChar =
+				action.text.endsWith('.') ||
+				action.text.endsWith('. ') ||
+				action.text.endsWith('! ') ||
+				action.text.endsWith('!') ||
+				action.text.endsWith('? ') ||
+				action.text.endsWith('?');
+			button.textContent += hasEndingChar ? action.text : action.text + '.';
 		}
 		if (!isEnoughMP) {
 			button.disabled = true;

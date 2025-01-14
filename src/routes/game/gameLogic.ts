@@ -7,6 +7,7 @@ import type {
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
 import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
+import isPlainObject from 'lodash.isplainobject';
 
 export enum ActionDifficulty {
 	simple = 'simple',
@@ -73,7 +74,12 @@ export function renderStatUpdates(
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
 			.map((statsUpdate) => {
-				if (Number.parseInt(statsUpdate.value.result) === 0 || statsUpdate.type === 'null') {
+				if (
+					!statsUpdate.value?.result ||
+					isPlainObject(statsUpdate.value.result) ||
+					Number.parseInt(statsUpdate.value.result) === 0 ||
+					statsUpdate.type === 'null'
+				) {
 					return undefined;
 				}
 				let responseText: string;
@@ -85,8 +91,8 @@ export function renderStatUpdates(
 						: undefined;
 				const mappedType =
 					statsUpdate.type
-						?.replace('gained', '')
-						.replace('lost', '')
+						?.replace('_gained', '')
+						.replace('_lost', '')
 						.replaceAll('_', ' ')
 						.toUpperCase() || '';
 				const color = mappedType.includes('HP')
@@ -97,17 +103,17 @@ export function renderStatUpdates(
 
 				if (statsUpdate.targetId === playerName) {
 					responseText = 'You ';
+					if (!changeText) {
+						//probably unhandled status effect
+						changeText = 'are';
+					}
 					resourceText =
 						'' +
 						(getTakeLessDamageForManyHits(
 							statsUpdates,
 							Number.parseInt(statsUpdate.value.result),
 							playerName
-						) || statsUpdate.value.result);
-					if (!changeText) {
-						//probably unhandled status effect
-						changeText = 'are';
-					}
+						) || resourceText);
 				} else {
 					responseText = statsUpdate.targetId.replaceAll('_', ' ').replaceAll('id', '') + ' ';
 					if (!changeText) {

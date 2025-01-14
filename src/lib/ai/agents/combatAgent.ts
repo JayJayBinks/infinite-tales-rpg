@@ -12,7 +12,7 @@ export type DiceRoll = {
 	modifier?: number;
 	rolls?: number[];
 };
-export type StatsUpdate = { sourceId: string; targetId: string; value: DiceRoll; type: string };
+export type StatsUpdate = { sourceId?: string; targetId: string; value: DiceRoll; type: string };
 export const statsUpdatePromptObject = `
     "stats_update": [
         # You must include one object for each action
