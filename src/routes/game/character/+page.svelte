@@ -1,11 +1,14 @@
-<script>
+<script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { stringifyPretty } from '$lib/util.svelte';
+	import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent.ts';
+	import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+	import type { Story } from '$lib/ai/agents/storyAgent';
 
-	const characterState = useLocalStorage('characterState');
-	const characterStatsState = useLocalStorage('characterStatsState');
-	const storyState = useLocalStorage('storyState');
+	const characterState= useLocalStorage<CharacterDescription>('characterState');
+	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
+	const storyState = useLocalStorage<Story>('storyState');
 </script>
 
 {#if characterState.value}
@@ -29,6 +32,7 @@
 					<p><strong>Race:</strong> <span id="race">{characterState.value.race}</span></p>
 					<p><strong>Gender:</strong> <span id="gender">{characterState.value.gender}</span></p>
 					<p><strong>Class:</strong> <span id="class">{characterState.value.class}</span></p>
+					<p><strong>Level:</strong> <span id="class">{characterStatsState.value.level}</span></p>
 					<p><span id="hpmp">{stringifyPretty(characterStatsState.value.resources)}</span></p>
 					<p>
 						<strong>Alignment:</strong> <span id="alignment">{characterState.value.alignment}</span>

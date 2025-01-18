@@ -25,7 +25,7 @@ export type Action = {
 	mp_cost?: number;
 } & DiceRollDifficulty;
 export type PlayerCharactersGameState = {
-	[playerCharacterName: string]: { currentHP: number; currentMP: number };
+	[playerCharacterName: string]: { currentHP: number; currentMP: number; xp: number }; //on level up create event for negative exp
 };
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
@@ -79,12 +79,12 @@ export class GameAgent {
 			systemBehaviour,
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-				'\n' +
-				stringifyPretty(characterState),
-			"The following are the character's CURRENT resources, consider it in your response\n" +
-				stringifyPretty(playerCharactersGameState),
-			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
-				stringifyPretty(inventoryState),
+			'\n' +
+			stringifyPretty(characterState),
+			'The following are the character\'s CURRENT resources, consider it in your response\n' +
+			stringifyPretty(playerCharactersGameState),
+			'The following is the character\'s inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n' +
+			stringifyPretty(inventoryState),
 			jsonSystemInstruction
 		];
 		if (customSystemInstruction) {
@@ -119,7 +119,7 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function (userText: string, modelStateObject: GameActionState) {
+	buildHistoryMessages = function(userText: string, modelStateObject: GameActionState) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
@@ -145,6 +145,19 @@ export class GameAgent {
 					value: { result: mp }
 				}
 			]
+		};
+	}
+
+	getLevelUpCostObject(
+		xpCost: number,
+		playerName: string,
+		level: number
+	): StatsUpdate {
+		return {
+			sourceId: playerName,
+			targetId: playerName,
+			type: 'now_level_' + (level + 1),
+			value: { result: xpCost }
 		};
 	}
 

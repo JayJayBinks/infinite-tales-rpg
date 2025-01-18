@@ -163,71 +163,91 @@
 	</button>
 
 	{#each Object.keys(characterStatsState.value) as stateValue}
-		<label class="form-control mt-3 w-full">
-			<details class="collapse collapse-arrow border border-base-300 bg-base-200">
-				<summary class="collapse-title items-center text-center capitalize"
-					>{stateValue.replaceAll('_', ' ')}</summary
+		{#if stateValue === 'level'}
+			<label class="form-control mt-3 w-full">
+				<div class="capitalize">
+					<p>Level</p>
+					{#if characterStatsStateOverwrites.level}
+						<span class="badge badge-accent ml-2">overwritten</span>
+					{/if}
+				</div>
+				<input
+					type="number"
+					min="1"
+					bind:value={characterStatsState.value.level}
+					oninput={(evt) => {
+														characterStatsStateOverwrites.level =
+															evt.target?.value;
+													}}
+					class="textarea textarea-bordered textarea-md mt-2 w-1/2 m-auto"
 				>
-				<div class="collapse-content">
-					{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
-						<label class="form-control mt-3 w-full">
-							{#if isPlainObject(characterStatsState.value[stateValue][statValue])}
-								<!-- SpellsAndAbilities TODO refactor or leave for now?-->
-								<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
-									{#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i (deepNestedValue)}
-										{#if i === 0}
-											<summary class="collapse-title capitalize">
-												<div
-													class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
-												>
-													<div class="m-auto sm:col-span-2">
-														<AIGeneratedImage
-															noLogo={true}
-															enhance={false}
-															imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-															imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+			</label>
+		{:else}
+			<label class="form-control mt-3 w-full">
+				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
+					<summary class="collapse-title items-center text-center capitalize"
+					>{stateValue.replaceAll('_', ' ')}</summary
+					>
+					<div class="collapse-content">
+						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
+							<label class="form-control mt-3 w-full">
+								{#if isPlainObject(characterStatsState.value[stateValue][statValue])}
+									<!-- SpellsAndAbilities TODO refactor or leave for now?-->
+									<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
+										{#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i (deepNestedValue)}
+											{#if i === 0}
+												<summary class="collapse-title capitalize">
+													<div
+														class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
+													>
+														<div class="m-auto sm:col-span-2">
+															<AIGeneratedImage
+																noLogo={true}
+																enhance={false}
+																imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+																imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
 																characterStatsState.value[stateValue][statValue],
 																storyState.value.general_image_prompt
 															)}
-															buttonClassesString="btn-xs no-animation"
-														></AIGeneratedImage>
-													</div>
-													<div class="m-auto w-full sm:col-span-2">
-														<p class="content-center overflow-hidden overflow-ellipsis">
-															{isNaN(parseInt(statValue))
-																? statValue.replaceAll('_', ' ')
-																: `${characterStatsState.value[stateValue][statValue][deepNestedValue] || 'Enter A Name'}`}
-														</p>
-														<button
-															class="components btn btn-error no-animation btn-sm m-auto mt-2"
-															onclick={(evt) => {
+																buttonClassesString="btn-xs no-animation"
+															></AIGeneratedImage>
+														</div>
+														<div class="m-auto w-full sm:col-span-2">
+															<p class="content-center overflow-hidden overflow-ellipsis">
+																{isNaN(parseInt(statValue))
+																	? statValue.replaceAll('_', ' ')
+																	: `${characterStatsState.value[stateValue][statValue][deepNestedValue] || 'Enter A Name'}`}
+															</p>
+															<button
+																class="components btn btn-error no-animation btn-sm m-auto mt-2"
+																onclick={(evt) => {
 																evt.preventDefault();
 																characterStatsState.value[stateValue].splice(statValue, 1);
 															}}
-														>
-															Delete
-														</button>
+															>
+																Delete
+															</button>
+														</div>
 													</div>
-												</div>
-											</summary>
-										{/if}
-										<div class="collapse-content">
-											<label class="form-control mt-3 w-full">
-												<div class="capitalize">
-													{deepNestedValue.replaceAll('_', ' ')}
-													{#if characterStatsStateOverwrites[stateValue] && characterStatsStateOverwrites[stateValue][statValue] && characterStatsStateOverwrites[stateValue][statValue][deepNestedValue]}
-														<span class="badge badge-accent ml-2">overwritten</span>
-													{/if}
-												</div>
-												<textarea
-													bind:value={characterStatsState.value[stateValue][statValue][
+												</summary>
+											{/if}
+											<div class="collapse-content">
+												<label class="form-control mt-3 w-full">
+													<div class="capitalize">
+														{deepNestedValue.replaceAll('_', ' ')}
+														{#if characterStatsStateOverwrites[stateValue] && characterStatsStateOverwrites[stateValue][statValue] && characterStatsStateOverwrites[stateValue][statValue][deepNestedValue]}
+															<span class="badge badge-accent ml-2">overwritten</span>
+														{/if}
+													</div>
+													<textarea
+														bind:value={characterStatsState.value[stateValue][statValue][
 														deepNestedValue
 													]}
-													rows={characterStatsState.value[stateValue][statValue][deepNestedValue]
+														rows={characterStatsState.value[stateValue][statValue][deepNestedValue]
 														?.length > 30
 														? 2
 														: 1}
-													oninput={(evt) => {
+														oninput={(evt) => {
 														if (!characterStatsStateOverwrites[stateValue]) {
 															characterStatsStateOverwrites[stateValue] = {};
 														}
@@ -237,59 +257,59 @@
 														characterStatsStateOverwrites[stateValue][statValue][deepNestedValue] =
 															evt.target?.value;
 													}}
-													class="textarea textarea-bordered textarea-md mt-2 w-full"
-												>
+														class="textarea textarea-bordered textarea-md mt-2 w-full"
+													>
 												</textarea>
-											</label>
-										</div>
-									{/each}
-									<button
-										class="btn btn-accent m-5 m-auto mb-2 mt-2 w-3/4 sm:w-1/2"
-										onclick={() => {
+												</label>
+											</div>
+										{/each}
+										<button
+											class="btn btn-accent m-5 m-auto mb-2 mt-2 w-3/4 sm:w-1/2"
+											onclick={() => {
 											onRandomizeSingle(stateValue, statValue);
 										}}
-									>
-										Randomize {isNaN(parseInt(statValue)) ? statValue.replaceAll('_', ' ') : ''}
-									</button>
-								</details>
-								<!-- SpellsAndAbilities -->
-							{:else}
-								<!-- Resources Traits etc. TODO refactor or leave for now?-->
-								<div class="flex-row capitalize">
-									{statValue.replaceAll('_', ' ')}
+										>
+											Randomize {isNaN(parseInt(statValue)) ? statValue.replaceAll('_', ' ') : ''}
+										</button>
+									</details>
+									<!-- SpellsAndAbilities -->
+								{:else}
+									<!-- Resources Traits etc. TODO refactor or leave for now?-->
+									<div class="flex-row capitalize">
+										{statValue.replaceAll('_', ' ')}
 
-									{#if characterStatsStateOverwrites[stateValue][statValue]}
-										<span class="badge badge-accent ml-2">overwritten</span>
-									{/if}
-									<button
-										class="components btn btn-error no-animation btn-xs ml-2"
-										onclick={(evt) => {
+										{#if characterStatsStateOverwrites[stateValue][statValue]}
+											<span class="badge badge-accent ml-2">overwritten</span>
+										{/if}
+										<button
+											class="components btn btn-error no-animation btn-xs ml-2"
+											onclick={(evt) => {
 											evt.preventDefault();
 											delete characterStatsState.value[stateValue][statValue];
 										}}
-									>
-										Delete
-									</button>
-								</div>
-								<textarea
-									bind:value={characterStatsState.value[stateValue][statValue]}
-									rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
-									oninput={(evt) => {
+										>
+											Delete
+										</button>
+									</div>
+									<textarea
+										bind:value={characterStatsState.value[stateValue][statValue]}
+										rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
+										oninput={(evt) => {
 										characterStatsStateOverwrites[stateValue][statValue] = evt.currentTarget.value;
 									}}
-									class="textarea textarea-bordered textarea-md mt-2 w-full"
-								>
+										class="textarea textarea-bordered textarea-md mt-2 w-full"
+									>
 								</textarea>
-								<!-- Resources Traits etc. -->
-							{/if}
-						</label>
-					{/each}
-				</div>
-			</details>
-		</label>
-		<button
-			class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
-			onclick={() => {
+									<!-- Resources Traits etc. -->
+								{/if}
+							</label>
+						{/each}
+					</div>
+				</details>
+			</label>
+			<button
+				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
+				onclick={() => {
 				if (Array.isArray(characterStatsState.value[stateValue])) {
 					//TODO spells_and_abilities not generic yet
 					characterStatsState.value[stateValue].push({ name: '', effect: '', mp_cost: '' });
@@ -302,20 +322,20 @@
 					characterStatsState.value[stateValue][name] = '';
 				}
 			}}
-		>
-			Add {stateValue.replaceAll('_', ' ')}
-		</button>
-		<button
-			class="btn btn-accent m-auto mt-2 w-3/4 capitalize sm:w-1/2"
-			onclick={() => {
+			>
+				Add {stateValue.replaceAll('_', ' ')}
+			</button>
+			<button
+				class="btn btn-accent m-auto mt-2 w-3/4 capitalize sm:w-1/2"
+				onclick={() => {
 				onRandomizeSingle(stateValue);
 			}}
-		>
-			Randomize {stateValue.replaceAll('_', ' ')}
-		</button>
-		<button
-			class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
-			onclick={() => {
+			>
+				Randomize {stateValue.replaceAll('_', ' ')}
+			</button>
+			<button
+				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
+				onclick={() => {
 				if (Array.isArray(characterStatsStateOverwrites[stateValue])) {
 					//TODO not generic
 					characterStatsState.value.spells_and_abilities = [];
@@ -325,9 +345,10 @@
 					characterStatsStateOverwrites[stateValue] = {};
 				}
 			}}
-		>
-			Clear {stateValue.replaceAll('_', ' ')}
-		</button>
+			>
+				Clear {stateValue.replaceAll('_', ' ')}
+			</button>
+		{/if}
 	{/each}
 	<button
 		class="btn btn-primary m-auto mt-2 w-3/4 sm:w-1/2"

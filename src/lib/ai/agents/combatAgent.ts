@@ -25,6 +25,13 @@ export const statsUpdatePromptObject = `
             "targetId": "NPC id or player CHARACTER name, whose stats must be updated.",
             "value": "dice roll notation in format 1d6+3 or 3d4 etc."
         },
+        # Grant XP for meaningful actions based on their significance, such as overcoming challenges, solving problems, or achieving impactful goals. Exclude trivial actions.
+        {
+        	 "targetId": "Player CHARACTER name who gains XP.",
+        	 "explanation": "Short explanation for the reason of this change",
+           "type": "xp_gained",
+           "value": "LOW|MEDIUM|HIGH"
+        },
         ...
         ]`;
 
