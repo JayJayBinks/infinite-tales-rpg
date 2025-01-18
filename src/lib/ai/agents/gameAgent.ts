@@ -79,12 +79,12 @@ export class GameAgent {
 			systemBehaviour,
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-			'\n' +
-			stringifyPretty(characterState),
-			'The following are the character\'s CURRENT resources, consider it in your response\n' +
-			stringifyPretty(playerCharactersGameState),
-			'The following is the character\'s inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n' +
-			stringifyPretty(inventoryState),
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are the character's CURRENT resources, consider it in your response\n" +
+				stringifyPretty(playerCharactersGameState),
+			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
+				stringifyPretty(inventoryState),
 			jsonSystemInstruction
 		];
 		if (customSystemInstruction) {
@@ -119,7 +119,7 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function(userText: string, modelStateObject: GameActionState) {
+	buildHistoryMessages = function (userText: string, modelStateObject: GameActionState) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
@@ -148,11 +148,7 @@ export class GameAgent {
 		};
 	}
 
-	getLevelUpCostObject(
-		xpCost: number,
-		playerName: string,
-		level: number
-	): StatsUpdate {
+	getLevelUpCostObject(xpCost: number, playerName: string, level: number): StatsUpdate {
 		return {
 			sourceId: playerName,
 			targetId: playerName,
@@ -242,6 +238,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "item_id": "unique name of the item to identify it"
     }
   ],
+  "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
   ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",

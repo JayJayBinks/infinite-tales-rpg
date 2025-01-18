@@ -35,7 +35,7 @@ export class SummaryAgent {
 		};
 		const response = (await this.llm.generateContent(request)) as { story: string };
 		console.log('Summary returned ' + stringifyPretty(response));
-		if(!response){
+		if (!response) {
 			return historyMessages;
 		}
 		const newHistory = historyMessages.slice(0, 2);

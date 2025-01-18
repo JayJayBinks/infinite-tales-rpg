@@ -28,13 +28,13 @@ const characterStatsStateForPrompt = `{
 }`;
 
 export type AiLevelUp = {
-	character_name: string
-	level_up_explanation: string
-	trait: string
-	formerAbilityName?: string
-	ability: Ability
+	character_name: string;
+	level_up_explanation: string;
+	trait: string;
+	formerAbilityName?: string;
+	ability: Ability;
 	resources: Resources;
-}
+};
 const levelUpPrompt = `{
 		"level_up_explanation": "Explanation why exactly this trait and ability have been increased. If already existing ability changed explain the ability changes.",
 		"trait": "trait name",
@@ -84,7 +84,7 @@ export class CharacterStatsAgent {
 	): Promise<CharacterStats> {
 		const agentInstruction =
 			'You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n' +
-			'Scale the stats and abilities according to the level, an overpowered character is allowed\n' +
+			'Scale the stats and abilities according to the level. A low level character has expertise of 1.\n' +
 			'Always respond with following JSON!\n' +
 			characterStatsStateForPrompt;
 
@@ -92,7 +92,8 @@ export class CharacterStatsAgent {
 			statsOverwrites = { ...statsOverwrites, level: 1 };
 		}
 		const request: LLMRequest = {
-			userMessage: 'Create the character according to the descriptions and already existing stats.\n Scale the stats and abilities according to the level, an overpowered character is allowed.',
+			userMessage:
+				'Create the character according to the descriptions and already existing stats.\n Scale the stats and abilities according to the level.',
 			historyMessages: [
 				{
 					role: 'user',
@@ -108,9 +109,12 @@ export class CharacterStatsAgent {
 		if (statsOverwrites) {
 			request.historyMessages?.push({
 				role: 'user',
-				content: 'Already existing stats to be reused, if level is given it must be set as is: ' + stringifyPretty(statsOverwrites)
+				content:
+					'Already existing stats to be reused, if level is given you must reuse the same value: ' +
+					stringifyPretty(statsOverwrites)
 			});
 		}
+		console.log(request);
 		return (await this.llm.generateContent(request)) as CharacterStats;
 	}
 
@@ -124,13 +128,13 @@ export class CharacterStatsAgent {
 
 		const agentInstruction = [
 			'You are RPG character stats agent, leveling up a character according to game system, adventure and character description.\n' +
-			'Name one existing trait to be increased. ' +
-			'Also invent a new ability or increase one ability by one level granting an improved effect or more damage. Always describe the full ability effect.\n' +
-			'In addition, all resources are to be meaningfully increased according to GAME rules',
+				'Name one existing trait to be increased. ' +
+				'Also invent a new ability or increase one ability by one level granting an improved effect or more damage. Always describe the full ability effect.\n' +
+				'In addition, all resources are to be meaningfully increased according to GAME rules',
 			'Current character stats:\n' + stringifyPretty(characterStats),
-			'The level up must be based on the story progression, in which area the player acted well:\n' + latestHistoryTextOnly,
-			'Always respond with following JSON!\n' +
-			levelUpPrompt
+			'The level up must be based on the story progression, in which area the player acted well:\n' +
+				latestHistoryTextOnly,
+			'Always respond with following JSON!\n' + levelUpPrompt
 		];
 
 		const request: LLMRequest = {
@@ -148,7 +152,7 @@ export class CharacterStatsAgent {
 			systemInstruction: agentInstruction
 		};
 		console.log(stringifyPretty(request));
-		const aiLevelUp = await this.llm.generateContent(request) as AiLevelUp;
+		const aiLevelUp = (await this.llm.generateContent(request)) as AiLevelUp;
 		aiLevelUp.character_name = characterState.name;
 		return aiLevelUp;
 	}
@@ -165,7 +169,9 @@ export class CharacterStatsAgent {
 			'You are RPG NPC stats agent, generating the stats for NPCs according to game system, adventure and story progression.',
 			'Description of the adventure: ' + stringifyPretty(storyState),
 			'Latest story progression:\n' + latestHistoryTextOnly,
-			'Scale the stats and abilities according to the player character level: ' + characterStats.level + '\n',
+			'Scale the stats and abilities according to the player character level: ' +
+				characterStats.level +
+				'\n',
 			`Most important instruction! You must always respond with following JSON format! 
                             {"uniqueNpcName": ${npcStatsStateForPromptAsString}, ...}`
 		];
@@ -190,7 +196,7 @@ export class CharacterStatsAgent {
 	): Promise<Ability> {
 		const agentInstruction =
 			'You are RPG character stats agent, generating a single new ability for a character according to game system, adventure and character description.\n' +
-			'Scale the ability according to the level, an overpowered ability is allowed\n' +
+			'Scale the ability according to the level\n' +
 			'Important instruction! The new ability must be based on the following: ' +
 			stringifyPretty(ability) +
 			'\n' +

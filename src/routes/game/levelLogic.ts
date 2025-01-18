@@ -14,7 +14,7 @@ export function getXPNeededForLevel(level: number): number | undefined {
 	if (!level) {
 		return undefined;
 	}
-	return BASE_XP + (XP_INCREASING_SCALE.MEDIUM * (level - 1));
+	return BASE_XP + XP_INCREASING_SCALE.MEDIUM * (level - 1);
 }
 
 export function mapXP(statsUpdate: StatsUpdate): StatsUpdate {
@@ -24,9 +24,12 @@ export function mapXP(statsUpdate: StatsUpdate): StatsUpdate {
 	return statsUpdate;
 }
 
-export function getLevelUpText(trait: string, characterStats: CharacterStats): {
+export function getLevelUpText(
+	trait: string,
+	characterStats: CharacterStats
+): {
 	prefix: string;
-	traitUpdate: string
+	traitUpdate: string;
 } {
 	const traitToLevel = getTraitToLevelUp(trait, characterStats);
 	const returnObject = { prefix: '', traitUpdate: '' };
@@ -35,15 +38,20 @@ export function getLevelUpText(trait: string, characterStats: CharacterStats): {
 	return returnObject;
 }
 
-function getTraitToLevelUp(trait: string, characterStats: CharacterStats): {
-	type: 'disadvantage' | 'expertise',
-	key: string,
-	oldValue: number,
-	newValue: number
+function getTraitToLevelUp(
+	trait: string,
+	characterStats: CharacterStats
+): {
+	type: 'disadvantage' | 'expertise';
+	key: string;
+	oldValue: number;
+	newValue: number;
 } {
 	const disadvantageToIncrease = characterStats.disadvantages[trait];
 	if (disadvantageToIncrease) {
-		const disadvantagePreviousValue = Number.parseInt(disadvantageToIncrease as unknown as string || '0');
+		const disadvantagePreviousValue = Number.parseInt(
+			(disadvantageToIncrease as unknown as string) || '0'
+		);
 		return {
 			type: 'disadvantage',
 			key: trait,
@@ -51,11 +59,21 @@ function getTraitToLevelUp(trait: string, characterStats: CharacterStats): {
 			newValue: disadvantageToIncrease + 1
 		};
 	}
-	const expertisePreviousValue = Number.parseInt(characterStats.expertise[trait] as unknown as string || '0');
-	return { type: 'expertise', key: trait, oldValue: expertisePreviousValue, newValue: expertisePreviousValue + 1 };
+	const expertisePreviousValue = Number.parseInt(
+		(characterStats.expertise[trait] as unknown as string) || '0'
+	);
+	return {
+		type: 'expertise',
+		key: trait,
+		oldValue: expertisePreviousValue,
+		newValue: expertisePreviousValue + 1
+	};
 }
 
-export function applyLevelUp(aiLevelUp: AiLevelUp | undefined, characterStats: CharacterStats): CharacterStats {
+export function applyLevelUp(
+	aiLevelUp: AiLevelUp | undefined,
+	characterStats: CharacterStats
+): CharacterStats {
 	if (!aiLevelUp) {
 		return characterStats;
 	}
@@ -69,8 +87,11 @@ export function applyLevelUp(aiLevelUp: AiLevelUp | undefined, characterStats: C
 		characterStats.expertise[traitToLevel.key] = traitToLevel.newValue;
 	}
 	if (aiLevelUp.formerAbilityName) {
-		const index = characterStats.spells_and_abilities.findIndex(a => a.name === aiLevelUp.formerAbilityName);
-		if (index > -1) { // only splice array when item is found
+		const index = characterStats.spells_and_abilities.findIndex(
+			(a) => a.name === aiLevelUp.formerAbilityName
+		);
+		if (index > -1) {
+			// only splice array when item is found
 			characterStats.spells_and_abilities.splice(index, 1); // 2nd parameter means remove one item only
 		}
 	}

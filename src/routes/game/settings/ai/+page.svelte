@@ -117,7 +117,7 @@
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2"
-		>View the
+			>View the
 			<a
 				target="_blank"
 				href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
@@ -154,7 +154,7 @@
 			onclick={() => {
 				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
 			}}
-		>Test Voice
+			>Test Voice
 		</button>
 		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
 			{#each ttsVoices as v}
@@ -183,7 +183,7 @@
 			class="range mt-2"
 		/>
 		<small class="m-auto mt-2"
-		>Higher temperature makes the AI more creative, but also errors more likely</small
+			>Higher temperature makes the AI more creative, but also errors more likely</small
 		>
 	</label>
 	<label class="form-control mt-5 w-full sm:w-2/3">
@@ -195,7 +195,7 @@
 		>
 		</textarea>
 		<small class="m-auto mt-2"
-		>You may have to start a new Tale after setting the instruction.</small
+			>You may have to start a new Tale after setting the instruction.</small
 		>
 	</label>
 </form>

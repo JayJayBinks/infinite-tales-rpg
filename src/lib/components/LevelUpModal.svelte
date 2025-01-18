@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { type AiLevelUp, type CharacterStats, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
+	import {
+		type AiLevelUp,
+		type CharacterStats,
+		CharacterStatsAgent
+	} from '$lib/ai/agents/characterStatsAgent';
 	import { onMount } from 'svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
@@ -25,10 +29,11 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let aiLevelUp: AiLevelUp | undefined = $state();
 	let levelUpText:
-		{
-			prefix: string;
-			traitUpdate: string
-		} | undefined = $state();
+		| {
+				prefix: string;
+				traitUpdate: string;
+		  }
+		| undefined = $state();
 
 	let isGeneratingState = $state(false);
 	let characterStatsAgent: CharacterStatsAgent;
@@ -44,11 +49,14 @@
 		await generateLevelUp();
 	});
 
-
 	const generateLevelUp = async () => {
 		isGeneratingState = true;
-		aiLevelUp = await characterStatsAgent.levelUpCharacter($state.snapshot(storyState.value),
-			$state.snapshot(historyMessagesState.value), characterState.value, characterStatsState.value);
+		aiLevelUp = await characterStatsAgent.levelUpCharacter(
+			$state.snapshot(storyState.value),
+			$state.snapshot(historyMessagesState.value),
+			characterState.value,
+			characterStatsState.value
+		);
 		console.log(aiLevelUp);
 		if (aiLevelUp) {
 			levelUpText = getLevelUpText(aiLevelUp?.trait, characterStatsState.value);
@@ -61,7 +69,6 @@
 		}
 		aiLevelUp = undefined;
 	};
-
 </script>
 
 {#if isGeneratingState}
@@ -78,15 +85,17 @@
 			<p class="m-1 font-bold">{levelUpText?.prefix}</p>
 			<p class="m-1">{levelUpText?.traitUpdate}</p>
 			{#each Object.keys(aiLevelUp.resources) as resourceKey}
-				<p class="font-bold m-1">{resourceKey.replaceAll('_', ' ')}:</p>
-				<p>{characterStatsState.value.resources[resourceKey]} -> {aiLevelUp.resources[resourceKey]}</p>
+				<p class="m-1 font-bold">{resourceKey.replaceAll('_', ' ')}:</p>
+				<p>
+					{characterStatsState.value.resources[resourceKey]} -> {aiLevelUp.resources[resourceKey]}
+				</p>
 			{/each}
 			{#if aiLevelUp.formerAbilityName}
 				<p class="mt-4 font-bold">{aiLevelUp.formerAbilityName} has leveled up to:</p>
 			{:else}
 				<p class="mt-2 font-bold">New ability gained:</p>
 			{/if}
-			<label class="form-control mt-3 w-full textarea-bordered border bg-base-200">
+			<label class="form-control textarea-bordered mt-3 w-full border bg-base-200">
 				<div
 					class="mt-4 grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
 				>
@@ -95,7 +104,10 @@
 							noLogo={true}
 							enhance={false}
 							imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-							imagePrompt={CharacterStatsAgent.getSpellImagePrompt(aiLevelUp?.ability, storyState?.value?.general_image_prompt)}
+							imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+								aiLevelUp?.ability,
+								storyState?.value?.general_image_prompt
+							)}
 							showGenerateButton={false}
 						></AIGeneratedImage>
 					</div>
@@ -108,24 +120,21 @@
 					{aiLevelUp.ability.effect}
 				</p>
 			</label>
-			<button
-				type="button"
-				class="components btn btn-primary mt-2"
-				onclick={acceptAILevelUp}
-			>
+			<button type="button" class="components btn btn-primary mt-2" onclick={acceptAILevelUp}>
 				Accept
 			</button>
-			<p class="mt-4">You can also choose the level up yourself, you will be directed to the Character Stats and can
-				edit
-				freely</p>
+			<p class="mt-4">
+				You can also choose the level up yourself, you will be directed to the Character Stats and
+				can edit freely
+			</p>
 			<button
 				type="button"
 				class="components btn btn-neutral mt-2"
 				onclick={() => {
-						if (onclose) {
-							onclose();
-						}
-						goto('game/new/characterStats')
+					if (onclose) {
+						onclose();
+					}
+					goto('game/new/characterStats');
 				}}
 			>
 				Manual Level Up

@@ -93,7 +93,7 @@
 	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-		({} as GameActionState)
+			({} as GameActionState)
 	);
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
@@ -118,7 +118,9 @@
 		campaignAgent = new CampaignAgent(llm);
 		actionAgent = new ActionAgent(llm);
 		//Start game when not already started
-		playerCharactersGameState = { [characterState.value.name]: { currentHP: 0, currentMP: 0, xp: 0 } };
+		playerCharactersGameState = {
+			[characterState.value.name]: { currentHP: 0, currentMP: 0, xp: 0 }
+		};
 		if (isEqual(currentGameActionState, {})) {
 			if (!currentGameActionState?.stats_update) {
 				handleStartingStats(playerCharactersGameState, characterState.value.name);
@@ -180,8 +182,10 @@
 		);
 		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
 		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
-		gameActionsState.value[gameActionsState.value.length - 1].stats_update =
-			[...gameActionsState.value[gameActionsState.value.length - 1].stats_update, ...levelUpResourcesObject.stats_update];
+		gameActionsState.value[gameActionsState.value.length - 1].stats_update = [
+			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
+			...levelUpResourcesObject.stats_update
+		];
 	}
 
 	async function getActionPromptForCombat(playerAction: Action) {
@@ -303,8 +307,7 @@
 
 	function checkForLevelUp() {
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
-		if (neededXP &&
-			playerCharactersGameState[characterState.value.name]?.xp >= neededXP) {
+		if (neededXP && playerCharactersGameState[characterState.value.name]?.xp >= neededXP) {
 			levelUpState.value.buttonEnabled = true;
 		}
 	}
@@ -395,7 +398,7 @@
 			)[0];
 			if (
 				mappedCurrentPlotPoint >
-				campaignState.value.chapters[currentChapterState.value - 1].plot_points.length ||
+					campaignState.value.chapters[currentChapterState.value - 1].plot_points.length ||
 				mappedCampaignChapterId > currentChapterState.value
 			) {
 				additionalActionInput += startNextChapter();
@@ -634,7 +637,10 @@
 		if (aiLevelUp) {
 			characterStatsState.value = applyLevelUp(aiLevelUp, characterStatsState.value);
 		} else {
-			characterStatsState.value = { ...characterStatsState.value, level: characterStatsState.value.level + 1 };
+			characterStatsState.value = {
+				...characterStatsState.value,
+				level: characterStatsState.value.level + 1
+			};
 		}
 		levelUpState.reset();
 		refillResourcesFully(playerCharactersGameState, characterState.value.name);
@@ -684,7 +690,6 @@
 		</output>
 		<output id="xp" class="ml-1 text-lg font-semibold text-green-500">
 			{getCurrentXPText()}
-
 		</output>
 		<output id="mp" class="ml-1 text-lg font-semibold text-blue-500">
 			MP: {playerCharactersGameState[characterState.value.name]?.currentMP}
@@ -699,7 +704,10 @@
 				story={gameActionState.story}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
 				gameUpdates={gameLogic
-					.renderStatUpdates($state.snapshot(gameActionState.stats_update), characterState.value.name)
+					.renderStatUpdates(
+						$state.snapshot(gameActionState.stats_update),
+						characterState.value.name
+					)
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
 		{/each}
@@ -722,25 +730,25 @@
 					{#if levelUpState.value.buttonEnabled}
 						<button
 							onclick={() => {
-							levelUpClicked(characterState.value.name);
-						}}
-							class="text-md btn btn-success w-full"
-						>Level up!
+								levelUpClicked(characterState.value.name);
+							}}
+							class="text-md btn btn-success mb-3 w-full"
+							>Level up!
 						</button>
 					{/if}
 					<button
 						onclick={() => {
 							useSpellsAbilitiesModal.showModal();
 						}}
-						class="text-md btn btn-primary mt-3 w-full"
-					>Spells & Abilities
+						class="text-md btn btn-primary w-full"
+						>Spells & Abilities
 					</button>
 					<button
 						onclick={() => {
 							useItemsModal.showModal();
 						}}
 						class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
+						>Inventory
 					</button>
 				</div>
 			{:else}
@@ -772,21 +780,21 @@
 					}}
 					class="btn btn-neutral"
 					id="submit-button"
-				>Submit
+					>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-      .btn {
-          height: fit-content;
-          padding: 1rem;
-      }
+		.btn {
+			height: fit-content;
+			padding: 1rem;
+		}
 
-      canvas {
-          height: 100%;
-          width: 100%;
-      }
+		canvas {
+			height: 100%;
+			width: 100%;
+		}
 	</style>
 </div>

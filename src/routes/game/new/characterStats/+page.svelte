@@ -48,6 +48,7 @@
 			filteredOverwrites
 		);
 		if (newState) {
+			console.log(newState);
 			parseState(newState);
 			characterStatsState.value = newState;
 		}
@@ -176,17 +177,16 @@
 					min="1"
 					bind:value={characterStatsState.value.level}
 					oninput={(evt) => {
-														characterStatsStateOverwrites.level =
-															evt.target?.value;
-													}}
-					class="textarea textarea-bordered textarea-md mt-2 w-1/2 m-auto"
-				>
+						characterStatsStateOverwrites.level = evt.target?.value;
+					}}
+					class="textarea textarea-bordered textarea-md m-auto mt-2 w-1/2"
+				/>
 			</label>
 		{:else}
 			<label class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
-					>{stateValue.replaceAll('_', ' ')}</summary
+						>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
@@ -206,9 +206,9 @@
 																enhance={false}
 																imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
 																imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-																characterStatsState.value[stateValue][statValue],
-																storyState.value.general_image_prompt
-															)}
+																	characterStatsState.value[stateValue][statValue],
+																	storyState.value.general_image_prompt
+																)}
 																buttonClassesString="btn-xs no-animation"
 															></AIGeneratedImage>
 														</div>
@@ -221,9 +221,9 @@
 															<button
 																class="components btn btn-error no-animation btn-sm m-auto mt-2"
 																onclick={(evt) => {
-																evt.preventDefault();
-																characterStatsState.value[stateValue].splice(statValue, 1);
-															}}
+																	evt.preventDefault();
+																	characterStatsState.value[stateValue].splice(statValue, 1);
+																}}
 															>
 																Delete
 															</button>
@@ -241,33 +241,34 @@
 													</div>
 													<textarea
 														bind:value={characterStatsState.value[stateValue][statValue][
-														deepNestedValue
-													]}
+															deepNestedValue
+														]}
 														rows={characterStatsState.value[stateValue][statValue][deepNestedValue]
-														?.length > 30
-														? 2
-														: 1}
+															?.length > 30
+															? 2
+															: 1}
 														oninput={(evt) => {
-														if (!characterStatsStateOverwrites[stateValue]) {
-															characterStatsStateOverwrites[stateValue] = {};
-														}
-														if (!characterStatsStateOverwrites[stateValue][statValue]) {
-															characterStatsStateOverwrites[stateValue][statValue] = {};
-														}
-														characterStatsStateOverwrites[stateValue][statValue][deepNestedValue] =
-															evt.target?.value;
-													}}
+															if (!characterStatsStateOverwrites[stateValue]) {
+																characterStatsStateOverwrites[stateValue] = {};
+															}
+															if (!characterStatsStateOverwrites[stateValue][statValue]) {
+																characterStatsStateOverwrites[stateValue][statValue] = {};
+															}
+															characterStatsStateOverwrites[stateValue][statValue][
+																deepNestedValue
+															] = evt.target?.value;
+														}}
 														class="textarea textarea-bordered textarea-md mt-2 w-full"
 													>
-												</textarea>
+													</textarea>
 												</label>
 											</div>
 										{/each}
 										<button
 											class="btn btn-accent m-5 m-auto mb-2 mt-2 w-3/4 sm:w-1/2"
 											onclick={() => {
-											onRandomizeSingle(stateValue, statValue);
-										}}
+												onRandomizeSingle(stateValue, statValue);
+											}}
 										>
 											Randomize {isNaN(parseInt(statValue)) ? statValue.replaceAll('_', ' ') : ''}
 										</button>
@@ -284,9 +285,9 @@
 										<button
 											class="components btn btn-error no-animation btn-xs ml-2"
 											onclick={(evt) => {
-											evt.preventDefault();
-											delete characterStatsState.value[stateValue][statValue];
-										}}
+												evt.preventDefault();
+												delete characterStatsState.value[stateValue][statValue];
+											}}
 										>
 											Delete
 										</button>
@@ -295,11 +296,12 @@
 										bind:value={characterStatsState.value[stateValue][statValue]}
 										rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
 										oninput={(evt) => {
-										characterStatsStateOverwrites[stateValue][statValue] = evt.currentTarget.value;
-									}}
+											characterStatsStateOverwrites[stateValue][statValue] =
+												evt.currentTarget.value;
+										}}
 										class="textarea textarea-bordered textarea-md mt-2 w-full"
 									>
-								</textarea>
+									</textarea>
 									<!-- Resources Traits etc. -->
 								{/if}
 							</label>
@@ -310,41 +312,41 @@
 			<button
 				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 				onclick={() => {
-				if (Array.isArray(characterStatsState.value[stateValue])) {
-					//TODO spells_and_abilities not generic yet
-					characterStatsState.value[stateValue].push({ name: '', effect: '', mp_cost: '' });
-				} else {
-					const name = prompt('Enter the name');
-					if (!characterStatsStateOverwrites[stateValue]) {
-						characterStatsStateOverwrites[stateValue] = {};
+					if (Array.isArray(characterStatsState.value[stateValue])) {
+						//TODO spells_and_abilities not generic yet
+						characterStatsState.value[stateValue].push({ name: '', effect: '', mp_cost: '' });
+					} else {
+						const name = prompt('Enter the name');
+						if (!characterStatsStateOverwrites[stateValue]) {
+							characterStatsStateOverwrites[stateValue] = {};
+						}
+						characterStatsStateOverwrites[stateValue][name] = '';
+						characterStatsState.value[stateValue][name] = '';
 					}
-					characterStatsStateOverwrites[stateValue][name] = '';
-					characterStatsState.value[stateValue][name] = '';
-				}
-			}}
+				}}
 			>
 				Add {stateValue.replaceAll('_', ' ')}
 			</button>
 			<button
 				class="btn btn-accent m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 				onclick={() => {
-				onRandomizeSingle(stateValue);
-			}}
+					onRandomizeSingle(stateValue);
+				}}
 			>
 				Randomize {stateValue.replaceAll('_', ' ')}
 			</button>
 			<button
 				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 				onclick={() => {
-				if (Array.isArray(characterStatsStateOverwrites[stateValue])) {
-					//TODO not generic
-					characterStatsState.value.spells_and_abilities = [];
-					characterStatsStateOverwrites[stateValue] = [];
-				} else {
-					characterStatsState.resetProperty(stateValue);
-					characterStatsStateOverwrites[stateValue] = {};
-				}
-			}}
+					if (Array.isArray(characterStatsStateOverwrites[stateValue])) {
+						//TODO not generic
+						characterStatsState.value.spells_and_abilities = [];
+						characterStatsStateOverwrites[stateValue] = [];
+					} else {
+						characterStatsState.resetProperty(stateValue);
+						characterStatsStateOverwrites[stateValue] = {};
+					}
+				}}
 			>
 				Clear {stateValue.replaceAll('_', ' ')}
 			</button>

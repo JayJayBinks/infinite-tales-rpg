@@ -6,7 +6,7 @@
 	import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 
-	const characterState= useLocalStorage<CharacterDescription>('characterState');
+	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
 	const storyState = useLocalStorage<Story>('storyState');
 </script>

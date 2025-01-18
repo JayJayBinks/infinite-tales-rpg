@@ -57,7 +57,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	);
 }
 
-export const getTargetPromptAddition = function(targets: string[]) {
+export const getTargetPromptAddition = function (targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -205,7 +205,8 @@ export function applyGameActionState(
 						Number.parseInt(statUpdate.value.result) || 0;
 					break;
 				case 'hp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentHP += Number.parseInt(statUpdate.value.result) || 0;
+					playerCharactersGameState[statUpdate.targetId].currentHP +=
+						Number.parseInt(statUpdate.value.result) || 0;
 					break;
 				case 'hp_lost':
 					playerCharactersGameState[statUpdate.targetId].currentHP -=
