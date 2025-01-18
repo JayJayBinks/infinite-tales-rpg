@@ -15,6 +15,7 @@
 	import StoryProgressionWithImage from '$lib/components/StoryProgressionWithImage.svelte';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import {
+		type AiLevelUp,
 		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
@@ -36,6 +37,9 @@
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
+	import { applyLevelUp, getXPNeededForLevel } from './levelLogic';
+	import LevelUpModal from '$lib/components/LevelUpModal.svelte';
+	import isEqual from 'lodash.isequal';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -78,6 +82,15 @@
 	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState');
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
+	let levelUpState = useLocalStorage<{
+		buttonEnabled: boolean;
+		dialogOpened: boolean;
+		playerName: string;
+	}>('levelUpState', {
+		buttonEnabled: false,
+		dialogOpened: false,
+		playerName: ''
+	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
 			({} as GameActionState)
@@ -105,8 +118,10 @@
 		campaignAgent = new CampaignAgent(llm);
 		actionAgent = new ActionAgent(llm);
 		//Start game when not already started
-		playerCharactersGameState = { [characterState.value.name]: { currentHP: 0, currentMP: 0 } };
-		if (!currentGameActionState?.story) {
+		playerCharactersGameState = {
+			[characterState.value.name]: { currentHP: 0, currentMP: 0, xp: 0 }
+		};
+		if (isEqual(currentGameActionState, {})) {
 			if (!currentGameActionState?.stats_update) {
 				handleStartingStats(playerCharactersGameState, characterState.value.name);
 			}
@@ -119,7 +134,7 @@
 				playerCharactersGameState,
 				npcState.value,
 				inventoryState.value,
-				gameActionsState.value
+				$state.snapshot(gameActionsState.value)
 			);
 			if (characterActionsState.value.length === 0) {
 				characterActionsState.value = await actionAgent.generateActions(
@@ -139,6 +154,7 @@
 		if (!didAIProcessDiceRollActionState.value) {
 			openDiceRollDialog(additionalActionInputState.value);
 		}
+		checkForLevelUp();
 	});
 
 	function handleStartingStats(
@@ -153,6 +169,23 @@
 		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
 		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
 		gameActionsState.value.push(startingResourcesUpdateObject);
+	}
+
+	function refillResourcesFully(
+		playerCharactersGameState: PlayerCharactersGameState,
+		playerName: string
+	) {
+		const levelUpResourcesObject = gameAgent.getStartingResourcesUpdateObject(
+			characterStatsState.value.resources.MAX_HP - playerCharactersGameState[playerName].currentHP,
+			characterStatsState.value.resources.MAX_MP - playerCharactersGameState[playerName].currentMP,
+			playerName
+		);
+		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
+		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
+		gameActionsState.value[gameActionsState.value.length - 1].stats_update = [
+			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
+			...levelUpResourcesObject.stats_update
+		];
 	}
 
 	async function getActionPromptForCombat(playerAction: Action) {
@@ -177,7 +210,7 @@
 			playerCharactersGameState,
 			npcState.value,
 			inventoryState.value,
-			determinedActionsAndStatsUpdate
+			$state.snapshot(determinedActionsAndStatsUpdate)
 		);
 		const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
 		const aliveNPCs = allNpcsDetailsAsList
@@ -259,6 +292,7 @@
 					storyState.value,
 					getLatestStoryMessages(),
 					newNPCs,
+					characterStatsState.value.level,
 					customSystemInstruction.value
 				)
 				.then((newState: NPCState) => {
@@ -268,6 +302,13 @@
 						console.log(stringifyPretty(npcState.value));
 					}
 				});
+		}
+	}
+
+	function checkForLevelUp() {
+		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
+		if (neededXP && playerCharactersGameState[characterState.value.name]?.xp >= neededXP) {
+			levelUpState.value.buttonEnabled = true;
 		}
 	}
 
@@ -428,7 +469,7 @@
 							playerCharactersGameState,
 							npcState.value,
 							inventoryState.value,
-							newState
+							$state.snapshot(newState)
 						);
 					}
 					console.log('new state', stringifyPretty(newState));
@@ -466,6 +507,7 @@
 									renderGameState(currentGameActionState, actions);
 								}
 							});
+						checkForLevelUp();
 					}
 				}
 				isAiGeneratingState = false;
@@ -496,6 +538,20 @@
 					.map((elm) => elm.textContent || '')
 					.join(' ') || '';
 		}
+	}
+
+	function levelUpClicked(playerName: string) {
+		levelUpState.value.playerName = playerName;
+		const level = $state.snapshot(characterStatsState.value.level);
+		const xpNeededForLevel = getXPNeededForLevel(level);
+		if (!xpNeededForLevel) {
+			handleError('Could not calculate XP needed for level up!');
+			return;
+		}
+		const buyLevelUpObject = gameAgent.getLevelUpCostObject(xpNeededForLevel, playerName, level);
+		playerCharactersGameState[playerName].xp -= xpNeededForLevel;
+		gameActionsState.value[gameActionsState.value.length - 1].stats_update.push(buyLevelUpObject);
+		levelUpState.value.dialogOpened = true;
 	}
 
 	function addActionButton(action: Action, is_character_in_combat?: boolean, addClass?: string) {
@@ -577,6 +633,23 @@
 		);
 		isAiGeneratingState = false;
 	};
+	const onLevelUpModalClosed = (aiLevelUp: AiLevelUp) => {
+		if (aiLevelUp) {
+			characterStatsState.value = applyLevelUp(aiLevelUp, characterStatsState.value);
+		} else {
+			characterStatsState.value = {
+				...characterStatsState.value,
+				level: characterStatsState.value.level + 1
+			};
+		}
+		levelUpState.reset();
+		refillResourcesFully(playerCharactersGameState, characterState.value.name);
+		checkForLevelUp();
+	};
+
+	function getCurrentXPText() {
+		return `XP: ${playerCharactersGameState[characterState.value.name]?.xp}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
+	}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -603,7 +676,9 @@
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
 	></UseItemsModal>
-
+	{#if levelUpState.value?.dialogOpened}
+		<LevelUpModal onclose={onLevelUpModalClosed} />
+	{/if}
 	<DiceRollComponent
 		bind:diceRollDialog
 		action={chosenActionState.value}
@@ -611,11 +686,14 @@
 	></DiceRollComponent>
 	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
 		<output id="hp" class="ml-1 text-lg font-semibold text-red-500">
-			HP: {playerCharactersGameState[characterState.value.name]?.currentHP}</output
-		>
+			HP: {playerCharactersGameState[characterState.value.name]?.currentHP}
+		</output>
+		<output id="xp" class="ml-1 text-lg font-semibold text-green-500">
+			{getCurrentXPText()}
+		</output>
 		<output id="mp" class="ml-1 text-lg font-semibold text-blue-500">
-			MP: {playerCharactersGameState[characterState.value.name]?.currentMP}</output
-		>
+			MP: {playerCharactersGameState[characterState.value.name]?.currentMP}
+		</output>
 	</div>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		<!-- For proper updating, need to use gameActionsState.id as each block id -->
@@ -626,7 +704,10 @@
 				story={gameActionState.story}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
 				gameUpdates={gameLogic
-					.renderStatUpdates(gameActionState.stats_update, characterState.value.name)
+					.renderStatUpdates(
+						$state.snapshot(gameActionState.stats_update),
+						characterState.value.name
+					)
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
 		{/each}
@@ -646,6 +727,15 @@
 		{#if !isGameEnded.value}
 			{#if characterActionsState.value?.length > 0}
 				<div id="static-actions" class="p-4 pb-0 pt-0">
+					{#if levelUpState.value.buttonEnabled}
+						<button
+							onclick={() => {
+								levelUpClicked(characterState.value.name);
+							}}
+							class="text-md btn btn-success mb-3 w-full"
+							>Level up!
+						</button>
+					{/if}
 					<button
 						onclick={() => {
 							useSpellsAbilitiesModal.showModal();

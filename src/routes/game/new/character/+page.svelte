@@ -79,9 +79,9 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
 	{#if campaignState.value?.campaign_title}
-		<li class="step step-primary cursor-pointer" onclick={() => history.back()}>Campaign</li>
+		<li class="step step-primary cursor-pointer" onclick={() => goto('campaign')}>Campaign</li>
 	{:else}
-		<li class="step step-primary cursor-pointer" onclick={() => history.back()}>Tale</li>
+		<li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
 	{/if}
 	<li class="step step-primary">Character</li>
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->

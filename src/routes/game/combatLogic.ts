@@ -21,18 +21,20 @@ function calculateMaxResource(i: number, minRandom: number, maxRandom: number) {
 }
 
 //TODO consider class?
-function getMaxHPFromRank(rank: string) {
+//TODO different modificator for level as it doesnt scale
+function getMaxHPFromRank(rank: string, level: number) {
 	let i = npcRank.indexOf(rank);
 	if (i === -1) i = 2; // Default to average if rank not found
-	return calculateMaxResource(i, 5, 8);
+	return calculateMaxResource(i, 5, 8) + level;
 }
 
 //TODO consider class?
-function getMaxMPFromRank(rank: string): number {
+//TODO different modificator for level as it doesnt scale
+function getMaxMPFromRank(rank: string, level: number): number {
 	let i = npcRank.indexOf(rank);
 	//Average if not found
 	if (i === -1) i = 2;
-	return calculateMaxResource(i, 7, 13);
+	return calculateMaxResource(i, 7, 13) + level;
 }
 
 export function addResourceValues(npcState: NPCState) {
@@ -41,8 +43,8 @@ export function addResourceValues(npcState: NPCState) {
 			(npcState[key] = {
 				...npcState[key],
 				resources: {
-					current_hp: getMaxHPFromRank(npcState[key].rank),
-					current_mp: getMaxMPFromRank(npcState[key].rank)
+					current_hp: getMaxHPFromRank(npcState[key].rank, npcState[key].level),
+					current_mp: getMaxMPFromRank(npcState[key].rank, npcState[key].level)
 				}
 			})
 	);

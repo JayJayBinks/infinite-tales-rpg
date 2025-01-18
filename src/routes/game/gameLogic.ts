@@ -8,6 +8,7 @@ import type {
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
 import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
+import { mapXP } from './levelLogic';
 
 export enum ActionDifficulty {
 	simple = 'simple',
@@ -66,6 +67,13 @@ export function formatItemId(item_id: string) {
 
 export type RenderedGameUpdate = { text: string; resourceText: string; color: string };
 
+export function mapStatsUpdateToGameLogic(statsUpdate: StatsUpdate): StatsUpdate {
+	if (statsUpdate.type.toUpperCase().includes('XP')) {
+		mapXP(statsUpdate);
+	}
+	return statsUpdate;
+}
+
 export function renderStatUpdates(
 	statsUpdates: Array<StatsUpdate>,
 	playerName: string
@@ -73,6 +81,7 @@ export function renderStatUpdates(
 	if (statsUpdates) {
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
+			.map(mapStatsUpdateToGameLogic)
 			.map((statsUpdate) => {
 				if (
 					!statsUpdate.value?.result ||
@@ -95,25 +104,28 @@ export function renderStatUpdates(
 						.replace('_lost', '')
 						.replaceAll('_', ' ')
 						.toUpperCase() || '';
-				const color = mappedType.includes('HP')
-					? 'text-red-500'
-					: mappedType.includes('MP')
-						? 'text-blue-500'
-						: '';
-
+				let color = '';
+				if (mappedType.includes('HP')) color = 'text-red-500';
+				if (mappedType.includes('MP')) color = 'text-blue-500';
+				if (mappedType.includes('XP')) color = 'text-green-500';
+				if (mappedType.includes('LEVEL')) color = 'text-green-500';
 				if (statsUpdate.targetId === playerName) {
 					responseText = 'You ';
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'are';
 					}
-					resourceText =
-						'' +
-						(getTakeLessDamageForManyHits(
-							statsUpdates,
-							Number.parseInt(statsUpdate.value.result),
-							playerName
-						) || resourceText);
+					if (mappedType.includes('LEVEL')) {
+						resourceText = '';
+					} else {
+						resourceText =
+							'' +
+							(getTakeLessDamageForManyHits(
+								statsUpdates,
+								Number.parseInt(statsUpdate.value.result),
+								playerName
+							) || resourceText);
+					}
 				} else {
 					responseText = statsUpdate.targetId.replaceAll('_', ' ').replaceAll('id', '') + ' ';
 					if (!changeText) {
@@ -180,9 +192,18 @@ export function applyGameActionState(
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
-	for (const statUpdate of state.stats_update || []) {
+	for (const statUpdate of state.stats_update.map(mapStatsUpdateToGameLogic) || []) {
 		if (playerCharactersGameState[statUpdate.targetId]) {
+			if (statUpdate.type.includes('now_level')) {
+				playerCharactersGameState[statUpdate.targetId].xp -=
+					Number.parseInt(statUpdate.value.result) || 0;
+				continue;
+			}
 			switch (statUpdate.type) {
+				case 'xp_gained':
+					playerCharactersGameState[statUpdate.targetId].xp +=
+						Number.parseInt(statUpdate.value.result) || 0;
+					break;
 				case 'hp_gained':
 					playerCharactersGameState[statUpdate.targetId].currentHP +=
 						Number.parseInt(statUpdate.value.result) || 0;

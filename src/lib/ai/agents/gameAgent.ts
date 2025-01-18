@@ -25,7 +25,7 @@ export type Action = {
 	mp_cost?: number;
 } & DiceRollDifficulty;
 export type PlayerCharactersGameState = {
-	[playerCharacterName: string]: { currentHP: number; currentMP: number };
+	[playerCharacterName: string]: { currentHP: number; currentMP: number; xp: number }; //on level up create event for negative exp
 };
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
@@ -148,6 +148,15 @@ export class GameAgent {
 		};
 	}
 
+	getLevelUpCostObject(xpCost: number, playerName: string, level: number): StatsUpdate {
+		return {
+			sourceId: playerName,
+			targetId: playerName,
+			type: 'now_level_' + (level + 1),
+			value: { result: xpCost }
+		};
+	}
+
 	static getItemImagePrompt(item_id: string, item: Item, storyImagePrompt: string): string {
 		return `${storyImagePrompt} RPG game icon ${item_id} ${item.description}`;
 	}
@@ -229,6 +238,7 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
       "item_id": "unique name of the item to identify it"
     }
   ],
+  "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
   ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",

@@ -21,11 +21,23 @@
 	const useKarmicDice = useLocalStorage('useKarmicDice');
 	const useDynamicCombat = useLocalStorage('useDynamicCombat');
 
+	const ensureValidState = (key: string, state: any) => {
+		if (key === 'characterStatsState') {
+			//migrate saves before level feature
+			if (!state.level) {
+				state.level = 1;
+			}
+		}
+		return state;
+	};
+
 	const importSettings = () => {
 		importJsonFromFile((parsed) => {
 			if (isSaveGame) {
-				Object.keys(parsed).forEach((key) =>
-					localStorage.setItem(key, JSON.stringify(parsed[key]))
+				Object.keys(parsed).forEach((key) => {
+						const state = ensureValidState(key, parsed[key]);
+						localStorage.setItem(key, JSON.stringify(state));
+					}
 				);
 				alert('Import successfull.');
 			} else {
