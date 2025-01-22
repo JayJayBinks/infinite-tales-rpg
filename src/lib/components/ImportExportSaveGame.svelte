@@ -35,10 +35,9 @@
 		importJsonFromFile((parsed) => {
 			if (isSaveGame) {
 				Object.keys(parsed).forEach((key) => {
-						const state = ensureValidState(key, parsed[key]);
-						localStorage.setItem(key, JSON.stringify(state));
-					}
-				);
+					const state = ensureValidState(key, parsed[key]);
+					localStorage.setItem(key, JSON.stringify(state));
+				});
 				alert('Import successfull.');
 			} else {
 				campaignState.value = parsed.campaignState;

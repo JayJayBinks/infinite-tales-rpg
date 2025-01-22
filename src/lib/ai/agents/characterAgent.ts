@@ -61,6 +61,6 @@ export class CharacterAgent {
 			userMessage: 'Create the character: ' + stringifyPretty(preset),
 			systemInstruction: agentInstruction
 		};
-		return (await this.llm.generateContent(request)) as CharacterDescription;
+		return (await this.llm.generateReasoningContent(request))?.parsedObject as CharacterDescription;
 	}
 }

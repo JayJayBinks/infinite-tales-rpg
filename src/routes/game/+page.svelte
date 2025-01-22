@@ -442,6 +442,7 @@
 				}
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 				additionalActionInput = addAdditionsFromActionSideeffects(action, additionalActionInput);
+				additionalActionInput += '\nIn a conversation always include the NPC response!';
 
 				//TODO additionalActionInput += '\nInclude the actions for this scene of all currently_present_npcs';
 

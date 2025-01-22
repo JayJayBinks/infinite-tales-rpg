@@ -133,7 +133,7 @@ export class CampaignAgent {
 				stringifyPretty(preset),
 			historyMessages: [],
 			systemInstruction: agent,
-			temperature: 1
+			temperature: 2
 		};
 		if (characterDescription?.name) {
 			request.historyMessages?.push({
@@ -143,7 +143,7 @@ export class CampaignAgent {
 					stringifyPretty(characterDescription)
 			});
 		}
-		const campaign = (await this.llm.generateContent(request)) as Campaign;
+		const campaign = (await this.llm.generateReasoningContent(request))?.parsedObject as Campaign;
 		return campaign;
 	}
 
@@ -193,7 +193,7 @@ export class CampaignAgent {
 			],
 			systemInstruction: agent
 		};
-		return (await this.llm.generateContent(request)) as Campaign;
+		return (await this.llm.generateReasoningContent(request))?.parsedObject as Campaign;
 	}
 
 	async generateSingleChapter(
@@ -231,6 +231,6 @@ export class CampaignAgent {
 				content: 'Description of the character: ' + stringifyPretty(characterState)
 			});
 		}
-		return (await this.llm.generateContent(request)) as CampaignChapter;
+		return (await this.llm.generateReasoningContent(request))?.parsedObject as CampaignChapter;
 	}
 }

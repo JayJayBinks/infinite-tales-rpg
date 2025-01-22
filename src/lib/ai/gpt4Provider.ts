@@ -1,7 +1,13 @@
 import { handleError } from '../util.svelte';
 import { type GenerationConfig } from '@google/generative-ai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
-import { LLM, type LLMconfig, type LLMMessage, type LLMRequest } from '$lib/ai/llm';
+import {
+	LLM,
+	type LLMconfig,
+	type LLMMessage,
+	type LLMRequest,
+	type LLMReasoningResponse
+} from '$lib/ai/llm';
 
 export const defaultGPT4JsonConfig: GenerationConfig = {
 	temperature: 0.1,
@@ -22,11 +28,12 @@ export class GPT4Provider extends LLM {
 	getDefaultTemperature(): number {
 		return defaultGPT4JsonConfig.temperature as number;
 	}
+
 	getMaxTemperature(): number {
 		return 1;
 	}
 
-	async generateContent(request: LLMRequest): Promise<object | undefined> {
+	async generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined> {
 		const contents = this.buildContentsFormat(request.userMessage, request.historyMessages || []);
 		const systemInstructions = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
@@ -70,35 +77,27 @@ export class GPT4Provider extends LLM {
 			const responseText = result.choices[0].message.content;
 			if (this.llmConfig.generationConfig?.responseMimeType === 'application/json') {
 				try {
-					return JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''));
+					return {
+						reasoning: undefined,
+						parsedObject: JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''))
+					};
 				} catch (firstError) {
-					try {
-						console.log('Error parsing JSON: ' + responseText, firstError);
-						console.log('Try json simple fix 1');
-						if (
-							(firstError as SyntaxError).message.includes(
-								'Bad control character in string literal'
-							)
-						) {
-							return JSON.parse(responseText.replaceAll('\\', ''));
-						}
-						return JSON.parse('{' + responseText.replaceAll('\\', ''));
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					} catch (secondError) {
-						//autofix if true or not set and llm allows it
-						if (
-							(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
-							this.llmConfig.tryAutoFixJSONError
-						) {
-							console.log('Try json fix with llm agent');
-							return this.jsonFixingInterceptorAgent.fixJSON(
+					//autofix if true or not set and llm allows it
+					if (
+						(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
+						this.llmConfig.tryAutoFixJSONError
+					) {
+						console.log('Try json fix with llm agent');
+						return {
+							reasoning: undefined,
+							parsedObject: this.jsonFixingInterceptorAgent.fixJSON(
 								responseText,
 								(firstError as SyntaxError).message
-							);
-						}
-						handleError(firstError as string);
-						return undefined;
+							)
+						};
 					}
+					handleError(firstError as string);
+					return undefined;
 				}
 			}
 			return responseText;
@@ -106,6 +105,10 @@ export class GPT4Provider extends LLM {
 			handleError(e as string);
 		}
 		return undefined;
+	}
+
+	async generateContent(request: LLMRequest): Promise<object | undefined> {
+		return (await this.generateReasoningContent(request))?.parsedObject;
 	}
 
 	buildSystemInstruction(systemInstruction?: Array<string> | string) {
@@ -118,6 +121,7 @@ export class GPT4Provider extends LLM {
 		}
 		return instructions;
 	}
+
 	buildContentsFormat(actionText: string, historyMessages: Array<LLMMessage>) {
 		const contents: any[] = [];
 		if (historyMessages) {

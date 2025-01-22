@@ -27,12 +27,20 @@ export interface LLMconfig {
 	model?: string;
 }
 
+export type LLMReasoningResponse = { reasoning: string | undefined; parsedObject: object };
+
 export abstract class LLM {
 	llmConfig: LLMconfig;
+
 	protected constructor(llmConfig: LLMconfig) {
 		this.llmConfig = llmConfig;
 	}
+
+	abstract generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined>;
+
 	abstract generateContent(request: LLMRequest): Promise<object | undefined>;
+
 	abstract getDefaultTemperature(): number;
+
 	abstract getMaxTemperature(): number;
 }

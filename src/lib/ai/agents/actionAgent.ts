@@ -100,7 +100,7 @@ export class ActionAgent {
 			historyMessages,
 			systemInstruction: agent
 		};
-		const response = (await this.llm.generateContent(request)) as any;
+		const response = (await this.llm.generateReasoningContent(request))?.parsedObject as any;
 
 		//can get not directly arrays but wrapped responses from ai sometimes...
 		if (response && response.actions) {

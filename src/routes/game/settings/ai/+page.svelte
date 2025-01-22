@@ -32,6 +32,7 @@
 	const campaignState = useLocalStorage('campaignState', initialCampaignState);
 	const currentChapterState = useLocalStorage('currentChapterState');
 	const characterActionsState = useLocalStorage('characterActionsState');
+	let levelUpState = useLocalStorage('levelUpState');
 
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	let ttsVoices: Voice[] = $state([]);
@@ -57,6 +58,7 @@
 		campaignState.reset();
 		currentChapterState.reset();
 		characterActionsState.reset();
+		levelUpState.reset();
 	}
 
 	async function onQuickstartNew() {

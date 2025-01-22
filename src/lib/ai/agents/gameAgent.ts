@@ -96,7 +96,8 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		const newState = (await this.llm.generateContent(request)) as GameActionState;
+		const newState = (await this.llm.generateReasoningContent(request))
+			?.parsedObject as GameActionState;
 		const { userMessage, modelMessage } = this.buildHistoryMessages(
 			playerActionTextForHistory,
 			newState
@@ -197,6 +198,7 @@ Actions:
 - CHARACTER actions are only chosen by the player and not by ROLE
 - Involve other characters' reactions, doubts, or support during the action, encouraging a deeper exploration of relationships and motivations.
 - On each action review the character's inventory and spells_and_abilities for items and skills that have passive effects such as defense or health regeneration and apply them
+- Grant XP only for actions with meaningful narrative impact; like overcoming challenges, solving pivotal problems, or achieving story goals. Prioritize risk, creativity, and lasting consequences; exclude trivial or repetitive tasks.
 
 Combat:
 

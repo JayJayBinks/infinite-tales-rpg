@@ -1,6 +1,7 @@
 import { handleError } from '../util.svelte';
 import {
 	type Content,
+	type GenerateContentResult,
 	type GenerationConfig,
 	GoogleGenerativeAI,
 	HarmBlockThreshold,
@@ -9,7 +10,13 @@ import {
 	type SafetySetting
 } from '@google/generative-ai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
-import { LLM, type LLMconfig, type LLMMessage, type LLMRequest } from '$lib/ai/llm';
+import {
+	LLM,
+	type LLMconfig,
+	type LLMMessage,
+	type LLMRequest,
+	type LLMReasoningResponse
+} from '$lib/ai/llm';
 import { errorState } from '$lib/state/errorState.svelte';
 
 const safetySettings: Array<SafetySetting> = [
@@ -36,7 +43,7 @@ export const defaultGeminiJsonConfig: GenerationConfig = {
 	topP: 0.95,
 	topK: 40,
 	maxOutputTokens: 8192,
-	responseMimeType: 'application/json'
+	responseMimeType: 'text/plain'
 };
 
 export class GeminiProvider extends LLM {
@@ -55,11 +62,12 @@ export class GeminiProvider extends LLM {
 	getDefaultTemperature(): number {
 		return defaultGeminiJsonConfig.temperature as number;
 	}
+
 	getMaxTemperature(): number {
 		return 2;
 	}
 
-	async generateContent(request: LLMRequest): Promise<object | undefined> {
+	async generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
 			return;
@@ -83,7 +91,7 @@ export class GeminiProvider extends LLM {
 		}
 
 		const model = this.genAI.getGenerativeModel({
-			model: request.model || this.llmConfig.model || 'gemini-2.0-flash-exp',
+			model: request.model || this.llmConfig.model || 'gemini-2.0-flash-thinking-exp',
 			generationConfig: {
 				...this.llmConfig.generationConfig,
 				...request.generationConfig,
@@ -97,7 +105,7 @@ export class GeminiProvider extends LLM {
 			systemInstruction.parts.push({ text: languageInstruction });
 		}
 
-		let result;
+		let result: GenerateContentResult;
 		try {
 			result = await model.generateContent({ contents, systemInstruction });
 		} catch (e) {
@@ -113,45 +121,64 @@ export class GeminiProvider extends LLM {
 			}
 		}
 		try {
-			const responseText = result.response.text();
-			if (model.generationConfig.responseMimeType === 'application/json') {
+			let reasoning;
+			let json;
+			if (result.response?.candidates) {
+				if (result.response.candidates[0].content.parts.length > 1) {
+					reasoning = result.response.candidates[0].content.parts[0].text;
+					json = result.response.candidates[0].content.parts[1].text;
+				} else {
+					//for some reason no thoughts present
+					json = result.response.candidates[0].content.parts[0].text;
+				}
+			} else {
+				handleError('Gemini did not send a response...');
+				return undefined;
+			}
+			try {
+				console.log(reasoning, json);
+				return {
+					reasoning,
+					parsedObject: JSON.parse(json.replaceAll('```json', '').replaceAll('```', ''))
+				};
+			} catch (firstError) {
 				try {
-					return JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''));
-				} catch (firstError) {
-					try {
-						console.log('Error parsing JSON: ' + responseText, firstError);
-						console.log('Try json simple fix 1');
-						if (
-							(firstError as SyntaxError).message.includes(
-								'Bad control character in string literal'
-							)
-						) {
-							return JSON.parse(responseText.replaceAll('\\', ''));
-						}
-						return JSON.parse('{' + responseText.replaceAll('\\', ''));
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					} catch (secondError) {
-						//autofix if true or not set and llm allows it
-						if (
-							(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
-							this.llmConfig.tryAutoFixJSONError
-						) {
-							console.log('Try json fix with llm agent');
-							return this.jsonFixingInterceptorAgent.fixJSON(
-								responseText,
-								(firstError as SyntaxError).message
-							);
-						}
-						handleError(firstError as string);
-						return undefined;
+					console.log('Error parsing JSON: ' + json, firstError);
+					console.log('Try json simple fix 1');
+					if (
+						(firstError as SyntaxError).message.includes('Bad control character in string literal')
+					) {
+						return { reasoning, parsedObject: JSON.parse(json.replaceAll('\\', '')) };
 					}
+					return { reasoning, parsedObject: JSON.parse('{' + json.replaceAll('\\', '')) };
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				} catch (secondError) {
+					//autofix if true or not set and llm allows it
+					if (
+						(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
+						this.llmConfig.tryAutoFixJSONError
+					) {
+						console.log('Try json fix with llm agent');
+						return {
+							reasoning,
+							parsedObject: this.jsonFixingInterceptorAgent.fixJSON(
+								json,
+								(firstError as SyntaxError).message
+							)
+						};
+					}
+					handleError(firstError as string);
+					return undefined;
 				}
 			}
-			return responseText;
 		} catch (e) {
 			handleError(e as string);
 		}
 		return undefined;
+	}
+
+	async generateContent(request: LLMRequest): Promise<object | undefined> {
+		return (await this.generateReasoningContent(request))?.parsedObject;
 	}
 
 	buildSystemInstruction(systemInstruction?: Array<string> | string): Content {

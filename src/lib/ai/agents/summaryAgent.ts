@@ -33,7 +33,9 @@ export class SummaryAgent {
 			systemInstruction: agent,
 			temperature: 1
 		};
-		const response = (await this.llm.generateContent(request)) as { story: string };
+		const response = (await this.llm.generateReasoningContent(request))?.parsedObject as {
+			story: string;
+		};
 		console.log('Summary returned ' + stringifyPretty(response));
 		if (!response) {
 			return historyMessages;
