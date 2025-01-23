@@ -12,7 +12,8 @@
 		.replaceAll('\\n', '<br>')
 		.replaceAll(' n ', '<br>')
 		.replaceAll('\\&quot;', '&quot;')
-		.replaceAll('html', '')
+		.replaceAll('```html', '')
+		.replaceAll('```', '')
 		.replaceAll('_', ' ');
 </script>
 

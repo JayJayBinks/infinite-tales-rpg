@@ -2,9 +2,9 @@ import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
 import type { AiLevelUp, CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 
 export const XP_INCREASING_SCALE = {
-	LOW: 10,
-	MEDIUM: 20,
-	HIGH: 50
+	LOW: 0,
+	MEDIUM: 10,
+	HIGH: 20
 };
 
 //XP needed to reach Level 2
