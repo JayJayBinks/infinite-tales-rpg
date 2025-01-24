@@ -29,7 +29,7 @@ export const statsUpdatePromptObject = `
         	 "targetId": "Player CHARACTER name who gains XP.",
         	 "explanation": "Short explanation for the reason of this change",
            "type": "xp_gained",
-           "value": "LOW|MEDIUM|HIGH"
+           "value": "SMALL|MEDIUM|HIGH"
         },
         ...
         ]`;

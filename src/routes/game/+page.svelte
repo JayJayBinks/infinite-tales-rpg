@@ -99,6 +99,11 @@
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
+	const lastThreeActionsXPGainedAndLatestIsMedium: boolean = $derived(
+		gameActionsState.value
+			?.slice(-3)
+			.every((state) => state.stats_update?.some((s) => s.type === 'xp_gained')) ?? false
+	);
 
 	//feature toggles
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
@@ -422,8 +427,7 @@
 			additionalActionInput += '\nPlay out this action even if it is not plausible!';
 		} else {
 			additionalActionInput +=
-				'\n' +
-				'For the story narration never mention game meta elements like dice rolls; Only describe the narrative the character experiences.';
+				'\n' + 'Before responding always review the system instructions and apply the given rules.';
 		}
 		return additionalActionInput;
 	}
@@ -442,8 +446,7 @@
 				}
 				additionalActionInput += combatAndNPCState.additionalActionInput;
 				additionalActionInput = addAdditionsFromActionSideeffects(action, additionalActionInput);
-				additionalActionInput += '\nIn a conversation always include the NPC response!';
-
+				//additionalActionInput += '\nIn a conversation always include the NPC response!';
 				//TODO additionalActionInput += '\nInclude the actions for this scene of all currently_present_npcs';
 
 				additionalActionInputState.value = additionalActionInput;

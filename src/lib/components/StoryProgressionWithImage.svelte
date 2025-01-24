@@ -14,6 +14,9 @@
 		.replaceAll('\\&quot;', '&quot;')
 		.replaceAll('```html', '')
 		.replaceAll('```', '')
+		.replaceAll('<html>', '')
+		.replaceAll('</html>', '')
+		.replaceAll('html', '')
 		.replaceAll('_', ' ');
 </script>
 

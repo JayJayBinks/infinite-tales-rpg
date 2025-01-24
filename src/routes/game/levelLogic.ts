@@ -1,8 +1,9 @@
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
 import type { AiLevelUp, CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 
+//TODO AI uses LOW too often, so we trick it by just mapping to no XP
 export const XP_INCREASING_SCALE = {
-	LOW: 0,
+	SMALL: 0,
 	MEDIUM: 10,
 	HIGH: 20
 };
@@ -14,7 +15,7 @@ export function getXPNeededForLevel(level: number): number | undefined {
 	if (!level) {
 		return undefined;
 	}
-	return BASE_XP + XP_INCREASING_SCALE.MEDIUM * (level - 1);
+	return BASE_XP + XP_INCREASING_SCALE.HIGH * (level - 1);
 }
 
 export function mapXP(statsUpdate: StatsUpdate): StatsUpdate {
