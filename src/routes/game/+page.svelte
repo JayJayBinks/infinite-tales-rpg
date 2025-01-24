@@ -141,6 +141,7 @@
 				inventoryState.value,
 				$state.snapshot(gameActionsState.value)
 			);
+			tick().then(() => customActionInput.scrollIntoView(false));
 			if (characterActionsState.value.length === 0) {
 				characterActionsState.value = await actionAgent.generateActions(
 					currentGameActionState,
@@ -154,7 +155,6 @@
 				);
 			}
 			renderGameState(currentGameActionState, characterActionsState.value);
-			tick().then(() => customActionInput.scrollIntoView(false));
 		}
 		if (!didAIProcessDiceRollActionState.value) {
 			openDiceRollDialog(additionalActionInputState.value);
@@ -559,6 +559,9 @@
 	}
 
 	function addActionButton(action: Action, is_character_in_combat?: boolean, addClass?: string) {
+		if(!actionsDiv){
+			return;
+		}
 		const button = document.createElement('button');
 		button.className = 'btn btn-neutral mb-3 w-full text-md';
 		if (addClass) {

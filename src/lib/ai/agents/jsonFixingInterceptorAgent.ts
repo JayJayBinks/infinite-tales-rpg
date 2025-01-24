@@ -2,6 +2,7 @@ import type { LLM, LLMRequest } from '../llm';
 
 export class JsonFixingInterceptorAgent {
 	llm: LLM;
+
 	constructor(llm: LLM) {
 		this.llm = llm;
 	}
@@ -23,6 +24,6 @@ export class JsonFixingInterceptorAgent {
 			temperature: 0,
 			tryAutoFixJSONError: false
 		};
-		return await this.llm.generateReasoningContent(request);
+		return (await this.llm.generateReasoningContent(request))?.parsedObject;
 	}
 }
