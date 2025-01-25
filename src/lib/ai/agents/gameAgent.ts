@@ -194,7 +194,11 @@ Actions:
 - On each action review the character's inventory and spells_and_abilities for items and skills that have passive effects such as defense or health regeneration and apply them
 
 XP:
-- Award XP only when actions meaningfully progress the story (e.g. rescuing a key NPC, solving a critical puzzle), or align with the character’s growth (e.g. a warrior mastering a new technique).
+- Award XP only for contributions to a challenge according to significance.
+	- SMALL: Obtaining clues, engaging in reconnaissance, or learning background information.
+	- MEDIUM: Major progress toward a challenge, such as uncovering a vital piece of evidence, or getting access to a crucial location.
+	- HIGH: Achieving breakthroughs or resolving significant challenges.
+- XP is also granted for the character’s growth (e.g. a warrior mastering a new technique).
 - Never grant XP for routine tasks (e.g. basic dialogue, non-story shopping) or actions that build tension but don’t change outcomes.
 
 Combat:

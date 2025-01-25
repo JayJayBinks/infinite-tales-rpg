@@ -636,7 +636,7 @@
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
-			targetAddition + abilityAddition + additionalActionInputState.value
+			targetAddition + abilityAddition + (additionalActionInputState.value || '')
 		);
 		isAiGeneratingState = false;
 	};
