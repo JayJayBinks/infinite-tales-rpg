@@ -40,6 +40,7 @@
 	import { applyLevelUp, getXPNeededForLevel } from './levelLogic';
 	import LevelUpModal from '$lib/components/LevelUpModal.svelte';
 	import isEqual from 'lodash.isequal';
+	import { migrateIfApplicable } from '$lib/state/versionMigration';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -99,11 +100,6 @@
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
-	const lastThreeActionsXPGainedAndLatestIsMedium: boolean = $derived(
-		gameActionsState.value
-			?.slice(-3)
-			.every((state) => state.stats_update?.some((s) => s.type === 'xp_gained')) ?? false
-	);
 
 	//feature toggles
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
@@ -122,6 +118,11 @@
 		summaryAgent = new SummaryAgent(llm);
 		campaignAgent = new CampaignAgent(llm);
 		actionAgent = new ActionAgent(llm);
+
+		characterStatsState.value = migrateIfApplicable(
+			'characterStatsState',
+			$state.snapshot(characterStatsState.value)
+		);
 		//Start game when not already started
 		playerCharactersGameState = {
 			[characterState.value.name]: { currentHP: 0, currentMP: 0, xp: 0 }
@@ -559,7 +560,7 @@
 	}
 
 	function addActionButton(action: Action, is_character_in_combat?: boolean, addClass?: string) {
-		if(!actionsDiv){
+		if (!actionsDiv) {
 			return;
 		}
 		const button = document.createElement('button');
