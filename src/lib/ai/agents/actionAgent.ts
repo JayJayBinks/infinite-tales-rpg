@@ -74,7 +74,7 @@ export class ActionAgent {
 					"is_straightforward": true if it involves few steps or has a clear outcome; false if it involves multiple narrative moments or decisions; include brief {reasoning}. Use the string format: "{reasoning}: true|false",
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or responses from NPCs",
   				"enemyEncounterExplanation": {reasoning} for the {probability: low|medium|high} of an enemy encounter; if probable describe enemy details; low probability if an encounter recently happened; Format "{reasoning} - {probability}",
-					"dice_roll": {probable
+					"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Modifier can be applied due to a character's proficiency, disadvantage, high difficulty, passive attributes in spells_and_abilities and inventory, or situational factors specific to previous actions. Give an in game story explanation why a modifier is applied or not and how you decided that.",
 						# If action_difficulty is difficult apply a bonus.
 						"modifier": "none|bonus|malus",
