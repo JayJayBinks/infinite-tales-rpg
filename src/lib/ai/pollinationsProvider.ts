@@ -8,6 +8,7 @@ import {
 	type LLMRequest,
 	type LLMReasoningResponse
 } from '$lib/ai/llm';
+import isPlainObject from 'lodash.isplainobject';
 
 export const defaultGPT4JsonConfig: GenerationConfig = {
 	temperature: 0.1,
@@ -17,8 +18,9 @@ export const defaultGPT4JsonConfig: GenerationConfig = {
 	responseMimeType: 'application/json'
 };
 
-export class GPT4Provider extends LLM {
+export class PollinationsProvider extends LLM {
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
+	model = 'deepseek-r1';
 
 	constructor(llmConfig: LLMconfig) {
 		super(llmConfig);
@@ -51,11 +53,11 @@ export class GPT4Provider extends LLM {
 		);
 		temperature = this.getDefaultTemperature();
 		console.log('calling llm with temperature', temperature);
-		const url = `https://text.pollinations.ai/openai`;
+		const url = `https://text.pollinations.ai`;
 		const body = JSON.stringify({
 			messages: [...systemInstructions, ...contents],
 			temperature,
-			model: 'openai',
+			model: this.model,
 			seed: Math.floor(Math.random() * 1000000),
 			response_format: { type: 'json_object' }
 		});
@@ -74,33 +76,10 @@ export class GPT4Provider extends LLM {
 			return undefined;
 		}
 		try {
-			const responseText = result.choices[0].message.content;
-			if (this.llmConfig.generationConfig?.responseMimeType === 'application/json') {
-				try {
-					return {
-						reasoning: undefined,
-						parsedObject: JSON.parse(responseText.replaceAll('```json', '').replaceAll('```', ''))
-					};
-				} catch (firstError) {
-					//autofix if true or not set and llm allows it
-					if (
-						(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
-						this.llmConfig.tryAutoFixJSONError
-					) {
-						console.log('Try json fix with llm agent');
-						return {
-							reasoning: undefined,
-							parsedObject: this.jsonFixingInterceptorAgent.fixJSON(
-								responseText,
-								(firstError as SyntaxError).message
-							)
-						};
-					}
-					handleError(firstError as string);
-					return undefined;
-				}
-			}
-			return responseText;
+			const response = result;
+			const autoFixJSON = ((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
+				this.llmConfig.tryAutoFixJSONError) || false;
+			return this.parseContentByModel(this.model, response, autoFixJSON);
 		} catch (e) {
 			handleError(e as string);
 		}
@@ -140,4 +119,62 @@ export class GPT4Provider extends LLM {
 		}
 		return contents;
 	}
+
+	parseDeepseek(response: any, autoFixJSON: boolean) {
+		if (isPlainObject(response)) {
+			return {
+				reasoning: undefined,
+				parsedObject: response
+			};
+		}
+		return this.parseJSON(response, autoFixJSON);
+	}
+
+	parseOpenAI(response: any, autoFixJSON: boolean) {
+		if (!response.choices) {
+			return {
+				reasoning: undefined,
+				parsedObject: response
+			};
+		}
+		const responseText = response.choices[0].message.content;
+		return this.parseJSON(responseText, autoFixJSON);
+	}
+
+	parseJSON(response: string, autoFix: boolean) {
+		try {
+			return {
+				reasoning: undefined,
+				parsedObject: JSON.parse(response.replaceAll('```json', '').replaceAll('```', ''))
+			};
+		} catch (firstError) {
+			//autofix if true or not set and llm allows it
+			if (
+				autoFix
+			) {
+				console.log('Try json fix with llm agent');
+				return {
+					reasoning: undefined,
+					parsedObject: this.jsonFixingInterceptorAgent.fixJSON(
+						response,
+						(firstError as SyntaxError).message
+					)
+				};
+			}
+			handleError(firstError as string);
+			return undefined;
+		}
+	}
+
+	parseContentByModel(model: string, response: any, autoFixJson: boolean) {
+		switch (model) {
+			case 'deepseek-r1':
+				return this.parseDeepseek(response, autoFixJson);
+			case 'openai':
+				return this.parseOpenAI(response, autoFixJson);
+			case 'openai-large':
+				return this.parseOpenAI(response, autoFixJson);
+		}
+	}
 }
+

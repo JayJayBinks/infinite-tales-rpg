@@ -1,6 +1,6 @@
 import { defaultGeminiJsonConfig, GeminiProvider } from '$lib/ai/geminiProvider';
 import { LLM, type LLMconfig } from '$lib/ai/llm';
-import { GPT4Provider } from '$lib/ai/gpt4Provider';
+import { PollinationsProvider } from '$lib/ai/pollinationsProvider';
 
 export const defaultLLMConfig: LLMconfig = {
 	provider: 'gemini',
@@ -12,8 +12,8 @@ export const defaultLLMConfig: LLMconfig = {
 export class LLMProvider {
 	static provideLLM(llmConfig: LLMconfig): LLM {
 		const configToUse: LLMconfig = { ...defaultLLMConfig, ...llmConfig };
-		if (configToUse.provider === 'gpt4') {
-			return new GPT4Provider(configToUse);
+		if (configToUse.provider === 'pollinations') {
+			return new PollinationsProvider(configToUse);
 		} else {
 			return new GeminiProvider(configToUse);
 		}
