@@ -1,6 +1,6 @@
 <script lang="ts">
 	import DiceBox from '@3d-dice/dice-box';
-	import * as diceRollLogic from '../../routes/game/diceRollLogic';
+	import * as diceRollLogic from './diceRollLogic';
 	import type { Action } from '$lib/ai/agents/gameAgent';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { onMount } from 'svelte';
@@ -21,9 +21,9 @@
 		!useKarmicDice.value
 			? 0
 			: diceRollLogic.getKarmaModifier(
-					rollDifferenceHistoryState.value,
-					diceRollRequiredValueState.value
-				)
+				rollDifferenceHistoryState.value,
+				diceRollRequiredValueState.value
+			)
 	);
 	let diceRollResultState = $derived(
 		diceRollLogic.determineDiceRollResult(
@@ -42,10 +42,15 @@
 	});
 	$effect(() => {
 		if (isMounted && action && !diceRollRequiredValueState.value && !resetState) {
-			diceRollRequiredValueState.value = diceRollLogic.getRequiredValue(
-				action?.action_difficulty,
-				difficultyState.value
-			);
+			if (action.is_possible === false) {
+				rollDifferenceHistoryState.reset();
+				diceRollRequiredValueState.value = 20;
+			} else {
+				diceRollRequiredValueState.value = diceRollLogic.getRequiredValue(
+					action?.action_difficulty,
+					difficultyState.value
+				);
+			}
 		}
 	});
 	let diceBox;
@@ -89,9 +94,12 @@
 	<div class="modal-box flex flex-col items-center text-center">
 		<p class="mt-3 text-xl">Difficulty class:</p>
 		<output id="dice-roll-difficulty" class="text-xl font-semibold"
-			>{diceRollRequiredValueState.value}</output
-		>
-
+		>{diceRollRequiredValueState.value}</output>
+		{#if action.is_custom_action}
+			<output>{action.plausibility}</output>
+			<output>{action.difficulty_explanation}</output>
+			<output class="font-semibold">This action will cost <p class="text-blue-500">{action.mp_cost} MP</p></output>
+		{/if}
 		<button
 			id="roll-dice-button"
 			class="btn btn-ghost m-3"
@@ -123,7 +131,7 @@
 			id="dice-rolling-dialog-continue"
 			disabled={!rolledValueState.value}
 			class="btn btn-neutral m-3"
-			>Continue
+		>Continue
 		</button>
 		{#if karmaModifierState > 0}
 			<output id="Karma" class="mt-2">Karma Modifier: {karmaModifierState}</output>

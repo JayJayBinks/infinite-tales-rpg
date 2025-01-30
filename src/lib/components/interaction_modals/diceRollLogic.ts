@@ -1,5 +1,6 @@
-import { ActionDifficulty } from './gameLogic';
+
 import { getRandomInteger } from '$lib/util.svelte';
+import { ActionDifficulty } from '../../../routes/game/gameLogic';
 
 export const difficultyDiceRollModifier = {
 	Easy: 4,

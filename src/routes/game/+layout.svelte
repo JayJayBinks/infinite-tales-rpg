@@ -2,7 +2,7 @@
 	import '../../app.css';
 	import { page } from '$app/stores';
 	import { errorState } from '$lib/state/errorState.svelte.ts';
-	import ErrorModal from '$lib/components/ErrorModal.svelte';
+	import ErrorModal from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import { handleError } from '$lib/util.svelte.ts';
 	import { onMount } from 'svelte';
 	import { stringifyPretty } from '$lib/util.svelte';

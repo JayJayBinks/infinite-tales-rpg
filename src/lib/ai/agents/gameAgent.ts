@@ -18,6 +18,10 @@ export type Action = {
 	characterName: string;
 	text: string;
 	action_difficulty?: ActionDifficulty;
+	is_custom_action?: boolean,
+	is_possible?: boolean,
+	plausibility?: string;
+	difficulty_explanation?: string;
 	type?: string;
 	is_straightforward?: string;
 	actionSideEffects?: string;

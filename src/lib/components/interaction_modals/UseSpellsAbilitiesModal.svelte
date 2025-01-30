@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TargetModal from '$lib/components/TargetModal.svelte';
+	import TargetModal from '$lib/components/interaction_modals/TargetModal.svelte';
 	import { type Ability, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';

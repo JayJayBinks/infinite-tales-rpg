@@ -13,7 +13,7 @@
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
-	import { getLevelUpText } from '../../routes/game/levelLogic';
+	import { getLevelUpText } from '../../../routes/game/levelLogic';
 
 	let {
 		onclose

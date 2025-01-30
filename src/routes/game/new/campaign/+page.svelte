@@ -55,7 +55,7 @@
 		if (
 			campaignState.value?.chapters &&
 			campaignState.value?.chapters.length > 0 &&
-			campaignState.value?.chapters[0].plot_points.length > 0
+			campaignState.value?.chapters[0].plot_points?.length > 0
 		) {
 			const firstChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[0]);
 			firstChapter.plot_points.push({

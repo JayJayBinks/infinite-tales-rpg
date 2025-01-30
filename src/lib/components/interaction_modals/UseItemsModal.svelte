@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TargetModal from '$lib/components/TargetModal.svelte';
+	import TargetModal from '$lib/components/interaction_modals/TargetModal.svelte';
 	import {
 		type Action,
 		GameAgent,
@@ -8,7 +8,7 @@
 		type Targets
 	} from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
-	import { formatItemId } from '../../routes/game/gameLogic';
+	import { formatItemId } from '../../../routes/game/gameLogic';
 
 	let {
 		inventoryState,
