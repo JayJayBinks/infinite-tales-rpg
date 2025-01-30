@@ -10,8 +10,10 @@ export function stringifyPretty(object: unknown) {
 
 export function handleError(e: string) {
 	console.log(e);
-	errorState.exception = e;
-	errorState.userMessage = e;
+	if(!errorState.exception){
+		errorState.exception = e;
+		errorState.userMessage = e;
+	}
 }
 
 export function navigate(path: string) {
