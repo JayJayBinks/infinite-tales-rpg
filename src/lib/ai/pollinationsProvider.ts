@@ -77,8 +77,10 @@ export class PollinationsProvider extends LLM {
 		}
 		try {
 			const response = result;
-			const autoFixJSON = ((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
-				this.llmConfig.tryAutoFixJSONError) || false;
+			const autoFixJSON =
+				((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
+					this.llmConfig.tryAutoFixJSONError) ||
+				false;
 			return this.parseContentByModel(this.model, response, autoFixJSON);
 		} catch (e) {
 			handleError(e as string);
@@ -149,9 +151,7 @@ export class PollinationsProvider extends LLM {
 			};
 		} catch (firstError) {
 			//autofix if true or not set and llm allows it
-			if (
-				autoFix
-			) {
+			if (autoFix) {
 				console.log('Try json fix with llm agent');
 				return {
 					reasoning: undefined,
@@ -177,4 +177,3 @@ export class PollinationsProvider extends LLM {
 		}
 	}
 }
-

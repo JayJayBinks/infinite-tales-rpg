@@ -10,16 +10,21 @@
 	} = $props();
 </script>
 
-
 <dialog open class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
 	<div class="modal-box flex flex-col items-center text-center">
 		<span class="m-auto font-bold">Action is not possible!</span>
 		{#if action.is_possible !== false}
-			You do not have enough MP to perform this action: <span class="text-blue-500">{action.mp_cost} MP</span>
+			You do not have enough MP to perform this action: <span class="text-blue-500"
+				>{action.mp_cost} MP</span
+			>
 		{:else}
 			This action is not plausible: <p>{action.plausibility}</p>
 		{/if}
-		<button type="button" class="components btn btn-neutral mt-2 w-1/2" onclick={() => onclose(false)}>
+		<button
+			type="button"
+			class="components btn btn-neutral mt-2 w-1/2"
+			onclick={() => onclose(false)}
+		>
 			Ok
 		</button>
 		<p class="mt-4">
@@ -32,7 +37,8 @@
 		<button
 			type="button"
 			class="components btn btn-primary mt-2 w-1/2"
-			onclick={() => onclose(true)}>
+			onclick={() => onclose(true)}
+		>
 			Try anyway
 		</button>
 	</div>

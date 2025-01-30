@@ -57,17 +57,17 @@ export class ActionAgent {
 				- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
 				- Any action is allowed to target anything per game rules.`,
 			'The suggested action must fit to the setting of the story:' +
-			'\n' +
-			stringifyPretty(storySettingsMapped),
+				'\n' +
+				stringifyPretty(storySettingsMapped),
 			'dice_roll can be modified by following description of the character, e.g. acting smart or with force, ...' +
-			'\n' +
-			stringifyPretty(characterDescription),
+				'\n' +
+				stringifyPretty(characterDescription),
 			'dice_roll can be modified by items from the inventory:' +
-			'\n' +
-			stringifyPretty(inventoryState),
+				'\n' +
+				stringifyPretty(inventoryState),
 			'Consider the following character stats only for dice_roll modifiers' +
-			'\n' +
-			stringifyPretty(characterStatsMapped),
+				'\n' +
+				stringifyPretty(characterStatsMapped),
 			`Most important instruction! You must always respond with following JSON format! 
 				${this.jsonFormat}`
 		];
@@ -75,10 +75,12 @@ export class ActionAgent {
 			agent.push(customSystemInstruction);
 		}
 		const userMessage =
-			'The player wants to perform following action, you must use these exact words as action text: ' + action.text +
+			'The player wants to perform following action, you must use these exact words as action text: ' +
+			action.text +
 			'\nDetermine the difficulty and mp cost with considering their personality, skills, items and following game state\n' +
 			stringifyPretty(currentGameStateMapped) +
-			'\n' + (additionalActionInput || '');
+			'\n' +
+			(additionalActionInput || '');
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
@@ -117,17 +119,17 @@ export class ActionAgent {
 				- Only suggest actions that are plausible in the current situation.
 				- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points`,
 			'The suggested actions must fit to the setting of the story:' +
-			'\n' +
-			stringifyPretty(storySettingsMapped),
+				'\n' +
+				stringifyPretty(storySettingsMapped),
 			'Suggest actions according to the following description of the character temper, e.g. acting smart or with force, ...' +
-			'\n' +
-			stringifyPretty(characterDescription),
+				'\n' +
+				stringifyPretty(characterDescription),
 			'As an action, the character can make use of items from the inventory:' +
-			'\n' +
-			stringifyPretty(inventoryState),
+				'\n' +
+				stringifyPretty(inventoryState),
 			'Consider the following character stats only for dice_roll modifiers' +
-			'\n' +
-			stringifyPretty(characterStatsMapped),
+				'\n' +
+				stringifyPretty(characterStatsMapped),
 			`Most important instruction! You must always respond with following JSON format! 
       [
 				${this.jsonFormat},

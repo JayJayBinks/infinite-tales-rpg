@@ -10,7 +10,7 @@ export function stringifyPretty(object: unknown) {
 
 export function handleError(e: string) {
 	console.log(e);
-	if(!errorState.exception){
+	if (!errorState.exception) {
 		errorState.exception = e;
 		errorState.userMessage = e;
 	}

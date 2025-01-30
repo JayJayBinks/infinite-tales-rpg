@@ -96,14 +96,15 @@
 	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-		({} as GameActionState)
+			({} as GameActionState)
 	);
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
 	let customActionReceiver: 'Game Command' | 'Character' | 'GM Question' = $state('Character');
-	let customActionImpossibleReason: 'not_enough_mp' | 'not_plausible' | undefined = $state(undefined);
+	let customActionImpossibleReason: 'not_enough_mp' | 'not_plausible' | undefined =
+		$state(undefined);
 
 	//feature toggles
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
@@ -258,27 +259,27 @@
 			if (customActionImpossibleReason === 'not_enough_mp') {
 				chosenActionState.value = {
 					...chosenActionState.value,
-					action_difficulty: chosenActionState.value.action_difficulty === ActionDifficulty.simple
-						? ActionDifficulty.medium : chosenActionState.value.action_difficulty,
+					action_difficulty:
+						chosenActionState.value.action_difficulty === ActionDifficulty.simple
+							? ActionDifficulty.medium
+							: chosenActionState.value.action_difficulty,
 					dice_roll: {
 						modifier: chosenActionState.value.dice_roll!.modifier!,
-						modifier_explanation: chosenActionState.value.dice_roll!.modifier_explanation! + ' -3 for trying without enough MP.',
+						modifier_explanation:
+							chosenActionState.value.dice_roll!.modifier_explanation! +
+							' -3 for trying without enough MP.',
 						modifier_value: (chosenActionState.value.dice_roll?.modifier_value || 0) - 3
 					}
 				};
 			}
 			//either not enough mp or impossible, anyway no mp cost
 			chosenActionState.value.mp_cost = 0;
-			if(additionalActionInputState.value){
-				additionalActionInputState.value += '\nMP cost: 0'
-			}else{
-				additionalActionInputState.value = '\nMP cost: 0'
+			if (additionalActionInputState.value) {
+				additionalActionInputState.value += '\nMP cost: 0';
+			} else {
+				additionalActionInputState.value = '\nMP cost: 0';
 			}
-			await sendAction(
-				chosenActionState.value,
-				true,
-				additionalActionInputState.value
-			);
+			await sendAction(chosenActionState.value, true, additionalActionInputState.value);
 		}
 		customActionInput.value = '';
 		customActionImpossibleReason = undefined;
@@ -439,7 +440,7 @@
 			)[0];
 			if (
 				mappedCurrentPlotPoint >
-				campaignState.value.chapters[currentChapterState.value - 1].plot_points?.length ||
+					campaignState.value.chapters[currentChapterState.value - 1].plot_points?.length ||
 				mappedCampaignChapterId > currentChapterState.value
 			) {
 				additionalActionInput += startNextChapter();
@@ -826,7 +827,7 @@
 								levelUpClicked(characterState.value.name);
 							}}
 							class="text-md btn btn-success mb-3 w-full"
-						>Level up!
+							>Level up!
 						</button>
 					{/if}
 					<button
@@ -834,14 +835,14 @@
 							useSpellsAbilitiesModal.showModal();
 						}}
 						class="text-md btn btn-primary w-full"
-					>Spells & Abilities
+						>Spells & Abilities
 					</button>
 					<button
 						onclick={() => {
 							useItemsModal.showModal();
 						}}
 						class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
+						>Inventory
 					</button>
 				</div>
 			{:else}
@@ -864,30 +865,32 @@
 					bind:this={customActionInput}
 					class="input input-bordered w-full"
 					id="user-input"
-					placeholder={customActionReceiver === 'Character' ? "What do you want to do next?"
-					: customActionReceiver === 'GM Question' ? 'Message to the Game Master'
-					: 'Enter a command that will be executed without restrictions.'}
+					placeholder={customActionReceiver === 'Character'
+						? 'What do you want to do next?'
+						: customActionReceiver === 'GM Question'
+							? 'Message to the Game Master'
+							: 'Enter a command that will be executed without restrictions.'}
 				/>
 				<button
 					type="submit"
 					onclick={onCustomActionSubmitted}
 					class="btn btn-neutral"
 					id="submit-button"
-				>Submit
+					>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-      .btn {
-          height: fit-content;
-          padding: 1rem;
-      }
+		.btn {
+			height: fit-content;
+			padding: 1rem;
+		}
 
-      canvas {
-          height: 100%;
-          width: 100%;
-      }
+		canvas {
+			height: 100%;
+			width: 100%;
+		}
 	</style>
 </div>
