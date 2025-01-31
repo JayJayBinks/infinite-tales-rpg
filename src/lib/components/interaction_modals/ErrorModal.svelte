@@ -16,7 +16,7 @@
 		<span class="mt-2 max-w-sm sm:max-w-md"
 			>{(errorState.userMessage + '').replaceAll(',', ', ').replaceAll(':', ': ')}</span
 		>
-		{#if errorState.exception}
+		{#if errorState.exception && errorState.retryable}
 			<span class="mt-3"
 				>Please retry the action or reload the page. If the error persists report it in the Discord.</span
 			>

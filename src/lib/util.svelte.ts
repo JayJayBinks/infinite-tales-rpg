@@ -8,11 +8,12 @@ export function stringifyPretty(object: unknown) {
 	return JSON.stringify(object, null, 2);
 }
 
-export function handleError(e: string) {
+export function handleError(e: string, retryable = true) {
 	console.log(e);
 	if (!errorState.exception) {
 		errorState.exception = e;
 		errorState.userMessage = e;
+		errorState.retryable = retryable;
 	}
 }
 
