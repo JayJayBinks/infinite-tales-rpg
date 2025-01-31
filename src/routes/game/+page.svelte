@@ -102,7 +102,7 @@
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
-	let customActionReceiver: 'Game Command' | 'Character' | 'GM Question' = $state('Character');
+	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' = $state('Character Action');
 	let customActionImpossibleReason: 'not_enough_mp' | 'not_plausible' | undefined =
 		$state(undefined);
 
@@ -698,7 +698,7 @@
 			text: customActionInput.value,
 			is_custom_action: true
 		};
-		if (customActionReceiver === 'Character') {
+		if (customActionReceiver === 'Character Action') {
 			isAiGeneratingState = true;
 			const generatedAction = await actionAgent.generateSingleAction(
 				action,
@@ -853,9 +853,9 @@
 			{/if}
 		{/if}
 		<form id="input-form" class="p-4 pb-2">
-			<div class="join w-full">
-				<select bind:value={customActionReceiver} class="select select-bordered">
-					<option selected>Character</option>
+			<div class="lg:join w-full">
+				<select bind:value={customActionReceiver} class="select select-bordered w-full lg:w-fit">
+					<option selected>Character Action</option>
 					<option>Game Command</option>
 				</select>
 				<input
@@ -863,16 +863,16 @@
 					bind:this={customActionInput}
 					class="input input-bordered w-full"
 					id="user-input"
-					placeholder={customActionReceiver === 'Character'
-						? 'What do you want to do next?'
+					placeholder={customActionReceiver === 'Character Action'
+						? 'What are you up to?'
 						: customActionReceiver === 'GM Question'
 							? 'Message to the Game Master'
-							: 'Enter a command that will be executed without restrictions.'}
+							: 'Command without restrictions'}
 				/>
 				<button
 					type="submit"
 					onclick={onCustomActionSubmitted}
-					class="btn btn-neutral"
+					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
 					>Submit
 				</button>
