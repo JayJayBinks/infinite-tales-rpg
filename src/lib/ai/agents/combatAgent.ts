@@ -102,7 +102,7 @@ export class CombatAgent {
 		return state;
 	}
 
-	getAdditionalActionInput(
+	getAdditionalStoryInput(
 		actions: Array<Action>,
 		deadNPCs: string[],
 		aliveNPCs: string[],

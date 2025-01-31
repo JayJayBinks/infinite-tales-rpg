@@ -54,7 +54,7 @@ export class GameAgent {
 	/**
 	 *
 	 * @param actionText text from the user action, will be added to the historyMessages
-	 * @param additionalActionInput additional text to act as asinge message system instruction, e.g combat, not added to historyMessages
+	 * @param additionalStoryInput additional text to act as asinge message system instruction, e.g combat, not added to historyMessages
 	 * @param customSystemInstruction
 	 * @param historyMessages
 	 * @param storyState
@@ -63,7 +63,7 @@ export class GameAgent {
 	 */
 	async generateStoryProgression(
 		action: Action,
-		additionalActionInput: string,
+		additionalStoryInput: string,
 		customSystemInstruction: string,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
@@ -78,7 +78,7 @@ export class GameAgent {
 		}
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
-		if (additionalActionInput) combinedText += '\n\n' + additionalActionInput;
+		if (additionalStoryInput) combinedText += '\n\n' + additionalStoryInput;
 		const gameAgent = [
 			systemBehaviour,
 			stringifyPretty(storyState),

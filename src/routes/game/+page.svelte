@@ -82,7 +82,7 @@
 
 	const npcState = useLocalStorage<NPCState>('npcState', {});
 	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
-	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState');
+	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState');
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	let levelUpState = useLocalStorage<{
@@ -156,14 +156,13 @@
 					characterState.value,
 					characterStatsState.value,
 					inventoryState.value,
-					additionalActionInputState.value,
 					customSystemInstruction.value
 				);
 			}
 			renderGameState(currentGameActionState, characterActionsState.value);
 		}
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog(additionalActionInputState.value);
+			openDiceRollDialog(additionalStoryInputState.value);
 		}
 		checkForLevelUp();
 	});
@@ -228,29 +227,29 @@
 			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
 			.map((npc) => npc?.nameId);
 
-		let additionalActionInput = combatAgent.getAdditionalActionInput(
+		let additionalStoryInput = combatAgent.getAdditionalStoryInput(
 			determinedActionsAndStatsUpdate.actions,
 			deadNPCs,
 			aliveNPCs,
 			playerCharactersGameState
 		);
-		return { additionalActionInput, determinedActionsAndStatsUpdate };
+		return { additionalStoryInput, determinedActionsAndStatsUpdate };
 	}
 
-	function openDiceRollDialog(additionalActionInput: string) {
+	function openDiceRollDialog(additionalStoryInput: string) {
 		//TODO showModal can not be used because it hides the dice roll
 		didAIProcessDiceRollActionState.value = false;
 		diceRollDialog.show();
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
-			let actionText = chosenActionState.value.text + '\n ' + diceRollDialog.returnValue;
-			sendAction({ ...chosenActionState.value, text: actionText }, false, additionalActionInput);
+			additionalStoryInput = (additionalStoryInput || '') +  '\n ' + diceRollDialog.returnValue;
+			sendAction(chosenActionState.value, false, additionalStoryInput);
 		});
 	}
 
 	function handleAIError() {
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog(additionalActionInputState.value);
+			openDiceRollDialog(additionalStoryInputState.value);
 		}
 	}
 
@@ -274,12 +273,12 @@
 			}
 			//either not enough mp or impossible, anyway no mp cost
 			chosenActionState.value.mp_cost = 0;
-			if (additionalActionInputState.value) {
-				additionalActionInputState.value += '\nMP cost: 0';
+			if (additionalStoryInputState.value) {
+				additionalStoryInputState.value += '\nMP cost: 0';
 			} else {
-				additionalActionInputState.value = '\nMP cost: 0';
+				additionalStoryInputState.value = '\nMP cost: 0';
 			}
-			await sendAction(chosenActionState.value, true, additionalActionInputState.value);
+			await sendAction(chosenActionState.value, true, additionalStoryInputState.value);
 		}
 		customActionInput.value = '';
 		customActionImpossibleReason = undefined;
@@ -287,23 +286,23 @@
 
 	async function getCombatAndNPCState(action: Action) {
 		let deadNPCs: string[] = [];
-		let additionalActionInput = '';
+		let additionalStoryInput = '';
 		let allCombatDeterminedActionsAndStatsUpdate;
 		if (!isGameEnded.value && currentGameActionState.is_character_in_combat) {
-			additionalActionInput += combatAgent.getCombatPromptAddition();
+			additionalStoryInput += combatAgent.getCombatPromptAddition();
 			if (useDynamicCombat.value) {
 				let combatObject = await getActionPromptForCombat(action);
-				additionalActionInput += combatObject.additionalActionInput;
+				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
 			} else {
 				deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-				additionalActionInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+				additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
 			}
 		} else {
 			deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-			additionalActionInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+			additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		}
-		return { additionalActionInput, allCombatDeterminedActionsAndStatsUpdate };
+		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
 	}
 
 	async function checkGameEnded() {
@@ -319,7 +318,7 @@
 
 	function resetStatesAfterActionProcessed() {
 		chosenActionState.reset();
-		additionalActionInputState.reset();
+		additionalStoryInputState.reset();
 		characterActionsState.reset();
 		actionsDiv.innerHTML = '';
 		customActionInput.value = '';
@@ -405,7 +404,7 @@
 		}
 	}
 
-	async function advanceChapterIfApplicable(action: Action, additionalActionInput: string) {
+	async function advanceChapterIfApplicable(action: Action, additionalStoryInput: string) {
 		if (
 			didAIProcessActionState.value &&
 			campaignState.value.chapters &&
@@ -421,7 +420,7 @@
 				console.log(stringifyPretty(campaignDeviations));
 				if (campaignDeviations) {
 					if (campaignDeviations.deviation > 70) {
-						additionalActionInput +=
+						additionalStoryInput +=
 							'\n' +
 							campaignDeviations.plotNudge.nudgeExplanation +
 							'\n' +
@@ -443,52 +442,52 @@
 					campaignState.value.chapters[currentChapterState.value - 1].plot_points?.length ||
 				mappedCampaignChapterId > currentChapterState.value
 			) {
-				additionalActionInput += startNextChapter();
+				additionalStoryInput += startNextChapter();
 			}
 		}
-		return additionalActionInput;
+		return additionalStoryInput;
 	}
 
-	function addAdditionsFromActionSideeffects(action: Action, additionalActionInput: string) {
+	function addAdditionsFromActionSideeffects(action: Action, additionalStoryInput: string) {
 		if ((action.is_straightforward + '').includes('false')) {
-			additionalActionInput += '\n' + SLOW_STORY_PROMPT;
+			additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
 		}
 		const encounterString = '' + action.enemyEncounterExplanation;
 		if (encounterString.includes('high') && !encounterString.includes('low')) {
-			additionalActionInput +=
+			additionalStoryInput +=
 				'\nenemyEncounter: ' +
 				action.enemyEncounterExplanation +
 				' Players take first turn, wait for their action.';
 		}
-		if (!additionalActionInput.includes('sudo')) {
-			additionalActionInput +=
+		if (!additionalStoryInput.includes('sudo')) {
+			additionalStoryInput +=
 				'\n' + 'Before responding always review the system instructions and apply the given rules.';
 		}
-		return additionalActionInput;
+		return additionalStoryInput;
 	}
 
-	async function sendAction(action: Action, rollDice = false, additionalActionInput = '') {
+	async function sendAction(action: Action, rollDice = false, additionalStoryInput = '') {
 		try {
 			if (rollDice) {
-				openDiceRollDialog(additionalActionInput);
+				openDiceRollDialog(additionalStoryInput);
 			} else {
 				isAiGeneratingState = true;
-				additionalActionInput = additionalActionInput || '';
+				additionalStoryInput = additionalStoryInput || '';
 				const combatAndNPCState = await getCombatAndNPCState(action);
 
 				if (campaignState.value?.chapters?.length > 0) {
-					additionalActionInput = await advanceChapterIfApplicable(action, additionalActionInput);
+					additionalStoryInput = await advanceChapterIfApplicable(action, additionalStoryInput);
 				}
-				additionalActionInput += combatAndNPCState.additionalActionInput;
-				additionalActionInput = addAdditionsFromActionSideeffects(action, additionalActionInput);
-				//additionalActionInput += '\nIn a conversation always include the NPC response!';
-				//TODO additionalActionInput += '\nInclude the actions for this scene of all currently_present_npcs';
+				additionalStoryInput += combatAndNPCState.additionalStoryInput;
+				additionalStoryInput = addAdditionsFromActionSideeffects(action, additionalStoryInput);
+				//additionalStoryInput += '\nIn a conversation always include the NPC response!';
+				//TODO additionalStoryInput += '\nInclude the actions for this scene of all currently_present_npcs';
 
-				additionalActionInputState.value = additionalActionInput;
+				additionalStoryInputState.value = additionalStoryInput;
 				didAIProcessActionState.value = false;
 				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 					action,
-					additionalActionInput,
+					additionalStoryInput,
 					customSystemInstruction.value,
 					historyMessagesState.value,
 					storyState.value,
@@ -536,7 +535,6 @@
 								characterState.value,
 								characterStatsState.value,
 								inventoryState.value,
-								additionalActionInput,
 								customSystemInstruction.value
 							)
 							.then((actions) => {
@@ -627,7 +625,7 @@
 			sendAction(
 				chosenActionState.value,
 				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat),
-				additionalActionInputState.value
+				additionalStoryInputState.value
 			);
 		});
 		actionsDiv.appendChild(button);
@@ -668,10 +666,11 @@
 			'\n Hostile NPCs stay hostile unless explicitly described otherwise by the actions effect.' +
 			'\n Friendly NPCs turn hostile if attacked.';
 
+		additionalStoryInputState.value = targetAddition + abilityAddition + (additionalStoryInputState.value || '');
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
-			targetAddition + abilityAddition + (additionalActionInputState.value || '')
+			additionalStoryInputState.value
 		);
 		isAiGeneratingState = false;
 	};
@@ -709,7 +708,6 @@
 				characterState.value,
 				characterStatsState.value,
 				inventoryState.value,
-				additionalActionInputState.value,
 				customSystemInstruction.value
 			);
 			console.log('action', stringifyPretty(action));
