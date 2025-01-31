@@ -109,16 +109,16 @@ export class GeminiProvider extends LLM {
 		try {
 			result = await model.generateContent({ contents, systemInstruction });
 		} catch (e) {
-			if (e instanceof Error && e.message.includes('503')) {
-				//TODO
-				e.message =
-					'The Gemini AI is overloaded! You can try again or wait some time if this happens often now.';
-				handleError(e.message);
-				return undefined;
-			} else {
-				handleError(e as string);
+			if (e instanceof Error) {
+				if (e.message.includes('503') || e.message.includes('500')) {
+					e.message =
+						'The Gemini AI is overloaded! You can try again or wait some time if this happens often now.';
+				}
+				handleError(e.message, false);
 				return undefined;
 			}
+			handleError(e as string);
+			return undefined;
 		}
 		try {
 			let reasoning;
