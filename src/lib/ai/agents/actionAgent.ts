@@ -54,6 +54,7 @@ export class ActionAgent {
 			`You are RPG action agent, you are given a RPG story and one action the player wants to perform then determine difficulty, mp cost etc. considering the story, currently_present_npcs and character traits.
 				Action Rules:
 				- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
+				- For puzzles, the player —not the character— must solve them. Offer a set of possible actions, including both correct and incorrect choices.
 				- Any action is allowed to target anything per game rules.`,
 			'The suggested action must fit to the setting of the story:' +
 				'\n' +
