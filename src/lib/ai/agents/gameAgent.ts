@@ -43,6 +43,11 @@ export type GameActionState = {
 	is_character_in_combat: boolean;
 	currently_present_npcs: Targets;
 };
+export type GameMasterAnswer = {
+	answerToPlayer: string,
+	rules_considered: Array<string>,
+	game_state_considered: string
+}
 
 export class GameAgent {
 	llm: LLM;
@@ -79,21 +84,10 @@ export class GameAgent {
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
 		if (additionalStoryInput) combinedText += '\n\n' + additionalStoryInput;
-		const gameAgent = [
-			systemBehaviour,
-			stringifyPretty(storyState),
-			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-				'\n' +
-				stringifyPretty(characterState),
-			"The following are the character's CURRENT resources, consider it in your response\n" +
-				stringifyPretty(playerCharactersGameState),
-			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
-				stringifyPretty(inventoryState),
-			jsonSystemInstruction
-		];
-		if (customSystemInstruction) {
-			gameAgent.push(customSystemInstruction);
-		}
+
+		const gameAgent = this.getGameAgentSystemInstructionsFromStates(storyState, characterState, playerCharactersGameState, inventoryState, customSystemInstruction);
+		gameAgent.push(jsonSystemInstructionForGameAgent);
+
 		console.log(combinedText);
 		const request: LLMRequest = {
 			userMessage: combinedText,
@@ -111,6 +105,54 @@ export class GameAgent {
 		return { newState, updatedHistoryMessages };
 	}
 
+	async generateAnswerForPlayerQuestion(
+		question: string,
+		customSystemInstruction: string,
+		historyMessages: Array<LLMMessage>,
+		storyState: Story,
+		characterState: CharacterDescription,
+		playerCharactersGameState: PlayerCharactersGameState,
+		inventoryState: InventoryState
+	): Promise<GameMasterAnswer> {
+
+		const gameAgent = ['You are Reviewer Agent, your task is to answer a players question.\n' +
+		'You can refer to the internal state, rules and previous messages that the Game Master has considered',
+			jsonSystemInstructionForPlayerQuestion];
+
+		const userMessage =
+			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question: ' + question +
+			'\nIn your answer, identify the relevant Game Master\'s rules that are related to the question:\n' +
+			'Game Master\'s rules:\n' +
+			this.getGameAgentSystemInstructionsFromStates(storyState, characterState, playerCharactersGameState, inventoryState, customSystemInstruction)
+				.join('\n');
+
+		const request: LLMRequest = {
+			userMessage: userMessage,
+			historyMessages: historyMessages,
+			systemInstruction: gameAgent
+		};
+		return (await this.llm.generateReasoningContent(request))
+			?.parsedObject as GameMasterAnswer;
+	}
+
+	private getGameAgentSystemInstructionsFromStates(storyState: Story, characterState: CharacterDescription, playerCharactersGameState: PlayerCharactersGameState, inventoryState: InventoryState, customSystemInstruction: string) {
+		const gameAgent = [
+			systemBehaviour,
+			stringifyPretty(storyState),
+			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
+			'\n' +
+			stringifyPretty(characterState),
+			'The following are the character\'s CURRENT resources, consider it in your response\n' +
+			stringifyPretty(playerCharactersGameState),
+			'The following is the character\'s inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n' +
+			stringifyPretty(inventoryState)
+		];
+		if (customSystemInstruction) {
+			gameAgent.push(customSystemInstruction);
+		}
+		return gameAgent;
+	}
+
 	getGameEndedPrompt() {
 		return 'The CHARACTER has fallen to 0 HP and is dying.';
 	}
@@ -124,7 +166,7 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function (userText: string, modelStateObject: GameActionState) {
+	buildHistoryMessages = function(userText: string, modelStateObject: GameActionState) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
@@ -218,7 +260,7 @@ NPC Interactions:
 
 Always review context from system instructions and my last message before responding.`;
 
-const jsonSystemInstruction = `Important Instruction! You must always respond with valid JSON in the following format:
+const jsonSystemInstructionForGameAgent = `Important Instruction! You must always respond with valid JSON in the following format:
 {
   "currentPlotPoint": Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
   "nextPlotPoint": Identify the next plotId according to ADVENTURE_AND_MAIN_EVENT, must be greater than currentPlotPoint or null if there is no next plot point; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
@@ -248,4 +290,11 @@ const jsonSystemInstruction = `Important Instruction! You must always respond wi
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
   "currently_present_npcs": List of NPCs or party members that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
+}`;
+
+const jsonSystemInstructionForPlayerQuestion = `Important Instruction! You must always respond with valid JSON in the following format:
+{
+  "game_state_considered": Brief explanation on how the game state is involved in the answer; mention relevant variables explicitly,
+  "rules_considered": String Array; Identify the relevant Game Master's rules that are related to the question; Include the exact text of a rule,
+  "answerToPlayer": Answer outside of character, do not describe the story, but give an explanation
 }`;

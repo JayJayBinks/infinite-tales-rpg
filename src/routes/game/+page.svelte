@@ -40,9 +40,9 @@
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import { applyLevelUp, getXPNeededForLevel } from './levelLogic';
 	import LevelUpModal from '$lib/components/interaction_modals/LevelUpModal.svelte';
-	import isEqual from 'lodash.isequal';
 	import { migrateIfApplicable } from '$lib/state/versionMigration';
 	import ImpossibleActionModal from '$lib/components/interaction_modals/ImpossibleActionModal.svelte';
+	import GMQuestionModal from '$lib/components/interaction_modals/GMQuestionModal.svelte';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -84,7 +84,7 @@
 	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
 	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState');
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
-	let playerCharactersGameState: PlayerCharactersGameState = $state({});
+	let playerCharactersGameState = $state({});
 	let levelUpState = useLocalStorage<{
 		buttonEnabled: boolean;
 		dialogOpened: boolean;
@@ -96,15 +96,17 @@
 	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-			({} as GameActionState)
+		({} as GameActionState)
 	);
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
 	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' = $state('Character Action');
-	let customActionImpossibleReason: 'not_enough_mp' | 'not_plausible' | undefined =
+	let customActionImpossibleReasonState: 'not_enough_mp' | 'not_plausible' | undefined =
 		$state(undefined);
+
+	let gmQuestionState: string = $state('');
 
 	//feature toggles
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
@@ -132,7 +134,7 @@
 		playerCharactersGameState = {
 			[characterState.value.name]: { currentHP: 0, currentMP: 0, xp: 0 }
 		};
-		if (isEqual(currentGameActionState, {})) {
+		if (!currentGameActionState?.story) {
 			if (!currentGameActionState?.stats_update) {
 				handleStartingStats(playerCharactersGameState, characterState.value.name);
 			}
@@ -242,7 +244,7 @@
 		diceRollDialog.show();
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
-			additionalStoryInput = (additionalStoryInput || '') +  '\n ' + diceRollDialog.returnValue;
+			additionalStoryInput = (additionalStoryInput || '') + '\n ' + diceRollDialog.returnValue;
 			sendAction(chosenActionState.value, false, additionalStoryInput);
 		});
 	}
@@ -255,7 +257,7 @@
 
 	async function handleImpossibleAction(tryAnyway: boolean) {
 		if (tryAnyway) {
-			if (customActionImpossibleReason === 'not_enough_mp') {
+			if (customActionImpossibleReasonState === 'not_enough_mp') {
 				chosenActionState.value = {
 					...chosenActionState.value,
 					action_difficulty:
@@ -281,7 +283,7 @@
 			await sendAction(chosenActionState.value, true, additionalStoryInputState.value);
 		}
 		customActionInput.value = '';
-		customActionImpossibleReason = undefined;
+		customActionImpossibleReasonState = undefined;
 	}
 
 	async function getCombatAndNPCState(action: Action) {
@@ -439,7 +441,7 @@
 			)[0];
 			if (
 				mappedCurrentPlotPoint >
-					campaignState.value.chapters[currentChapterState.value - 1].plot_points?.length ||
+				campaignState.value.chapters[currentChapterState.value - 1].plot_points?.length ||
 				mappedCampaignChapterId > currentChapterState.value
 			) {
 				additionalStoryInput += startNextChapter();
@@ -714,15 +716,15 @@
 			action = { ...generatedAction, ...action };
 			chosenActionState.value = action;
 			if (action.is_possible === false) {
-				customActionImpossibleReason = 'not_plausible';
+				customActionImpossibleReasonState = 'not_plausible';
 			} else {
 				const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
 				const isEnoughMP =
 					mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
 				if (!isEnoughMP) {
-					customActionImpossibleReason = 'not_enough_mp';
+					customActionImpossibleReasonState = 'not_enough_mp';
 				} else {
-					customActionImpossibleReason = undefined;
+					customActionImpossibleReasonState = undefined;
 					await sendAction(
 						action,
 						gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
@@ -731,6 +733,9 @@
 			}
 			isAiGeneratingState = false;
 		}
+		if (customActionReceiver === 'GM Question') {
+			gmQuestionState = action.text;
+		}
 		if (customActionReceiver === 'Game Command') {
 			await sendAction(
 				action,
@@ -738,6 +743,12 @@
 				'\nsudo: Ignore the rules and play out this action even if it should not be possible!'
 			);
 		}
+	};
+	const onGMQuestionClosed = (closedByPlayer: boolean) => {
+		if (closedByPlayer) {
+			customActionInput.value = '';
+		}
+		gmQuestionState = '';
 	};
 </script>
 
@@ -748,8 +759,12 @@
 	{#if errorState.userMessage}
 		<ErrorDialog onclose={handleAIError} />
 	{/if}
-	{#if customActionImpossibleReason}
+	{#if customActionImpossibleReasonState}
 		<ImpossibleActionModal action={chosenActionState.value} onclose={handleImpossibleAction} />
+	{/if}
+	{#if gmQuestionState}
+		<GMQuestionModal onclose={onGMQuestionClosed} question={gmQuestionState}
+										 {playerCharactersGameState} />
 	{/if}
 	<UseSpellsAbilitiesModal
 		bind:dialogRef={useSpellsAbilitiesModal}
@@ -825,7 +840,7 @@
 								levelUpClicked(characterState.value.name);
 							}}
 							class="text-md btn btn-success mb-3 w-full"
-							>Level up!
+						>Level up!
 						</button>
 					{/if}
 					<button
@@ -833,14 +848,14 @@
 							useSpellsAbilitiesModal.showModal();
 						}}
 						class="text-md btn btn-primary w-full"
-						>Spells & Abilities
+					>Spells & Abilities
 					</button>
 					<button
 						onclick={() => {
 							useItemsModal.showModal();
 						}}
 						class="text-md btn btn-primary mt-3 w-full"
-						>Inventory
+					>Inventory
 					</button>
 				</div>
 			{:else}
@@ -857,6 +872,7 @@
 				<select bind:value={customActionReceiver} class="select select-bordered w-full lg:w-fit">
 					<option selected>Character Action</option>
 					<option>Game Command</option>
+					<option>GM Question</option>
 				</select>
 				<input
 					type="text"
@@ -874,21 +890,21 @@
 					onclick={onCustomActionSubmitted}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
-					>Submit
+				>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-		.btn {
-			height: fit-content;
-			padding: 1rem;
-		}
+      .btn {
+          height: fit-content;
+          padding: 1rem;
+      }
 
-		canvas {
-			height: 100%;
-			width: 100%;
-		}
+      canvas {
+          height: 100%;
+          width: 100%;
+      }
 	</style>
 </div>
