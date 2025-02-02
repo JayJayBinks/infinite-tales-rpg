@@ -136,7 +136,6 @@ export class GeminiProvider extends LLM {
 				return undefined;
 			}
 			try {
-				console.log(reasoning, json);
 				return {
 					reasoning,
 					parsedObject: JSON.parse(json.replaceAll('```json', '').replaceAll('```', ''))
