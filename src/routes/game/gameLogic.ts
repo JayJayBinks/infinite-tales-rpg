@@ -286,3 +286,8 @@ export function applyGameActionStates(
 export function getGameEndedMessage() {
 	return 'Your Tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new Tale in the menu.';
 }
+
+export function isEnoughMP(action: Action, currentMP: number){
+	const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
+	return mpCost === 0 || currentMP >= mpCost;
+}

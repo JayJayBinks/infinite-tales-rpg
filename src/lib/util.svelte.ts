@@ -3,6 +3,7 @@ import isPlainObject from 'lodash.isplainobject';
 import isString from 'lodash.isstring';
 import * as pdfjs from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
+import type { Action } from '$lib/ai/agents/gameAgent';
 
 export function stringifyPretty(object: unknown) {
 	return JSON.stringify(object, null, 2);
@@ -163,4 +164,25 @@ export function playAudioFromStream(text, voice, onended?): HTMLAudioElement {
 
 export function getTTSUrl(text, voice) {
 	return '/api/edgeTTSStream?voice=' + encodeURI(voice) + '&text=' + encodeURI(text);
+}
+
+export function getTextForActionButton(action: Action) {
+	let text = '';
+	const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
+
+	if (mpCost > 0) {
+		const mpString = ' (' + mpCost + ' MP).';
+		text = action.text.replaceAll('.', '');
+		text += mpString;
+	} else {
+		const hasEndingChar =
+			action.text.endsWith('.') ||
+			action.text.endsWith('. ') ||
+			action.text.endsWith('! ') ||
+			action.text.endsWith('!') ||
+			action.text.endsWith('? ') ||
+			action.text.endsWith('?');
+		text += hasEndingChar ? action.text : action.text + '.';
+	}
+	return text;
 }

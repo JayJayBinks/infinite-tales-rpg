@@ -5,12 +5,13 @@
 		type GameActionState,
 		GameAgent,
 		type InventoryState,
+		type Item,
 		type PlayerCharactersGameState,
 		SLOW_STORY_PROMPT
 	} from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
 	import { onMount, tick } from 'svelte';
-	import { handleError, stringifyPretty } from '$lib/util.svelte';
+	import { getTextForActionButton, handleError, stringifyPretty } from '$lib/util.svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import StoryProgressionWithImage from '$lib/components/StoryProgressionWithImage.svelte';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
@@ -24,7 +25,7 @@
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
-	import { ActionDifficulty } from './gameLogic';
+	import { ActionDifficulty, isEnoughMP, mustRollDice } from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
@@ -43,6 +44,7 @@
 	import { migrateIfApplicable } from '$lib/state/versionMigration';
 	import ImpossibleActionModal from '$lib/components/interaction_modals/ImpossibleActionModal.svelte';
 	import GMQuestionModal from '$lib/components/interaction_modals/GMQuestionModal.svelte';
+	import SuggestedActionsModal from '$lib/components/interaction_modals/SuggestedActionsModal.svelte';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -84,7 +86,7 @@
 	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
 	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState');
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
-	let playerCharactersGameState = $state({});
+	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	let levelUpState = useLocalStorage<{
 		buttonEnabled: boolean;
 		dialogOpened: boolean;
@@ -107,6 +109,7 @@
 		$state(undefined);
 
 	let gmQuestionState: string = $state('');
+	let itemForSuggestActionsState: Item & { item_id: string } | undefined = $state();
 
 	//feature toggles
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
@@ -559,19 +562,12 @@
 
 	function renderGameState(
 		state: GameActionState,
-		actions: Array<Action>,
-		addContinueStory = true
+		actions: Array<Action>
 	) {
 		if (!isGameEnded.value) {
 			actions.forEach((action) =>
 				addActionButton(action, state.is_character_in_combat, 'ai-gen-action')
 			);
-			if (addContinueStory) {
-				addActionButton({
-					characterName: characterState.value.name,
-					text: 'Continue The Tale'
-				});
-			}
 			actionsTextForTTS =
 				Array.from(document.querySelectorAll('.ai-gen-action'))
 					.map((elm) => elm.textContent || '')
@@ -602,24 +598,8 @@
 		if (addClass) {
 			button.className += ' ' + addClass;
 		}
-		const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-		const isEnoughMP =
-			mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
-		if (mpCost > 0) {
-			const mpString = ' (' + mpCost + ' MP).';
-			button.textContent = action.text.replaceAll('.', '');
-			button.textContent += mpString;
-		} else {
-			const hasEndingChar =
-				action.text.endsWith('.') ||
-				action.text.endsWith('. ') ||
-				action.text.endsWith('! ') ||
-				action.text.endsWith('!') ||
-				action.text.endsWith('? ') ||
-				action.text.endsWith('?');
-			button.textContent += hasEndingChar ? action.text : action.text + '.';
-		}
-		if (!isEnoughMP) {
+		button.textContent = getTextForActionButton(action);
+		if (!isEnoughMP(action, playerCharactersGameState[characterState.value.name].currentMP)) {
 			button.disabled = true;
 		}
 		button.addEventListener('click', () => {
@@ -644,6 +624,10 @@
 			}
 		});
 	}
+
+	const onItemUseChosen = async (item: Action & Item & { item_id: string }) => {
+		itemForSuggestActionsState = item;
+	};
 
 	const onTargetedSpellsOrAbility = async (action: Action, targets: string[]) => {
 		isAiGeneratingState = true;
@@ -690,9 +674,55 @@
 		checkForLevelUp();
 	};
 
+	const onSuggestItemActionClosed = (action?: Action) => {
+		if (action) {
+			if (action.is_custom_action) {
+				generateActionFromCustomInput(action);
+			} else {
+				chosenActionState.value = $state.snapshot(action);
+				sendAction(action, mustRollDice(action, currentGameActionState.is_character_in_combat));
+			}
+		}
+		itemForSuggestActionsState = undefined;
+	};
+
 	function getCurrentXPText() {
 		return `XP: ${playerCharactersGameState[characterState.value.name]?.xp}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
 	}
+
+	const generateActionFromCustomInput = async (action: Action) => {
+		isAiGeneratingState = true;
+		const generatedAction = await actionAgent.generateSingleAction(
+			action,
+			currentGameActionState,
+			historyMessagesState.value,
+			storyState.value,
+			characterState.value,
+			characterStatsState.value,
+			inventoryState.value,
+			customSystemInstruction.value
+		);
+		console.log('action', stringifyPretty(action));
+		action = { ...generatedAction, ...action };
+		chosenActionState.value = action;
+		if (action.is_possible === false) {
+			customActionImpossibleReasonState = 'not_plausible';
+		} else {
+			const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
+			const isEnoughMP =
+				mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
+			if (!isEnoughMP) {
+				customActionImpossibleReasonState = 'not_enough_mp';
+			} else {
+				customActionImpossibleReasonState = undefined;
+				await sendAction(
+					action,
+					gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
+				);
+			}
+		}
+		isAiGeneratingState = false;
+	};
 
 	const onCustomActionSubmitted = async () => {
 		let action: Action = {
@@ -701,37 +731,7 @@
 			is_custom_action: true
 		};
 		if (customActionReceiver === 'Character Action') {
-			isAiGeneratingState = true;
-			const generatedAction = await actionAgent.generateSingleAction(
-				action,
-				currentGameActionState,
-				historyMessagesState.value,
-				storyState.value,
-				characterState.value,
-				characterStatsState.value,
-				inventoryState.value,
-				customSystemInstruction.value
-			);
-			console.log('action', stringifyPretty(action));
-			action = { ...generatedAction, ...action };
-			chosenActionState.value = action;
-			if (action.is_possible === false) {
-				customActionImpossibleReasonState = 'not_plausible';
-			} else {
-				const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-				const isEnoughMP =
-					mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
-				if (!isEnoughMP) {
-					customActionImpossibleReasonState = 'not_enough_mp';
-				} else {
-					customActionImpossibleReasonState = undefined;
-					await sendAction(
-						action,
-						gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
-					);
-				}
-			}
-			isAiGeneratingState = false;
+			await generateActionFromCustomInput(action);
 		}
 		if (customActionReceiver === 'GM Question') {
 			gmQuestionState = action.text;
@@ -780,9 +780,13 @@
 		playerName={characterState.value.name}
 		inventoryState={inventoryState.value}
 		storyImagePrompt={storyState.value.general_image_prompt}
-		targets={currentGameActionState.currently_present_npcs}
-		onclose={onTargetedSpellsOrAbility}
+		onclose={onItemUseChosen}
 	></UseItemsModal>
+	{#if itemForSuggestActionsState}
+		<SuggestedActionsModal onclose={onSuggestItemActionClosed}
+													 currentMP={playerCharactersGameState[characterState.value.name].currentMP}
+													 {itemForSuggestActionsState} {currentGameActionState} />
+	{/if}
 	{#if levelUpState.value?.dialogOpened}
 		<LevelUpModal onclose={onLevelUpModalClosed} />
 	{/if}
@@ -832,33 +836,7 @@
 	<div id="actions" bind:this={actionsDiv} class="mt-2 p-4 pb-0 pt-0"></div>
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}
-			{#if characterActionsState.value?.length > 0}
-				<div id="static-actions" class="p-4 pb-0 pt-0">
-					{#if levelUpState.value.buttonEnabled}
-						<button
-							onclick={() => {
-								levelUpClicked(characterState.value.name);
-							}}
-							class="text-md btn btn-success mb-3 w-full"
-						>Level up!
-						</button>
-					{/if}
-					<button
-						onclick={() => {
-							useSpellsAbilitiesModal.showModal();
-						}}
-						class="text-md btn btn-primary w-full"
-					>Spells & Abilities
-					</button>
-					<button
-						onclick={() => {
-							useItemsModal.showModal();
-						}}
-						class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
-					</button>
-				</div>
-			{:else}
+			{#if characterActionsState.value?.length === 0}
 				<div class="flex flex-col">
 					<span class="m-auto">Generating next actions...</span>
 					<div class="m-auto">
@@ -866,6 +844,40 @@
 					</div>
 				</div>
 			{/if}
+			<div id="static-actions" class="p-4 pb-0 pt-0">
+				<button
+					onclick={() => sendAction({
+					characterName: characterState.value.name,
+					text: 'Continue The Tale'
+				})}
+					class="text-md btn btn-neutral mb-3 w-full"
+				>Continue The Tale.
+				</button>
+
+				{#if levelUpState.value.buttonEnabled}
+					<button
+						onclick={() => {
+								levelUpClicked(characterState.value.name);
+							}}
+						class="text-md btn btn-success mb-3 w-full"
+					>Level up!
+					</button>
+				{/if}
+				<button
+					onclick={() => {
+							useSpellsAbilitiesModal.showModal();
+						}}
+					class="text-md btn btn-primary w-full"
+				>Spells & Abilities
+				</button>
+				<button
+					onclick={() => {
+							useItemsModal.showModal();
+						}}
+					class="text-md btn btn-primary mt-3 w-full"
+				>Inventory
+				</button>
+			</div>
 		{/if}
 		<form id="input-form" class="p-4 pb-2">
 			<div class="lg:join w-full">

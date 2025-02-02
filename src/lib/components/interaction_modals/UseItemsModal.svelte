@@ -1,11 +1,9 @@
 <script lang="ts">
-	import TargetModal from '$lib/components/interaction_modals/TargetModal.svelte';
 	import {
 		type Action,
 		GameAgent,
 		type InventoryState,
-		type Item,
-		type Targets
+		type Item, type ItemWithId
 	} from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { formatItemId } from '../../../routes/game/gameLogic';
@@ -14,25 +12,20 @@
 		inventoryState,
 		playerName,
 		storyImagePrompt,
-		targets,
 		onclose,
 		dialogRef = $bindable()
 	}: {
 		inventoryState: InventoryState;
 		playerName: string;
 		storyImagePrompt: string;
-		targets: Targets;
 		onclose;
 		dialogRef;
 	} = $props();
 
-	// eslint-disable-next-line svelte/valid-compile
-	let targetModalRef;
-	let action = $state({} as Action);
-
-	function mapToAction(item_id: string, item: Item) {
-		action = {
+	function mapToAction(item_id: string, item: Item): ItemWithId & Action{
+		return {
 			...item,
+			item_id,
 			type: 'Misc.',
 			characterName: playerName,
 			text: playerName + ' uses ' + item_id + ': ' + item.effect
@@ -40,9 +33,6 @@
 	}
 </script>
 
-{#if targets}
-	<TargetModal bind:dialogRef={targetModalRef} {targets} {action} {onclose}></TargetModal>
-{/if}
 <dialog bind:this={dialogRef} class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
 	<div class="modal-box flex flex-col items-center">
 		<form method="dialog">
@@ -77,23 +67,28 @@
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
 									onclick={() => {
-										mapToAction(item_id, item);
 										dialogRef.close();
-										targetModalRef.showModal();
+										onclose(mapToAction(item_id, item));
 									}}
 								>
-									Use
+									Suggest Actions
 								</button>
 							</div>
 						</div>
 					</summary>
-					<div class="collapse-content">
+					<div class="collapse-content flex justify-center flex-col items-center">
 						<p class="m-5 mt-2">
 							{item.effect}
 						</p>
 						<p class="m-5 mt-2">
 							{item.description}
 						</p>
+						<button
+							class="components btn btn-error no-animation btn-sm m-auto mt-2"
+							onclick={() => delete inventoryState[item_id]}
+						>
+							Delete
+						</button>
 					</div>
 				</details>
 			</label>

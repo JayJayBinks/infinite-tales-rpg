@@ -3,7 +3,7 @@ import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
-import { type Action, type GameActionState, type InventoryState } from '$lib/ai/agents/gameAgent';
+import { type Action, type GameActionState, type InventoryState, type Item } from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
 export class ActionAgent {
@@ -88,6 +88,17 @@ export class ActionAgent {
 		return (await this.llm.generateReasoningContent(request))?.parsedObject as Action;
 	}
 
+	private readonly actionRules = `Action Rules:
+		- Always provide at least 3 potential actions the CHARACTER can take, fitting the THEME.
+		- Keep the actions text short, max 20 words.
+		- as action text never mention meta elements like stats or difficulty, only use an in-game story driven description
+		- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
+		- NPCs and CHARACTER cannot simply be finished off with a single attack.
+		- Any action is allowed to target anything per game rules.
+		- Suggest actions that make creative use of environmental features or interactions with NPCs when possible.
+		- Only suggest actions that are plausible in the current situation.
+		- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points`;
+
 	async generateActions(
 		currentGameState: GameActionState,
 		historyMessages: Array<LLMMessage>,
@@ -104,17 +115,8 @@ export class ActionAgent {
 		const { ['spells_and_abilities']: __, ...characterStatsMapped } = characterStats;
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 		const agent = [
-			`You are RPG action agent, you are given a RPG story and then suggest the next action the player character can take, considering the story, currently_present_npcs and character traits.
-				Action Rules:
-				- Always provide at least 3 potential actions the CHARACTER can take, fitting the THEME.
-				- Keep the actions text short, max 20 words.
-				- as action text never mention meta elements like stats or difficulty, only use an in-game story driven description
-				- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
-				- NPCs and CHARACTER cannot simply be finished off with a single attack.
-				- Any action is allowed to target anything per game rules.
-				- Suggest actions that make creative use of environmental features or interactions with NPCs when possible.
-				- Only suggest actions that are plausible in the current situation.
-				- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points`,
+			'You are RPG action agent, you are given a RPG story and then suggest the next action the player character can take, considering the story, currently_present_npcs and character traits.',
+			this.actionRules,
 			'The suggested actions must fit to the setting of the story:' +
 				'\n' +
 				stringifyPretty(storySettingsMapped),
@@ -139,6 +141,69 @@ export class ActionAgent {
 		const userMessage =
 			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
+			stringifyPretty(currentGameStateMapped) +
+			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
+		console.log('actions prompt: ', userMessage);
+		const request: LLMRequest = {
+			userMessage,
+			historyMessages,
+			systemInstruction: agent
+		};
+		const response = (await this.llm.generateReasoningContent(request))?.parsedObject as any;
+
+		//can get not directly arrays but wrapped responses from ai sometimes...
+		if (response && response.actions) {
+			return response.actions as Array<Action>;
+		}
+		if (response && response.jsonArray) {
+			return response.jsonArray as Array<Action>;
+		}
+		return response as Array<Action>;
+	}
+
+	async generateActionsForItem(
+		item: Item,
+		currentGameState: GameActionState,
+		historyMessages: Array<LLMMessage>,
+		storySettings: Story,
+		characterDescription: CharacterDescription,
+		characterStats: CharacterStats,
+		inventoryState: InventoryState,
+		customSystemInstruction?: string
+	): Promise<Array<Action>> {
+		//remove knowledge of story secrets etc
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { ['spells_and_abilities']: __, ...characterStatsMapped } = characterStats;
+		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
+		const agent = [
+			'You are RPG action agent, you are given an item description and then suggest the actions the player character can take with that item, considering the story, currently_present_npcs and character traits.',
+			this.actionRules,
+			'The suggested actions must fit to the setting of the story:' +
+			'\n' +
+			stringifyPretty(storySettingsMapped),
+			'Suggest actions according to the following description of the character temper, e.g. acting smart or with force, ...' +
+			'\n' +
+			stringifyPretty(characterDescription),
+			'As an action, the character could also combine the item with other items from the inventory:' +
+			'\n' +
+			stringifyPretty(inventoryState),
+			'Consider the following character stats only for dice_roll modifiers' +
+			'\n' +
+			stringifyPretty(characterStatsMapped),
+			`Most important instruction! You must always respond with following JSON format! 
+      [
+				${this.jsonFormat},
+				...
+  		]`
+		];
+		if (customSystemInstruction) {
+			agent.push(customSystemInstruction);
+		}
+		const userMessage =
+			'Suggest specific actions the CHARACTER can take with the item:\n' + stringifyPretty(item) +
+			'\nEach action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
 		console.log('actions prompt: ', userMessage);

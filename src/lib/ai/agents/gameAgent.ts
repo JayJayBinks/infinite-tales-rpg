@@ -13,6 +13,7 @@ export type InventoryUpdate = {
 	item_added?: Item;
 };
 export type InventoryState = { [item_id: string]: Item };
+export type ItemWithId = Item & { item_id: string};
 export type Item = { description: string; effect: string };
 export type Action = {
 	characterName: string;
@@ -29,7 +30,7 @@ export type Action = {
 	mp_cost?: number;
 } & DiceRollDifficulty;
 export type PlayerCharactersGameState = {
-	[playerCharacterName: string]: { currentHP: number; currentMP: number; xp: number }; //on level up create event for negative exp
+	[playerCharacterName: string]: { currentHP: number; currentMP: number; xp: number };
 };
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
