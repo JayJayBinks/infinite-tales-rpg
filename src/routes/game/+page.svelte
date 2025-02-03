@@ -413,6 +413,7 @@
 		if (
 			didAIProcessActionState.value &&
 			campaignState.value.chapters &&
+			campaignState.value.chapters[currentChapterState.value - 1] &&
 			!currentGameActionState.is_character_in_combat
 		) {
 			let campaignDeviations;
@@ -444,7 +445,7 @@
 			)[0];
 			if (
 				mappedCurrentPlotPoint >
-				campaignState.value.chapters[currentChapterState.value - 1].plot_points?.length ||
+				campaignState.value.chapters[currentChapterState.value - 1]?.plot_points?.length ||
 				mappedCampaignChapterId > currentChapterState.value
 			) {
 				additionalStoryInput += startNextChapter();

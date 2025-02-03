@@ -117,9 +117,10 @@
 			newState.adventure_and_main_event = stringifyPretty(firstChapter);
 			console.log(stringifyPretty(newState));
 			storyState.value = newState;
-			currentChapterState.value = 1;
 		}
+		currentChapterState.value = 1;
 		isGeneratingState = false;
+		return newState;
 	};
 	const onRandomize = async () => {
 		isGeneratingState = true;
@@ -194,9 +195,12 @@
 			if (!isCampaignSet()) {
 				await onRandomize();
 			}
-			await generateStory();
+			if(await generateStory()){
+				navigate('/new/' + page);
+			}
+		}else{
+			navigate('/new/' + page);
 		}
-		navigate('/new/' + page);
 	}
 </script>
 
