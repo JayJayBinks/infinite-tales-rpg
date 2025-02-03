@@ -296,7 +296,7 @@
 																								chapterProperty
 																							].splice(Number.parseInt(plotPoint), 1);
 																							if (
-																								campaignStateOverwrites[stateValue][chapterNumber][
+																								campaignStateOverwrites[stateValue] && campaignStateOverwrites[stateValue][chapterNumber][
 																									chapterProperty
 																								][plotPoint]
 																							) {
@@ -416,7 +416,7 @@
 																		Number.parseInt(chapterNumber),
 																		1
 																	);
-																	if (campaignStateOverwrites[stateValue][chapterNumber]) {
+																	if (campaignStateOverwrites[stateValue] && campaignStateOverwrites[stateValue][chapterNumber]) {
 																		delete campaignStateOverwrites[stateValue][chapterNumber];
 																	}
 																	campaignState.value[stateValue] = campaignState.value[
