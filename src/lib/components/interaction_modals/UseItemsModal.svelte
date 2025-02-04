@@ -7,6 +7,7 @@
 	} from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { formatItemId } from '../../../routes/game/gameLogic';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 
 	let {
 		inventoryState,
@@ -21,6 +22,9 @@
 		onclose;
 		dialogRef;
 	} = $props();
+
+	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
+	const disableItemImagesState = useLocalStorage<boolean>('disableItemImagesState', false);
 
 	function mapToAction(item_id: string, item: Item): ItemWithId & Action{
 		return {
@@ -47,17 +51,19 @@
 							class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
 						>
 							<div class="m-auto sm:col-span-3">
-								<AIGeneratedImage
-									noLogo={true}
-									enhance={false}
-									imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-									imagePrompt={GameAgent.getItemImagePrompt(
-										formatItemId(item_id),
-										item,
-										storyImagePrompt
-									)}
-									showGenerateButton={false}
-								></AIGeneratedImage>
+								{#if !disableImagesState.value && !disableItemImagesState.value}
+									<AIGeneratedImage
+										noLogo={true}
+										enhance={false}
+										imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+										imagePrompt={GameAgent.getItemImagePrompt(
+											formatItemId(item_id),
+											item,
+											storyImagePrompt
+										)}
+										showGenerateButton={false}
+									></AIGeneratedImage>
+								{/if}
 							</div>
 							<div class="m-auto w-full sm:col-span-2">
 								<p class="mt-2 overflow-hidden overflow-ellipsis capitalize">

@@ -3,6 +3,7 @@
 	import { type Ability, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 
 	let {
 		abilities,
@@ -21,6 +22,9 @@
 		onclose;
 		dialogRef;
 	} = $props();
+
+	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
+	const disableAbilityImagesState = useLocalStorage<boolean>('disableAbilityImagesState', false);
 
 	// eslint-disable-next-line svelte/valid-compile
 	let targetModalRef;
@@ -62,13 +66,18 @@
 							class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
 						>
 							<div class="m-auto sm:col-span-3">
-								<AIGeneratedImage
-									noLogo={true}
-									enhance={false}
-									imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-									imagePrompt={CharacterStatsAgent.getSpellImagePrompt(ability, storyImagePrompt)}
-									showGenerateButton={false}
-								></AIGeneratedImage>
+								{#if !disableImagesState.value && !disableAbilityImagesState.value}
+									<AIGeneratedImage
+										noLogo={true}
+										enhance={false}
+										imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+										imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+											ability,
+											storyImagePrompt
+										)}
+										showGenerateButton={false}
+									></AIGeneratedImage>
+								{/if}
 							</div>
 							<div class="m-auto w-full sm:col-span-2">
 								<p class="badge badge-info">{ability.mp_cost} MP</p>

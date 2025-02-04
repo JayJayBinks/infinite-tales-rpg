@@ -8,6 +8,8 @@
 	type Props = { story: string; gameUpdates?: Array<RenderedGameUpdate>; imagePrompt?: string };
 	let { story, gameUpdates = [], imagePrompt = '' }: Props = $props();
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
+	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
+	const disableStoryImagesState = useLocalStorage<boolean>('disableStoryImagesState', false);
 	let rendered = (marked(story) as string)
 		.replaceAll('\\n', '<br>')
 		.replaceAll(' n ', '<br>')
@@ -36,6 +38,6 @@
 		{/each}
 	</div>
 </article>
-{#if imagePrompt}
+{#if imagePrompt && !disableImagesState.value && !disableStoryImagesState.value}
 	<AIGeneratedImage showLoadingSpinner={false} {imagePrompt} showGenerateButton={false} />
 {/if}
