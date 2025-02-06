@@ -6,6 +6,7 @@ import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 import { mapGameState } from '$lib/ai/agents/mappers';
+import type { Resources } from '$lib/ai/agents/characterStatsAgent';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -13,7 +14,7 @@ export type InventoryUpdate = {
 	item_added?: Item;
 };
 export type InventoryState = { [item_id: string]: Item };
-export type ItemWithId = Item & { item_id: string};
+export type ItemWithId = Item & { item_id: string };
 export type Item = { description: string; effect: string };
 export type Action = {
 	characterName: string;
@@ -27,10 +28,13 @@ export type Action = {
 	is_straightforward?: string;
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: string;
-	mp_cost?: number;
+	resource_cost?: {
+		resource_key: string,
+		cost: number,
+	};
 } & DiceRollDifficulty;
 export type PlayerCharactersGameState = {
-	[playerCharacterName: string]: { currentHP: number; currentMP: number; xp: number };
+	[playerCharacterName: string]: Resources;
 };
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
@@ -136,7 +140,9 @@ export class GameAgent {
 			?.parsedObject as GameMasterAnswer;
 	}
 
-	private getGameAgentSystemInstructionsFromStates(storyState: Story, characterState: CharacterDescription, playerCharactersGameState: PlayerCharactersGameState, inventoryState: InventoryState, customSystemInstruction: string) {
+	private getGameAgentSystemInstructionsFromStates(storyState: Story, characterState: CharacterDescription,
+																									 playerCharactersGameState: PlayerCharactersGameState,
+																									 inventoryState: InventoryState, customSystemInstruction: string) {
 		const gameAgent = [
 			systemBehaviour,
 			stringifyPretty(storyState),
@@ -154,8 +160,8 @@ export class GameAgent {
 		return gameAgent;
 	}
 
-	getGameEndedPrompt() {
-		return 'The CHARACTER has fallen to 0 HP and is dying.';
+	getGameEndedPrompt(emptyResourceKey: string[]) {
+		return `The CHARACTER has fallen to 0 ${emptyResourceKey.join(' and ')}; CHARACTER is dying.`;
 	}
 
 	getStartingPrompt() {
@@ -174,26 +180,37 @@ export class GameAgent {
 	};
 
 	getStartingResourcesUpdateObject(
-		hp: number,
-		mp: number,
+		resources: Resources,
 		playerName: string
 	): Pick<GameActionState, 'stats_update'> {
-		return {
-			stats_update: [
-				{
-					sourceId: playerName,
-					targetId: playerName,
-					type: 'hp_gained',
-					value: { result: hp }
-				},
-				{
-					sourceId: playerName,
-					targetId: playerName,
-					type: 'mp_gained',
-					value: { result: mp }
-				}
-			]
-		};
+
+		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
+		Object.entries(resources).forEach(entry => {
+			returnObject.stats_update.push({
+				sourceId: playerName,
+				targetId: playerName,
+				type: entry[0] + '_gained',
+				value: { result: entry[1].max_value }
+			});
+		});
+		return returnObject;
+	}
+
+	getLevelUpResourcesUpdateObject(
+		resources: Resources,
+		playerName: string
+	): Pick<GameActionState, 'stats_update'> {
+
+		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
+		Object.entries(resources).forEach(entry => {
+			returnObject.stats_update.push({
+				sourceId: playerName,
+				targetId: playerName,
+				type: entry[0] + '_gained',
+				value: { result: entry[1].max_value - entry[1].current_value }
+			});
+		});
+		return returnObject;
 	}
 
 	getLevelUpCostObject(xpCost: number, playerName: string, level: number): StatsUpdate {
@@ -223,6 +240,7 @@ The Game Master's General Responsibilities Include:
 - Generate settings, places, and years, adhering to THEME and TONALITY, and naming GAME elements.
 - Never narrate events briefly or summarize; Always describe detailed scenes with character conversation in direct speech
 - Use GAME's core knowledge and rules.
+- Handle CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
 - The story narration ${storyWordLimit}
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.
@@ -280,7 +298,7 @@ const jsonSystemInstructionForGameAgent = `Important Instruction! You must alway
         "description": "A description of the item",
         "effect": "Clearly state effect(s) and whether an effect is active or passive"
       }
-    },
+    },^
     {
       "type": "remove_item",
       "item_id": "unique name of the item to identify it"

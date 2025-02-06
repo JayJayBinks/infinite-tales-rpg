@@ -9,7 +9,7 @@
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
 	import type { Action, GameActionState, InventoryState, ItemWithId } from '$lib/ai/agents/gameAgent';
 	import { getTextForActionButton } from '$lib/util.svelte';
-	import { isEnoughMP } from '../../../routes/game/gameLogic';
+	import { isEnoughResource } from '../../../routes/game/gameLogic';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 
 	let {
@@ -80,7 +80,7 @@
 			{#each suggestedActions as action}
 				<button
 					type="button"
-					disabled={!isEnoughMP(action, currentMP)}
+					disabled={!isEnoughResource(action, currentMP)}
 					class="components btn btn-neutral no-animation mt-2"
 					onclick={() => onclose(action)}
 				>

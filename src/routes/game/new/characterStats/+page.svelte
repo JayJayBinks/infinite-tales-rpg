@@ -7,10 +7,7 @@
 	import isEqual from 'lodash.isequal';
 	import cloneDeep from 'lodash.clonedeep';
 	import isPlainObject from 'lodash.isplainobject';
-	import {
-		CharacterStatsAgent,
-		initialCharacterStatsState
-	} from '$lib/ai/agents/characterStatsAgent';
+	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
 	import { goto } from '$app/navigation';
 	import { initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
@@ -165,7 +162,7 @@
 
 	{#each Object.keys(characterStatsState.value) as stateValue}
 		{#if stateValue === 'level'}
-			<label class="form-control mt-3 w-full">
+			<div class="form-control mt-3 w-full">
 				<div class="capitalize">
 					<p>Level</p>
 					{#if characterStatsStateOverwrites.level}
@@ -181,17 +178,17 @@
 					}}
 					class="textarea textarea-bordered textarea-md m-auto mt-2 w-1/2"
 				/>
-			</label>
+			</div>
 		{:else}
-			<label class="form-control mt-3 w-full">
+			<div class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
-						>{stateValue.replaceAll('_', ' ')}</summary
+					>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
-							<label class="form-control mt-3 w-full">
-								{#if isPlainObject(characterStatsState.value[stateValue][statValue])}
+							<div class="form-control mt-3 w-full">
+								{#if stateValue !== 'resources' && isPlainObject(characterStatsState.value[stateValue][statValue])}
 									<!-- SpellsAndAbilities TODO refactor or leave for now?-->
 									<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
 										{#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i (deepNestedValue)}
@@ -232,7 +229,7 @@
 												</summary>
 											{/if}
 											<div class="collapse-content">
-												<label class="form-control mt-3 w-full">
+												<div class="form-control mt-3 w-full">
 													<div class="capitalize">
 														{deepNestedValue.replaceAll('_', ' ')}
 														{#if characterStatsStateOverwrites[stateValue] && characterStatsStateOverwrites[stateValue][statValue] && characterStatsStateOverwrites[stateValue][statValue][deepNestedValue]}
@@ -261,7 +258,7 @@
 														class="textarea textarea-bordered textarea-md mt-2 w-full"
 													>
 													</textarea>
-												</label>
+												</div>
 											</div>
 										{/each}
 										<button
@@ -286,29 +283,64 @@
 											class="components btn btn-error no-animation btn-xs ml-2"
 											onclick={(evt) => {
 												evt.preventDefault();
+												delete characterStatsStateOverwrites[stateValue][statValue];
 												delete characterStatsState.value[stateValue][statValue];
 											}}
 										>
 											Delete
 										</button>
 									</div>
-									<textarea
-										bind:value={characterStatsState.value[stateValue][statValue]}
-										rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
-										oninput={(evt) => {
+									{#if stateValue === 'resources'}
+										<div class="form-control mt-2 sm:w-1/4 m-auto">
+											<p>Starting Maximum Value</p>
+											<input
+												type="number"
+												bind:value={characterStatsState.value[stateValue][statValue].max_value}
+												placeholder="For resources with percentage use 100"
+												oninput={(evt) => {
+													if(!characterStatsStateOverwrites[stateValue][statValue]){
+														characterStatsStateOverwrites[stateValue][statValue] = {};
+													}
+											characterStatsStateOverwrites[stateValue][statValue].max_value =
+												evt.currentTarget.value;
+										}}
+												class="input input-bordered"
+											/>
+										</div>
+										<div class="form-control mt-2 mb-4 sm:w-1/4 m-auto">
+											<p>Game Ends When Reaches Zero</p>
+											<input
+												type="checkbox"
+												bind:checked={characterStatsState.value[stateValue][statValue].game_ends_when_zero}
+												oninput={(evt) => {
+														if(!characterStatsStateOverwrites[stateValue][statValue]){
+														characterStatsStateOverwrites[stateValue][statValue] = {};
+													}
+											characterStatsStateOverwrites[stateValue][statValue].game_ends_when_zero =
+												evt.currentTarget.checked;
+										}}
+												class="toggle m-auto"
+											/>
+										</div>
+									{:else}
+								<textarea
+									bind:value={characterStatsState.value[stateValue][statValue]}
+									rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
+									oninput={(evt) => {
 											characterStatsStateOverwrites[stateValue][statValue] =
 												evt.currentTarget.value;
 										}}
-										class="textarea textarea-bordered textarea-md mt-2 w-full"
-									>
+									class="textarea textarea-bordered textarea-md mt-2 sm:w-1/4 m-auto"
+								>
 									</textarea>
-									<!-- Resources Traits etc. -->
+									{/if}
+									<!-- Traits etc. -->
 								{/if}
-							</label>
+							</div>
 						{/each}
 					</div>
 				</details>
-			</label>
+			</div>
 			<button
 				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 				onclick={() => {
@@ -317,11 +349,16 @@
 						characterStatsState.value[stateValue].push({ name: '', effect: '', mp_cost: '' });
 					} else {
 						const name = prompt('Enter the name');
+						if(!name) return;
 						if (!characterStatsStateOverwrites[stateValue]) {
 							characterStatsStateOverwrites[stateValue] = {};
 						}
-						characterStatsStateOverwrites[stateValue][name] = '';
-						characterStatsState.value[stateValue][name] = '';
+						if(stateValue === 'resources'){
+								characterStatsState.value[stateValue][name] = {max_value: 0, game_ends_when_zero: false};
+						}else{
+								characterStatsStateOverwrites[stateValue][name] = '';
+								characterStatsState.value[stateValue][name] = '';
+						}
 					}
 				}}
 			>

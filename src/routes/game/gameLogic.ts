@@ -1,12 +1,12 @@
 import type {
 	Action,
-	PlayerCharactersGameState,
 	GameActionState,
 	InventoryUpdate,
+	PlayerCharactersGameState,
 	Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
-import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
+import type { NPCState, NPCStats, Resources } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
 
@@ -57,7 +57,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	);
 }
 
-export const getTargetPromptAddition = function (targets: string[]) {
+export const getTargetPromptAddition = function(targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -195,53 +195,41 @@ export function applyGameActionState(
 	for (const statUpdate of state.stats_update.map(mapStatsUpdateToGameLogic) || []) {
 		if (playerCharactersGameState[statUpdate.targetId]) {
 			if (statUpdate.type.includes('now_level')) {
-				playerCharactersGameState[statUpdate.targetId].xp -=
+				playerCharactersGameState[statUpdate.targetId].xp.current_value -=
 					Number.parseInt(statUpdate.value.result) || 0;
 				continue;
 			}
-			switch (statUpdate.type) {
-				case 'xp_gained':
-					playerCharactersGameState[statUpdate.targetId].xp +=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
-				case 'hp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentHP +=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
-				case 'hp_lost':
-					playerCharactersGameState[statUpdate.targetId].currentHP -=
-						getTakeLessDamageForManyHits(
-							state.stats_update,
-							Number.parseInt(statUpdate.value.result),
-							statUpdate.targetId
-						) || 0;
-					break;
-				case 'mp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentMP +=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
-				case 'mp_lost':
-					playerCharactersGameState[statUpdate.targetId].currentMP -=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
+			if (statUpdate.type === 'xp_gained') {
+				playerCharactersGameState[statUpdate.targetId].xp.current_value +=
+					Number.parseInt(statUpdate.value.result) || 0;
+			}
+			if (statUpdate.type.includes('_gained')) {
+				const resource: string = statUpdate.type.replace('_gained', '');
+				const res = playerCharactersGameState[statUpdate.targetId][resource];
+				if (res.current_value <= res.max_value) {
+					res.current_value += Number.parseInt(statUpdate.value.result) || 0;
+				} else {
+					res.current_value = res.max_value;
+				}
+			}
+			if (statUpdate.type.includes('_lost')) {
+				const resource: string = statUpdate.type.replace('_lost', '');
+				playerCharactersGameState[statUpdate.targetId][resource].current_value -=
+					Number.parseInt(statUpdate.value.result) || 0;
 			}
 		} else {
 			if (!prohibitNPCChange) {
 				const npc: NPCStats = npcState[statUpdate.targetId];
 				if (npc && npc.resources) {
-					switch (statUpdate.type) {
-						case 'hp_gained':
-							npc.resources.current_hp += Number.parseInt(statUpdate.value.result) || 0;
-							break;
-						case 'hp_lost':
-							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result) || 0;
-							break;
-						case 'mp_gained':
-							npc.resources.current_mp += Number.parseInt(statUpdate.value.result) || 0;
-							break;
-						case 'mp_lost':
-							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result) || 0;
-							break;
+					if (statUpdate.type.includes('_gained')) {
+						const resource: string = statUpdate.type.replace('_gained', '');
+						npc.resources[resource].max_value +=
+							Number.parseInt(statUpdate.value.result) || 0;
+					}
+					if (statUpdate.type.includes('_lost')) {
+						const resource: string = statUpdate.type.replace('_lost', '');
+						npc.resources[resource].max_value -=
+							Number.parseInt(statUpdate.value.result) || 0;
 					}
 				}
 			}
@@ -287,7 +275,7 @@ export function getGameEndedMessage() {
 	return 'Your Tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new Tale in the menu.';
 }
 
-export function isEnoughMP(action: Action, currentMP: number){
-	const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-	return mpCost === 0 || currentMP >= mpCost;
+export function isEnoughResource(action: Action, resources: Resources) {
+	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+	return cost === 0 || resources[action.resource_cost?.resource_key || '']?.current_value >= cost ;
 }

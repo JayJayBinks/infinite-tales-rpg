@@ -20,7 +20,7 @@ export const statsUpdatePromptObject = `
         # Also include one object per turn effect like poisoned or bleeding
         {
         		"explanation": "Short explanation for the reason of this change",
-        		"type": "hp_lost|hp_gained|mp_lost|mp_gained",
+        		"type": "{resourceKey}_lost|{resourceKey}_gained",
             "sourceId": "NPC id or player CHARACTER name, who is the initiator of this action",
             "targetId": "NPC id or player CHARACTER name, whose stats must be updated.",
             "value": "must be dice roll notation in format 1d6+3 or 3d4 etc."

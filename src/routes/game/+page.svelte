@@ -20,12 +20,13 @@
 		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
-		type NPCState
+		type NPCState,
+		type Resources
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
-	import { ActionDifficulty, isEnoughMP, mustRollDice } from './gameLogic';
+	import { ActionDifficulty, isEnoughResource, mustRollDice } from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
@@ -105,7 +106,7 @@
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
 	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' = $state('Character Action');
-	let customActionImpossibleReasonState: 'not_enough_mp' | 'not_plausible' | undefined =
+	let customActionImpossibleReasonState: 'not_enough_resource' | 'not_plausible' | undefined =
 		$state(undefined);
 
 	let gmQuestionState: string = $state('');
@@ -133,13 +134,15 @@
 			'characterStatsState',
 			$state.snapshot(characterStatsState.value)
 		);
-		//Start game when not already started
-		playerCharactersGameState = {
-			[characterState.value.name]: { currentHP: 0, currentMP: 0, xp: 0 }
+
+		playerCharactersGameState[characterState.value.name] = {
+			...$state.snapshot(characterStatsState.value.resources),
+			XP: { current_value: 0, max_value: -1, game_ends_when_zero: false }
 		};
+		//Start game when not already started
 		if (!currentGameActionState?.story) {
 			if (!currentGameActionState?.stats_update) {
-				handleStartingStats(playerCharactersGameState, characterState.value.name);
+				handleStartingStats(characterStatsState.value.resources, characterState.value.name);
 			}
 			await sendAction({
 				characterName: characterState.value.name,
@@ -173,16 +176,13 @@
 	});
 
 	function handleStartingStats(
-		playerCharactersGameState: PlayerCharactersGameState,
+		resources: Resources,
 		playerName: string
 	) {
 		const startingResourcesUpdateObject = gameAgent.getStartingResourcesUpdateObject(
-			characterStatsState.value.resources.MAX_HP,
-			characterStatsState.value.resources.MAX_MP,
+			resources,
 			playerName
 		);
-		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
-		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
 		gameActionsState.value.push(startingResourcesUpdateObject);
 	}
 
@@ -190,13 +190,13 @@
 		playerCharactersGameState: PlayerCharactersGameState,
 		playerName: string
 	) {
-		const levelUpResourcesObject = gameAgent.getStartingResourcesUpdateObject(
-			characterStatsState.value.resources.MAX_HP - playerCharactersGameState[playerName].currentHP,
-			characterStatsState.value.resources.MAX_MP - playerCharactersGameState[playerName].currentMP,
+		const levelUpResourcesObject = gameAgent.getLevelUpResourcesUpdateObject(
+			playerCharactersGameState[playerName],
 			playerName
 		);
-		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
-		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
+		Object.keys(playerCharactersGameState[playerName])
+			.forEach(res => playerCharactersGameState[playerName][res].current_value
+				= playerCharactersGameState[playerName][res].max_value);
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update = [
 			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
 			...levelUpResourcesObject.stats_update
@@ -229,7 +229,10 @@
 		);
 		const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
 		const aliveNPCs = allNpcsDetailsAsList
-			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
+			.filter((npc) => npc?.resources &&
+				Object.values(npc.resources)
+					.filter(res => res.game_ends_when_zero)
+					.filter(res => res.current_value > 0))
 			.map((npc) => npc?.nameId);
 
 		let additionalStoryInput = combatAgent.getAdditionalStoryInput(
@@ -260,7 +263,7 @@
 
 	async function handleImpossibleAction(tryAnyway: boolean) {
 		if (tryAnyway) {
-			if (customActionImpossibleReasonState === 'not_enough_mp') {
+			if (customActionImpossibleReasonState === 'not_enough_resource') {
 				chosenActionState.value = {
 					...chosenActionState.value,
 					action_difficulty:
@@ -277,11 +280,12 @@
 				};
 			}
 			//either not enough mp or impossible, anyway no mp cost
-			chosenActionState.value.mp_cost = 0;
+			chosenActionState.value.resource_cost!.cost = 0;
+			const costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
 			if (additionalStoryInputState.value) {
-				additionalStoryInputState.value += '\nMP cost: 0';
+				additionalStoryInputState.value += costString;
 			} else {
-				additionalStoryInputState.value = '\nMP cost: 0';
+				additionalStoryInputState.value = costString;
 			}
 			await sendAction(chosenActionState.value, true, additionalStoryInputState.value);
 		}
@@ -311,14 +315,18 @@
 	}
 
 	async function checkGameEnded() {
-		if (!isGameEnded.value && playerCharactersGameState[characterState.value.name].currentHP <= 0) {
+		const emptyResourceKey: string[] = Object.entries(playerCharactersGameState[characterState.value.name])
+			.filter(entry => entry[1].max_value <= 0).map(entry => entry[0]);
+		if (!isGameEnded.value && emptyResourceKey) {
 			isGameEnded.value = true;
 			await sendAction({
 				characterName: characterState.value.name,
-				text: gameAgent.getGameEndedPrompt()
+				text: gameAgent.getGameEndedPrompt(emptyResourceKey)
 			});
 		}
-		isGameEnded.value = playerCharactersGameState[characterState.value.name].currentHP <= 0;
+		//calculate again as dying action could also be a rescue in some cases
+		isGameEnded.value = Object.values(playerCharactersGameState[characterState.value.name])
+			.some(v => v.current_value <= 0);
 	}
 
 	function resetStatesAfterActionProcessed() {
@@ -353,7 +361,7 @@
 
 	function checkForLevelUp() {
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
-		if (neededXP && playerCharactersGameState[characterState.value.name]?.xp >= neededXP) {
+		if (neededXP && playerCharactersGameState[characterState.value.name]?.XP.current_value >= neededXP) {
 			levelUpState.value.buttonEnabled = true;
 		}
 	}
@@ -585,7 +593,7 @@
 			return;
 		}
 		const buyLevelUpObject = gameAgent.getLevelUpCostObject(xpNeededForLevel, playerName, level);
-		playerCharactersGameState[playerName].xp -= xpNeededForLevel;
+		playerCharactersGameState[playerName].XP.current_value -= xpNeededForLevel;
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update.push(buyLevelUpObject);
 		levelUpState.value.dialogOpened = true;
 	}
@@ -600,7 +608,7 @@
 			button.className += ' ' + addClass;
 		}
 		button.textContent = getTextForActionButton(action);
-		if (!isEnoughMP(action, playerCharactersGameState[characterState.value.name].currentMP)) {
+		if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name])) {
 			button.disabled = true;
 		}
 		button.addEventListener('click', () => {
@@ -709,11 +717,8 @@
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
-			const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-			const isEnoughMP =
-				mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
-			if (!isEnoughMP) {
-				customActionImpossibleReasonState = 'not_enough_mp';
+			if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name])) {
+				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
 				await sendAction(
@@ -770,7 +775,7 @@
 	<UseSpellsAbilitiesModal
 		bind:dialogRef={useSpellsAbilitiesModal}
 		playerName={characterState.value.name}
-		currentMP={playerCharactersGameState[characterState.value.name]?.currentMP}
+		resources={playerCharactersGameState[characterState.value.name]}
 		abilities={characterStatsState.value?.spells_and_abilities}
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
@@ -797,14 +802,13 @@
 		resetState={didAIProcessDiceRollActionState.value}
 	></DiceRollComponent>
 	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
-		<output id="hp" class="ml-1 text-lg font-semibold text-red-500">
-			HP: {playerCharactersGameState[characterState.value.name]?.currentHP}
-		</output>
+		{#each Object.entries(playerCharactersGameState[characterState.value.name] || {}) as [resourceKey, resourceValue] (resourceKey)}
+			<output id="hp" class="ml-1 text-lg font-semibold text-red-500">
+				{resourceKey}: {resourceValue}
+			</output>
+		{/each}
 		<output id="xp" class="ml-1 text-lg font-semibold text-green-500">
 			{getCurrentXPText()}
-		</output>
-		<output id="mp" class="ml-1 text-lg font-semibold text-blue-500">
-			MP: {playerCharactersGameState[characterState.value.name]?.currentMP}
 		</output>
 	</div>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
