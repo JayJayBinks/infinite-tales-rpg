@@ -4,12 +4,13 @@
 	import type { RenderedGameUpdate } from '../../routes/game/gameLogic';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
+	import type { AIConfig } from '$lib';
 
 	type Props = { story: string; gameUpdates?: Array<RenderedGameUpdate>; imagePrompt?: string };
 	let { story, gameUpdates = [], imagePrompt = '' }: Props = $props();
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
-	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
-	const disableStoryImagesState = useLocalStorage<boolean>('disableStoryImagesState', false);
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+
 	let rendered = (marked(story) as string)
 		.replaceAll('\\n', '<br>')
 		.replaceAll(' n ', '<br>')
@@ -22,9 +23,11 @@
 		.replaceAll('_', ' ');
 </script>
 
-<div class="mt-4 flex">
-	<TTSComponent text={story.replaceAll('_', ' ')} voice={ttsVoiceState.value}></TTSComponent>
-</div>
+{#if !aiConfigState.value?.disableAudioState}
+	<div class="mt-4 flex">
+		<TTSComponent text={story.replaceAll('_', ' ')} voice={ttsVoiceState.value}></TTSComponent>
+	</div>
+{/if}
 <article class="prose prose-neutral m-auto mb-2 mt-2" style="color: unset">
 	<div id="story">
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -38,6 +41,6 @@
 		{/each}
 	</div>
 </article>
-{#if imagePrompt && !disableImagesState.value && !disableStoryImagesState.value}
+{#if imagePrompt && !aiConfigState.value?.disableImagesState}
 	<AIGeneratedImage showLoadingSpinner={false} {imagePrompt} showGenerateButton={false} />
 {/if}

@@ -7,26 +7,16 @@
 	import isEqual from 'lodash.isequal';
 	import cloneDeep from 'lodash.clonedeep';
 	import isPlainObject from 'lodash.isplainobject';
-	import {
-		CharacterStatsAgent,
-		initialCharacterStatsState
-	} from '$lib/ai/agents/characterStatsAgent';
+	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
 	import { goto } from '$app/navigation';
 	import { initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
-	import { type AiLevelUp, type CharacterStats } from '$lib/ai/agents/characterStatsAgent';
-	import { type CharacterDescription } from '$lib/ai/agents/characterAgent';
-	import type { LLMMessage } from '$lib/ai/llm';
-	import type { Story } from '$lib/ai/agents/storyAgent';
-	import { stringifyPretty } from '$lib/util.svelte';
-	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage('apiKeyState');
 	const aiLanguage = useLocalStorage('aiLanguage');
-	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
 
 	let characterStatsAgent: CharacterStatsAgent;
 	onMount(() => {
@@ -193,7 +183,7 @@
 			<label class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
-						>{stateValue.replaceAll('_', ' ')}</summary
+					>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
@@ -208,18 +198,16 @@
 														class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
 													>
 														<div class="m-auto sm:col-span-3">
-															{#if !disableImagesState.value}
-																<AIGeneratedImage
-																	noLogo={true}
-																	enhance={false}
-																	imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-																	imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+															<AIGeneratedImage
+																noLogo={true}
+																enhance={false}
+																imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+																imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
 																		characterStatsState.value[stateValue][statValue],
 																		storyState.value.general_image_prompt
 																	)}
-																	showGenerateButton={false}
-																></AIGeneratedImage>
-															{/if}
+																buttonClassesString="btn-xs no-animation"
+															></AIGeneratedImage>
 														</div>
 														<div class="m-auto w-full sm:col-span-2">
 															<p class="content-center overflow-hidden overflow-ellipsis">

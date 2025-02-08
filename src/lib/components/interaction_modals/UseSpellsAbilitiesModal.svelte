@@ -4,6 +4,7 @@
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import type { AIConfig } from '$lib';
 
 	let {
 		abilities,
@@ -23,9 +24,7 @@
 		dialogRef;
 	} = $props();
 
-	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
-	const disableAbilityImagesState = useLocalStorage<boolean>('disableAbilityImagesState', false);
-
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	// eslint-disable-next-line svelte/valid-compile
 	let targetModalRef;
 	let abilityActionState = $state({} as Action);
@@ -63,10 +62,12 @@
 				<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
 					<summary class="collapse-title capitalize">
 						<div
-							class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
+							class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
+							class:grid-cols-1={aiConfigState.value?.disableImagesState}
+							class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center"
 						>
-							<div class="m-auto sm:col-span-3">
-								{#if !disableImagesState.value && !disableAbilityImagesState.value}
+							{#if !aiConfigState.value?.disableImagesState}
+								<div class="m-auto sm:col-span-3">
 									<AIGeneratedImage
 										noLogo={true}
 										enhance={false}
@@ -77,8 +78,8 @@
 										)}
 										showGenerateButton={false}
 									></AIGeneratedImage>
-								{/if}
-							</div>
+								</div>
+							{/if}
 							<div class="m-auto w-full sm:col-span-2">
 								<p class="badge badge-info">{ability.mp_cost} MP</p>
 								<p class="mt-2 overflow-hidden overflow-ellipsis">{ability.name}</p>

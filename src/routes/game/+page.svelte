@@ -45,6 +45,7 @@
 	import ImpossibleActionModal from '$lib/components/interaction_modals/ImpossibleActionModal.svelte';
 	import GMQuestionModal from '$lib/components/interaction_modals/GMQuestionModal.svelte';
 	import SuggestedActionsModal from '$lib/components/interaction_modals/SuggestedActionsModal.svelte';
+	import type { AIConfig } from '$lib';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -112,6 +113,7 @@
 	let itemForSuggestActionsState: Item & { item_id: string } | undefined = $state();
 
 	//feature toggles
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
@@ -827,13 +829,16 @@
 			<StoryProgressionWithImage story={gameLogic.getGameEndedMessage()} />
 		{/if}
 	</div>
-	<div class="mt-4 flex">
-		<TTSComponent
-			text={actionsTextForTTS}
-			voice={ttsVoiceState.value}
-			hidden={characterActionsState.value?.length === 0}
-		></TTSComponent>
-	</div>
+
+	{#if !aiConfigState.value?.disableAudioState}
+		<div class="mt-4 flex">
+			<TTSComponent
+				text={actionsTextForTTS}
+				voice={ttsVoiceState.value}
+				hidden={characterActionsState.value?.length === 0}
+			></TTSComponent>
+		</div>
+	{/if}
 	<div id="actions" bind:this={actionsDiv} class="mt-2 p-4 pb-0 pt-0"></div>
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}

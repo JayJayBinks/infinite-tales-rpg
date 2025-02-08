@@ -8,6 +8,7 @@
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { formatItemId } from '../../../routes/game/gameLogic';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import type { AIConfig } from '$lib';
 
 	let {
 		inventoryState,
@@ -23,8 +24,7 @@
 		dialogRef;
 	} = $props();
 
-	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
-	const disableItemImagesState = useLocalStorage<boolean>('disableItemImagesState', false);
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
 	function mapToAction(item_id: string, item: Item): ItemWithId & Action{
 		return {
@@ -48,10 +48,11 @@
 				<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
 					<summary class="collapse-title capitalize">
 						<div
-							class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
+							class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
+							class="grid grid-cols-1 overflow-hidden overflow-ellipsis text-center"
 						>
 							<div class="m-auto sm:col-span-3">
-								{#if !disableImagesState.value && !disableItemImagesState.value}
+								{#if !aiConfigState.value?.disableImagesState}
 									<AIGeneratedImage
 										noLogo={true}
 										enhance={false}

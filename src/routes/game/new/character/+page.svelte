@@ -1,10 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		CharacterAgent,
-		type CharacterDescription,
-		initialCharacterState
-	} from '$lib/ai/agents/characterAgent';
+	import { CharacterAgent, type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
@@ -14,7 +10,6 @@
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
-	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -26,7 +21,6 @@
 		initialCharacterState
 	);
 	const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value));
-	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
 
 	let characterStateOverwrites: Partial<CharacterDescription> = $state({});
 	let resetImageState = $state(false);
@@ -183,13 +177,11 @@
 		</button>
 		{#if stateValue === 'appearance'}
 			<div class="m-auto flex w-full flex-col">
-				{#if !disableImagesState.value}
-					<AIGeneratedImage
-						storageKey="characterImageState"
-						resetImageState={resetImageState}
-						imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
-					/>
-				{/if}
+				<AIGeneratedImage
+					storageKey="characterImageState"
+					resetImageState={resetImageState}
+					imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
+				/>
 			</div>
 		{/if}
 	{/each}

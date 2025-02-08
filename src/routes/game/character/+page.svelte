@@ -9,8 +9,6 @@
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
 	const storyState = useLocalStorage<Story>('storyState');
-	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
-	const disableCharacterImagesState = useLocalStorage<boolean>('disableCharacterImagesState', false);
 </script>
 
 {#if characterState.value}
@@ -20,12 +18,10 @@
 				{characterState.value.name}
 			</h1>
 			<div class="m-auto flex w-full flex-col">
-				{#if !disableImagesState.value && !disableCharacterImagesState.value}
-					<AIGeneratedImage
-						storageKey="characterImageState"
-						imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
-					></AIGeneratedImage>
-				{/if}
+				<AIGeneratedImage
+					storageKey="characterImageState"
+					imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
+				></AIGeneratedImage>
 			</div>
 			<div class="section mb-6">
 				<h2 class="mb-2 mt-2 border-b border-gray-600 pb-1 text-xl font-semibold">
