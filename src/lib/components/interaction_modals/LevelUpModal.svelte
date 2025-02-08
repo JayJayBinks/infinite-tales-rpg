@@ -27,6 +27,7 @@
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	const disableImagesState = useLocalStorage<boolean>('disableImagesState');
 	let aiLevelUp: AiLevelUp | undefined = $state();
 	let levelUpText:
 		| {
@@ -100,16 +101,18 @@
 					class="mt-4 grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
 				>
 					<div class="m-auto sm:col-span-3">
-						<AIGeneratedImage
-							noLogo={true}
-							enhance={false}
-							imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-							imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-								aiLevelUp?.ability,
-								storyState?.value?.general_image_prompt
-							)}
-							showGenerateButton={false}
-						></AIGeneratedImage>
+						{#if !disableImagesState.value}
+							<AIGeneratedImage
+								noLogo={true}
+								enhance={false}
+								imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+								imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+									aiLevelUp?.ability,
+									storyState?.value?.general_image_prompt
+								)}
+								showGenerateButton={false}
+							></AIGeneratedImage>
+						{/if}
 					</div>
 					<div class="m-auto w-full sm:col-span-2">
 						<p class="badge badge-info">{aiLevelUp.ability.mp_cost} MP</p>

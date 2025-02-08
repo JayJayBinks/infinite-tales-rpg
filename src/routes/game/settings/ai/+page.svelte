@@ -13,11 +13,15 @@
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
+	import ImageSettingsModal from '$lib/components/interaction_modals/ImageSettingsModal.svelte';
+	import AudioSettingsModal from '$lib/components/interaction_modals/AudioSettingsModal.svelte';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1.3);
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	const disableAudioState = useLocalStorage<boolean>('disableAudioState', false);
+	const disableImagesState = useLocalStorage<boolean>('disableImagesState', false);
 
 	const gameActionsState = useLocalStorage('gameActionsState', []);
 	const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -37,6 +41,9 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	let ttsVoices: Voice[] = $state([]);
 	let isGeneratingState = $state(false);
+
+	let imageSettingsModalRef;
+	let audioSettingsModalRef;
 
 	onMount(async () => {
 		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
@@ -150,11 +157,57 @@
 	</button>
 	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>
 	<div class="divider mt-7">Advanced Settings</div>
-	<label class="form-control w-full sm:w-1/2">
+	<label class="form-control mt-5 w-full sm:w-2/3">
+		<div class="flex flex-col items-center gap-2">
+			<span>Disable Audio Generation</span>
+			<div class="flex items-center gap-2">
+				<input
+					type="checkbox"
+					class="toggle toggle-accent"
+					bind:checked={disableAudioState.value}
+				/>
+				<button
+					class="btn btn-sm"
+					onclick={() => audioSettingsModalRef.showModal()}
+				>
+					Configure
+				</button>
+			</div>
+			<small class="mt-1">Disable all audio generation features</small>
+		</div>
+	</label>
+
+	<label class="form-control mt-5 w-full sm:w-2/3">
+		<div class="flex flex-col items-center gap-2">
+			<span>Disable Image Generation</span>
+			<div class="flex items-center gap-2">
+				<input
+
+					type="checkbox"
+					class="toggle toggle-accent"
+					bind:checked={disableImagesState.value}
+				/>
+				<button
+					class="btn btn-sm"
+					onclick={() => imageSettingsModalRef.showModal()}
+				>
+					Configure
+				</button>
+			</div>
+			<small class="mt-1">Disable all image generation features</small>
+		</div>
+	</label>
+
+	<AudioSettingsModal bind:dialogRef={audioSettingsModalRef} />
+	<ImageSettingsModal bind:dialogRef={imageSettingsModalRef} />
+
+	<label class="form-control w-full sm:w-1/2 mt-5">
 		<p>Voice For Text To Speech</p>
 		<button
 			onclick={() => {
-				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
+				if (!disableAudioState.value) {
+					playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
+				}
 			}}
 			>Test Voice
 		</button>
@@ -188,6 +241,7 @@
 			>Higher temperature makes the AI more creative, but also errors more likely</small
 		>
 	</label>
+
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		Tale System Instruction
 		<textarea
