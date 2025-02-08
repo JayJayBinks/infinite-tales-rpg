@@ -63,8 +63,9 @@
 					<summary class="collapse-title capitalize">
 						<div
 							class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
+							class:grid-cols-2={!aiConfigState.value?.disableImagesState}
 							class:grid-cols-1={aiConfigState.value?.disableImagesState}
-							class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center"
+							class="grid overflow-hidden overflow-ellipsis text-center"
 						>
 							{#if !aiConfigState.value?.disableImagesState}
 								<div class="m-auto sm:col-span-3">
