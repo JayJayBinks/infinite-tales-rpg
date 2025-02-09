@@ -7,15 +7,13 @@
 	import isEqual from 'lodash.isequal';
 	import cloneDeep from 'lodash.clonedeep';
 	import isPlainObject from 'lodash.isplainobject';
-	import {
-		CharacterStatsAgent,
-		initialCharacterStatsState
-	} from '$lib/ai/agents/characterStatsAgent';
+	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
 	import { goto } from '$app/navigation';
 	import { initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
+	import type { AIConfig } from '$lib';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage('apiKeyState');
@@ -35,6 +33,7 @@
 	const characterState = useLocalStorage('characterState', initialCharacterState);
 	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	const textAreaRowsDerived = $derived(getRowsForTextarea(characterStatsState.value));
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
@@ -186,7 +185,7 @@
 			<label class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
-						>{stateValue.replaceAll('_', ' ')}</summary
+					>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
@@ -198,20 +197,23 @@
 											{#if i === 0}
 												<summary class="collapse-title capitalize">
 													<div
-														class="grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
+														class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
+														class="grid overflow-hidden overflow-ellipsis text-center"
 													>
-														<div class="m-auto sm:col-span-2">
-															<AIGeneratedImage
-																noLogo={true}
-																enhance={false}
-																imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-																imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-																	characterStatsState.value[stateValue][statValue],
-																	storyState.value.general_image_prompt
-																)}
-																buttonClassesString="btn-xs no-animation"
-															></AIGeneratedImage>
-														</div>
+														{#if !aiConfigState.value?.disableImagesState}
+															<div class="m-auto sm:col-span-3">
+																<AIGeneratedImage
+																	noLogo={true}
+																	enhance={false}
+																	imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+																	imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+																		characterStatsState.value[stateValue][statValue],
+																		storyState.value.general_image_prompt
+																	)}
+																	buttonClassesString="btn-xs no-animation"
+																></AIGeneratedImage>
+															</div>
+														{/if}
 														<div class="m-auto w-full sm:col-span-2">
 															<p class="content-center overflow-hidden overflow-ellipsis">
 																{isNaN(parseInt(statValue))

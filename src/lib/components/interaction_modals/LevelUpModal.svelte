@@ -14,6 +14,7 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { getLevelUpText } from '../../../routes/game/levelLogic';
+	import type { AIConfig } from '$lib';
 
 	let {
 		onclose
@@ -27,6 +28,7 @@
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let aiLevelUp: AiLevelUp | undefined = $state();
 	let levelUpText:
 		| {
@@ -97,21 +99,25 @@
 			{/if}
 			<label class="form-control textarea-bordered mt-3 w-full border bg-base-200">
 				<div
-					class="mt-4 grid grid-cols-2 overflow-hidden overflow-ellipsis text-center sm:grid-cols-6"
+					class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
+					class="mt-4 grid grid-cols overflow-hidden overflow-ellipsis text-center"
 				>
 					<div class="m-auto sm:col-span-3">
-						<AIGeneratedImage
-							noLogo={true}
-							enhance={false}
-							imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-							imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-								aiLevelUp?.ability,
-								storyState?.value?.general_image_prompt
-							)}
-							showGenerateButton={false}
-						></AIGeneratedImage>
+						{#if !aiConfigState.value?.disableImagesState}
+							<AIGeneratedImage
+								noLogo={true}
+								enhance={false}
+								imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
+								imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
+									aiLevelUp?.ability,
+									storyState?.value?.general_image_prompt
+								)}
+								showGenerateButton={false}
+							></AIGeneratedImage>
+						{/if}
 					</div>
-					<div class="m-auto w-full sm:col-span-2">
+					<div class:sm:col-span-3={aiConfigState.value?.disableImagesState}
+						class="m-auto w-full sm:col-span-2">
 						<p class="badge badge-info">{aiLevelUp.ability.mp_cost} MP</p>
 						<p class="mt-2 overflow-hidden overflow-ellipsis">{aiLevelUp.ability.name}</p>
 					</div>

@@ -10,11 +10,11 @@ export function useLocalStorage<T>(key: string, initialValue?: T) {
 	let isMounted = false;
 
 	$effect(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		value; // needed for triggering effect
+		// Need to read all values to trigger effect
+		const json = JSON.stringify(value);
 		if (isMounted) {
 			if (value !== undefined) {
-				localStorage.setItem(key, JSON.stringify(value));
+				localStorage.setItem(key, json);
 			} else {
 				localStorage.removeItem(key);
 			}

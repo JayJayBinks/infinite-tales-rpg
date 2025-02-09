@@ -6,18 +6,22 @@
 	import { initialStoryState, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
-	import {
-		CharacterStatsAgent,
-		initialCharacterStatsState
-	} from '$lib/ai/agents/characterStatsAgent';
+	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
+	import type { AIConfig } from '$lib';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1.3);
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
+
+	//TODO migrate all AI settings into this object to avoid too many vars in local storage
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
+		disableAudioState: false,
+		disableImagesState: false
+	});
 
 	const gameActionsState = useLocalStorage('gameActionsState', []);
 	const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -119,7 +123,7 @@
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2"
-			>View the
+		>View the
 			<a
 				target="_blank"
 				href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
@@ -150,20 +154,7 @@
 	</button>
 	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>
 	<div class="divider mt-7">Advanced Settings</div>
-	<label class="form-control w-full sm:w-1/2">
-		<p>Voice For Text To Speech</p>
-		<button
-			onclick={() => {
-				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
-			}}
-			>Test Voice
-		</button>
-		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
-			{#each ttsVoices as v}
-				<option value={v.ShortName}>{v.FriendlyName} - {v.Gender}</option>
-			{/each}
-		</select>
-	</label>
+
 	<label class="form-control mt-3 w-full sm:w-2/3">
 		AI Language
 		<input
@@ -172,6 +163,42 @@
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2">The Game UI will not be translated yet</small>
+	</label>
+	<label class="form-control mt-5 w-full sm:w-2/3">
+		<div class="flex flex-col items-center gap-2">
+			<span>Disable Text To Speech Generation</span>
+			<div class="flex items-center gap-2">
+				<input
+					type="checkbox"
+					class="toggle"
+					bind:checked={aiConfigState.value.disableAudioState}
+				/>
+			</div>
+		</div>
+	</label>
+	<label class="form-control w-full sm:w-1/2 mt-5">
+		<p>Voice For Text To Speech</p>
+		<button
+			onclick={() => {
+					playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
+			}}
+		>Test Voice
+		</button>
+		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
+			{#each ttsVoices as v}
+				<option value={v.ShortName}>{v.FriendlyName} - {v.Gender}</option>
+			{/each}
+		</select>
+	</label>
+	<label class="form-control mt-5 w-full sm:w-2/3">
+		<div class="flex flex-col items-center gap-2">
+			<span>Disable Image Generation</span>
+			<input
+				type="checkbox"
+				class="toggle"
+				bind:checked={aiConfigState.value.disableImagesState}
+			/>
+		</div>
 	</label>
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		Temperature: {temperatureState.value}
@@ -185,9 +212,10 @@
 			class="range mt-2"
 		/>
 		<small class="m-auto mt-2"
-			>Higher temperature makes the AI more creative, but also errors more likely</small
+		>Higher temperature makes the AI more creative, but also errors more likely</small
 		>
 	</label>
+
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		Tale System Instruction
 		<textarea
@@ -197,7 +225,8 @@
 		>
 		</textarea>
 		<small class="m-auto mt-2"
-			>You may have to start a new Tale after setting the instruction.</small
+		>You may have to start a new Tale after setting the instruction.</small
 		>
 	</label>
+
 </form>
