@@ -10,6 +10,7 @@
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
+	import type { AIConfig } from '$lib';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -24,6 +25,7 @@
 
 	let characterStateOverwrites: Partial<CharacterDescription> = $state({});
 	let resetImageState = $state(false);
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
 	let characterAgent: CharacterAgent;
 	onMount(() => {
@@ -175,7 +177,7 @@
 		>
 			Clear {stateValue.replaceAll('_', ' ')}
 		</button>
-		{#if stateValue === 'appearance'}
+		{#if !aiConfigState.value?.disableImagesState && stateValue === 'appearance'}
 			<div class="m-auto flex w-full flex-col">
 				<AIGeneratedImage
 					storageKey="characterImageState"
