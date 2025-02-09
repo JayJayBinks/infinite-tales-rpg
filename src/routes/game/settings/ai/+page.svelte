@@ -13,6 +13,7 @@
 	import type { AIConfig } from '$lib';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1.3);
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
@@ -70,7 +71,8 @@
 		const llm = LLMProvider.provideLLM({
 			temperature: 2,
 			apiKey: apiKeyState.value,
-			language: aiLanguage.value
+			language: aiLanguage.value,
+			model: openrouterModelState.value
 		});
 		const storyAgent = new StoryAgent(llm);
 		isGeneratingState = true;
@@ -114,12 +116,23 @@
 {/if}
 <form class="m-6 flex flex-col items-center text-center">
 	<label class="form-control w-full sm:w-2/3">
-		<p>Google Gemini API Key</p>
+		<p>OPENROUTER Model</p>
+		<input
+			type="text"
+			id="apikey"
+			bind:value={openrouterModelState.value}
+			placeholder="Copy & Paste from the openrouter model page"
+			class="input input-bordered mt-2"
+		/>
+		<small class="m-auto mt-2">Example: google/gemini-2.0-pro-exp-02-05:free</small>
+	</label>
+	<label class="form-control w-full sm:w-2/3">
+		<p>OPENROUTER API Key</p>
 		<input
 			type="text"
 			id="apikey"
 			bind:value={apiKeyState.value}
-			placeholder="Copy your API Key from Google AI Studio and paste here"
+			placeholder="Copy your API Key from OPENROUTER and paste here"
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2"

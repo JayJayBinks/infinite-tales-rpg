@@ -116,12 +116,14 @@
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM({
 			temperature: temperatureState.value,
 			language: aiLanguage.value,
-			apiKey: apiKeyState.value
+			apiKey: apiKeyState.value,
+			model: openrouterModelState.value
 		});
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);

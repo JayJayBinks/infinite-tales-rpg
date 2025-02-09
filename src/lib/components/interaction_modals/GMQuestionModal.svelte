@@ -35,12 +35,14 @@
 	let gameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
 	let isGeneratingState: boolean = $state(false);
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM({
 			temperature: 0.7,
 			language: aiLanguage.value,
-			apiKey: apiKeyState.value
+			apiKey: apiKeyState.value,
+			model: openrouterModelState.value
 		});
 		gameAgent = new GameAgent(llm);
 		isGeneratingState = true;

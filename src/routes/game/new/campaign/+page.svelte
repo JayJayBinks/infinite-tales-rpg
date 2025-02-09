@@ -29,13 +29,14 @@
 	const textAreaRowsDerived = $derived(getRowsForTextarea(campaignState.value));
 	let campaignStateOverwrites = $state({});
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
-
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 	onMount(() => {
 		campaignAgent = new CampaignAgent(
 			LLMProvider.provideLLM({
 				temperature: 2,
 				apiKey: apiKeyState.value,
-				language: aiLanguage.value
+				language: aiLanguage.value,
+				model: openrouterModelState.value
 			})
 		);
 

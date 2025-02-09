@@ -40,12 +40,14 @@
 
 	let isGeneratingState = $state(false);
 	let actionAgent: ActionAgent;
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM({
 			temperature: temperatureState.value,
 			language: aiLanguage.value,
-			apiKey: apiKeyState.value
+			apiKey: apiKeyState.value,
+			model: openrouterModelState.value
 		});
 		actionAgent = new ActionAgent(llm);
 

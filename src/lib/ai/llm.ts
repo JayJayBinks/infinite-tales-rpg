@@ -17,7 +17,7 @@ export interface LLMRequest {
 }
 
 export interface LLMconfig {
-	provider?: 'gemini' | 'pollinations';
+	provider?: 'gemini' | 'pollinations' | 'openrouter';
 	temperature?: number;
 	generationConfig?: GenerationConfig;
 	language?: string;

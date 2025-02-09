@@ -39,13 +39,16 @@
 
 	let isGeneratingState = $state(false);
 	let characterStatsAgent: CharacterStatsAgent;
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
+
 
 	onMount(async () => {
 		characterStatsAgent = new CharacterStatsAgent(
 			LLMProvider.provideLLM({
 				temperature: 2,
 				apiKey: apiKeyState.value,
-				language: aiLanguage.value
+				language: aiLanguage.value,
+				model: openrouterModelState.value
 			})
 		);
 		await generateLevelUp();

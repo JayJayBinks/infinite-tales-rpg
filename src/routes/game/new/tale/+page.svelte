@@ -26,13 +26,14 @@
 	const characterState = useLocalStorage<CharacterDescription>('characterState', {
 		...initialCharacterState
 	});
-
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 	onMount(() => {
 		storyAgent = new StoryAgent(
 			LLMProvider.provideLLM({
 				temperature: 2,
 				apiKey: apiKeyState.value,
-				language: aiLanguage.value
+				language: aiLanguage.value,
+				model: openrouterModelState.value
 			})
 		);
 	});

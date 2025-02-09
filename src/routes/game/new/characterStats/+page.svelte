@@ -18,6 +18,7 @@
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage('apiKeyState');
 	const aiLanguage = useLocalStorage('aiLanguage');
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 
 	let characterStatsAgent: CharacterStatsAgent;
 	onMount(() => {
@@ -25,7 +26,8 @@
 			LLMProvider.provideLLM({
 				temperature: 2,
 				apiKey: apiKeyState.value,
-				language: aiLanguage.value
+				language: aiLanguage.value,
+				model: openrouterModelState.value
 			})
 		);
 	});

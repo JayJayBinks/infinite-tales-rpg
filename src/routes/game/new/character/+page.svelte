@@ -26,6 +26,7 @@
 	let characterStateOverwrites: Partial<CharacterDescription> = $state({});
 	let resetImageState = $state(false);
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	const openrouterModelState = useLocalStorage<string>('openrouterModel');
 
 	let characterAgent: CharacterAgent;
 	onMount(() => {
@@ -33,7 +34,8 @@
 			LLMProvider.provideLLM({
 				temperature: 2,
 				apiKey: apiKeyState.value,
-				language: aiLanguage.value
+				language: aiLanguage.value,
+				model: openrouterModelState.value
 			})
 		);
 	});
