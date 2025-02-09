@@ -4,7 +4,6 @@
 	type Props = { text: string; voice: string; hidden?: boolean };
 	let { text, voice, hidden }: Props = $props();
 	let storyTTSAudioElement: HTMLAudioElement;
-
 	$effect(() => {
 		if (text && storyTTSAudioElement) {
 			storyTTSAudioElement.currentTime = 0;
@@ -14,5 +13,6 @@
 </script>
 
 <audio preload="none" {hidden} bind:this={storyTTSAudioElement} controls class="m-auto">
-	The “audio” tag is not supported by your browser.
+	The "audio" tag is not supported by your browser.
 </audio>
+

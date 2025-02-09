@@ -3,13 +3,7 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import {
-		getRowsForTextarea,
-		loadPDF,
-		navigate,
-		removeEmptyValues,
-		stringifyPretty
-	} from '$lib/util.svelte';
+	import { getRowsForTextarea, loadPDF, navigate, removeEmptyValues, stringifyPretty } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
@@ -21,13 +15,13 @@
 		getNewPlotPointObject,
 		initialCampaignState
 	} from '$lib/ai/agents/campaignAgent';
-	import { type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
+	import { type Story } from '$lib/ai/agents/storyAgent';
+	import { beforeNavigate } from '$app/navigation';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let campaignAgent: CampaignAgent;
-	let storyAgent: StoryAgent;
 
 	const campaignState = useLocalStorage<Campaign>('campaignState', initialCampaignState);
 	const storyState = useLocalStorage<Story>('storyState');
@@ -44,37 +38,19 @@
 				language: aiLanguage.value
 			})
 		);
-		storyAgent = new StoryAgent(
-			LLMProvider.provideLLM({
-				temperature: 2,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-			})
-		);
 
-		if (
-			campaignState.value?.chapters &&
-			campaignState.value?.chapters.length > 0 &&
-			campaignState.value?.chapters[0].plot_points?.length > 0
-		) {
-			const firstChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[0]);
-			firstChapter.plot_points.push({
-				...campaignState.value.chapters[firstChapter.chapterId]?.plot_points[0],
-				plotId: firstChapter.plot_points.length + 1
-			});
-			storyState.value = {
-				...storyState.value,
-				adventure_and_main_event: stringifyPretty(firstChapter)
-			};
-		}
+		beforeNavigate(() => {
+			overwriteTaleWithCampaignSettings(getCurrentChapterMapped(), storyState.value);
+		});
 	});
+
 
 	function onUploadClicked() {
 		const fileInput = document.createElement('input');
 		fileInput.type = 'file';
 		fileInput.accept = 'application/pdf';
 		fileInput.click();
-		fileInput.addEventListener('change', function (event) {
+		fileInput.addEventListener('change', function(event) {
 			// @ts-expect-error can never be null
 			const file = event.target.files[0];
 			if (file) {
@@ -97,31 +73,6 @@
 		return characterDescription;
 	}
 
-	const generateStory = async () => {
-		isGeneratingState = true;
-		const firstChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[0]);
-		//chapterId is actually next chapter as it starts with 1
-		firstChapter.plot_points.push({
-			...campaignState.value.chapters[firstChapter.chapterId]?.plot_points[0],
-			plotId: firstChapter.plot_points.length + 1
-		});
-
-		const overwrites: Partial<Story> = {
-			game: campaignState.value.game,
-			adventure_and_main_event: stringifyPretty(firstChapter),
-			world_details: campaignState.value.world_details,
-			character_simple_description: campaignState.value.character_simple_description
-		};
-		const newState = await storyAgent.generateRandomStorySettings(overwrites);
-		if (newState) {
-			newState.adventure_and_main_event = stringifyPretty(firstChapter);
-			console.log(stringifyPretty(newState));
-			storyState.value = newState;
-		}
-		currentChapterState.value = 1;
-		isGeneratingState = false;
-		return newState;
-	};
 	const onRandomize = async () => {
 		isGeneratingState = true;
 
@@ -134,6 +85,7 @@
 			campaignState.value = newState;
 		}
 		isGeneratingState = false;
+		return newState;
 	};
 
 	const onRandomizeSingle = async (stateValue: string, chapterNumber: string = '') => {
@@ -191,17 +143,45 @@
 	}
 
 	async function _goto(page: string) {
-		if (!isEqual(initialCampaignState, campaignState.value)) {
-			if (!isCampaignSet()) {
-				await onRandomize();
+		if (isEqual(initialCampaignState, campaignState.value)) {
+			if (!await onRandomize()) {
+				return;
 			}
-			if(await generateStory()){
-				navigate('/new/' + page);
-			}
-		}else{
-			navigate('/new/' + page);
 		}
+		navigate('/new/' + page);
 	}
+
+	const overwriteTaleWithCampaignSettings = (currentChapter: CampaignChapter, taleState: Story) => {
+		if (taleState) {
+			taleState.adventure_and_main_event = stringifyPretty(currentChapter);
+			taleState.general_image_prompt = campaignState.value.general_image_prompt;
+			taleState.character_simple_description = campaignState.value.character_simple_description;
+			taleState.world_details = campaignState.value.world_details;
+			taleState.game = campaignState.value.game;
+			taleState.theme = campaignState.value.theme;
+			taleState.tonality = campaignState.value.tonality;
+			console.log(stringifyPretty(taleState));
+			storyState.value = taleState;
+		}
+		if (!currentChapterState.value) {
+			currentChapterState.value = 1;
+		}
+	};
+
+	const getCurrentChapterMapped = () => {
+
+		const currentChapterNumber = currentChapterState.value || 1;
+		const currentChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[currentChapterNumber - 1]);
+		//currentChapterNumber is actually next chapter as it starts with 1
+		const nextPlotPoint = campaignState.value.chapters[currentChapterNumber]?.plot_points[0];
+		if (nextPlotPoint) {
+			currentChapter.plot_points.push({
+				...nextPlotPoint,
+				plotId: currentChapter.plot_points.length + 1
+			});
+		}
+		return currentChapter;
+	};
 </script>
 
 {#if isGeneratingState}
@@ -261,7 +241,7 @@
 			{#if stateValue === 'chapters'}
 				<!-- TODO refactor or leave for now?-->
 				<label class="form-control mt-3 w-full">
-					<details class="collapse collapse-arrow border border-base-300 bg-base-200">
+					<details open class="collapse collapse-arrow border border-base-300 bg-base-200">
 						<summary class="collapse-title capitalize">{stateValue.replaceAll('_', ' ')}</summary>
 						<div class="collapse-content">
 							{#each Object.keys(campaignState.value[stateValue]) as chapterNumber}
@@ -271,7 +251,7 @@
 											{#if chapterProperty === 'plot_points'}
 												<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 													<summary class="collapse-title capitalize"
-														>{chapterProperty.replaceAll('_', ' ')}</summary
+													>{chapterProperty.replaceAll('_', ' ')}</summary
 													>
 													<div class="collapse-content">
 														{#each Object.keys(campaignState.value[stateValue][chapterNumber][chapterProperty]) as plotPoint}
@@ -326,7 +306,7 @@
 																						{plotPointProperty.replaceAll('_', ' ')}
 																						{#if campaignStateOverwrites[stateValue] && campaignStateOverwrites[stateValue][chapterNumber] && campaignStateOverwrites[stateValue][chapterNumber][chapterProperty] && campaignStateOverwrites[stateValue][chapterNumber][chapterProperty][plotPoint] && campaignStateOverwrites[stateValue][chapterNumber][chapterProperty][plotPoint][plotPointProperty]}
 																							<span class="badge badge-accent ml-2"
-																								>overwritten</span
+																							>overwritten</span
 																							>
 																						{/if}
 																					</div>
