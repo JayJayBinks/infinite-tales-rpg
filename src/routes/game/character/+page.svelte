@@ -5,10 +5,12 @@
 	import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent.ts';
 	import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 	import type { Story } from '$lib/ai/agents/storyAgent';
+	import type { AIConfig } from '$lib';
 
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
 	const storyState = useLocalStorage<Story>('storyState');
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 </script>
 
 {#if characterState.value}
@@ -17,12 +19,14 @@
 			<h1 id="name" class="class mb-4 border-b border-gray-600 text-center text-3xl font-bold">
 				{characterState.value.name}
 			</h1>
-			<div class="m-auto flex w-full flex-col">
-				<AIGeneratedImage
-					storageKey="characterImageState"
-					imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
-				></AIGeneratedImage>
-			</div>
+			{#if !aiConfigState.value.disableImagesState}
+				<div class="m-auto flex w-full flex-col">
+					<AIGeneratedImage
+						storageKey="characterImageState"
+						imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
+					></AIGeneratedImage>
+				</div>
+			{/if}
 			<div class="section mb-6">
 				<h2 class="mb-2 mt-2 border-b border-gray-600 pb-1 text-xl font-semibold">
 					Basic Information

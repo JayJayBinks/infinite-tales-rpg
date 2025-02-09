@@ -71,7 +71,7 @@
 			</button>
 		{/snippet}
 	</ImportExportSaveGame>
-	<button class="btn btn-neutral mt-2 w-1/2" onclick={taleSettingsClicked}>
+	<button class="btn btn-neutral mt-2 w-3/4 sm:w-1/2" onclick={taleSettingsClicked}>
 		View Tale Settings
 	</button>
 </form>
