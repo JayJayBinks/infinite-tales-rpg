@@ -2,6 +2,7 @@ import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 
 export const uiTechnicalInstructions = 'The HTML, CSS and JS will be dynamically rendered it inside the game app, so you must include all game logic and no placeholders.\n' +
+	'Return JSON with properties "html" "javascript" and "css"\n' +
 	'Display the nested game state in a UX friendly way directly in the game screen or via dialog.\n' +
 	'Use DaisyUI and Tailwind for CSS and plain javascript\n' +
 	'Never use dropdown but only HTML tag dialog with show but not showModal method.\n' +
@@ -9,8 +10,8 @@ export const uiTechnicalInstructions = 'The HTML, CSS and JS will be dynamically
 	'You can generate AI images with source https://image.pollinations.ai/prompt/{prompt}\n' +
 	'Never use DOMContentLoaded, create a method renderGameState that updates the HTML elements with the gameState values\n' +
 	'Make sure to call renderGameState\n' +
+	'If you define functions they must be available in the window object\n' +
 	'Make sure that the javascript is null safe for game state values\n' +
-	'Return JSON with properties "html" "javascript" and "css"\n' +
 	'Inside the javascript do not repeat the input game state, access directly via window.gameState\n' +
 	'Function calling: \n' +
 	'You can call the following functions inside the generated js:\n' +

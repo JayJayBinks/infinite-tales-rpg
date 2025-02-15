@@ -108,28 +108,31 @@ export class GameAgent {
 
 	async generateAnswerForPlayerQuestion(
 		question: string,
-		customSystemInstruction: string,
-		historyMessages: Array<LLMMessage>,
-		storyState: Story,
-		characterState: CharacterDescription,
-		playerCharactersGameState: PlayerCharactersGameState,
-		inventoryState: InventoryState
+		dynamicGameState: object,
+		historyMessagesState: Array<LLMMessage>,
+		dynamicStoryState: string,
+		uiData: object,
+		gameMasterInstructionsState: string,
+		uiInstructionsState: string
 	): Promise<GameMasterAnswer> {
 
 		const gameAgent = ['You are Reviewer Agent, your task is to answer a players question.\n' +
 		'You can refer to the internal state, rules and previous messages that the Game Master has considered',
+			'Story to be considered\n' + dynamicStoryState,
+			'Game state to be considered\n' + JSON.stringify(dynamicGameState),
+			'UI state to be considered\n' + JSON.stringify(uiData),
+			'UI instructions to be considered\n' + uiInstructionsState,
 			jsonSystemInstructionForPlayerQuestion];
 
 		const userMessage =
 			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question: ' + question +
 			'\nIn your answer, identify the relevant Game Master\'s rules that are related to the question:\n' +
 			'Game Master\'s rules:\n' +
-			this.getGameAgentSystemInstructionsFromStates(storyState, characterState, playerCharactersGameState, inventoryState, customSystemInstruction)
-				.join('\n');
+			gameMasterInstructionsState;
 
 		const request: LLMRequest = {
 			userMessage: userMessage,
-			historyMessages: historyMessages,
+			historyMessages: historyMessagesState,
 			systemInstruction: gameAgent
 		};
 		return (await this.llm.generateReasoningContent(request))

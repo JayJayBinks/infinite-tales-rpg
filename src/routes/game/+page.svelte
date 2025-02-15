@@ -196,7 +196,19 @@
 <div id="dice-box" class="pointer-events-none fixed inset-0 z-[1000]"></div>
 <div id="game-container" class="container mx-auto p-4">
 	{#if errorState.userMessage}
-		<ErrorModal onclose={() => {isAiGeneratingState = false}} />
+		<ErrorModal onclose={async (error) => {
+			isAiGeneratingState = false;
+			if(error){
+				let errorObj;
+				try{
+					errorObj = JSON.parse(error);
+				}catch (e){
+					console.log(e);
+				}
+				uiTempContext.value = [...uiTempContext.value, 'Try to fix this error: ' + (errorObj?.event || error)];
+				await generateUIData(true);
+			}
+		}} />
 	{/if}
 	{#if gmQuestionState}
 		<GMQuestionModal onclose={onGMQuestionClosed} question={gmQuestionState}

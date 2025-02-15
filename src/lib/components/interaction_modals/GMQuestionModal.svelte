@@ -13,6 +13,8 @@
 	import type { LLMMessage } from '$lib/ai/llm';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { stringifyPretty } from '$lib/util.svelte';
+	import { gameStateRules, systemBehaviour } from '$lib/ai/agents/dynamicGameAgent';
+	import { uiFeatureInstructions, uiTechnicalInstructions } from '$lib/ai/agents/uiAgent';
 
 	let {
 		onclose,
@@ -32,6 +34,22 @@
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 
+	const dynamicStoryState = useLocalStorage<string>('dynamicStoryState');
+	const dynamicGameState = useLocalStorage<any>('dynamicGameState');
+	let uiData = useLocalStorage('uiData', { html: '', css: '', javascript: '' });
+	const gameMasterInstructionsState = useLocalStorage<{
+		systemBehaviour,
+		gameStateRules
+	}>('gameMasterInstructionsState', { systemBehaviour, gameStateRules });
+
+	const uiTempContext = useLocalStorage<string[]>('uiTempContext', []);
+	const gameStateTempContext = useLocalStorage<string[]>('gameStateTempContext', []);
+
+	const uiInstructionsState = useLocalStorage<{
+		uiFeatureInstructions,
+		uiTechnicalInstructions
+	}>('uiInstructionsState', { uiFeatureInstructions, uiTechnicalInstructions });
+
 	let gameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
 	let isGeneratingState: boolean = $state(false);
@@ -46,12 +64,12 @@
 		isGeneratingState = true;
 		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
-			customSystemInstruction.value,
+			dynamicGameState.value,
 			historyMessagesState.value,
-			storyState.value,
-			characterState.value,
-			playerCharactersGameState,
-			inventoryState.value
+			dynamicStoryState.value,
+			uiData.value,
+			JSON.stringify(gameMasterInstructionsState.value) + '\n' + gameStateTempContext.value.join('n'),
+			JSON.stringify(uiInstructionsState.value) + '\n' + uiTempContext.value.join('n'),
 		);
 		console.log(stringifyPretty(gmAnswerState));
 		isGeneratingState = false;
