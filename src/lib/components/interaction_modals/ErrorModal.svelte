@@ -18,7 +18,7 @@
 		>
 		{#if errorState.exception && errorState.retryable}
 			<span class="mt-3"
-				>Please retry the action or reload the page. If the error persists report it in the Discord.</span
+				>The AI has a bug in the UI most probably. Try reloading the page or Regenerate UI button.</span
 			>
 		{/if}
 		<button

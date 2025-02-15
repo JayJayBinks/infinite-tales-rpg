@@ -27,7 +27,7 @@ export interface LLMconfig {
 	model?: string;
 }
 
-export type LLMReasoningResponse = { reasoning: string | undefined; parsedObject: object };
+export type LLMReasoningResponse = { reasoning: string | undefined; parsedObject: object};
 
 export abstract class LLM {
 	llmConfig: LLMconfig;

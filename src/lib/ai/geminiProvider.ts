@@ -10,13 +10,7 @@ import {
 	type SafetySetting
 } from '@google/generative-ai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
-import {
-	LLM,
-	type LLMconfig,
-	type LLMMessage,
-	type LLMRequest,
-	type LLMReasoningResponse
-} from '$lib/ai/llm';
+import { LLM, type LLMconfig, type LLMMessage, type LLMReasoningResponse, type LLMRequest } from '$lib/ai/llm';
 import { errorState } from '$lib/state/errorState.svelte';
 
 const safetySettings: Array<SafetySetting> = [
@@ -160,10 +154,10 @@ export class GeminiProvider extends LLM {
 						console.log('Try json fix with llm agent');
 						return {
 							reasoning,
-							parsedObject: this.jsonFixingInterceptorAgent.fixJSON(
+							parsedObject: await this.jsonFixingInterceptorAgent.fixJSON(
 								json,
 								(firstError as SyntaxError).message
-							)
+							) || {}
 						};
 					}
 					handleError(firstError as string);

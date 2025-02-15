@@ -38,6 +38,11 @@
 	const characterActionsState = useLocalStorage('characterActionsState');
 	let levelUpState = useLocalStorage('levelUpState');
 
+	const dynamicGameState = useLocalStorage<any>('dynamicGameState');
+	let uiData = useLocalStorage('uiData', { html: '', css: '', javascript: '' });
+	const uiTempContext = useLocalStorage<string[]>('uiTempContext', []);
+	const gameStateTempContext = useLocalStorage<string[]>('gameStateTempContext', []);
+
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	let ttsVoices: Voice[] = $state([]);
 	let isGeneratingState = $state(false);
@@ -63,6 +68,11 @@
 		currentChapterState.reset();
 		characterActionsState.reset();
 		levelUpState.reset();
+
+		dynamicGameState.reset();
+		uiData.reset();
+		uiTempContext.reset();
+		gameStateTempContext.reset();
 	}
 
 	async function onQuickstartNew() {
@@ -133,10 +143,7 @@
 			></small
 		>
 	</label>
-	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={onQuickstartNew}>
-		Quickstart:<br />New Random Tale
-	</button>
-	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
+
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
 		disabled={!apiKeyState.value}
@@ -144,15 +151,7 @@
 	>
 		New Custom Tale
 	</button>
-	<small class="m-auto mt-2">Customize your Tale with a brief, open-ended plot</small>
-	<button
-		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!apiKeyState.value}
-		onclick={onNewCampaign}
-	>
-		New Campaign
-	</button>
-	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>
+
 	<div class="divider mt-7">Advanced Settings</div>
 
 	<label class="form-control mt-3 w-full sm:w-2/3">
@@ -164,42 +163,7 @@
 		/>
 		<small class="m-auto mt-2">The Game UI will not be translated yet</small>
 	</label>
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		<div class="flex flex-col items-center gap-2">
-			<span>Disable Text To Speech Generation</span>
-			<div class="flex items-center gap-2">
-				<input
-					type="checkbox"
-					class="toggle"
-					bind:checked={aiConfigState.value.disableAudioState}
-				/>
-			</div>
-		</div>
-	</label>
-	<label class="form-control w-full sm:w-1/2 mt-5">
-		<p>Voice For Text To Speech</p>
-		<button
-			onclick={() => {
-					playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
-			}}
-		>Test Voice
-		</button>
-		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
-			{#each ttsVoices as v}
-				<option value={v.ShortName}>{v.FriendlyName} - {v.Gender}</option>
-			{/each}
-		</select>
-	</label>
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		<div class="flex flex-col items-center gap-2">
-			<span>Disable Image Generation</span>
-			<input
-				type="checkbox"
-				class="toggle"
-				bind:checked={aiConfigState.value.disableImagesState}
-			/>
-		</div>
-	</label>
+
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		Temperature: {temperatureState.value}
 		<input
@@ -216,17 +180,5 @@
 		>
 	</label>
 
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		Tale System Instruction
-		<textarea
-			bind:value={customSystemInstruction.value}
-			placeholder="For example: Make every action difficulty easy. Make every character speak in riddles."
-			class="textarea textarea-bordered mt-2"
-		>
-		</textarea>
-		<small class="m-auto mt-2"
-		>You may have to start a new Tale after setting the instruction.</small
-		>
-	</label>
 
 </form>

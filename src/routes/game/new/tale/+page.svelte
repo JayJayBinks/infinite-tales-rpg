@@ -1,11 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		initialStoryState,
-		type Story,
-		StoryAgent,
-		storyStateForPrompt
-	} from '$lib/ai/agents/storyAgent';
+	import { initialStoryState, type Story, StoryAgent, storyStateForPrompt } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
@@ -14,6 +9,8 @@
 	import { goto } from '$app/navigation';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import { gameStateRules, systemBehaviour } from '$lib/ai/agents/dynamicGameAgent';
+	import { uiFeatureInstructions, uiTechnicalInstructions } from '$lib/ai/agents/uiAgent';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -21,6 +18,18 @@
 	let storyAgent: StoryAgent;
 
 	const storyState = useLocalStorage<Story>('storyState', { ...initialStoryState });
+
+	const dynamicStoryState = useLocalStorage<string>('dynamicStoryState');
+	const gameMasterInstructionsState = useLocalStorage<{
+		systemBehaviour,
+		gameStateRules
+	}>('gameMasterInstructionsState', { systemBehaviour, gameStateRules });
+
+	const uiInstructionsState = useLocalStorage<{
+		uiFeatureInstructions,
+		uiTechnicalInstructions
+	}>('uiInstructionsState', { uiFeatureInstructions, uiTechnicalInstructions });
+
 	const textAreaRowsDerived = $derived(getRowsForTextarea(storyState.value));
 	let storyStateOverwrites = $state({});
 	const characterState = useLocalStorage<CharacterDescription>('characterState', {
@@ -54,6 +63,7 @@
 		);
 		if (newState) {
 			storyState.value = newState;
+			dynamicStoryState.value = Object.entries(newState).map(entr => entr[0].replaceAll('_', ' ') + ': ' + entr[1]).join('\n\n');
 		}
 		isGeneratingState = false;
 	};
@@ -80,103 +90,109 @@
 {#if isGeneratingState}
 	<LoadingModal />
 {/if}
-<ul class="steps mt-3 w-full">
+<ul class="steps mt-5 w-full">
 	<li class="step step-primary">Tale</li>
 	<!--TODO  -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events  -->
-	<li class="step cursor-pointer" onclick={() => goto('character')}>Character</li>
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions  -->
-	<!-- svelte-ignore a11y_click_events_have_key_events  -->
-	<li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions  -->
-	<!-- svelte-ignore a11y_click_events_have_key_events  -->
-	<li class="step cursor-pointer" onclick={() => goto('character')}>Start</li>
+	<li class="step cursor-pointer" onclick={() => goto('')}>Start</li>
 </ul>
 <form class="m-6 grid items-center gap-2 text-center">
-	<p>Quickstart: Click on Randomize All to generate a random Tale.</p>
-	<p>You can also customize any setting and play the Tale suited to your liking.</p>
-	<p>The custom settings will be considered for the Randomize feature.</p>
-	<p>You can even create the Character first and the Tale after.</p>
-	<p>
-		Example: Enter 'Call of Cthulhu' as Game and click Randomize All. A random Cthulhu Tale will be
-		generated.
-	</p>
-	<button
-		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
-		disabled={isGeneratingState}
-		onclick={onRandomize}
-	>
-		Randomize All
-	</button>
+	<p>These are the settings for the very experimental dynamic game generation</p>
 	<button
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
 		onclick={() => {
-			storyState.reset();
+			dynamicStoryState.reset();
+			gameMasterInstructionsState.reset();
+			uiInstructionsState.reset();
 			storyStateOverwrites = {};
 		}}
 	>
-		Clear All
+		Reset All
 	</button>
 	<ImportExportSaveGame isSaveGame={false}>
 		{#snippet exportButton(onclick)}
-			<button {onclick} class="btn btn-neutral m-auto w-3/4 sm:w-1/2"> Export Settings </button>
+			<button {onclick} class="btn btn-neutral m-auto w-3/4 sm:w-1/2"> Export Settings</button>
 		{/snippet}
 		{#snippet importButton(onclick)}
-			<button {onclick} class="btn btn-neutral m-auto w-3/4 sm:w-1/2"> Import Settings </button>
+			<button {onclick} class="btn btn-neutral m-auto w-3/4 sm:w-1/2"> Import Settings</button>
 		{/snippet}
 	</ImportExportSaveGame>
 	<button
 		class="btn btn-primary m-auto w-3/4 sm:w-1/2"
 		onclick={() => {
-			navigate('/new/character');
+			navigate('');
 		}}
 	>
-		Next Step:<br /> Customize Character
+		Start Game
 	</button>
-	{#if storyState.value}
-		{#each Object.keys(storyStateForPrompt) as stateValue}
-			<label class="form-control mt-3 w-full">
-				<div class=" flex-row capitalize">
-					{stateValue.replaceAll('_', ' ')}
-					{#if storyStateOverwrites[stateValue]}
-						<span class="badge badge-accent ml-2">overwritten</span>
-					{/if}
-				</div>
+	<label class="form-control w-full mt-5">
+		<p>Story</p>
+		<p>Describe the story, RPG system and characters</p>
+		<textarea
+			bind:value={dynamicStoryState.value}
+			oninput={(evt) => handleInput(evt, 'story')}
+			rows=10
+			class="textarea textarea-bordered textarea-md mt-2 w-full"
+		></textarea>
+	</label>
+	<button
+		class="btn btn-accent m-auto mt-5 w-3/4 sm:w-1/2"
+		disabled={isGeneratingState}
+		onclick={onRandomize}
+	>
+		Randomize Story
+	</button>
 
-				<textarea
-					bind:value={storyState.value[stateValue]}
-					rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue] : 2}
-					oninput={(evt) => handleInput(evt, stateValue)}
-					placeholder={storyStateForPrompt[stateValue]}
-					class="textarea textarea-bordered textarea-md mt-2 w-full"
-				></textarea>
-			</label>
-			<button
-				class="btn btn-accent m-auto mt-2 w-3/4 capitalize sm:w-1/2"
-				onclick={() => {
-					onRandomizeSingle(stateValue);
-				}}
-			>
-				Randomize {stateValue.replaceAll('_', ' ')}
-			</button>
-			<button
-				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
-				onclick={() => {
-					storyState.resetProperty(stateValue);
-					delete storyStateOverwrites[stateValue];
-				}}
-			>
-				Clear {stateValue.replaceAll('_', ' ')}
-			</button>
-		{/each}
-		<button
-			class="btn btn-primary m-auto mt-2 w-3/4 sm:w-1/2"
-			onclick={() => {
-				navigate('/new/character');
-			}}
-		>
-			Next Step:<br /> Customize Character
-		</button>
-	{/if}
+
+	<label class="form-control w-full mt-5">
+		<p>Game Master Instructions</p>
+		<p>You can put any rules here that the Game Master should consider</p>
+		<textarea
+			bind:value={gameMasterInstructionsState.value.systemBehaviour}
+			rows=10
+			class="textarea textarea-bordered textarea-md mt-2 w-full"
+		></textarea>
+	</label>
+
+
+	<label class="form-control mt-5 w-full">
+		<p>Game State Instructions (only change if you know what you are doing)</p>
+		<p>You can instruct the AI to create the game state, track custom variables etc. </p>
+		<textarea
+			bind:value={gameMasterInstructionsState.value.gameStateRules}
+			rows=10
+			class="textarea textarea-bordered textarea-md mt-2 w-full"
+		></textarea>
+	</label>
+
+	<label class="form-control mt-5 w-full">
+		<p>UI Feature Instruction</p>
+		<p>Include the description of the features you want in the UI, like special buttons or menus</p>
+		<textarea
+			bind:value={uiInstructionsState.value.uiFeatureInstructions}
+			rows=10
+			class="textarea textarea-bordered textarea-md mt-2 w-full"
+		></textarea>
+	</label>
+
+
+	<label class="form-control mt-5 w-full">
+		<p>UI Technical Instructions (only change if you know what you are doing)</p>
+		<p>These are technical instructions for rendering the UI, change at your own risk as it easily breaks!</p>
+		<textarea
+			bind:value={uiInstructionsState.value.uiTechnicalInstructions}
+			rows=10
+			class="textarea textarea-bordered textarea-md mt-2 w-full"
+		></textarea>
+	</label>
+	<button
+		class="btn btn-primary m-auto w-3/4 sm:w-1/2"
+		onclick={() => {
+			navigate('');
+		}}
+	>
+		Start Game
+	</button>
+
 </form>
