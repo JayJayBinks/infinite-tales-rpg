@@ -39,9 +39,7 @@
 				' casts ' +
 				ability.name +
 				': ' +
-				ability.effect +
-				' (' +
-				ability.resource_cost.cost + ` ${ability.resource_cost.resource_key})`
+				ability.effect
 		};
 	}
 </script>
@@ -81,13 +79,15 @@
 								</div>
 							{/if}
 							<div class="m-auto w-full sm:col-span-2">
-								<p class="badge badge-info">{ability.resource_cost.cost} {ability.resource_cost.resource_key}</p>
+								{#if ability.resource_cost?.cost > 0}
+									<p class="badge badge-info h-fit">{ability.resource_cost?.cost} {(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}</p>
+								{/if}
 								<p class="mt-2 overflow-hidden overflow-ellipsis">{ability.name}</p>
 								<button
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
-									disabled={ability.resource_cost.cost > 0
-														&& ability.resource_cost.cost > resources[ability.resource_cost.resource_key].current_value}
+									disabled={ability.resource_cost?.cost > 0
+														&& ability.resource_cost?.cost > resources[ability.resource_cost.resource_key || ''].current_value}
 									onclick={() => {
 										mapAbilityToAction(ability);
 										dialogRef.close();

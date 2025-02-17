@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type CharacterStats } from '$lib/ai/agents/characterStatsAgent';
+	import { type CharacterStats, type Resources } from '$lib/ai/agents/characterStatsAgent';
 	import { onMount } from 'svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
@@ -15,12 +15,12 @@
 	let {
 		onclose,
 		currentGameActionState,
-		currentMP,
+		resources,
 		itemForSuggestActionsState
 	}: {
 		onclose?;
 		currentGameActionState: GameActionState
-		currentMP: number
+		resources: Resources
 		itemForSuggestActionsState: ItemWithId
 	} = $props();
 
@@ -80,7 +80,7 @@
 			{#each suggestedActions as action}
 				<button
 					type="button"
-					disabled={!isEnoughResource(action, currentMP)}
+					disabled={!isEnoughResource(action, resources)}
 					class="components btn btn-neutral no-animation mt-2"
 					onclick={() => onclose(action)}
 				>

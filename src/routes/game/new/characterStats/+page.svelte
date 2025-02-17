@@ -49,6 +49,11 @@
 		if (newState) {
 			console.log(newState);
 			parseState(newState);
+			//TODO MAP ABILITY COST IF NULL
+			newState.spells_and_abilities = newState.spells_and_abilities.map(ability => ({
+				...ability,
+				resource_cost: ability.resource_cost ? ability.resource_cost : { cost: 0, resource_key: undefined }
+			}));
 			characterStatsState.value = newState;
 		}
 		isGeneratingState = false;
@@ -241,6 +246,26 @@
 															<span class="badge badge-accent ml-2">overwritten</span>
 														{/if}
 													</div>
+													{#if deepNestedValue === 'resource_cost'}
+														{#if characterStatsState.value[stateValue][statValue][deepNestedValue]?.resource_key}
+															<input class="input input-bordered mt-2" type="number"
+																		 placeholder="Cost as number"
+																		 bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue].cost} />
+														{/if}
+														<select
+															bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue].resource_key}
+															class="select select-bordered mt-2 text-center"
+														>
+															<option class="capitalize" value={undefined}>
+																No Cost
+															</option>
+															{#each Object.keys(characterStatsState.value.resources || {}) as resourceKey (resourceKey)}
+																<option class="capitalize" value={resourceKey}>
+																	{resourceKey.replaceAll('_', ' ')}
+																</option>
+															{/each}
+														</select>
+													{:else}
 													<textarea
 														bind:value={characterStatsState.value[stateValue][statValue][
 															deepNestedValue
@@ -263,6 +288,7 @@
 														class="textarea textarea-bordered textarea-md mt-2 w-full"
 													>
 													</textarea>
+													{/if}
 												</div>
 											</div>
 										{/each}
@@ -313,7 +339,7 @@
 											/>
 										</div>
 										<div class="form-control mt-2 mb-4 sm:w-1/4 m-auto">
-											<p>Game Ends When Reaches Zero</p>
+											<p>Game Ends When Zero</p>
 											<input
 												type="checkbox"
 												bind:checked={characterStatsState.value[stateValue][statValue].game_ends_when_zero}

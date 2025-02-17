@@ -79,7 +79,13 @@ export function applyLevelUp(
 		return characterStats;
 	}
 	characterStats.level += 1;
-	characterStats.resources = { ...characterStats.resources, ...aiLevelUp.resources };
+	for (const resourcesKey in aiLevelUp.resources) {
+		characterStats.resources[resourcesKey] = {
+			...characterStats.resources[resourcesKey],
+			current_value: aiLevelUp.resources[resourcesKey],
+			max_value: aiLevelUp.resources[resourcesKey]
+		};
+	}
 
 	const traitToLevel = getTraitToLevelUp(aiLevelUp.trait, characterStats);
 	if (traitToLevel.type === 'disadvantage') {
@@ -93,7 +99,7 @@ export function applyLevelUp(
 		);
 		if (index > -1) {
 			// only splice array when item is found
-			characterStats.spells_and_abilities.splice(index, 1); // 2nd parameter means remove one item only
+			characterStats.spells_and_abilities.splice(index, 1);
 		}
 	}
 

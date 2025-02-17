@@ -86,7 +86,13 @@
 				const characterStatsAgent = new CharacterStatsAgent(llm);
 				const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(
 					storyState.value,
-					characterState.value
+					characterState.value,
+					{
+						resources: {
+							HP: { current_value: 0, max_value: 0, game_ends_when_zero: true },
+							MP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
+						}
+					}
 				);
 				parseState(newCharacterStatsState);
 				if (newCharacterState) {

@@ -82,9 +82,9 @@ export class GameAgent {
 		inventoryState: InventoryState
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let playerActionText = action.characterName + ': ' + action.text;
-		const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-		if (mpCost > 0) {
-			playerActionText += '\nMP cost ' + mpCost;
+		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+		if (cost > 0) {
+			playerActionText += `\n${action.resource_cost?.cost} ${action.resource_cost?.resource_key} cost`;
 		}
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
@@ -185,7 +185,7 @@ export class GameAgent {
 	): Pick<GameActionState, 'stats_update'> {
 
 		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
-		Object.entries(resources).forEach(entry => {
+		Object.entries(resources).filter(entr => entr[1].max_value > 0).forEach(entry => {
 			returnObject.stats_update.push({
 				sourceId: playerName,
 				targetId: playerName,
@@ -241,6 +241,7 @@ The Game Master's General Responsibilities Include:
 - Never narrate events briefly or summarize; Always describe detailed scenes with character conversation in direct speech
 - Use GAME's core knowledge and rules.
 - Handle CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
+- Handle NPC resources, you must explicitly use resourceKey "hp" or "mp", and no deviations of that
 - The story narration ${storyWordLimit}
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.

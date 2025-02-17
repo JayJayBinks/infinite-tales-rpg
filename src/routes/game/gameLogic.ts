@@ -17,6 +17,12 @@ export enum ActionDifficulty {
 	very_difficult = 'very_difficult'
 }
 
+export function getEmptyCriticalResourceKeys(resources: Resources): string[] {
+	return Object.entries(resources)
+		.filter(entry => entry[1].game_ends_when_zero && entry[1].current_value <= 0).map(entry => entry[0]);
+}
+
+
 export function getAllTargetsAsList(targets: Targets) {
 	if (!targets || !targets.hostile) {
 		return [];
@@ -74,10 +80,31 @@ export function mapStatsUpdateToGameLogic(statsUpdate: StatsUpdate): StatsUpdate
 	return statsUpdate;
 }
 
+function getColorForStatUpdate(mappedType: string, resources: Resources) {
+	let color = '';
+	if (mappedType.includes('HP')) color = 'text-red-500';
+	if (mappedType.includes('MP')) color = 'text-blue-500';
+	if (mappedType.includes('XP')) color = 'text-green-500';
+	if (mappedType.includes('LEVEL')) color = 'text-green-500';
+	if (!color) {
+		const foundResourceEntry = Object.entries(resources).find(res => {
+			const processedKey = res[0].replaceAll('_', ' ').toUpperCase();
+			return processedKey.includes(mappedType.toUpperCase());
+		});
+
+		const foundResourceValue = foundResourceEntry ? foundResourceEntry[1] : undefined;
+		if (foundResourceValue) {
+			color = foundResourceValue.game_ends_when_zero ? 'text-red-500' : 'text-blue-500';
+		}
+	}
+	return color;
+}
+
 export function renderStatUpdates(
 	statsUpdates: Array<StatsUpdate>,
+	resources: Resources,
 	playerName: string
-): Array<RenderedGameUpdate> {
+): (undefined | { color: string; text: string; resourceText: string })[] {
 	if (statsUpdates) {
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
@@ -104,11 +131,9 @@ export function renderStatUpdates(
 						.replace('_lost', '')
 						.replaceAll('_', ' ')
 						.toUpperCase() || '';
-				let color = '';
-				if (mappedType.includes('HP')) color = 'text-red-500';
-				if (mappedType.includes('MP')) color = 'text-blue-500';
-				if (mappedType.includes('XP')) color = 'text-green-500';
-				if (mappedType.includes('LEVEL')) color = 'text-green-500';
+
+				const color = getColorForStatUpdate(mappedType, resources);
+
 				if (statsUpdate.targetId === playerName) {
 					responseText = 'You ';
 					if (!changeText) {
@@ -192,44 +217,58 @@ export function applyGameActionState(
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
+	function getResourceIfPresent(resources: Resources, key: string){
+		let resource = resources[key];
+		if(!resource){
+			resource = resources[key.toUpperCase()];
+		}
+		return resource;
+	}
+
 	for (const statUpdate of state.stats_update.map(mapStatsUpdateToGameLogic) || []) {
 		if (playerCharactersGameState[statUpdate.targetId]) {
 			if (statUpdate.type.includes('now_level')) {
-				playerCharactersGameState[statUpdate.targetId].xp.current_value -=
+				playerCharactersGameState[statUpdate.targetId].XP.current_value -=
 					Number.parseInt(statUpdate.value.result) || 0;
 				continue;
 			}
 			if (statUpdate.type === 'xp_gained') {
-				playerCharactersGameState[statUpdate.targetId].xp.current_value +=
+				playerCharactersGameState[statUpdate.targetId].XP.current_value +=
 					Number.parseInt(statUpdate.value.result) || 0;
-			}
-			if (statUpdate.type.includes('_gained')) {
-				const resource: string = statUpdate.type.replace('_gained', '');
-				const res = playerCharactersGameState[statUpdate.targetId][resource];
-				if (res.current_value <= res.max_value) {
-					res.current_value += Number.parseInt(statUpdate.value.result) || 0;
-				} else {
-					res.current_value = res.max_value;
+			} else {
+				if (statUpdate.type.includes('_gained')) {
+					const resource: string = statUpdate.type.replace('_gained', '');
+					const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
+					const gained = Number.parseInt(statUpdate.value.result) || 0;
+					if (res.current_value + gained <= res.max_value) {
+						res.current_value += Number.parseInt(statUpdate.value.result) || 0;
+					} else {
+						res.current_value = res.max_value;
+					}
 				}
 			}
 			if (statUpdate.type.includes('_lost')) {
 				const resource: string = statUpdate.type.replace('_lost', '');
-				playerCharactersGameState[statUpdate.targetId][resource].current_value -=
+				getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource).current_value -=
 					Number.parseInt(statUpdate.value.result) || 0;
 			}
 		} else {
 			if (!prohibitNPCChange) {
 				const npc: NPCStats = npcState[statUpdate.targetId];
 				if (npc && npc.resources) {
-					if (statUpdate.type.includes('_gained')) {
-						const resource: string = statUpdate.type.replace('_gained', '');
-						npc.resources[resource].max_value +=
-							Number.parseInt(statUpdate.value.result) || 0;
-					}
-					if (statUpdate.type.includes('_lost')) {
-						const resource: string = statUpdate.type.replace('_lost', '');
-						npc.resources[resource].max_value -=
-							Number.parseInt(statUpdate.value.result) || 0;
+					switch (statUpdate.type) {
+						case 'hp_gained':
+							npc.resources.current_hp += Number.parseInt(statUpdate.value.result) || 0;
+							break;
+						case 'hp_lost':
+							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result) || 0;
+							break;
+						case 'mp_gained':
+							npc.resources.current_mp += Number.parseInt(statUpdate.value.result) || 0;
+							break;
+						case 'mp_lost':
+							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result) || 0;
+							break;
 					}
 				}
 			}
@@ -277,5 +316,5 @@ export function getGameEndedMessage() {
 
 export function isEnoughResource(action: Action, resources: Resources) {
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
-	return cost === 0 || resources[action.resource_cost?.resource_key || '']?.current_value >= cost ;
+	return cost === 0 || resources[action.resource_cost?.resource_key || '']?.current_value >= cost;
 }

@@ -26,7 +26,13 @@
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
-	import { ActionDifficulty, isEnoughResource, mustRollDice } from './gameLogic';
+	import {
+		ActionDifficulty,
+		applyGameActionState,
+		getEmptyCriticalResourceKeys,
+		isEnoughResource,
+		mustRollDice
+	} from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
@@ -139,12 +145,18 @@
 
 		playerCharactersGameState[characterState.value.name] = {
 			...$state.snapshot(characterStatsState.value.resources),
-			XP: { current_value: 0, max_value: -1, game_ends_when_zero: false }
+			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
 		};
 		//Start game when not already started
 		if (!currentGameActionState?.story) {
 			if (!currentGameActionState?.stats_update) {
-				handleStartingStats(characterStatsState.value.resources, characterState.value.name);
+				const startingResourcesUpdateObject = handleStartingStats(characterStatsState.value.resources, characterState.value.name);
+				gameActionsState.value.push(startingResourcesUpdateObject);
+				gameLogic.applyGameActionState(
+					playerCharactersGameState,
+					npcState.value,
+					inventoryState.value,
+					startingResourcesUpdateObject);
 			}
 			await sendAction({
 				characterName: characterState.value.name,
@@ -181,24 +193,25 @@
 		resources: Resources,
 		playerName: string
 	) {
-		const startingResourcesUpdateObject = gameAgent.getStartingResourcesUpdateObject(
+		return gameAgent.getStartingResourcesUpdateObject(
 			resources,
 			playerName
 		);
-		gameActionsState.value.push(startingResourcesUpdateObject);
 	}
 
 	function refillResourcesFully(
 		playerCharactersGameState: PlayerCharactersGameState,
 		playerName: string
 	) {
+		playerCharactersGameState[playerName] = {
+			...playerCharactersGameState[playerName],
+			...$state.snapshot(characterStatsState.value.resources)
+		};
+
 		const levelUpResourcesObject = gameAgent.getLevelUpResourcesUpdateObject(
 			playerCharactersGameState[playerName],
 			playerName
 		);
-		Object.keys(playerCharactersGameState[playerName])
-			.forEach(res => playerCharactersGameState[playerName][res].current_value
-				= playerCharactersGameState[playerName][res].max_value);
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update = [
 			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
 			...levelUpResourcesObject.stats_update
@@ -229,7 +242,7 @@
 			inventoryState.value,
 			$state.snapshot(determinedActionsAndStatsUpdate)
 		);
-		const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+		//const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
 		const aliveNPCs = allNpcsDetailsAsList
 			.filter((npc) => npc?.resources &&
 				Object.values(npc.resources)
@@ -239,7 +252,7 @@
 
 		let additionalStoryInput = combatAgent.getAdditionalStoryInput(
 			determinedActionsAndStatsUpdate.actions,
-			deadNPCs,
+			[],
 			aliveNPCs,
 			playerCharactersGameState
 		);
@@ -276,12 +289,12 @@
 						modifier: chosenActionState.value.dice_roll!.modifier!,
 						modifier_explanation:
 							chosenActionState.value.dice_roll!.modifier_explanation! +
-							' -3 for trying without enough MP.',
+							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key.replaceAll('_', ' ')}`,
 						modifier_value: (chosenActionState.value.dice_roll?.modifier_value || 0) - 3
 					}
 				};
 			}
-			//either not enough mp or impossible, anyway no mp cost
+			//either not enough resource or impossible, anyway no resource cost
 			chosenActionState.value.resource_cost!.cost = 0;
 			const costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
 			if (additionalStoryInputState.value) {
@@ -306,20 +319,20 @@
 				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
 			} else {
-				deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-				additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+				//deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+				//additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
 			}
 		} else {
-			deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-			additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+			//deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+			//additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		}
 		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
 	}
 
 	async function checkGameEnded() {
-		const emptyResourceKey: string[] = Object.entries(playerCharactersGameState[characterState.value.name])
-			.filter(entry => entry[1].max_value <= 0).map(entry => entry[0]);
-		if (!isGameEnded.value && emptyResourceKey) {
+
+		const emptyResourceKey = getEmptyCriticalResourceKeys(playerCharactersGameState[characterState.value.name]);
+		if (!isGameEnded.value && emptyResourceKey.length > 0) {
 			isGameEnded.value = true;
 			await sendAction({
 				characterName: characterState.value.name,
@@ -328,7 +341,7 @@
 		}
 		//calculate again as dying action could also be a rescue in some cases
 		isGameEnded.value = Object.values(playerCharactersGameState[characterState.value.name])
-			.some(v => v.current_value <= 0);
+			.some(v => v.game_ends_when_zero && v.current_value <= 0);
 	}
 
 	function resetStatesAfterActionProcessed() {
@@ -698,7 +711,7 @@
 	};
 
 	function getCurrentXPText() {
-		return `XP: ${playerCharactersGameState[characterState.value.name]?.xp}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
+		return `XP: ${playerCharactersGameState[characterState.value.name]?.XP.current_value}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
 	}
 
 	const generateActionFromCustomInput = async (action: Action) => {
@@ -792,10 +805,10 @@
 	></UseItemsModal>
 	{#if itemForSuggestActionsState}
 		<SuggestedActionsModal onclose={onSuggestItemActionClosed}
-													 currentMP={playerCharactersGameState[characterState.value.name].currentMP}
+													 resources={playerCharactersGameState[characterState.value.name]}
 													 {itemForSuggestActionsState} {currentGameActionState} />
 	{/if}
-	{#if levelUpState.value?.dialogOpened}
+	{#if true || levelUpState.value?.dialogOpened}
 		<LevelUpModal onclose={onLevelUpModalClosed} />
 	{/if}
 	<DiceRollComponent
@@ -805,13 +818,19 @@
 	></DiceRollComponent>
 	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
 		{#each Object.entries(playerCharactersGameState[characterState.value.name] || {}) as [resourceKey, resourceValue] (resourceKey)}
-			<output id="hp" class="ml-1 text-lg font-semibold text-red-500">
-				{resourceKey}: {resourceValue}
-			</output>
+			{#if resourceKey === 'XP'}
+				<output id="XP" class="ml-1 text-lg font-semibold text-green-500">
+					{getCurrentXPText()}
+				</output>
+			{:else}
+				<output class="ml-1 text-lg font-semibold capitalize"
+								class:text-red-500={resourceValue.game_ends_when_zero}
+								class:text-blue-500={!resourceValue.game_ends_when_zero}
+				>
+					{resourceKey.replaceAll('_', ' ')}: {resourceValue.current_value || 0 }/{resourceValue.max_value}
+				</output>
+			{/if}
 		{/each}
-		<output id="xp" class="ml-1 text-lg font-semibold text-green-500">
-			{getCurrentXPText()}
-		</output>
 	</div>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		<!-- For proper updating, need to use gameActionsState.id as each block id -->
@@ -822,11 +841,12 @@
 				story={gameActionState.story}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
 				gameUpdates={gameLogic
-					.renderStatUpdates(
-						$state.snapshot(gameActionState.stats_update),
-						characterState.value.name
-					)
-					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
+				.renderStatUpdates(
+				$state.snapshot(gameActionState.stats_update),
+				playerCharactersGameState[characterState.value.name],
+				characterState.value.name
+				)
+				.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
 		{/each}
 		{#if isGameEnded.value}
@@ -856,34 +876,38 @@
 			{/if}
 			<div id="static-actions" class="p-4 pb-0 pt-0">
 				<button
-					onclick={() => sendAction({
-					characterName: characterState.value.name,
-					text: 'Continue The Tale'
-				})}
+					onclick={() => sendAction(
+				{
+				characterName: characterState.value.name,
+				text: 'Continue The Tale'
+			})}
 					class="text-md btn btn-neutral mb-3 w-full"
 				>Continue The Tale.
 				</button>
 
 				{#if levelUpState.value.buttonEnabled}
 					<button
-						onclick={() => {
-								levelUpClicked(characterState.value.name);
-							}}
+						onclick={() =>
+				{
+				levelUpClicked(characterState.value.name);
+			}}
 						class="text-md btn btn-success mb-3 w-full"
 					>Level up!
 					</button>
 				{/if}
 				<button
-					onclick={() => {
-							useSpellsAbilitiesModal.showModal();
-						}}
+					onclick={() =>
+				{
+				useSpellsAbilitiesModal.showModal();
+			}}
 					class="text-md btn btn-primary w-full"
 				>Spells & Abilities
 				</button>
 				<button
-					onclick={() => {
-							useItemsModal.showModal();
-						}}
+					onclick={() =>
+				{
+				useItemsModal.showModal();
+			}}
 					class="text-md btn btn-primary mt-3 w-full"
 				>Inventory
 				</button>
@@ -902,10 +926,10 @@
 					class="input input-bordered w-full"
 					id="user-input"
 					placeholder={customActionReceiver === 'Character Action'
-						? 'What are you up to?'
-						: customActionReceiver === 'GM Question'
-							? 'Message to the Game Master'
-							: 'Command without restrictions'}
+				? 'What are you up to?'
+				: customActionReceiver === 'GM Question'
+				? 'Message to the Game Master'
+				: 'Command without restrictions'}
 				/>
 				<button
 					type="submit"

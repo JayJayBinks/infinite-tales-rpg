@@ -22,11 +22,10 @@ export class ActionAgent {
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
 					"is_possible": true|false,
-					"resource_cost": { 
+					"resource_cost": if no cost undefined else { 
 						"resource_key": "the resource to pay for this action; one of character_stats.resources",
 						"cost": number,
 					},
-					"mp_cost": cost of this action as integer; 0 if this action does not use mp,
 					"is_straightforward": true if it involves few steps or has a clear outcome; false if it involves multiple narrative moments or decisions; include brief {reasoning}. Use the string format: "{reasoning}: true|false",
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or responses from NPCs",
   				"enemyEncounterExplanation": {reasoning} for the {probability: low|medium|high} of an enemy encounter; if probable describe enemy details; low probability if an encounter recently happened; Format "{reasoning} - {probability}",

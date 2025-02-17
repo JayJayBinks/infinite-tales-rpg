@@ -168,12 +168,12 @@ export function getTTSUrl(text, voice) {
 
 export function getTextForActionButton(action: Action) {
 	let text = '';
-	const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
+	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
 
-	if (mpCost > 0) {
-		const mpString = ' (' + mpCost + ' MP).';
+	if (cost > 0) {
+		const costString = ` (${cost} ${action.resource_cost?.resource_key.replaceAll('_', ' ')}).`;
 		text = action.text.replaceAll('.', '');
-		text += mpString;
+		text += costString;
 	} else {
 		const hasEndingChar =
 			action.text.endsWith('.') ||

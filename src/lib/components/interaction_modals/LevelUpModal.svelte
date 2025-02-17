@@ -89,7 +89,7 @@
 			{#each Object.keys(aiLevelUp.resources) as resourceKey}
 				<p class="m-1 font-bold">{resourceKey.replaceAll('_', ' ')}:</p>
 				<p>
-					{characterStatsState.value.resources[resourceKey]} -> {aiLevelUp.resources[resourceKey]}
+					{characterStatsState.value.resources[resourceKey].max_value} -> {aiLevelUp.resources[resourceKey]}
 				</p>
 			{/each}
 			{#if aiLevelUp.formerAbilityName}
@@ -118,7 +118,9 @@
 					</div>
 					<div class:sm:col-span-3={aiConfigState.value?.disableImagesState}
 						class="m-auto w-full sm:col-span-2">
-						<p class="badge badge-info">{aiLevelUp.ability.mp_cost} MP</p>
+						{#if aiLevelUp.ability.resource_cost?.cost > 0}
+							<p class="badge badge-info h-fit">{aiLevelUp.ability.resource_cost?.cost} {(aiLevelUp.ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}</p>
+						{/if}
 						<p class="mt-2 overflow-hidden overflow-ellipsis">{aiLevelUp.ability.name}</p>
 					</div>
 				</div>

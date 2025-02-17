@@ -1,7 +1,7 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
-import type { Action, PlayerCharactersGameState, InventoryState } from '$lib/ai/agents/gameAgent';
-import { ActionDifficulty } from '../../../routes/game/gameLogic';
+import type { Action, InventoryState, PlayerCharactersGameState } from '$lib/ai/agents/gameAgent';
+import { ActionDifficulty, getEmptyCriticalResourceKeys } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { mapStatsUpdates } from '$lib/ai/agents/mappers';
 
@@ -20,6 +20,7 @@ export const statsUpdatePromptObject = `
         # Also include one object per turn effect like poisoned or bleeding
         {
         		"explanation": "Short explanation for the reason of this change",
+        		# if targetId is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources
         		"type": "{resourceKey}_lost|{resourceKey}_gained",
             "sourceId": "NPC id or player CHARACTER name, who is the initiator of this action",
             "targetId": "NPC id or player CHARACTER name, whose stats must be updated.",
@@ -52,17 +53,17 @@ export class CombatAgent {
 		storyState: Story
 	) {
 		const agent = [
-			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
-				'and what the consequences of these actions are. ' +
-				'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
-				'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
-				'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
-			"\n The following is the character's inventory, if an item is relevant in the current situation then apply it's effect." +
-				'\n' +
-				stringifyPretty(inventoryState),
+			'You are RPG combat agent, you decide which actions the NPCs take in response to the player character\'s action ' +
+			'and what the consequences of these actions are. ' +
+			'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
+			'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
+			'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
+			'\n The following is the character\'s inventory, if an item is relevant in the current situation then apply it\'s effect.' +
+			'\n' +
+			stringifyPretty(inventoryState),
 			'The following is a description of the story setting to keep the actions consistent on.' +
-				'\n' +
-				stringifyPretty(storyState),
+			'\n' +
+			stringifyPretty(storyState),
 			`Most important instruction! You must always respond with following JSON format! 
                  {
                   "actions": [
@@ -141,9 +142,8 @@ export class CombatAgent {
 				stringifyPretty(deadNPCs);
 		}
 		if (playerCharactersGameState) {
-			const aliveChars = Object.keys(playerCharactersGameState).filter(
-				(playerName) => playerCharactersGameState[playerName].currentHP > 0
-			);
+			const aliveChars = Object.keys(playerCharactersGameState)
+				.filter(playerName => getEmptyCriticalResourceKeys(playerCharactersGameState[playerName]).length === 0);
 			text += '\n Player Characters ' + aliveChars.join(', ') + ' are alive after the attacks!';
 		}
 
