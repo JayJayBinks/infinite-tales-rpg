@@ -22,7 +22,7 @@ export class ActionAgent {
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
 					"is_possible": true|false,
-					"resource_cost": if no cost undefined else { 
+					"resource_cost": if no cost null else { 
 						"resource_key": "the resource to pay for this action; one of character_stats.resources",
 						"cost": number,
 					},

@@ -26,13 +26,7 @@
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
-	import {
-		ActionDifficulty,
-		applyGameActionState,
-		getEmptyCriticalResourceKeys,
-		isEnoughResource,
-		mustRollDice
-	} from './gameLogic';
+	import { ActionDifficulty, getEmptyCriticalResourceKeys, isEnoughResource, mustRollDice } from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
@@ -143,6 +137,7 @@
 			$state.snapshot(characterStatsState.value)
 		);
 
+		//todo when new resource is created in middle of game, create ir propeerly
 		playerCharactersGameState[characterState.value.name] = {
 			...$state.snapshot(characterStatsState.value.resources),
 			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
@@ -200,15 +195,13 @@
 	}
 
 	function refillResourcesFully(
+		resources: Resources,
 		playerCharactersGameState: PlayerCharactersGameState,
 		playerName: string
 	) {
-		playerCharactersGameState[playerName] = {
-			...playerCharactersGameState[playerName],
-			...$state.snapshot(characterStatsState.value.resources)
-		};
-
+		//first apply the difference in the update log
 		const levelUpResourcesObject = gameAgent.getLevelUpResourcesUpdateObject(
+			resources,
 			playerCharactersGameState[playerName],
 			playerName
 		);
@@ -216,6 +209,18 @@
 			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
 			...levelUpResourcesObject.stats_update
 		];
+
+		//then set current values to max
+		playerCharactersGameState[playerName] = {
+			...playerCharactersGameState[playerName], // Preserve existing properties (like XP)
+			...Object.keys(characterStatsState.value.resources).reduce((acc, key) => {
+				acc[key] = {
+					...$state.snapshot(characterStatsState.value.resources[key]),
+					current_value: characterStatsState.value.resources[key].max_value
+				};
+				return acc;
+			}, {})
+		};
 	}
 
 	async function getActionPromptForCombat(playerAction: Action) {
@@ -244,10 +249,7 @@
 		);
 		//const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
 		const aliveNPCs = allNpcsDetailsAsList
-			.filter((npc) => npc?.resources &&
-				Object.values(npc.resources)
-					.filter(res => res.game_ends_when_zero)
-					.filter(res => res.current_value > 0))
+			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
 			.map((npc) => npc?.nameId);
 
 		let additionalStoryInput = combatAgent.getAdditionalStoryInput(
@@ -319,12 +321,12 @@
 				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
 			} else {
-				//deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-				//additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+				deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+				additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
 			}
 		} else {
-			//deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-			//additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+			deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+			additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		}
 		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
 	}
@@ -594,8 +596,8 @@
 			);
 			actionsTextForTTS =
 				Array.from(document.querySelectorAll('.ai-gen-action'))
-					.map((elm) => elm.textContent || '')
-					.join(' ') || '';
+					.map((elm) => elm.textContent || ' ')
+					.join(' ') || ' ';
 		}
 	}
 
@@ -694,7 +696,7 @@
 			};
 		}
 		levelUpState.reset();
-		refillResourcesFully(playerCharactersGameState, characterState.value.name);
+		refillResourcesFully(characterStatsState.value.resources, playerCharactersGameState, characterState.value.name);
 		checkForLevelUp();
 	};
 
@@ -808,7 +810,7 @@
 													 resources={playerCharactersGameState[characterState.value.name]}
 													 {itemForSuggestActionsState} {currentGameActionState} />
 	{/if}
-	{#if true || levelUpState.value?.dialogOpened}
+	{#if levelUpState.value?.dialogOpened}
 		<LevelUpModal onclose={onLevelUpModalClosed} />
 	{/if}
 	<DiceRollComponent

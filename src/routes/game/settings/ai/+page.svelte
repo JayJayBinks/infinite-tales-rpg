@@ -13,7 +13,7 @@
 	import type { AIConfig } from '$lib';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const temperatureState = useLocalStorage<number>('temperatureState', 1.3);
+	const temperatureState = useLocalStorage<number>('temperatureState', 1.1);
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 

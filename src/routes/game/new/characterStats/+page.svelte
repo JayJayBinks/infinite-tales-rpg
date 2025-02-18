@@ -49,7 +49,6 @@
 		if (newState) {
 			console.log(newState);
 			parseState(newState);
-			//TODO MAP ABILITY COST IF NULL
 			newState.spells_and_abilities = newState.spells_and_abilities.map(ability => ({
 				...ability,
 				resource_cost: ability.resource_cost ? ability.resource_cost : { cost: 0, resource_key: undefined }
@@ -304,7 +303,7 @@
 									<!-- SpellsAndAbilities -->
 								{:else}
 									<!-- Resources Traits etc. TODO refactor or leave for now?-->
-									<div class="flex-row capitalize">
+									<div class="flex-row m-auto capitalize">
 										{statValue.replaceAll('_', ' ')}
 
 										{#if characterStatsStateOverwrites[stateValue][statValue]}

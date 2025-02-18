@@ -29,13 +29,19 @@ export type Action = {
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: string;
 	resource_cost?: {
-		resource_key: string,
+		resource_key: string | undefined,
 		cost: number,
 	};
 } & DiceRollDifficulty;
-export type PlayerCharactersGameState = {
-	[playerCharacterName: string]: Resources;
+
+export type ResourcesWithCurrentValue =  {
+	[resourceKey: string]: { current_value: number; max_value: number; game_ends_when_zero: boolean };
 };
+
+export type PlayerCharactersGameState = {
+	[playerCharacterName: string]: ResourcesWithCurrentValue;
+};
+
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
 	id: number;
@@ -197,19 +203,21 @@ export class GameAgent {
 	}
 
 	getLevelUpResourcesUpdateObject(
-		resources: Resources,
+		maxResources: Resources,
+		currentResources: ResourcesWithCurrentValue,
 		playerName: string
 	): Pick<GameActionState, 'stats_update'> {
 
 		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
-		Object.entries(resources).forEach(entry => {
-			returnObject.stats_update.push({
-				sourceId: playerName,
-				targetId: playerName,
-				type: entry[0] + '_gained',
-				value: { result: entry[1].max_value - entry[1].current_value }
+		Object.entries(currentResources).filter(([resourceKey]) => resourceKey !== 'XP')
+			.forEach(([resourceKey, resourceObject]) => {
+				returnObject.stats_update.push({
+					sourceId: playerName,
+					targetId: playerName,
+					type: resourceKey + '_gained',
+					value: { result: (maxResources[resourceKey].max_value - resourceObject.current_value) || 0 }
+				});
 			});
-		});
 		return returnObject;
 	}
 

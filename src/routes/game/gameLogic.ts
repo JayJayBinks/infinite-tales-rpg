@@ -2,7 +2,7 @@ import type {
 	Action,
 	GameActionState,
 	InventoryUpdate,
-	PlayerCharactersGameState,
+	PlayerCharactersGameState, ResourcesWithCurrentValue,
 	Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
@@ -17,7 +17,7 @@ export enum ActionDifficulty {
 	very_difficult = 'very_difficult'
 }
 
-export function getEmptyCriticalResourceKeys(resources: Resources): string[] {
+export function getEmptyCriticalResourceKeys(resources: ResourcesWithCurrentValue): string[] {
 	return Object.entries(resources)
 		.filter(entry => entry[1].game_ends_when_zero && entry[1].current_value <= 0).map(entry => entry[0]);
 }
@@ -104,7 +104,7 @@ export function renderStatUpdates(
 	statsUpdates: Array<StatsUpdate>,
 	resources: Resources,
 	playerName: string
-): (undefined | { color: string; text: string; resourceText: string })[] {
+): (undefined | RenderedGameUpdate)[] {
 	if (statsUpdates) {
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
@@ -172,7 +172,7 @@ export function renderStatUpdates(
 
 export function renderInventoryUpdate(
 	inventoryUpdate: Array<InventoryUpdate>
-): Array<RenderedGameUpdate> {
+): Array<undefined | RenderedGameUpdate> {
 	if (inventoryUpdate) {
 		return inventoryUpdate
 			.toSorted((a, b) => (a.type < b.type ? -1 : 1))
@@ -217,7 +217,7 @@ export function applyGameActionState(
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
-	function getResourceIfPresent(resources: Resources, key: string){
+	function getResourceIfPresent(resources: ResourcesWithCurrentValue, key: string){
 		let resource = resources[key];
 		if(!resource){
 			resource = resources[key.toUpperCase()];
@@ -239,6 +239,7 @@ export function applyGameActionState(
 				if (statUpdate.type.includes('_gained')) {
 					const resource: string = statUpdate.type.replace('_gained', '');
 					const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
+					if (!res) continue;
 					const gained = Number.parseInt(statUpdate.value.result) || 0;
 					if (res.current_value + gained <= res.max_value) {
 						res.current_value += Number.parseInt(statUpdate.value.result) || 0;
@@ -249,8 +250,9 @@ export function applyGameActionState(
 			}
 			if (statUpdate.type.includes('_lost')) {
 				const resource: string = statUpdate.type.replace('_lost', '');
-				getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource).current_value -=
-					Number.parseInt(statUpdate.value.result) || 0;
+				const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
+				if(!res) continue
+				res.current_value -= Number.parseInt(statUpdate.value.result) || 0;
 			}
 		} else {
 			if (!prohibitNPCChange) {
@@ -314,7 +316,7 @@ export function getGameEndedMessage() {
 	return 'Your Tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new Tale in the menu.';
 }
 
-export function isEnoughResource(action: Action, resources: Resources) {
+export function isEnoughResource(action: Action, resources: ResourcesWithCurrentValue) {
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
 	return cost === 0 || resources[action.resource_cost?.resource_key || '']?.current_value >= cost;
 }

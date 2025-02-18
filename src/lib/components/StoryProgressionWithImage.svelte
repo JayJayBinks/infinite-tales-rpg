@@ -6,7 +6,7 @@
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import type { AIConfig } from '$lib';
 
-	type Props = { story: string; gameUpdates?: Array<RenderedGameUpdate>; imagePrompt?: string };
+	type Props = { story: string; gameUpdates?: Array<RenderedGameUpdate | undefined>; imagePrompt?: string };
 	let { story, gameUpdates = [], imagePrompt = '' }: Props = $props();
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');

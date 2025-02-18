@@ -1,7 +1,7 @@
 <script lang="ts">
 	import TargetModal from '$lib/components/interaction_modals/TargetModal.svelte';
-	import { type Ability, CharacterStatsAgent, type Resources } from '$lib/ai/agents/characterStatsAgent';
-	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
+	import { type Ability, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
+	import type { Action, ResourcesWithCurrentValue, Targets } from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { AIConfig } from '$lib';
@@ -18,7 +18,7 @@
 		abilities: Array<Ability>;
 		playerName: string;
 		storyImagePrompt: string;
-		resources: Resources;
+		resources: ResourcesWithCurrentValue;
 		targets: Targets;
 		onclose;
 		dialogRef;
@@ -87,7 +87,7 @@
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
 									disabled={ability.resource_cost?.cost > 0
-														&& ability.resource_cost?.cost > resources[ability.resource_cost.resource_key || ''].current_value}
+														&& ability.resource_cost?.cost > resources[ability.resource_cost.resource_key || '']?.current_value}
 									onclick={() => {
 										mapAbilityToAction(ability);
 										dialogRef.close();
