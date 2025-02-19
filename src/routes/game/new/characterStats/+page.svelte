@@ -49,6 +49,10 @@
 		if (newState) {
 			console.log(newState);
 			parseState(newState);
+			newState.spells_and_abilities = newState.spells_and_abilities.map(ability => ({
+				...ability,
+				resource_cost: ability.resource_cost ? ability.resource_cost : { cost: 0, resource_key: undefined }
+			}));
 			characterStatsState.value = newState;
 		}
 		isGeneratingState = false;
@@ -164,7 +168,7 @@
 
 	{#each Object.keys(characterStatsState.value) as stateValue}
 		{#if stateValue === 'level'}
-			<label class="form-control mt-3 w-full">
+			<div class="form-control mt-3 w-full">
 				<div class="capitalize">
 					<p>Level</p>
 					{#if characterStatsStateOverwrites.level}
@@ -180,17 +184,17 @@
 					}}
 					class="textarea textarea-bordered textarea-md m-auto mt-2 w-1/2"
 				/>
-			</label>
+			</div>
 		{:else}
-			<label class="form-control mt-3 w-full">
+			<div class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
 					>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
-							<label class="form-control mt-3 w-full">
-								{#if isPlainObject(characterStatsState.value[stateValue][statValue])}
+							<div class="form-control mt-3 w-full">
+								{#if stateValue !== 'resources' && isPlainObject(characterStatsState.value[stateValue][statValue])}
 									<!-- SpellsAndAbilities TODO refactor or leave for now?-->
 									<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
 										{#each Object.keys(characterStatsState.value[stateValue][statValue]) as deepNestedValue, i (deepNestedValue)}
@@ -234,13 +238,33 @@
 												</summary>
 											{/if}
 											<div class="collapse-content">
-												<label class="form-control mt-3 w-full">
+												<div class="form-control mt-3 w-full">
 													<div class="capitalize">
 														{deepNestedValue.replaceAll('_', ' ')}
 														{#if characterStatsStateOverwrites[stateValue] && characterStatsStateOverwrites[stateValue][statValue] && characterStatsStateOverwrites[stateValue][statValue][deepNestedValue]}
 															<span class="badge badge-accent ml-2">overwritten</span>
 														{/if}
 													</div>
+													{#if deepNestedValue === 'resource_cost'}
+														{#if characterStatsState.value[stateValue][statValue][deepNestedValue]?.resource_key}
+															<input class="input input-bordered mt-2" type="number"
+																		 placeholder="Cost as number"
+																		 bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue].cost} />
+														{/if}
+														<select
+															bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue].resource_key}
+															class="select select-bordered mt-2 text-center"
+														>
+															<option class="capitalize" value={undefined}>
+																No Cost
+															</option>
+															{#each Object.keys(characterStatsState.value.resources || {}) as resourceKey (resourceKey)}
+																<option class="capitalize" value={resourceKey}>
+																	{resourceKey.replaceAll('_', ' ')}
+																</option>
+															{/each}
+														</select>
+													{:else}
 													<textarea
 														bind:value={characterStatsState.value[stateValue][statValue][
 															deepNestedValue
@@ -263,7 +287,8 @@
 														class="textarea textarea-bordered textarea-md mt-2 w-full"
 													>
 													</textarea>
-												</label>
+													{/if}
+												</div>
 											</div>
 										{/each}
 										<button
@@ -278,7 +303,7 @@
 									<!-- SpellsAndAbilities -->
 								{:else}
 									<!-- Resources Traits etc. TODO refactor or leave for now?-->
-									<div class="flex-row capitalize">
+									<div class="flex-row m-auto capitalize">
 										{statValue.replaceAll('_', ' ')}
 
 										{#if characterStatsStateOverwrites[stateValue][statValue]}
@@ -288,29 +313,64 @@
 											class="components btn btn-error no-animation btn-xs ml-2"
 											onclick={(evt) => {
 												evt.preventDefault();
+												delete characterStatsStateOverwrites[stateValue][statValue];
 												delete characterStatsState.value[stateValue][statValue];
 											}}
 										>
 											Delete
 										</button>
 									</div>
-									<textarea
-										bind:value={characterStatsState.value[stateValue][statValue]}
-										rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
-										oninput={(evt) => {
+									{#if stateValue === 'resources'}
+										<div class="form-control mt-2 sm:w-1/4 m-auto">
+											<p>Starting Maximum Value</p>
+											<input
+												type="number"
+												bind:value={characterStatsState.value[stateValue][statValue].max_value}
+												placeholder="For resources with percentage use 100"
+												oninput={(evt) => {
+													if(!characterStatsStateOverwrites[stateValue][statValue]){
+														characterStatsStateOverwrites[stateValue][statValue] = {};
+													}
+											characterStatsStateOverwrites[stateValue][statValue].max_value =
+												evt.currentTarget.value;
+										}}
+												class="input input-bordered"
+											/>
+										</div>
+										<div class="form-control mt-2 mb-4 sm:w-1/4 m-auto">
+											<p>Game Ends When Zero</p>
+											<input
+												type="checkbox"
+												bind:checked={characterStatsState.value[stateValue][statValue].game_ends_when_zero}
+												oninput={(evt) => {
+														if(!characterStatsStateOverwrites[stateValue][statValue]){
+														characterStatsStateOverwrites[stateValue][statValue] = {};
+													}
+											characterStatsStateOverwrites[stateValue][statValue].game_ends_when_zero =
+												evt.currentTarget.checked;
+										}}
+												class="toggle m-auto"
+											/>
+										</div>
+									{:else}
+								<textarea
+									bind:value={characterStatsState.value[stateValue][statValue]}
+									rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
+									oninput={(evt) => {
 											characterStatsStateOverwrites[stateValue][statValue] =
 												evt.currentTarget.value;
 										}}
-										class="textarea textarea-bordered textarea-md mt-2 w-full"
-									>
+									class="textarea textarea-bordered textarea-md mt-2 sm:w-1/4 m-auto"
+								>
 									</textarea>
-									<!-- Resources Traits etc. -->
+									{/if}
+									<!-- Traits etc. -->
 								{/if}
-							</label>
+							</div>
 						{/each}
 					</div>
 				</details>
-			</label>
+			</div>
 			<button
 				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 				onclick={() => {
@@ -319,11 +379,16 @@
 						characterStatsState.value[stateValue].push({ name: '', effect: '', mp_cost: '', image_prompt: '' });
 					} else {
 						const name = prompt('Enter the name');
+						if(!name) return;
 						if (!characterStatsStateOverwrites[stateValue]) {
 							characterStatsStateOverwrites[stateValue] = {};
 						}
-						characterStatsStateOverwrites[stateValue][name] = '';
-						characterStatsState.value[stateValue][name] = '';
+						if(stateValue === 'resources'){
+								characterStatsState.value[stateValue][name] = {max_value: 0, game_ends_when_zero: false};
+						}else{
+								characterStatsStateOverwrites[stateValue][name] = '';
+								characterStatsState.value[stateValue][name] = '';
+						}
 					}
 				}}
 			>

@@ -4,6 +4,7 @@
 	import type { Action } from '$lib/ai/agents/gameAgent';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { onMount } from 'svelte';
+	import { getRandomInteger } from '$lib/util.svelte';
 
 	type Props = { diceRollDialog; action: Action; resetState: boolean };
 	let { diceRollDialog = $bindable(), action, resetState }: Props = $props();
@@ -67,7 +68,9 @@
 	}
 
 	let onRoll = (evt) => {
-		//for easy testing rolledValueState.value = getRandomInteger(1, 20);
+		//for easy testing
+		rolledValueState.value = getRandomInteger(15, 20);
+		return;
 		evt.currentTarget.disabled = true;
 		diceBox.roll('1d20').then((results) => {
 			rolledValueState.value = results[0].value;
@@ -100,7 +103,9 @@
 			<output>{action.plausibility}</output>
 			<output>{action.difficulty_explanation}</output>
 			<output class="font-semibold"
-				>This action will cost <p class="text-blue-500">{action.mp_cost} MP</p></output
+				>This action will cost <p class="text-blue-500">
+				{action.resource_cost?.cost} {action.resource_cost?.resource_key.replaceAll('_', ' ')}
+			</p></output
 			>
 		{/if}
 		<button

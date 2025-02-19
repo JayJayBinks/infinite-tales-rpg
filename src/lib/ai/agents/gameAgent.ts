@@ -6,6 +6,7 @@ import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 import { mapGameState } from '$lib/ai/agents/mappers';
+import type { Resources } from '$lib/ai/agents/characterStatsAgent';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -13,7 +14,7 @@ export type InventoryUpdate = {
 	item_added?: Item;
 };
 export type InventoryState = { [item_id: string]: Item };
-export type ItemWithId = Item & { item_id: string};
+export type ItemWithId = Item & { item_id: string };
 export type Item = { description: string; effect: string };
 export type Action = {
 	characterName: string;
@@ -27,11 +28,20 @@ export type Action = {
 	is_straightforward?: string;
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: string;
-	mp_cost?: number;
+	resource_cost?: {
+		resource_key: string | undefined,
+		cost: number,
+	};
 } & DiceRollDifficulty;
-export type PlayerCharactersGameState = {
-	[playerCharacterName: string]: { currentHP: number; currentMP: number; xp: number };
+
+export type ResourcesWithCurrentValue =  {
+	[resourceKey: string]: { current_value: number; max_value: number; game_ends_when_zero: boolean };
 };
+
+export type PlayerCharactersGameState = {
+	[playerCharacterName: string]: ResourcesWithCurrentValue;
+};
+
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
 	id: number;
@@ -78,9 +88,9 @@ export class GameAgent {
 		inventoryState: InventoryState
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let playerActionText = action.characterName + ': ' + action.text;
-		const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-		if (mpCost > 0) {
-			playerActionText += '\nMP cost ' + mpCost;
+		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+		if (cost > 0) {
+			playerActionText += `\n${action.resource_cost?.cost} ${action.resource_cost?.resource_key} cost`;
 		}
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
@@ -136,7 +146,9 @@ export class GameAgent {
 			?.parsedObject as GameMasterAnswer;
 	}
 
-	private getGameAgentSystemInstructionsFromStates(storyState: Story, characterState: CharacterDescription, playerCharactersGameState: PlayerCharactersGameState, inventoryState: InventoryState, customSystemInstruction: string) {
+	private getGameAgentSystemInstructionsFromStates(storyState: Story, characterState: CharacterDescription,
+																									 playerCharactersGameState: PlayerCharactersGameState,
+																									 inventoryState: InventoryState, customSystemInstruction: string) {
 		const gameAgent = [
 			systemBehaviour,
 			stringifyPretty(storyState),
@@ -154,8 +166,8 @@ export class GameAgent {
 		return gameAgent;
 	}
 
-	getGameEndedPrompt() {
-		return 'The CHARACTER has fallen to 0 HP and is dying.';
+	getGameEndedPrompt(emptyResourceKey: string[]) {
+		return `The CHARACTER has fallen to 0 ${emptyResourceKey.join(' and ')}; Describe how the GAME is ending.`;
 	}
 
 	getStartingPrompt() {
@@ -173,27 +185,23 @@ export class GameAgent {
 		return { userMessage, modelMessage };
 	};
 
-	getStartingResourcesUpdateObject(
-		hp: number,
-		mp: number,
+	getLevelUpResourcesUpdateObject(
+		maxResources: Resources,
+		currentResources: ResourcesWithCurrentValue,
 		playerName: string
 	): Pick<GameActionState, 'stats_update'> {
-		return {
-			stats_update: [
-				{
+
+		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
+		Object.entries(currentResources).filter(([resourceKey]) => resourceKey !== 'XP')
+			.forEach(([resourceKey, currentResource]) => {
+				returnObject.stats_update.push({
 					sourceId: playerName,
 					targetId: playerName,
-					type: 'hp_gained',
-					value: { result: hp }
-				},
-				{
-					sourceId: playerName,
-					targetId: playerName,
-					type: 'mp_gained',
-					value: { result: mp }
-				}
-			]
-		};
+					type: resourceKey + '_gained',
+					value: { result: (maxResources[resourceKey].max_value - (currentResource.current_value || 0)) || 0 }
+				});
+			});
+		return returnObject;
 	}
 
 	getLevelUpCostObject(xpCost: number, playerName: string, level: number): StatsUpdate {
@@ -223,6 +231,8 @@ The Game Master's General Responsibilities Include:
 - Generate settings, places, and years, adhering to THEME and TONALITY, and naming GAME elements.
 - Never narrate events briefly or summarize; Always describe detailed scenes with character conversation in direct speech
 - Use GAME's core knowledge and rules.
+- Handle CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
+- Handle NPC resources, you must explicitly use resourceKey "hp" or "mp", and no deviations of that
 - The story narration ${storyWordLimit}
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.

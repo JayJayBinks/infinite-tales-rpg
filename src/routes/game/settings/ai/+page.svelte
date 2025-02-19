@@ -6,14 +6,17 @@
 	import { initialStoryState, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
-	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
+	import {
+		CharacterStatsAgent,
+		initialCharacterStatsState
+	} from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
 	import type { AIConfig } from '$lib';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const temperatureState = useLocalStorage<number>('temperatureState', 1.3);
+	const temperatureState = useLocalStorage<number>('temperatureState', 1.1);
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 
@@ -86,10 +89,23 @@
 				const characterStatsAgent = new CharacterStatsAgent(llm);
 				const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(
 					storyState.value,
-					characterState.value
+					characterState.value,
+					{
+						resources: {
+							HP: { max_value: 0, game_ends_when_zero: true },
+							MP: { max_value: 0, game_ends_when_zero: false }
+						}
+					}
 				);
 				parseState(newCharacterStatsState);
-				if (newCharacterState) {
+				if (newCharacterStatsState) {
+					newCharacterStatsState.spells_and_abilities =
+						newCharacterStatsState.spells_and_abilities.map((ability) => ({
+							...ability,
+							resource_cost: ability.resource_cost
+								? ability.resource_cost
+								: { cost: 0, resource_key: undefined }
+						}));
 					characterStatsState.value = newCharacterStatsState;
 					await goto('/game');
 				}
@@ -123,7 +139,7 @@
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2"
-		>View the
+			>View the
 			<a
 				target="_blank"
 				href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
@@ -176,13 +192,13 @@
 			</div>
 		</div>
 	</label>
-	<label class="form-control w-full sm:w-1/2 mt-5">
+	<label class="form-control mt-5 w-full sm:w-1/2">
 		<p>Voice For Text To Speech</p>
 		<button
 			onclick={() => {
-					playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
+				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
 			}}
-		>Test Voice
+			>Test Voice
 		</button>
 		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
 			{#each ttsVoices as v}
@@ -193,11 +209,7 @@
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		<div class="flex flex-col items-center gap-2">
 			<span>Disable Image Generation</span>
-			<input
-				type="checkbox"
-				class="toggle"
-				bind:checked={aiConfigState.value.disableImagesState}
-			/>
+			<input type="checkbox" class="toggle" bind:checked={aiConfigState.value.disableImagesState} />
 		</div>
 	</label>
 	<label class="form-control mt-5 w-full sm:w-2/3">
@@ -212,7 +224,7 @@
 			class="range mt-2"
 		/>
 		<small class="m-auto mt-2"
-		>Higher temperature makes the AI more creative, but also errors more likely</small
+			>Higher temperature makes the AI more creative, but also errors more likely</small
 		>
 	</label>
 
@@ -225,8 +237,7 @@
 		>
 		</textarea>
 		<small class="m-auto mt-2"
-		>You may have to start a new Tale after setting the instruction.</small
+			>You may have to start a new Tale after setting the instruction.</small
 		>
 	</label>
-
 </form>

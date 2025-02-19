@@ -7,6 +7,7 @@
 		type InventoryState,
 		type Item,
 		type PlayerCharactersGameState,
+		type ResourcesWithCurrentValue,
 		SLOW_STORY_PROMPT
 	} from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
@@ -20,12 +21,18 @@
 		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
-		type NPCState
+		type NPCState,
+		type Resources
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
-	import { ActionDifficulty, isEnoughMP, mustRollDice } from './gameLogic';
+	import {
+		ActionDifficulty,
+		getEmptyCriticalResourceKeys,
+		isEnoughResource,
+		mustRollDice
+	} from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
@@ -58,11 +65,11 @@
 	let isAiGeneratingState = $state(false);
 	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
 	let didAIProcessActionState = useLocalStorage<boolean>('didAIProcessActionState', true);
-	let gameAgent,
-		difficultyAgent,
-		summaryAgent,
-		characterStatsAgent,
-		combatAgent,
+	let gameAgent: GameAgent,
+		difficultyAgent: DifficultyAgent,
+		summaryAgent: SummaryAgent,
+		characterStatsAgent: CharacterStatsAgent,
+		combatAgent: CombatAgent,
 		campaignAgent: CampaignAgent,
 		actionAgent: ActionAgent;
 
@@ -99,18 +106,19 @@
 	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-		({} as GameActionState)
+			({} as GameActionState)
 	);
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
-	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' = $state('Character Action');
-	let customActionImpossibleReasonState: 'not_enough_mp' | 'not_plausible' | undefined =
+	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' =
+		$state('Character Action');
+	let customActionImpossibleReasonState: 'not_enough_resource' | 'not_plausible' | undefined =
 		$state(undefined);
 
 	let gmQuestionState: string = $state('');
-	let itemForSuggestActionsState: Item & { item_id: string } | undefined = $state();
+	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -135,25 +143,48 @@
 			'characterStatsState',
 			$state.snapshot(characterStatsState.value)
 		);
-		//Start game when not already started
-		playerCharactersGameState = {
-			[characterState.value.name]: { currentHP: 0, currentMP: 0, xp: 0 }
+
+		const currentCharacterName = characterState.value.name;
+
+		// Initialize the player's resource state if it doesn't exist.
+		// This sets all the resources along with an initial XP value.
+		playerCharactersGameState[currentCharacterName] = {
+			...$state.snapshot(characterStatsState.value.resources),
+			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
 		};
+
+		// Start game when not already started
 		if (!currentGameActionState?.story) {
-			if (!currentGameActionState?.stats_update) {
-				handleStartingStats(playerCharactersGameState, characterState.value.name);
-			}
 			await sendAction({
-				characterName: characterState.value.name,
+				characterName: currentCharacterName,
 				text: gameAgent.getStartingPrompt()
 			});
+			// Initialize all resources when the game is first started.
+			refillResourcesFully(
+				characterStatsState.value.resources,
+				currentCharacterName
+			);
 		} else {
+			// Apply previously saved game actions
 			gameLogic.applyGameActionStates(
 				playerCharactersGameState,
 				npcState.value,
 				inventoryState.value,
 				$state.snapshot(gameActionsState.value)
 			);
+			// Check for any resources that are missing in the player's state.
+			const missingResources: Resources = Object.entries(characterStatsState.value.resources)
+				.filter(
+					([resourceKey]) =>
+						playerCharactersGameState[currentCharacterName][resourceKey]?.current_value === undefined
+				)
+				.reduce((acc, [resourceKey, resource]) => ({ ...acc, [resourceKey]: resource }), {});
+			if (Object.keys(missingResources).length > 0) {
+				refillResourcesFully(
+					missingResources,
+					currentCharacterName
+				);
+			}
 			tick().then(() => customActionInput.scrollIntoView(false));
 			if (characterActionsState.value.length === 0) {
 				characterActionsState.value = await actionAgent.generateActions(
@@ -174,35 +205,32 @@
 		checkForLevelUp();
 	});
 
-	function handleStartingStats(
-		playerCharactersGameState: PlayerCharactersGameState,
-		playerName: string
-	) {
-		const startingResourcesUpdateObject = gameAgent.getStartingResourcesUpdateObject(
-			characterStatsState.value.resources.MAX_HP,
-			characterStatsState.value.resources.MAX_MP,
-			playerName
-		);
-		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
-		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
-		gameActionsState.value.push(startingResourcesUpdateObject);
-	}
-
 	function refillResourcesFully(
-		playerCharactersGameState: PlayerCharactersGameState,
-		playerName: string
+		maxResources: Resources,
+		playerName: string,
 	) {
-		const levelUpResourcesObject = gameAgent.getStartingResourcesUpdateObject(
-			characterStatsState.value.resources.MAX_HP - playerCharactersGameState[playerName].currentHP,
-			characterStatsState.value.resources.MAX_MP - playerCharactersGameState[playerName].currentMP,
-			playerName
+		//first apply the difference in the update log
+		const statsUpdate = gameAgent.getLevelUpResourcesUpdateObject(
+			characterStatsState.value.resources,
+			playerCharactersGameState[characterState.value.name],
+			characterState.value.name
 		);
-		playerCharactersGameState[playerName].currentHP = characterStatsState.value.resources.MAX_HP;
-		playerCharactersGameState[playerName].currentMP = characterStatsState.value.resources.MAX_MP;
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update = [
 			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
-			...levelUpResourcesObject.stats_update
+			...statsUpdate.stats_update
 		];
+
+		//then set current values to max
+		playerCharactersGameState[playerName] = {
+			...playerCharactersGameState[playerName], // Preserve existing properties (like XP)
+			...Object.keys(maxResources).reduce((acc, key) => {
+				acc[key] = {
+					...$state.snapshot(maxResources[key]),
+					current_value: maxResources[key].max_value
+				};
+				return acc;
+			}, {})
+		};
 	}
 
 	async function getActionPromptForCombat(playerAction: Action) {
@@ -229,14 +257,14 @@
 			inventoryState.value,
 			$state.snapshot(determinedActionsAndStatsUpdate)
 		);
-		const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+		//const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
 		const aliveNPCs = allNpcsDetailsAsList
 			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
 			.map((npc) => npc?.nameId);
 
 		let additionalStoryInput = combatAgent.getAdditionalStoryInput(
 			determinedActionsAndStatsUpdate.actions,
-			deadNPCs,
+			[],
 			aliveNPCs,
 			playerCharactersGameState
 		);
@@ -262,7 +290,7 @@
 
 	async function handleImpossibleAction(tryAnyway: boolean) {
 		if (tryAnyway) {
-			if (customActionImpossibleReasonState === 'not_enough_mp') {
+			if (customActionImpossibleReasonState === 'not_enough_resource') {
 				chosenActionState.value = {
 					...chosenActionState.value,
 					action_difficulty:
@@ -273,17 +301,18 @@
 						modifier: chosenActionState.value.dice_roll!.modifier!,
 						modifier_explanation:
 							chosenActionState.value.dice_roll!.modifier_explanation! +
-							' -3 for trying without enough MP.',
+							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key.replaceAll('_', ' ')}`,
 						modifier_value: (chosenActionState.value.dice_roll?.modifier_value || 0) - 3
 					}
 				};
 			}
-			//either not enough mp or impossible, anyway no mp cost
-			chosenActionState.value.mp_cost = 0;
+			//either not enough resource or impossible, anyway no resource cost
+			chosenActionState.value.resource_cost!.cost = 0;
+			const costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
 			if (additionalStoryInputState.value) {
-				additionalStoryInputState.value += '\nMP cost: 0';
+				additionalStoryInputState.value += costString;
 			} else {
-				additionalStoryInputState.value = '\nMP cost: 0';
+				additionalStoryInputState.value = costString;
 			}
 			await sendAction(chosenActionState.value, true, additionalStoryInputState.value);
 		}
@@ -313,22 +342,28 @@
 	}
 
 	async function checkGameEnded() {
-		if (!isGameEnded.value && playerCharactersGameState[characterState.value.name].currentHP <= 0) {
+		const emptyResourceKey = getEmptyCriticalResourceKeys(
+			playerCharactersGameState[characterState.value.name]
+		);
+		if (!isGameEnded.value && emptyResourceKey.length > 0) {
 			isGameEnded.value = true;
 			await sendAction({
 				characterName: characterState.value.name,
-				text: gameAgent.getGameEndedPrompt()
+				text: gameAgent.getGameEndedPrompt(emptyResourceKey)
 			});
 		}
-		isGameEnded.value = playerCharactersGameState[characterState.value.name].currentHP <= 0;
+		//calculate again as dying action could also be a rescue in some cases
+		isGameEnded.value = Object.values(playerCharactersGameState[characterState.value.name]).some(
+			(v) => v.game_ends_when_zero && v.current_value <= 0
+		);
 	}
 
 	function resetStatesAfterActionProcessed() {
 		chosenActionState.reset();
 		additionalStoryInputState.reset();
 		characterActionsState.reset();
-		actionsDiv.innerHTML = '';
-		customActionInput.value = '';
+		if (actionsDiv) actionsDiv.innerHTML = '';
+		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
 	}
 
@@ -355,7 +390,10 @@
 
 	function checkForLevelUp() {
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
-		if (neededXP && playerCharactersGameState[characterState.value.name]?.xp >= neededXP) {
+		if (
+			neededXP &&
+			playerCharactersGameState[characterState.value.name]?.XP.current_value >= neededXP
+		) {
 			levelUpState.value.buttonEnabled = true;
 		}
 	}
@@ -447,7 +485,7 @@
 			)[0];
 			if (
 				mappedCurrentPlotPoint >
-				campaignState.value.chapters[currentChapterState.value - 1]?.plot_points?.length ||
+					campaignState.value.chapters[currentChapterState.value - 1]?.plot_points?.length ||
 				mappedCampaignChapterId > currentChapterState.value
 			) {
 				additionalStoryInput += startNextChapter();
@@ -563,18 +601,15 @@
 		}
 	}
 
-	function renderGameState(
-		state: GameActionState,
-		actions: Array<Action>
-	) {
+	function renderGameState(state: GameActionState, actions: Array<Action>) {
 		if (!isGameEnded.value) {
 			actions.forEach((action) =>
 				addActionButton(action, state.is_character_in_combat, 'ai-gen-action')
 			);
 			actionsTextForTTS =
 				Array.from(document.querySelectorAll('.ai-gen-action'))
-					.map((elm) => elm.textContent || '')
-					.join(' ') || '';
+					.map((elm) => elm.textContent || ' ')
+					.join(' ') || ' ';
 		}
 	}
 
@@ -587,7 +622,7 @@
 			return;
 		}
 		const buyLevelUpObject = gameAgent.getLevelUpCostObject(xpNeededForLevel, playerName, level);
-		playerCharactersGameState[playerName].xp -= xpNeededForLevel;
+		playerCharactersGameState[playerName].XP.current_value -= xpNeededForLevel;
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update.push(buyLevelUpObject);
 		levelUpState.value.dialogOpened = true;
 	}
@@ -602,7 +637,7 @@
 			button.className += ' ' + addClass;
 		}
 		button.textContent = getTextForActionButton(action);
-		if (!isEnoughMP(action, playerCharactersGameState[characterState.value.name].currentMP)) {
+		if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name])) {
 			button.disabled = true;
 		}
 		button.addEventListener('click', () => {
@@ -655,7 +690,8 @@
 			'\n Hostile NPCs stay hostile unless explicitly described otherwise by the actions effect.' +
 			'\n Friendly NPCs turn hostile if attacked.';
 
-		additionalStoryInputState.value = targetAddition + abilityAddition + (additionalStoryInputState.value || '');
+		additionalStoryInputState.value =
+			targetAddition + abilityAddition + (additionalStoryInputState.value || '');
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
@@ -673,7 +709,10 @@
 			};
 		}
 		levelUpState.reset();
-		refillResourcesFully(playerCharactersGameState, characterState.value.name);
+		refillResourcesFully(
+			characterStatsState.value.resources,
+			characterState.value.name
+		);
 		checkForLevelUp();
 	};
 
@@ -690,7 +729,7 @@
 	};
 
 	function getCurrentXPText() {
-		return `XP: ${playerCharactersGameState[characterState.value.name]?.xp}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
+		return `XP: ${playerCharactersGameState[characterState.value.name]?.XP.current_value}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
 	}
 
 	const generateActionFromCustomInput = async (action: Action) => {
@@ -711,11 +750,8 @@
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
-			const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-			const isEnoughMP =
-				mpCost === 0 || playerCharactersGameState[characterState.value.name].currentMP >= mpCost;
-			if (!isEnoughMP) {
-				customActionImpossibleReasonState = 'not_enough_mp';
+			if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name])) {
+				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
 				await sendAction(
@@ -766,13 +802,16 @@
 		<ImpossibleActionModal action={chosenActionState.value} onclose={handleImpossibleAction} />
 	{/if}
 	{#if gmQuestionState}
-		<GMQuestionModal onclose={onGMQuestionClosed} question={gmQuestionState}
-										 {playerCharactersGameState} />
+		<GMQuestionModal
+			onclose={onGMQuestionClosed}
+			question={gmQuestionState}
+			{playerCharactersGameState}
+		/>
 	{/if}
 	<UseSpellsAbilitiesModal
 		bind:dialogRef={useSpellsAbilitiesModal}
 		playerName={characterState.value.name}
-		currentMP={playerCharactersGameState[characterState.value.name]?.currentMP}
+		resources={playerCharactersGameState[characterState.value.name]}
 		abilities={characterStatsState.value?.spells_and_abilities}
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
@@ -786,9 +825,12 @@
 		onclose={onItemUseChosen}
 	></UseItemsModal>
 	{#if itemForSuggestActionsState}
-		<SuggestedActionsModal onclose={onSuggestItemActionClosed}
-													 currentMP={playerCharactersGameState[characterState.value.name].currentMP}
-													 {itemForSuggestActionsState} {currentGameActionState} />
+		<SuggestedActionsModal
+			onclose={onSuggestItemActionClosed}
+			resources={playerCharactersGameState[characterState.value.name]}
+			{itemForSuggestActionsState}
+			{currentGameActionState}
+		/>
 	{/if}
 	{#if levelUpState.value?.dialogOpened}
 		<LevelUpModal onclose={onLevelUpModalClosed} />
@@ -799,27 +841,33 @@
 		resetState={didAIProcessDiceRollActionState.value}
 	></DiceRollComponent>
 	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
-		<output id="hp" class="ml-1 text-lg font-semibold text-red-500">
-			HP: {playerCharactersGameState[characterState.value.name]?.currentHP}
-		</output>
-		<output id="xp" class="ml-1 text-lg font-semibold text-green-500">
-			{getCurrentXPText()}
-		</output>
-		<output id="mp" class="ml-1 text-lg font-semibold text-blue-500">
-			MP: {playerCharactersGameState[characterState.value.name]?.currentMP}
-		</output>
+		{#each Object.entries(playerCharactersGameState[characterState.value.name] || {}) as [resourceKey, resourceValue] (resourceKey)}
+			{#if resourceKey === 'XP'}
+				<output id="XP" class="ml-1 text-lg font-semibold text-green-500 w-full lg:w-fit">
+					{getCurrentXPText()}
+				</output>
+			{:else}
+				<output
+					class="ml-1 text-lg font-semibold capitalize w-full lg:w-fit"
+					class:text-red-500={resourceValue.game_ends_when_zero}
+					class:text-blue-500={!resourceValue.game_ends_when_zero}
+				>
+					{resourceKey.replaceAll('_', ' ')}: {resourceValue.current_value ||
+						0}/{resourceValue.max_value}
+				</output>
+			{/if}
+		{/each}
 	</div>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		<!-- For proper updating, need to use gameActionsState.id as each block id -->
-		{#each gameActionsState.value
-			.filter((s) => s.story)
-			.slice(-3) as gameActionState (gameActionState.id)}
+		{#each gameActionsState.value.slice(-3) as gameActionState (gameActionState.id)}
 			<StoryProgressionWithImage
 				story={gameActionState.story}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
 				gameUpdates={gameLogic
 					.renderStatUpdates(
 						$state.snapshot(gameActionState.stats_update),
+						playerCharactersGameState[characterState.value.name],
 						characterState.value.name
 					)
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
@@ -852,41 +900,42 @@
 			{/if}
 			<div id="static-actions" class="p-4 pb-0 pt-0">
 				<button
-					onclick={() => sendAction({
-					characterName: characterState.value.name,
-					text: 'Continue The Tale'
-				})}
+					onclick={() =>
+						sendAction({
+							characterName: characterState.value.name,
+							text: 'Continue The Tale'
+						})}
 					class="text-md btn btn-neutral mb-3 w-full"
-				>Continue The Tale.
+					>Continue The Tale.
 				</button>
 
 				{#if levelUpState.value.buttonEnabled}
 					<button
 						onclick={() => {
-								levelUpClicked(characterState.value.name);
-							}}
+							levelUpClicked(characterState.value.name);
+						}}
 						class="text-md btn btn-success mb-3 w-full"
-					>Level up!
+						>Level up!
 					</button>
 				{/if}
 				<button
 					onclick={() => {
-							useSpellsAbilitiesModal.showModal();
-						}}
+						useSpellsAbilitiesModal.showModal();
+					}}
 					class="text-md btn btn-primary w-full"
-				>Spells & Abilities
+					>Spells & Abilities
 				</button>
 				<button
 					onclick={() => {
-							useItemsModal.showModal();
-						}}
+						useItemsModal.showModal();
+					}}
 					class="text-md btn btn-primary mt-3 w-full"
-				>Inventory
+					>Inventory
 				</button>
 			</div>
 		{/if}
 		<form id="input-form" class="p-4 pb-2">
-			<div class="lg:join w-full">
+			<div class="w-full lg:join">
 				<select bind:value={customActionReceiver} class="select select-bordered w-full lg:w-fit">
 					<option selected>Character Action</option>
 					<option>Game Command</option>
@@ -898,7 +947,7 @@
 					class="input input-bordered w-full"
 					id="user-input"
 					placeholder={customActionReceiver === 'Character Action'
-						? 'What are you up to?'
+						? 'What do you want to do?'
 						: customActionReceiver === 'GM Question'
 							? 'Message to the Game Master'
 							: 'Command without restrictions'}
@@ -908,21 +957,21 @@
 					onclick={onCustomActionSubmitted}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
-				>Submit
+					>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-      .btn {
-          height: fit-content;
-          padding: 1rem;
-      }
+		.btn {
+			height: fit-content;
+			padding: 1rem;
+		}
 
-      canvas {
-          height: 100%;
-          width: 100%;
-      }
+		canvas {
+			height: 100%;
+			width: 100%;
+		}
 	</style>
 </div>
