@@ -2,7 +2,8 @@ import type {
 	Action,
 	GameActionState,
 	InventoryUpdate,
-	PlayerCharactersGameState, ResourcesWithCurrentValue,
+	PlayerCharactersGameState,
+	ResourcesWithCurrentValue,
 	Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
@@ -19,9 +20,9 @@ export enum ActionDifficulty {
 
 export function getEmptyCriticalResourceKeys(resources: ResourcesWithCurrentValue): string[] {
 	return Object.entries(resources)
-		.filter(entry => entry[1].game_ends_when_zero && entry[1].current_value <= 0).map(entry => entry[0]);
+		.filter((entry) => entry[1].game_ends_when_zero && entry[1].current_value <= 0)
+		.map((entry) => entry[0]);
 }
-
 
 export function getAllTargetsAsList(targets: Targets) {
 	if (!targets || !targets.hostile) {
@@ -63,7 +64,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	);
 }
 
-export const getTargetPromptAddition = function(targets: string[]) {
+export const getTargetPromptAddition = function (targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -82,12 +83,10 @@ export function mapStatsUpdateToGameLogic(statsUpdate: StatsUpdate): StatsUpdate
 
 function getColorForStatUpdate(mappedType: string, resources: Resources) {
 	let color = '';
-	if (mappedType.includes('HP')) color = 'text-red-500';
-	if (mappedType.includes('MP')) color = 'text-blue-500';
 	if (mappedType.includes('XP')) color = 'text-green-500';
 	if (mappedType.includes('LEVEL')) color = 'text-green-500';
 	if (!color) {
-		const foundResourceEntry = Object.entries(resources).find(res => {
+		const foundResourceEntry = Object.entries(resources).find((res) => {
 			const processedKey = res[0].replaceAll('_', ' ').toUpperCase();
 			return processedKey.includes(mappedType.toUpperCase());
 		});
@@ -178,14 +177,18 @@ export function renderInventoryUpdate(
 			.toSorted((a, b) => (a.type < b.type ? -1 : 1))
 			.map((inventoryUpdate) => {
 				const mappedId = formatItemId(inventoryUpdate.item_id);
-				let text = '';
-				const color = 'text-yellow-500',
+				let text = '',
 					resourceText = mappedId;
+				const color = 'text-yellow-500';
 				if (inventoryUpdate.type === 'add_item') {
 					text = 'You gain ';
 				}
 				if (inventoryUpdate.type === 'remove_item') {
 					text = 'You loose ';
+				}
+				if (!text) {
+					text = 'Unidentified item update:';
+					resourceText = JSON.stringify(inventoryUpdate);
 				}
 				return { text, resourceText, color };
 			})
@@ -217,9 +220,9 @@ export function applyGameActionState(
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
-	function getResourceIfPresent(resources: ResourcesWithCurrentValue, key: string){
+	function getResourceIfPresent(resources: ResourcesWithCurrentValue, key: string) {
 		let resource = resources[key];
-		if(!resource){
+		if (!resource) {
 			resource = resources[key.toUpperCase()];
 		}
 		return resource;
@@ -238,11 +241,14 @@ export function applyGameActionState(
 			} else {
 				if (statUpdate.type.includes('_gained')) {
 					const resource: string = statUpdate.type.replace('_gained', '');
-					const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
+					const res = getResourceIfPresent(
+						playerCharactersGameState[statUpdate.targetId],
+						resource
+					);
 					if (!res) continue;
 					const gained = Number.parseInt(statUpdate.value.result) || 0;
-					if (res.current_value + gained <= res.max_value) {
-						res.current_value += Number.parseInt(statUpdate.value.result) || 0;
+					if ((res.current_value || 0) + gained <= res.max_value) {
+						res.current_value = (res.current_value || 0) + (Number.parseInt(statUpdate.value.result) || 0);
 					} else {
 						res.current_value = res.max_value;
 					}
@@ -251,7 +257,7 @@ export function applyGameActionState(
 			if (statUpdate.type.includes('_lost')) {
 				const resource: string = statUpdate.type.replace('_lost', '');
 				const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
-				if(!res) continue
+				if (!res) continue;
 				res.current_value -= Number.parseInt(statUpdate.value.result) || 0;
 			}
 		} else {

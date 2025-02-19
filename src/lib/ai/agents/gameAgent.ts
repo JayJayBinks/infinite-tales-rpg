@@ -167,7 +167,7 @@ export class GameAgent {
 	}
 
 	getGameEndedPrompt(emptyResourceKey: string[]) {
-		return `The CHARACTER has fallen to 0 ${emptyResourceKey.join(' and ')}; CHARACTER is dying.`;
+		return `The CHARACTER has fallen to 0 ${emptyResourceKey.join(' and ')}; Describe how the GAME is ending.`;
 	}
 
 	getStartingPrompt() {
@@ -185,23 +185,6 @@ export class GameAgent {
 		return { userMessage, modelMessage };
 	};
 
-	getStartingResourcesUpdateObject(
-		resources: Resources,
-		playerName: string
-	): Pick<GameActionState, 'stats_update'> {
-
-		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
-		Object.entries(resources).filter(entr => entr[1].max_value > 0).forEach(entry => {
-			returnObject.stats_update.push({
-				sourceId: playerName,
-				targetId: playerName,
-				type: entry[0] + '_gained',
-				value: { result: entry[1].max_value }
-			});
-		});
-		return returnObject;
-	}
-
 	getLevelUpResourcesUpdateObject(
 		maxResources: Resources,
 		currentResources: ResourcesWithCurrentValue,
@@ -210,12 +193,12 @@ export class GameAgent {
 
 		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
 		Object.entries(currentResources).filter(([resourceKey]) => resourceKey !== 'XP')
-			.forEach(([resourceKey, resourceObject]) => {
+			.forEach(([resourceKey, currentResource]) => {
 				returnObject.stats_update.push({
 					sourceId: playerName,
 					targetId: playerName,
 					type: resourceKey + '_gained',
-					value: { result: (maxResources[resourceKey].max_value - resourceObject.current_value) || 0 }
+					value: { result: (maxResources[resourceKey].max_value - (currentResource.current_value || 0)) || 0 }
 				});
 			});
 		return returnObject;
@@ -307,7 +290,7 @@ const jsonSystemInstructionForGameAgent = `Important Instruction! You must alway
         "description": "A description of the item",
         "effect": "Clearly state effect(s) and whether an effect is active or passive"
       }
-    },^
+    },
     {
       "type": "remove_item",
       "item_id": "unique name of the item to identify it"

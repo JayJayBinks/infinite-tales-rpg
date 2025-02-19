@@ -19,7 +19,7 @@
 			<h1 id="name" class="class mb-4 border-b border-gray-600 text-center text-3xl font-bold">
 				{characterState.value.name}
 			</h1>
-			{#if !aiConfigState.value.disableImagesState}
+			{#if !aiConfigState.value?.disableImagesState}
 				<div class="m-auto flex w-full flex-col">
 					<AIGeneratedImage
 						storageKey="characterImageState"
