@@ -19,7 +19,7 @@
 			<h1 id="name" class="class mb-4 border-b border-gray-600 text-center text-3xl font-bold">
 				{characterState.value.name}
 			</h1>
-			{#if !aiConfigState.value.disableImagesState}
+			{#if !aiConfigState.value?.disableImagesState}
 				<div class="m-auto flex w-full flex-col">
 					<AIGeneratedImage
 						storageKey="characterImageState"
@@ -36,7 +36,11 @@
 					<p><strong>Gender:</strong> <span id="gender">{characterState.value.gender}</span></p>
 					<p><strong>Class:</strong> <span id="class">{characterState.value.class}</span></p>
 					<p><strong>Level:</strong> <span id="class">{characterStatsState.value.level}</span></p>
-					<p><span id="hpmp">{stringifyPretty(characterStatsState.value.resources)}</span></p>
+					{#each Object.entries(characterStatsState.value.resources || {}) as [resourceKey, resourceValue] (resourceKey)}
+						<output class="capitalize">
+							Max. {resourceKey.replaceAll('_', ' ')}: {resourceValue.max_value}
+						</output>
+					{/each}
 					<p>
 						<strong>Alignment:</strong> <span id="alignment">{characterState.value.alignment}</span>
 					</p>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import TargetModal from '$lib/components/interaction_modals/TargetModal.svelte';
 	import { type Ability, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
-	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
+	import type { Action, ResourcesWithCurrentValue, Targets } from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { AIConfig } from '$lib';
@@ -10,7 +10,7 @@
 		abilities,
 		playerName,
 		storyImagePrompt,
-		currentMP,
+		resources,
 		targets,
 		onclose,
 		dialogRef = $bindable()
@@ -18,7 +18,7 @@
 		abilities: Array<Ability>;
 		playerName: string;
 		storyImagePrompt: string;
-		currentMP: number;
+		resources: ResourcesWithCurrentValue;
 		targets: Targets;
 		onclose;
 		dialogRef;
@@ -39,10 +39,7 @@
 				' casts ' +
 				ability.name +
 				': ' +
-				ability.effect +
-				' (' +
-				ability.mp_cost +
-				' MP)'
+				ability.effect
 		};
 	}
 </script>
@@ -82,12 +79,15 @@
 								</div>
 							{/if}
 							<div class="m-auto w-full sm:col-span-2">
-								<p class="badge badge-info">{ability.mp_cost} MP</p>
+								{#if ability.resource_cost?.cost > 0}
+									<p class="badge badge-info h-fit">{ability.resource_cost?.cost} {(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}</p>
+								{/if}
 								<p class="mt-2 overflow-hidden overflow-ellipsis">{ability.name}</p>
 								<button
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
-									disabled={ability.mp_cost > 0 && ability.mp_cost > currentMP}
+									disabled={ability.resource_cost?.cost > 0
+														&& ability.resource_cost?.cost > resources[ability.resource_cost.resource_key || '']?.current_value}
 									onclick={() => {
 										mapAbilityToAction(ability);
 										dialogRef.close();

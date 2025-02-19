@@ -1,12 +1,13 @@
 import type {
 	Action,
-	PlayerCharactersGameState,
 	GameActionState,
 	InventoryUpdate,
+	PlayerCharactersGameState,
+	ResourcesWithCurrentValue,
 	Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
-import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
+import type { NPCState, NPCStats, Resources } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
 
@@ -15,6 +16,12 @@ export enum ActionDifficulty {
 	medium = 'medium',
 	difficult = 'difficult',
 	very_difficult = 'very_difficult'
+}
+
+export function getEmptyCriticalResourceKeys(resources: ResourcesWithCurrentValue): string[] {
+	return Object.entries(resources)
+		.filter((entry) => entry[1].game_ends_when_zero && entry[1].current_value <= 0)
+		.map((entry) => entry[0]);
 }
 
 export function getAllTargetsAsList(targets: Targets) {
@@ -74,10 +81,29 @@ export function mapStatsUpdateToGameLogic(statsUpdate: StatsUpdate): StatsUpdate
 	return statsUpdate;
 }
 
+function getColorForStatUpdate(mappedType: string, resources: Resources) {
+	let color = '';
+	if (mappedType.includes('XP')) color = 'text-green-500';
+	if (mappedType.includes('LEVEL')) color = 'text-green-500';
+	if (!color) {
+		const foundResourceEntry = Object.entries(resources).find((res) => {
+			const processedKey = res[0].replaceAll('_', ' ').toUpperCase();
+			return processedKey.includes(mappedType.toUpperCase());
+		});
+
+		const foundResourceValue = foundResourceEntry ? foundResourceEntry[1] : undefined;
+		if (foundResourceValue) {
+			color = foundResourceValue.game_ends_when_zero ? 'text-red-500' : 'text-blue-500';
+		}
+	}
+	return color;
+}
+
 export function renderStatUpdates(
 	statsUpdates: Array<StatsUpdate>,
+	resources: Resources,
 	playerName: string
-): Array<RenderedGameUpdate> {
+): (undefined | RenderedGameUpdate)[] {
 	if (statsUpdates) {
 		return statsUpdates
 			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
@@ -104,11 +130,9 @@ export function renderStatUpdates(
 						.replace('_lost', '')
 						.replaceAll('_', ' ')
 						.toUpperCase() || '';
-				let color = '';
-				if (mappedType.includes('HP')) color = 'text-red-500';
-				if (mappedType.includes('MP')) color = 'text-blue-500';
-				if (mappedType.includes('XP')) color = 'text-green-500';
-				if (mappedType.includes('LEVEL')) color = 'text-green-500';
+
+				const color = getColorForStatUpdate(mappedType, resources);
+
 				if (statsUpdate.targetId === playerName) {
 					responseText = 'You ';
 					if (!changeText) {
@@ -147,20 +171,24 @@ export function renderStatUpdates(
 
 export function renderInventoryUpdate(
 	inventoryUpdate: Array<InventoryUpdate>
-): Array<RenderedGameUpdate> {
+): Array<undefined | RenderedGameUpdate> {
 	if (inventoryUpdate) {
 		return inventoryUpdate
 			.toSorted((a, b) => (a.type < b.type ? -1 : 1))
 			.map((inventoryUpdate) => {
 				const mappedId = formatItemId(inventoryUpdate.item_id);
-				let text = '';
-				const color = 'text-yellow-500',
+				let text = '',
 					resourceText = mappedId;
+				const color = 'text-yellow-500';
 				if (inventoryUpdate.type === 'add_item') {
 					text = 'You gain ';
 				}
 				if (inventoryUpdate.type === 'remove_item') {
 					text = 'You loose ';
+				}
+				if (!text) {
+					text = 'Unidentified item update:';
+					resourceText = JSON.stringify(inventoryUpdate);
 				}
 				return { text, resourceText, color };
 			})
@@ -192,38 +220,45 @@ export function applyGameActionState(
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
+	function getResourceIfPresent(resources: ResourcesWithCurrentValue, key: string) {
+		let resource = resources[key];
+		if (!resource) {
+			resource = resources[key.toUpperCase()];
+		}
+		return resource;
+	}
+
 	for (const statUpdate of state.stats_update.map(mapStatsUpdateToGameLogic) || []) {
 		if (playerCharactersGameState[statUpdate.targetId]) {
 			if (statUpdate.type.includes('now_level')) {
-				playerCharactersGameState[statUpdate.targetId].xp -=
+				playerCharactersGameState[statUpdate.targetId].XP.current_value -=
 					Number.parseInt(statUpdate.value.result) || 0;
 				continue;
 			}
-			switch (statUpdate.type) {
-				case 'xp_gained':
-					playerCharactersGameState[statUpdate.targetId].xp +=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
-				case 'hp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentHP +=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
-				case 'hp_lost':
-					playerCharactersGameState[statUpdate.targetId].currentHP -=
-						getTakeLessDamageForManyHits(
-							state.stats_update,
-							Number.parseInt(statUpdate.value.result),
-							statUpdate.targetId
-						) || 0;
-					break;
-				case 'mp_gained':
-					playerCharactersGameState[statUpdate.targetId].currentMP +=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
-				case 'mp_lost':
-					playerCharactersGameState[statUpdate.targetId].currentMP -=
-						Number.parseInt(statUpdate.value.result) || 0;
-					break;
+			if (statUpdate.type === 'xp_gained') {
+				playerCharactersGameState[statUpdate.targetId].XP.current_value +=
+					Number.parseInt(statUpdate.value.result) || 0;
+			} else {
+				if (statUpdate.type.includes('_gained')) {
+					const resource: string = statUpdate.type.replace('_gained', '');
+					const res = getResourceIfPresent(
+						playerCharactersGameState[statUpdate.targetId],
+						resource
+					);
+					if (!res) continue;
+					const gained = Number.parseInt(statUpdate.value.result) || 0;
+					if ((res.current_value || 0) + gained <= res.max_value) {
+						res.current_value = (res.current_value || 0) + (Number.parseInt(statUpdate.value.result) || 0);
+					} else {
+						res.current_value = res.max_value;
+					}
+				}
+			}
+			if (statUpdate.type.includes('_lost')) {
+				const resource: string = statUpdate.type.replace('_lost', '');
+				const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
+				if (!res) continue;
+				res.current_value -= Number.parseInt(statUpdate.value.result) || 0;
 			}
 		} else {
 			if (!prohibitNPCChange) {
@@ -287,7 +322,7 @@ export function getGameEndedMessage() {
 	return 'Your Tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new Tale in the menu.';
 }
 
-export function isEnoughMP(action: Action, currentMP: number){
-	const mpCost = parseInt(action.mp_cost as unknown as string) || 0;
-	return mpCost === 0 || currentMP >= mpCost;
+export function isEnoughResource(action: Action, resources: ResourcesWithCurrentValue) {
+	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+	return cost === 0 || resources[action.resource_cost?.resource_key || '']?.current_value >= cost;
 }

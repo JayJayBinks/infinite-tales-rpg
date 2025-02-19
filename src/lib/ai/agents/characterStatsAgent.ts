@@ -3,11 +3,25 @@ import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
-export type Ability = { name: string; effect: string; mp_cost: number; image_prompt: string };
+export type Ability = {
+	name: string;
+	effect: string;
+	resource_cost: {
+		resource_key: string | undefined,
+		cost: number,
+	};
+	image_prompt: string
+};
 export const abilityFormatForPrompt =
-	'{"name": string, "effect": "Clearly state the effect caused. If causing damage include the dice notation like 1d6+2 or 2d4", "mp_cost": integer, "image_prompt": short prompt for an image ai that generates an RPG game icon}';
+	'{"name": string, "effect": "Clearly state the effect caused. If causing damage include the dice notation like 1d6+2 or 2d4", "resource_cost": if no cost null else { "resource_key": "the resource to pay for this action; one of character_stats.resources", "cost": number}, "image_prompt": short prompt for an image ai that generates an RPG game icon}';
 
-export type Resources = { MAX_HP: number; MAX_MP: number };
+export type Resources = {
+	[resourceKey: string]: { max_value: number; game_ends_when_zero: boolean };
+};
+
+export type NPCResources = {
+	current_hp: number, current_mp: number;
+};
 
 export type CharacterStats = {
 	level: number;
@@ -20,11 +34,11 @@ export type CharacterStats = {
 //need to stringify ourselves because JSON stringify would double escape the string JSON
 const characterStatsStateForPrompt = `{
 		"level": Number; Level of the character according to Description of the story and character,
-    "resources": "Starting maximum HP and MP in range 20 - 100, based on overall description and level of the character. Format: {"MAX_HP": startingHP, "MAX_MP": startingMP}",
+    "resources": "Starting maximum resources, based on GAME System, ADVENTURE_AND_MAIN_EVENT, description and level of the character. 2 - 5 different resources, e.g. for a survival game HUNGER, WARMTH, ...; as a vampire BLOOD, etc...) Format: {"{resourceKey}": {"max_value": number, "game_ends_when_zero": true if this is a critical resource, else false}, ...}",
     "traits": "list of the beginning traits of the character in following format: {"trait1": startingValue1, "trait2": startingValue2, ...}",
     "expertise": "Traits where CHARACTER has a high value and a positive dice roll modifier format: {"trait1": value between 1-5, "trait2": 1-5, ...}",
     "disadvantages": "Traits where CHARACTER has a low value and a negative dice roll modifier format: {"trait1": value between -1 to -5, "trait2": -1 to -5, ...}",
-    "spells_and_abilities": "Array of spells and abilities according to game system and level. List 2-4 actively usable spells and abilities. At last include a 'Standard Attack'. Format: [${abilityFormatForPrompt}]"
+    "spells_and_abilities": "Array of spells and abilities according to game system and level. List 2-4 actively usable spells and abilities. They should have a cost of one resource type, although some can be without cost. At last include a 'Standard Attack' without cost. Format: [${abilityFormatForPrompt}]"
 }`;
 
 export type AiLevelUp = {
@@ -33,19 +47,19 @@ export type AiLevelUp = {
 	trait: string;
 	formerAbilityName?: string;
 	ability: Ability;
-	resources: Resources;
+	resources: { [resourceKey: string]: number };
 };
 const levelUpPrompt = `{
 		"level_up_explanation": "Explanation why exactly this trait and ability have been increased. If already existing ability changed explain the ability changes.",
 		"trait": "trait name",
-		"resources": {"resourceName": newValue, ...},
+		"resources": {"resourceKey": newMaximumValue, ...},
 		"ability": Existing ability leveled up or new ability according to game system and level; Format: ${abilityFormatForPrompt}
 		"formerAbilityName": "refers an already existing ability name that is changed, null if new ability is gained",
 }`;
 
 export const initialCharacterStatsState: CharacterStats = {
 	level: 0,
-	resources: { MAX_HP: 0, MAX_MP: 0 },
+	resources: {},
 	traits: {},
 	expertise: {},
 	disadvantages: {},
@@ -56,7 +70,7 @@ export const npcRank = ['Very Weak', 'Weak', 'Average', 'Strong', 'Boss', 'Legen
 
 export type NPCState = { [uniqueNpcName: string]: NPCStats };
 export type NPCStats = {
-	resources?: { current_hp: number; current_mp: number };
+	resources?: NPCResources;
 	class: string;
 	rank: string;
 	level: number;
@@ -82,11 +96,12 @@ export class CharacterStatsAgent {
 		characterState: CharacterDescription,
 		statsOverwrites: Partial<CharacterStats> | undefined = undefined
 	): Promise<CharacterStats> {
-		const agentInstruction =
+		const agentInstruction = [
 			'You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n' +
-			'Scale the stats and abilities according to the level. A low level character has expertise of 1.\n' +
+			'Scale the stats and abilities according to the level. A low level character has expertise of 1.',
 			'Always respond with following JSON!\n' +
-			characterStatsStateForPrompt;
+			characterStatsStateForPrompt
+		];
 
 		if (!statsOverwrites?.level) {
 			statsOverwrites = { ...statsOverwrites, level: 1 };
@@ -128,12 +143,12 @@ export class CharacterStatsAgent {
 
 		const agentInstruction = [
 			'You are RPG character stats agent, leveling up a character according to game system, adventure and character description.\n' +
-				'Name one existing trait to be increased. ' +
-				'Also invent a new ability or increase one ability by one level granting an improved effect or more damage. Always describe the full ability effect.\n' +
-				'In addition, all resources are to be meaningfully increased according to GAME rules',
+			'Name one existing trait to be increased. ' +
+			'Also invent a new ability or increase one ability by one level granting an improved effect or more damage. Describe what improved from the last ability level.\n' +
+			'In addition, all resources are to be meaningfully increased according to GAME rules',
 			'Current character stats:\n' + stringifyPretty(characterStats),
 			'The level up must be based on the story progression, in which area the player acted well:\n' +
-				latestHistoryTextOnly,
+			latestHistoryTextOnly,
 			'Always respond with following JSON!\n' + levelUpPrompt
 		];
 
@@ -170,8 +185,8 @@ export class CharacterStatsAgent {
 			'Description of the adventure: ' + stringifyPretty(storyState),
 			'Latest story progression:\n' + latestHistoryTextOnly,
 			'Scale the stats and abilities according to the player character level: ' +
-				characterStats.level +
-				'\n',
+			characterStats.level +
+			'\n',
 			`Most important instruction! You must always respond with following JSON format! 
                             {"uniqueNpcName": ${npcStatsStateForPromptAsString}, ...}`
 		];
