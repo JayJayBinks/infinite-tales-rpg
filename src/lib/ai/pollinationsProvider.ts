@@ -86,6 +86,8 @@ export class PollinationsProvider extends LLM {
 				const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
 				if (!fallbackResult) {
 					handleError(e as unknown as string);
+				}else{
+					fallbackResult.parsedObject['fallbackUsed'] = true;
 				}
 				return fallbackResult;
 			} else {

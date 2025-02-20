@@ -185,6 +185,9 @@
 			<small class="m-auto mt-2">
 				When Gemini is overloaded, Pollinations GPT-4o-mini will be used.
 			</small>
+			<small class="m-auto mt-2">
+				Keep in mind that the game experience can be decreased with this option.
+			</small>
 		</div>
 	</label>
 	<label class="form-control mt-5 w-full sm:w-2/3">
@@ -207,6 +210,12 @@
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2">The Game UI will not be translated yet</small>
+	</label>
+	<label class="form-control mt-5 w-full sm:w-2/3">
+		<div class="flex flex-col items-center gap-2">
+			<span>Disable Image Generation</span>
+			<input type="checkbox" class="toggle" bind:checked={aiConfigState.value.disableImagesState} />
+		</div>
 	</label>
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		<div class="flex flex-col items-center gap-2">
@@ -233,12 +242,6 @@
 				<option value={v.ShortName}>{v.FriendlyName} - {v.Gender}</option>
 			{/each}
 		</select>
-	</label>
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		<div class="flex flex-col items-center gap-2">
-			<span>Disable Image Generation</span>
-			<input type="checkbox" class="toggle" bind:checked={aiConfigState.value.disableImagesState} />
-		</div>
 	</label>
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		Temperature: {temperatureState.value}

@@ -872,6 +872,11 @@
 					)
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
+			{#if gameActionState['fallbackUsed']}
+				<small class="text-sm text-red-500">
+					For this action GPT-4o-mini was used.
+				</small>
+			{/if}
 		{/each}
 		{#if isGameEnded.value}
 			<StoryProgressionWithImage story={gameLogic.getGameEndedMessage()} />
