@@ -377,7 +377,7 @@
 				onclick={() => {
 					if (Array.isArray(characterStatsState.value[stateValue])) {
 						//TODO spells_and_abilities not generic yet
-						characterStatsState.value[stateValue].push({ name: '', effect: '', mp_cost: '', image_prompt: '' });
+						characterStatsState.value[stateValue].push({ name: '', effect: '', resource_cost: {cost: 0, resource_key: undefined}, image_prompt: '' });
 					} else {
 						const name = prompt('Enter the name');
 						if(!name) return;

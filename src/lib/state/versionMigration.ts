@@ -30,6 +30,12 @@ function migrate062to07(key, state) {
 			delete state.resources.MAX_HP;
 			delete state.resources.MAX_MP;
 		}
+		state.spells_and_abilities.forEach(spell => {	
+			if(spell.mp_cost) {	
+				spell.resource_cost = {cost: spell.mp_cost, resource_key: 'MP'};
+				delete spell.mp_cost;
+			}
+		});
 	}
 	return state;
 }
