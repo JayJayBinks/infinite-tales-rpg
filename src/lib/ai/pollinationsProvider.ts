@@ -20,11 +20,13 @@ export const defaultGPT4JsonConfig: GenerationConfig = {
 
 export class PollinationsProvider extends LLM {
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
-	model = 'openai';
-
-	constructor(llmConfig: LLMconfig) {
+	model: string;
+	fallbackLLM?: LLM;
+	constructor(llmConfig: LLMconfig, fallbackLLM?: LLM) {
 		super(llmConfig);
+		this.model = llmConfig.model || 'openai';
 		this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
+		this.fallbackLLM = fallbackLLM;
 	}
 
 	getDefaultTemperature(): number {
@@ -54,13 +56,15 @@ export class PollinationsProvider extends LLM {
 		temperature = this.getDefaultTemperature();
 		console.log('calling llm with temperature', temperature);
 		const url = `https://text.pollinations.ai`;
-		const body = JSON.stringify({
+		const body: any = {
 			messages: [...systemInstructions, ...contents],
 			temperature,
 			model: this.model,
 			seed: Math.floor(Math.random() * 1000000),
-			response_format: { type: 'json_object' }
-		});
+		}
+		if(this.model !== 'gemini-thinking'){
+			body.response_format =  { type: 'json_object' }
+		}
 		let result;
 		try {
 			const response = await fetch(url, {
@@ -68,15 +72,26 @@ export class PollinationsProvider extends LLM {
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: body
+				body: JSON.stringify(body)
 			});
-			result = await response.json();
+			result = response;
 		} catch (e) {
-			handleError('Error for Pollinations GPT-4o-mini: ' + e as string);
-			return undefined;
+			const fallbackMessage = `Fallback Pollinations Gemini Thinking failed... You can go to the settings and enable GPT-4o-mini as fallback.`;
+			e.message = fallbackMessage + ' ' + e.message;
+			if (this.fallbackLLM) {
+				console.log('Pollinations Fallback LLM for error: ', this.model, e.message);
+				const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
+				if (!fallbackResult) {
+					handleError(e as unknown as string);
+				}
+				return fallbackResult;
+			} else {
+				handleError(e as unknown as string);
+				return undefined;
+			}
 		}
 		try {
-			const response = result;
+			const response: Response = result;
 			const autoFixJSON =
 				((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
 					this.llmConfig.tryAutoFixJSONError) ||
@@ -143,6 +158,10 @@ export class PollinationsProvider extends LLM {
 		return this.parseJSON(responseText, autoFixJSON);
 	}
 
+	parseGeminiThinking(response: string, autoFixJSON: boolean) {
+		return this.parseJSON(response, autoFixJSON);
+	}
+
 	parseJSON(response: string, autoFix: boolean) {
 		try {
 			return {
@@ -166,14 +185,16 @@ export class PollinationsProvider extends LLM {
 		}
 	}
 
-	parseContentByModel(model: string, response: any, autoFixJson: boolean) {
+	async parseContentByModel(model: string, response: Response, autoFixJson: boolean) {
 		switch (model) {
 			case 'deepseek-r1':
-				return this.parseDeepseek(response, autoFixJson);
+				return this.parseDeepseek(await response.json(), autoFixJson);
+			case 'gemini-thinking':
+				return this.parseGeminiThinking(await response.text(), autoFixJson);
 			case 'openai':
-				return this.parseOpenAI(response, autoFixJson);
+				return this.parseOpenAI(await response.json(), autoFixJson);
 			case 'openai-large':
-				return this.parseOpenAI(response, autoFixJson);
+				return this.parseOpenAI(await response.json(), autoFixJson);
 		}
 	}
 }

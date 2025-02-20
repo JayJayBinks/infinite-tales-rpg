@@ -10,16 +10,28 @@ export const defaultLLMConfig: LLMconfig = {
 };
 
 export class LLMProvider {
-	static provideLLM(llmConfig: LLMconfig, useFallback: boolean): LLM {
+	static provideLLM(llmConfig: LLMconfig, useFallback: boolean = false): LLM {
 		const configToUse: LLMconfig = { ...defaultLLMConfig, ...llmConfig };
 		if (configToUse.provider === 'pollinations') {
 			return new PollinationsProvider(configToUse);
 		} else {
-			return new GeminiProvider(configToUse, useFallback ? new PollinationsProvider(defaultLLMConfig) : undefined);
+			return new GeminiProvider(
+				configToUse,
+				new PollinationsProvider(
+					{ ...configToUse, model: 'gemini-thinking' },
+					useFallback ? new PollinationsProvider(configToUse) : undefined
+				)
+			);
 		}
 	}
 
 	static provideDefaultLLM(useFallback: boolean = false): LLM {
-		return new GeminiProvider(defaultLLMConfig, useFallback ? new PollinationsProvider(defaultLLMConfig) : undefined);
+		return new GeminiProvider(
+			defaultLLMConfig,
+			new PollinationsProvider(
+				{ ...defaultLLMConfig, model: 'gemini-thinking' },
+				useFallback ? new PollinationsProvider(defaultLLMConfig) : undefined
+			)
+		);
 	}
 }
