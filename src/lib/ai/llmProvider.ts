@@ -10,16 +10,16 @@ export const defaultLLMConfig: LLMconfig = {
 };
 
 export class LLMProvider {
-	static provideLLM(llmConfig: LLMconfig): LLM {
+	static provideLLM(llmConfig: LLMconfig, useFallback: boolean): LLM {
 		const configToUse: LLMconfig = { ...defaultLLMConfig, ...llmConfig };
 		if (configToUse.provider === 'pollinations') {
 			return new PollinationsProvider(configToUse);
 		} else {
-			return new GeminiProvider(configToUse);
+			return new GeminiProvider(configToUse, useFallback ? new PollinationsProvider(defaultLLMConfig) : undefined);
 		}
 	}
 
-	static provideDefaultLLM(): LLM {
-		return new GeminiProvider(defaultLLMConfig);
+	static provideDefaultLLM(useFallback: boolean = false): LLM {
+		return new GeminiProvider(defaultLLMConfig, useFallback ? new PollinationsProvider(defaultLLMConfig) : undefined);
 	}
 }

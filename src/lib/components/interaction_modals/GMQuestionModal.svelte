@@ -13,6 +13,7 @@
 	import type { LLMMessage } from '$lib/ai/llm';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { stringifyPretty } from '$lib/util.svelte';
+	import type { AIConfig } from '$lib';
 
 	let {
 		onclose,
@@ -31,6 +32,7 @@
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
 	let gameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
@@ -40,8 +42,8 @@
 		const llm = LLMProvider.provideLLM({
 			temperature: 0.7,
 			language: aiLanguage.value,
-			apiKey: apiKeyState.value
-		});
+			apiKey: apiKeyState.value,
+		}, aiConfigState.value.useFallbackLlmState);
 		gameAgent = new GameAgent(llm);
 		isGeneratingState = true;
 		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(

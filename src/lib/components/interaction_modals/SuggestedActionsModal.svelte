@@ -11,6 +11,7 @@
 	import { getTextForActionButton } from '$lib/util.svelte';
 	import { isEnoughResource } from '../../../routes/game/gameLogic';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
+	import type { AIConfig } from '$lib';
 
 	let {
 		onclose,
@@ -34,7 +35,7 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const temperatureState = useLocalStorage<number>('temperatureState');
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
-
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let suggestedActions: Array<Action> = $state([]);
 	let customActionInput: string = $state('');
 
@@ -46,7 +47,7 @@
 			temperature: temperatureState.value,
 			language: aiLanguage.value,
 			apiKey: apiKeyState.value
-		});
+		}, aiConfigState.value.useFallbackLlmState);
 		actionAgent = new ActionAgent(llm);
 
 		isGeneratingState = true;

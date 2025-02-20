@@ -34,7 +34,7 @@
 				temperature: 2,
 				apiKey: apiKeyState.value,
 				language: aiLanguage.value
-			})
+			}, aiConfigState.value.useFallbackLlmState)
 		);
 	});
 

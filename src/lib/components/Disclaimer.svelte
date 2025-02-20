@@ -26,7 +26,7 @@
 			>Adhere to the <a class="link" target="_blank" href="https://ai.google.dev/gemini-api/terms"
 				>Google Gemini Terms</a
 			>
-			and for image generation the
+			and the
 			<a class="link" target="_blank" href="https://pollinations.ai/terms">Pollinations Terms</a
 			></span
 		>

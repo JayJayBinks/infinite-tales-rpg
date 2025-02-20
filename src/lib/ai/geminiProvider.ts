@@ -49,14 +49,16 @@ export const defaultGeminiJsonConfig: GenerationConfig = {
 export class GeminiProvider extends LLM {
 	genAI: GoogleGenerativeAI;
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
+	fallbackLLM?: LLM;
 
-	constructor(llmConfig: LLMconfig) {
+	constructor(llmConfig: LLMconfig, fallbackLLM?: LLM) {
 		super(llmConfig);
 		if (!llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
 		}
 		this.genAI = new GoogleGenerativeAI(this.llmConfig.apiKey || '');
 		this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
+		this.fallbackLLM = fallbackLLM;
 	}
 
 	getDefaultTemperature(): number {
@@ -112,10 +114,19 @@ export class GeminiProvider extends LLM {
 			if (e instanceof Error) {
 				if (e.message.includes('503') || e.message.includes('500')) {
 					e.message =
-						'The Gemini AI is overloaded! You can try again or wait some time if this happens often now.';
+						'The Gemini AI is overloaded! You can try again or wait some time. Alternatively, you can go to the settings and enable GPT-4o-mini as fallback.';
 				}
-				handleError(e.message, false);
-				return undefined;
+				if (this.fallbackLLM) {
+					console.log('Fallback LLM for error: ', e.message);
+					const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
+					if (!fallbackResult) {
+						handleError(e as unknown as string);
+					}
+					return fallbackResult;
+				} else {
+					handleError(e as unknown as string);
+					return undefined;
+				}
 			}
 			handleError(e as string);
 			return undefined;

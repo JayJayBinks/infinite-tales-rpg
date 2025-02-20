@@ -17,7 +17,7 @@
 	} from '$lib/ai/agents/campaignAgent';
 	import { type Story } from '$lib/ai/agents/storyAgent';
 	import { beforeNavigate } from '$app/navigation';
-
+	import type { AIConfig } from '$lib';
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
@@ -29,14 +29,15 @@
 	const textAreaRowsDerived = $derived(getRowsForTextarea(campaignState.value));
 	let campaignStateOverwrites = $state({});
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
-
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+		
 	onMount(() => {
 		campaignAgent = new CampaignAgent(
 			LLMProvider.provideLLM({
 				temperature: 2,
 				apiKey: apiKeyState.value,
 				language: aiLanguage.value
-			})
+			}, aiConfigState.value.useFallbackLlmState)
 		);
 
 		beforeNavigate(() => {

@@ -72,7 +72,7 @@ export class PollinationsProvider extends LLM {
 			});
 			result = await response.json();
 		} catch (e) {
-			handleError(e as string);
+			handleError('Error for Pollinations GPT-4o-mini: ' + e as string);
 			return undefined;
 		}
 		try {

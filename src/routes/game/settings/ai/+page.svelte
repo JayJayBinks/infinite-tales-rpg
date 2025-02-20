@@ -23,7 +23,8 @@
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
-		disableImagesState: false
+		disableImagesState: false,
+		useFallbackLlmState: false
 	});
 
 	const gameActionsState = useLocalStorage('gameActionsState', []);
@@ -73,8 +74,8 @@
 		const llm = LLMProvider.provideLLM({
 			temperature: 2,
 			apiKey: apiKeyState.value,
-			language: aiLanguage.value
-		});
+			language: aiLanguage.value,
+		}, aiConfigState.value.useFallbackLlmState);
 		const storyAgent = new StoryAgent(llm);
 		isGeneratingState = true;
 		const newStoryState = await storyAgent.generateRandomStorySettings();
@@ -171,6 +172,33 @@
 	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>
 	<div class="divider mt-7">Advanced Settings</div>
 
+	<label class="form-control mt-5 w-full sm:w-2/3">
+		<div class="flex flex-col items-center gap-2">
+			<span>Use GPT-4o-mini as fallback</span>
+			<div class="flex items-center gap-2">
+				<input
+					type="checkbox"
+					class="toggle"
+					bind:checked={aiConfigState.value.useFallbackLlmState}
+				/>
+			</div>
+			<small class="m-auto mt-2">
+				When Gemini is overloaded, Pollinations GPT-4o-mini will be used.
+			</small>
+		</div>
+	</label>
+	<label class="form-control mt-5 w-full sm:w-2/3">
+		Tale System Instruction
+		<textarea
+			bind:value={customSystemInstruction.value}
+			placeholder="For example: Make every action difficulty easy. Make every character speak in riddles."
+			class="textarea textarea-bordered mt-2"
+		>
+		</textarea>
+		<small class="m-auto mt-2"
+			>You may have to start a new Tale after setting the instruction.</small
+		>
+	</label>
 	<label class="form-control mt-3 w-full sm:w-2/3">
 		AI Language
 		<input
@@ -225,19 +253,6 @@
 		/>
 		<small class="m-auto mt-2"
 			>Higher temperature makes the AI more creative, but also errors more likely</small
-		>
-	</label>
-
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		Tale System Instruction
-		<textarea
-			bind:value={customSystemInstruction.value}
-			placeholder="For example: Make every action difficulty easy. Make every character speak in riddles."
-			class="textarea textarea-bordered mt-2"
-		>
-		</textarea>
-		<small class="m-auto mt-2"
-			>You may have to start a new Tale after setting the instruction.</small
 		>
 	</label>
 </form>

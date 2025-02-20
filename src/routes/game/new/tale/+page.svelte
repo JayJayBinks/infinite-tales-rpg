@@ -14,7 +14,7 @@
 	import { goto } from '$app/navigation';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
-
+	import type { AIConfig } from '$lib';
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
@@ -26,6 +26,7 @@
 	const characterState = useLocalStorage<CharacterDescription>('characterState', {
 		...initialCharacterState
 	});
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
 	onMount(() => {
 		storyAgent = new StoryAgent(
@@ -33,7 +34,7 @@
 				temperature: 2,
 				apiKey: apiKeyState.value,
 				language: aiLanguage.value
-			})
+			}, aiConfigState.value.useFallbackLlmState)
 		);
 	});
 
