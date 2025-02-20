@@ -324,5 +324,6 @@ export function getGameEndedMessage() {
 
 export function isEnoughResource(action: Action, resources: ResourcesWithCurrentValue) {
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
-	return cost === 0 || resources[action.resource_cost?.resource_key || '']?.current_value >= cost;
+	const resourceKey = Object.keys(resources).find((key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase());
+	return cost === 0 || resources[resourceKey || '']?.current_value >= cost;
 }

@@ -279,6 +279,8 @@ const jsonSystemInstructionForGameAgent = `Important Instruction! You must alway
   "plotPointAdvancingNudgeExplanation": "Explain the currentPlotPoint and what could happen next to advance the story towards nextPlotPoint",
   "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${storyWordLimit} For character speech use single quotes. Format the different parts of the narration using HTML tags for easier reading.",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
+  "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
+  ${statsUpdatePromptObject},
   "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
         #For each item addition or removal this object is added once, the whole inventory does not need to be tracked here
@@ -296,8 +298,6 @@ const jsonSystemInstructionForGameAgent = `Important Instruction! You must alway
       "item_id": "unique name of the item to identify it"
     }
   ],
-  "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
-  ${statsUpdatePromptObject},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
   "currently_present_npcs": List of NPCs or party members that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}

@@ -74,6 +74,9 @@ export class PollinationsProvider extends LLM {
 				},
 				body: JSON.stringify(body)
 			});
+			if(response.status === 500){
+				throw new Error(await response.text());
+			}
 			result = response;
 		} catch (e) {
 			const fallbackMessage = `Fallback Pollinations Gemini Thinking failed... You can go to the settings and enable GPT-4o-mini as fallback.`;
