@@ -47,7 +47,7 @@
 			temperature: temperatureState.value,
 			language: aiLanguage.value,
 			apiKey: apiKeyState.value
-		}, aiConfigState.value.useFallbackLlmState);
+		}, aiConfigState.value?.useFallbackLlmState);
 		actionAgent = new ActionAgent(llm);
 
 		isGeneratingState = true;

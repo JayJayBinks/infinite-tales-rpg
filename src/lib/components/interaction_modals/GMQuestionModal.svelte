@@ -43,7 +43,7 @@
 			temperature: 0.7,
 			language: aiLanguage.value,
 			apiKey: apiKeyState.value,
-		}, aiConfigState.value.useFallbackLlmState);
+		}, aiConfigState.value?.useFallbackLlmState);
 		gameAgent = new GameAgent(llm);
 		isGeneratingState = true;
 		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(

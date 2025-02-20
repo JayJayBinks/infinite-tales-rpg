@@ -75,7 +75,7 @@
 			temperature: 2,
 			apiKey: apiKeyState.value,
 			language: aiLanguage.value,
-		}, aiConfigState.value.useFallbackLlmState);
+		}, aiConfigState.value?.useFallbackLlmState);
 		const storyAgent = new StoryAgent(llm);
 		isGeneratingState = true;
 		const newStoryState = await storyAgent.generateRandomStorySettings();
