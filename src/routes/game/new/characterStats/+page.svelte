@@ -20,6 +20,13 @@
 	const aiLanguage = useLocalStorage('aiLanguage');
 
 	let characterStatsAgent: CharacterStatsAgent;
+	const storyState = useLocalStorage('storyState', initialStoryState);
+	const characterState = useLocalStorage('characterState', initialCharacterState);
+	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
+	const campaignState = useLocalStorage<Campaign>('campaignState');
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	const textAreaRowsDerived = $derived(getRowsForTextarea(characterStatsState.value));
+
 	onMount(() => {
 		characterStatsAgent = new CharacterStatsAgent(
 			LLMProvider.provideLLM({
@@ -29,12 +36,6 @@
 			}, aiConfigState.value?.useFallbackLlmState)
 		);
 	});
-	const storyState = useLocalStorage('storyState', initialStoryState);
-	const characterState = useLocalStorage('characterState', initialCharacterState);
-	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
-	const campaignState = useLocalStorage<Campaign>('campaignState');
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	const textAreaRowsDerived = $derived(getRowsForTextarea(characterStatsState.value));
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
 
