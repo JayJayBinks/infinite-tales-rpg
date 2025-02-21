@@ -210,8 +210,8 @@
 		playerName: string,
 	) {
 		//first apply the difference in the update log
-		const statsUpdate = gameAgent.getLevelUpResourcesUpdateObject(
-			characterStatsState.value.resources,
+		const statsUpdate = gameAgent.getRefillResourcesUpdateObject(
+			maxResources,
 			playerCharactersGameState[characterState.value.name],
 			characterState.value.name
 		);

@@ -185,20 +185,20 @@ export class GameAgent {
 		return { userMessage, modelMessage };
 	};
 
-	getLevelUpResourcesUpdateObject(
+	getRefillResourcesUpdateObject(
 		maxResources: Resources,
 		currentResources: ResourcesWithCurrentValue,
 		playerName: string
 	): Pick<GameActionState, 'stats_update'> {
 
 		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
-		Object.entries(currentResources).filter(([resourceKey]) => resourceKey !== 'XP')
-			.forEach(([resourceKey, currentResource]) => {
+		Object.entries(maxResources).filter(([resourceKey]) => resourceKey !== 'XP')
+			.forEach(([resourceKey, maxResource]) => {
 				returnObject.stats_update.push({
 					sourceId: playerName,
 					targetId: playerName,
 					type: resourceKey + '_gained',
-					value: { result: (maxResources[resourceKey].max_value - (currentResource.current_value || 0)) || 0 }
+					value: { result: (maxResource.max_value - (currentResources[resourceKey].current_value || 0)) || 0 }
 				});
 			});
 		return returnObject;
