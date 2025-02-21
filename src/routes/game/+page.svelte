@@ -157,7 +157,7 @@
 		if (!currentGameActionState?.story) {
 			await sendAction({
 				characterName: currentCharacterName,
-				text: gameAgent.getStartingPrompt()
+				text: GameAgent.getStartingPrompt()
 			});
 			// Initialize all resources when the game is first started.
 			refillResourcesFully(
@@ -172,19 +172,7 @@
 				inventoryState.value,
 				$state.snapshot(gameActionsState.value)
 			);
-			// Check for any resources that are missing in the player's state.
-			const missingResources: Resources = Object.entries(characterStatsState.value.resources)
-				.filter(
-					([resourceKey]) =>
-						playerCharactersGameState[currentCharacterName][resourceKey]?.current_value === undefined
-				)
-				.reduce((acc, [resourceKey, resource]) => ({ ...acc, [resourceKey]: resource }), {});
-			if (Object.keys(missingResources).length > 0) {
-				refillResourcesFully(
-					missingResources,
-					currentCharacterName
-				);
-			}
+			initializeMissingResources(characterStatsState.value.resources, currentCharacterName);
 			tick().then(() => customActionInput.scrollIntoView(false));
 			if (characterActionsState.value.length === 0) {
 				characterActionsState.value = await actionAgent.generateActions(
@@ -210,10 +198,10 @@
 		playerName: string,
 	) {
 		//first apply the difference in the update log
-		const statsUpdate = gameAgent.getRefillResourcesUpdateObject(
+		const statsUpdate = GameAgent.getRefillResourcesUpdateObject(
 			maxResources,
-			playerCharactersGameState[characterState.value.name],
-			characterState.value.name
+			playerCharactersGameState[playerName],
+			playerName
 		);
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update = [
 			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
@@ -231,6 +219,22 @@
 				return acc;
 			}, {})
 		};
+	}
+
+	function initializeMissingResources(resources: Resources, playerName: string) {
+				// Check for any resources that are missing in the player's state.
+				const missingResources: Resources = Object.entries(resources)
+					.filter(
+						([resourceKey]) =>
+							playerCharactersGameState[playerName][resourceKey]?.current_value === undefined
+					)
+					.reduce((acc, [resourceKey, resource]) => ({ ...acc, [resourceKey]: resource }), {});
+				if (Object.keys(missingResources).length > 0) {
+						refillResourcesFully(
+				missingResources,
+				playerName
+			);
+		}
 	}
 
 	async function getActionPromptForCombat(playerAction: Action) {
@@ -262,7 +266,7 @@
 			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
 			.map((npc) => npc?.nameId);
 
-		let additionalStoryInput = combatAgent.getAdditionalStoryInput(
+		let additionalStoryInput = CombatAgent.getAdditionalStoryInput(
 			determinedActionsAndStatsUpdate.actions,
 			[],
 			aliveNPCs,
@@ -301,7 +305,7 @@
 						modifier: chosenActionState.value.dice_roll!.modifier!,
 						modifier_explanation:
 							chosenActionState.value.dice_roll!.modifier_explanation! +
-							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key.replaceAll('_', ' ')}`,
+							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key?.replaceAll('_', ' ')}`,
 						modifier_value: (chosenActionState.value.dice_roll?.modifier_value || 0) - 3
 					}
 				};
@@ -325,18 +329,18 @@
 		let additionalStoryInput = '';
 		let allCombatDeterminedActionsAndStatsUpdate;
 		if (!isGameEnded.value && currentGameActionState.is_character_in_combat) {
-			additionalStoryInput += combatAgent.getCombatPromptAddition();
+			additionalStoryInput += CombatAgent.getCombatPromptAddition();
 			if (useDynamicCombat.value) {
 				let combatObject = await getActionPromptForCombat(action);
 				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
 			} else {
 				deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-				additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+				additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 			}
 		} else {
 			deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
-			additionalStoryInput += combatAgent.getNPCsHealthStatePrompt(deadNPCs);
+			additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		}
 		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
 	}
@@ -349,7 +353,7 @@
 			isGameEnded.value = true;
 			await sendAction({
 				characterName: characterState.value.name,
-				text: gameAgent.getGameEndedPrompt(emptyResourceKey)
+				text: GameAgent.getGameEndedPrompt(emptyResourceKey)
 			});
 		}
 		//calculate again as dying action could also be a rescue in some cases
@@ -375,7 +379,7 @@
 					storyState.value,
 					getLatestStoryMessages(),
 					newNPCs,
-					characterStatsState.value.level,
+					characterStatsState.value,
 					customSystemInstruction.value
 				)
 				.then((newState: NPCState) => {
@@ -621,7 +625,7 @@
 			handleError('Could not calculate XP needed for level up!');
 			return;
 		}
-		const buyLevelUpObject = gameAgent.getLevelUpCostObject(xpNeededForLevel, playerName, level);
+		const buyLevelUpObject = GameAgent.getLevelUpCostObject(xpNeededForLevel, playerName, level);
 		playerCharactersGameState[playerName].XP.current_value -= xpNeededForLevel;
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update.push(buyLevelUpObject);
 		levelUpState.value.dialogOpened = true;

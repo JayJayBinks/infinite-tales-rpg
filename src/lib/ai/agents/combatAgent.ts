@@ -1,6 +1,6 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
-import type { Action, InventoryState, PlayerCharactersGameState } from '$lib/ai/agents/gameAgent';
+import type { Action, GameActionState, InventoryState, PlayerCharactersGameState } from '$lib/ai/agents/gameAgent';
 import { ActionDifficulty, getEmptyCriticalResourceKeys } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { mapStatsUpdates } from '$lib/ai/agents/mappers';
@@ -51,7 +51,7 @@ export class CombatAgent {
 		customSystemInstruction: string,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story
-	) {
+	){
 		const agent = [
 			'You are RPG combat agent, you decide which actions the NPCs take in response to the player character\'s action ' +
 			'and what the consequences of these actions are. ' +
@@ -98,12 +98,12 @@ export class CombatAgent {
 			systemInstruction: agent
 		};
 
-		const state = (await this.llm.generateReasoningContent(request))?.parsedObject as never;
+		const state = (await this.llm.generateReasoningContent(request))?.parsedObject as any;
 		mapStatsUpdates(state);
 		return state;
 	}
 
-	getAdditionalStoryInput(
+	static getAdditionalStoryInput(
 		actions: Array<Action>,
 		deadNPCs: string[],
 		aliveNPCs: string[],
@@ -121,9 +121,9 @@ export class CombatAgent {
 		);
 	}
 
-	getNPCsHealthStatePrompt(
+	static getNPCsHealthStatePrompt(
 		deadNPCs: Array<string>,
-		aliveNPCs: Array<string>,
+		aliveNPCs?: Array<string>,
 		playerCharactersGameState?: PlayerCharactersGameState
 	) {
 		let text = '';
@@ -150,7 +150,7 @@ export class CombatAgent {
 		return text;
 	}
 
-	getCombatPromptAddition() {
+	static getCombatPromptAddition() {
 		//TODO rather do this programatically? Keep an eye on if influence future actions, it is not used in the history
 		// but very_difficult may not be used anymore even when fight has finished
 		const combatDifficulties = [

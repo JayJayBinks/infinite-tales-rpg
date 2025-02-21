@@ -166,11 +166,11 @@ export class GameAgent {
 		return gameAgent;
 	}
 
-	getGameEndedPrompt(emptyResourceKey: string[]) {
+	static getGameEndedPrompt(emptyResourceKey: string[]) {
 		return `The CHARACTER has fallen to 0 ${emptyResourceKey.join(' and ')}; Describe how the GAME is ending.`;
 	}
 
-	getStartingPrompt() {
+	static getStartingPrompt() {
 		return (
 			'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
 			'\nAt the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
@@ -185,7 +185,7 @@ export class GameAgent {
 		return { userMessage, modelMessage };
 	};
 
-	getRefillResourcesUpdateObject(
+	static getRefillResourcesUpdateObject(
 		maxResources: Resources,
 		currentResources: ResourcesWithCurrentValue,
 		playerName: string
@@ -204,7 +204,7 @@ export class GameAgent {
 		return returnObject;
 	}
 
-	getLevelUpCostObject(xpCost: number, playerName: string, level: number): StatsUpdate {
+	static getLevelUpCostObject(xpCost: number, playerName: string, level: number): StatsUpdate {
 		return {
 			sourceId: playerName,
 			targetId: playerName,
