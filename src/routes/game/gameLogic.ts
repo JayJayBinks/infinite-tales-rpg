@@ -1,10 +1,11 @@
-import type {
-	Action,
-	GameActionState,
-	InventoryUpdate,
-	PlayerCharactersGameState,
-	ResourcesWithCurrentValue,
-	Targets
+import {
+	SLOW_STORY_PROMPT,
+	type Action,
+	type GameActionState,
+	type InventoryUpdate,
+	type PlayerCharactersGameState,
+	type ResourcesWithCurrentValue,
+	type Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
 import type { NPCState, NPCStats, Resources } from '$lib/ai/agents/characterStatsAgent';
@@ -84,6 +85,8 @@ export function mapStatsUpdateToGameLogic(statsUpdate: StatsUpdate): StatsUpdate
 function getColorForStatUpdate(mappedType: string, resources: Resources) {
 	let color = '';
 	if (mappedType.includes('XP')) color = 'text-green-500';
+	if (mappedType.includes('HP')) color = 'text-red-500';
+	if (mappedType.includes('MP')) color = 'text-blue-500';
 	if (mappedType.includes('LEVEL')) color = 'text-green-500';
 	if (!color) {
 		const foundResourceEntry = Object.entries(resources).find((res) => {
@@ -326,4 +329,22 @@ export function isEnoughResource(action: Action, resources: ResourcesWithCurrent
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
 	const resourceKey = Object.keys(resources).find((key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase());
 	return cost === 0 || resources[resourceKey || '']?.current_value >= cost;
+}
+
+export function addAdditionsFromActionSideeffects(action: Action, additionalStoryInput: string) {
+	if ((action.is_straightforward + '').includes('false')) {
+		additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
+	}
+	const encounterString = '' + action.enemyEncounterExplanation;
+	if (encounterString.includes('high') && !encounterString.includes('low')) {
+		additionalStoryInput +=
+			'\nenemyEncounter: ' +
+			action.enemyEncounterExplanation +
+			' Players take first turn, wait for their action.';
+	}
+	if (!additionalStoryInput.includes('sudo')) {
+		additionalStoryInput +=
+			'\n' + 'Before responding always review the system instructions and apply the given rules.';
+	}
+	return additionalStoryInput;
 }

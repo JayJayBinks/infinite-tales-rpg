@@ -53,6 +53,8 @@
 	import GMQuestionModal from '$lib/components/interaction_modals/GMQuestionModal.svelte';
 	import SuggestedActionsModal from '$lib/components/interaction_modals/SuggestedActionsModal.svelte';
 	import type { AIConfig } from '$lib';
+	import { initializeMissingResources, refillResourcesFully } from './resourceLogic';
+	import { advanceChapterIfApplicable, getNextChapterPrompt, mapPlotStringToIds } from './campaignLogic';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -126,11 +128,14 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM({
-			temperature: temperatureState.value,
-			language: aiLanguage.value,
-			apiKey: apiKeyState.value
-		}, aiConfigState.value?.useFallbackLlmState);
+		const llm = LLMProvider.provideLLM(
+			{
+				temperature: temperatureState.value,
+				language: aiLanguage.value,
+				apiKey: apiKeyState.value
+			},
+			aiConfigState.value?.useFallbackLlmState
+		);
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);
 		combatAgent = new CombatAgent(llm);
@@ -147,7 +152,6 @@
 		const currentCharacterName = characterState.value.name;
 
 		// Initialize the player's resource state if it doesn't exist.
-		// This sets all the resources along with an initial XP value.
 		playerCharactersGameState[currentCharacterName] = {
 			...$state.snapshot(characterStatsState.value.resources),
 			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
@@ -155,123 +159,120 @@
 
 		// Start game when not already started
 		if (!currentGameActionState?.story) {
-			await sendAction({
-				characterName: currentCharacterName,
-				text: GameAgent.getStartingPrompt()
-			});
-			// Initialize all resources when the game is first started.
-			refillResourcesFully(
-				characterStatsState.value.resources,
-				currentCharacterName
-			);
+			await initializeGame();
 		} else {
-			// Apply previously saved game actions
-			gameLogic.applyGameActionStates(
-				playerCharactersGameState,
-				npcState.value,
-				inventoryState.value,
-				$state.snapshot(gameActionsState.value)
-			);
-			initializeMissingResources(characterStatsState.value.resources, currentCharacterName);
-			tick().then(() => customActionInput.scrollIntoView(false));
-			if (characterActionsState.value.length === 0) {
-				characterActionsState.value = await actionAgent.generateActions(
-					currentGameActionState,
-					historyMessagesState.value,
-					storyState.value,
-					characterState.value,
-					characterStatsState.value,
-					inventoryState.value,
-					customSystemInstruction.value
-				);
-			}
-			renderGameState(currentGameActionState, characterActionsState.value);
+			await initializeGameFromSavedState();
 		}
+	});
+
+	async function initializeGameFromSavedState() {
+		// Apply previously saved game actions
+		gameLogic.applyGameActionStates(
+			playerCharactersGameState,
+			npcState.value,
+			inventoryState.value,
+			$state.snapshot(gameActionsState.value)
+		);
+		const { updatedGameActionsState, updatedPlayerCharactersGameState } =
+			initializeMissingResources(
+				$state.snapshot(characterStatsState.value.resources),
+				$state.snapshot(characterState.value.name),
+				$state.snapshot(gameActionsState.value),
+				$state.snapshot(playerCharactersGameState)
+			);
+		gameActionsState.value = updatedGameActionsState;
+		playerCharactersGameState = updatedPlayerCharactersGameState;
+		tick().then(() => customActionInput.scrollIntoView(false));
+		if (characterActionsState.value.length === 0) {
+			characterActionsState.value = await actionAgent.generateActions(
+				currentGameActionState,
+				historyMessagesState.value,
+				storyState.value,
+				characterState.value,
+				characterStatsState.value,
+				inventoryState.value,
+				customSystemInstruction.value
+			);
+		}
+		renderGameState(currentGameActionState, characterActionsState.value);
+
 		if (!didAIProcessDiceRollActionState.value) {
 			openDiceRollDialog(additionalStoryInputState.value);
 		}
 		checkForLevelUp();
-	});
+	}
 
-	function refillResourcesFully(
-		maxResources: Resources,
-		playerName: string,
-	) {
-		//first apply the difference in the update log
-		const statsUpdate = GameAgent.getRefillResourcesUpdateObject(
-			maxResources,
-			playerCharactersGameState[playerName],
-			playerName
+	async function initializeGame() {
+		await sendAction({
+			characterName: characterState.value.name,
+			text: GameAgent.getStartingPrompt()
+		});
+		// Initialize all resources when the game is first started.
+		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
+			$state.snapshot(characterStatsState.value.resources),
+			$state.snapshot(characterState.value.name),
+			$state.snapshot(gameActionsState.value),
+			$state.snapshot(playerCharactersGameState)
 		);
-		gameActionsState.value[gameActionsState.value.length - 1].stats_update = [
-			...gameActionsState.value[gameActionsState.value.length - 1].stats_update,
-			...statsUpdate.stats_update
-		];
-
-		//then set current values to max
-		playerCharactersGameState[playerName] = {
-			...playerCharactersGameState[playerName], // Preserve existing properties (like XP)
-			...Object.keys(maxResources).reduce((acc, key) => {
-				acc[key] = {
-					...$state.snapshot(maxResources[key]),
-					current_value: maxResources[key].max_value
-				};
-				return acc;
-			}, {})
-		};
+		gameActionsState.value = updatedGameActionsState;
+		playerCharactersGameState = updatedPlayerCharactersGameState;
 	}
 
-	function initializeMissingResources(resources: Resources, playerName: string) {
-				// Check for any resources that are missing in the player's state.
-				const missingResources: Resources = Object.entries(resources)
-					.filter(
-						([resourceKey]) =>
-							playerCharactersGameState[playerName][resourceKey]?.current_value === undefined
-					)
-					.reduce((acc, [resourceKey, resource]) => ({ ...acc, [resourceKey]: resource }), {});
-				if (Object.keys(missingResources).length > 0) {
-						refillResourcesFully(
-				missingResources,
-				playerName
-			);
-		}
-	}
-
-	async function getActionPromptForCombat(playerAction: Action) {
+	//TODO applyGameActionState should not be handled here so it can be externally called
+	async function getActionPromptForCombat(
+		playerAction: Action,
+		currentGameActionState: GameActionState,
+		npcState: NPCState,
+		inventoryState: InventoryState,
+		customSystemInstruction: string,
+		latestStoryMessages: LLMMessage[],
+		storyState: Story,
+		playerCharactersGameState: PlayerCharactersGameState,
+		combatAgent: CombatAgent
+	): Promise<{
+		additionalStoryInput: string;
+		determinedActionsAndStatsUpdate: ReturnType<typeof combatAgent.generateActionsFromContext>;
+	}> {
+		// Get details for all NPC targets based on the current game action state.
 		const allNpcsDetailsAsList = gameLogic
 			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
 			.map((npcName) => ({
 				nameId: npcName,
-				...npcState.value[npcName]
+				...npcState[npcName]
 			}));
 
+		// Compute the determined combat actions and stats update.
 		const determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(
 			playerAction,
-			inventoryState.value,
+			inventoryState,
 			allNpcsDetailsAsList,
-			customSystemInstruction.value,
-			getLatestStoryMessages(),
-			storyState.value
+			customSystemInstruction,
+			latestStoryMessages,
+			storyState
 		);
 
-		//need to apply already here to have most recent allResources
+		// Apply the action state update on the playerCharactersGameState (and related states)
+		// by passing a snapshot of the determined update.
 		gameLogic.applyGameActionState(
 			playerCharactersGameState,
-			npcState.value,
-			inventoryState.value,
+			npcState,
+			inventoryState,
 			$state.snapshot(determinedActionsAndStatsUpdate)
 		);
-		//const deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+
+		// Filter to find the alive NPCs.
 		const aliveNPCs = allNpcsDetailsAsList
 			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
-			.map((npc) => npc?.nameId);
+			.map((npc) => npc.nameId);
 
-		let additionalStoryInput = CombatAgent.getAdditionalStoryInput(
+		// Generate additional story input based on the combat results.
+		const additionalStoryInput = CombatAgent.getAdditionalStoryInput(
 			determinedActionsAndStatsUpdate.actions,
 			[],
 			aliveNPCs,
 			playerCharactersGameState
 		);
+
 		return { additionalStoryInput, determinedActionsAndStatsUpdate };
 	}
 
@@ -324,42 +325,73 @@
 		customActionImpossibleReasonState = undefined;
 	}
 
-	async function getCombatAndNPCState(action: Action) {
+	//TODO depends on getActionPromptForCombat
+	async function getCombatAndNPCState(
+		action: Action,
+		isGameEnded: boolean,
+		currentGameActionState: GameActionState,
+		npcState: NPCState,
+		inventoryState: InventoryState,
+		customSystemInstruction: string,
+		latestStoryMessages: LLMMessage[],
+		storyState: Story,
+		playerCharactersGameState: PlayerCharactersGameState,
+		combatAgent: CombatAgent,
+		useDynamicCombat: boolean
+	): Promise<{
+		additionalStoryInput: string;
+		allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
+			typeof combatAgent.generateActionsFromContext
+		>;
+	}> {
 		let deadNPCs: string[] = [];
 		let additionalStoryInput = '';
 		let allCombatDeterminedActionsAndStatsUpdate;
-		if (!isGameEnded.value && currentGameActionState.is_character_in_combat) {
+		if (!isGameEnded && currentGameActionState.is_character_in_combat) {
 			additionalStoryInput += CombatAgent.getCombatPromptAddition();
-			if (useDynamicCombat.value) {
-				let combatObject = await getActionPromptForCombat(action);
+			if (useDynamicCombat) {
+				const combatObject = await getActionPromptForCombat(
+					action,
+					currentGameActionState,
+					npcState,
+					inventoryState,
+					customSystemInstruction,
+					latestStoryMessages,
+					storyState,
+					playerCharactersGameState,
+					combatAgent
+				);
 				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
 			} else {
-				deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+				deadNPCs = gameLogic.removeDeadNPCs(npcState);
 				additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 			}
 		} else {
-			deadNPCs = gameLogic.removeDeadNPCs(npcState.value);
+			deadNPCs = gameLogic.removeDeadNPCs(npcState);
 			additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		}
 		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
 	}
 
-	async function checkGameEnded() {
+	//TODO sendAction should not be handled here so it can be externally called
+	async function checkGameEnded(isGameEnded: boolean) {
+		let endGame = false;
 		const emptyResourceKey = getEmptyCriticalResourceKeys(
 			playerCharactersGameState[characterState.value.name]
 		);
-		if (!isGameEnded.value && emptyResourceKey.length > 0) {
-			isGameEnded.value = true;
+		if (!isGameEnded && emptyResourceKey.length > 0) {
+			endGame = true;
 			await sendAction({
 				characterName: characterState.value.name,
 				text: GameAgent.getGameEndedPrompt(emptyResourceKey)
 			});
 		}
 		//calculate again as dying action could also be a rescue in some cases
-		isGameEnded.value = Object.values(playerCharactersGameState[characterState.value.name]).some(
+		endGame = Object.values(playerCharactersGameState[characterState.value.name]).some(
 			(v) => v.game_ends_when_zero && v.current_value <= 0
 		);
+		return endGame;
 	}
 
 	function resetStatesAfterActionProcessed() {
@@ -406,197 +438,175 @@
 		historyMessagesState.value = updatedHistoryMessages;
 	}
 
-	function startNextChapter() {
-		currentChapterState.value += 1;
-		const newChapter = $state
-			.snapshot(campaignState.value)
-			.chapters.find((chapter) => chapter.chapterId === currentChapterState.value);
+	// Helper to prepare additional story input by incorporating combat prompts
+	async function prepareAdditionalStoryInput(
+		action: Action,
+		initialAdditionalStoryInput: string
+	): Promise<{
+		finalAdditionalStoryInput: string;
+		combatAndNPCState: {
+			additionalStoryInput: string;
+			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
+				typeof combatAgent.generateActionsFromContext
+			>;
+		};
+	}> {
+		let additionalStoryInput = initialAdditionalStoryInput || '';
 
-		if (newChapter) {
-			newChapter.plot_points.push({
-				...campaignState.value.chapters[newChapter.chapterId]?.plot_points[0],
-				plotId: newChapter.plot_points.length + 1
-			});
-			const newChapterJson = stringifyPretty(newChapter);
-			storyState.value = {
-				...storyState.value,
-				adventure_and_main_event: newChapterJson
-			};
-			return (
-				'\nA new chapter begins, ' +
-				SLOW_STORY_PROMPT +
-				'\nSet currentPlotPoint to 1, nextPlotPoint to 2 and nudge the story into plotId 1: ' +
-				'\n' +
-				newChapterJson
+		// Retrieve combat and NPC-related story additions.
+		const combatAndNPCState = await getCombatAndNPCState(
+			action,
+			isGameEnded.value,
+			currentGameActionState,
+			npcState.value,
+			inventoryState.value,
+			customSystemInstruction.value,
+			getLatestStoryMessages(),
+			storyState.value,
+			playerCharactersGameState,
+			combatAgent,
+			useDynamicCombat.value
+		);
+
+		// If there are defined campaign chapters, advance the chapter if applicable.
+		if (campaignState.value?.chapters?.length > 0) {
+			const { newAdditionalStoryInput, newChapter } = await advanceChapterIfApplicable(
+				action,
+				additionalStoryInput,
+				didAIProcessActionState.value,
+				campaignState.value,
+				currentChapterState.value,
+				currentGameActionState,
+				gameActionsState.value,
+				campaignAgent,
+				historyMessagesState.value
 			);
-		}
-		return '\nNotify the players that the campaign has ended but they can continue with free exploration.';
-	}
-
-	function mapPlotStringToIds(text: string, splitDelimeter: string = 'plotId: ') {
-		if (!text) {
-			return [0];
-		}
-		try {
-			//allow reasoning to stay in the current plot point and trigger to get to the next
-			const regex = new RegExp(`${splitDelimeter}(\\d+)`, 'g');
-			let match;
-			const plotIds: number[] = [];
-			// Extract matches
-			while ((match = regex.exec(text)) !== null) {
-				plotIds.push(Number(match[1]));
-			}
-			return plotIds;
-		} catch (e) {
-			console.log('can not mapPlotStringToId', e);
-			return [0];
-		}
-	}
-
-	async function advanceChapterIfApplicable(action: Action, additionalStoryInput: string) {
-		if (
-			didAIProcessActionState.value &&
-			campaignState.value.chapters &&
-			campaignState.value.chapters[currentChapterState.value - 1] &&
-			!currentGameActionState.is_character_in_combat
-		) {
-			let campaignDeviations;
-			if (gameActionsState.value.length % 5 === 0) {
-				campaignDeviations = await campaignAgent.checkCampaignDeviations(
-					action,
+			additionalStoryInput = newAdditionalStoryInput;
+			if (newChapter) {
+				currentChapterState.value += 1;
+				const { prompt, updatedStory } = getNextChapterPrompt(
 					campaignState.value,
-					historyMessagesState.value
+					currentChapterState.value,
+					storyState.value
 				);
-				console.log(stringifyPretty(campaignDeviations));
-				if (campaignDeviations) {
-					if (campaignDeviations.deviation > 70) {
-						additionalStoryInput +=
-							'\n' +
-							campaignDeviations.plotNudge.nudgeExplanation +
-							'\n' +
-							campaignDeviations.plotNudge.nudgeStory +
-							'Always describe the story as a Game Master and never mention meta elements such as plot points or story progression.';
-					}
+				additionalStoryInput += prompt;
+				storyState.value = updatedStory;
+			}
+		}
+
+		// Combine combat-related additional story input.
+		additionalStoryInput += combatAndNPCState.additionalStoryInput;
+		// Add any extra side effects that should modify the story input.
+		additionalStoryInput = gameLogic.addAdditionsFromActionSideeffects(
+			action,
+			additionalStoryInput
+		);
+
+		// Update the store for additional story input.
+		additionalStoryInputState.value = additionalStoryInput;
+
+		return { finalAdditionalStoryInput: additionalStoryInput, combatAndNPCState };
+	}
+
+	// Helper to process the AI story progression and update game state accordingly.
+	async function processStoryProgression(
+		action: Action,
+		additionalStoryInput: string,
+		combatAndNPCState: {
+			additionalStoryInput: string;
+			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
+				typeof combatAgent.generateActionsFromContext
+			>;
+		}
+	) {
+		didAIProcessActionState.value = false;
+		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
+			action,
+			additionalStoryInput,
+			customSystemInstruction.value,
+			historyMessagesState.value,
+			storyState.value,
+			characterState.value,
+			playerCharactersGameState,
+			inventoryState.value
+		);
+		didAIProcessActionState.value = true;
+
+		if (newState) {
+			// If combat provided a specific stat update, use it.
+			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
+				newState.stats_update =
+					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
+			} else {
+				// Otherwise, apply the new state to the game state.
+				gameLogic.applyGameActionState(
+					playerCharactersGameState,
+					npcState.value,
+					inventoryState.value,
+					$state.snapshot(newState)
+				);
+			}
+			console.log('new state', stringifyPretty(newState));
+			updateMessagesHistory(updatedHistoryMessages);
+			checkForNewNPCs(newState);
+			resetStatesAfterActionProcessed();
+
+			// Let the summary agent shorten the history, if needed.
+			historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(
+				historyMessagesState.value
+			);
+
+			// Append the new game state to the game actions.
+			gameActionsState.value = [
+				...gameActionsState.value,
+				{
+					...newState,
+					id: gameActionsState.value.length
 				}
-			}
-			const mappedCurrentPlotPoint: number = mapPlotStringToIds(
-				currentGameActionState.currentPlotPoint,
-				'plotId: '
-			)[0];
-			const mappedCampaignChapterId: number = mapPlotStringToIds(
-				campaignDeviations?.currentChapter,
-				'chapterId: '
-			)[0];
-			if (
-				mappedCurrentPlotPoint >
-					campaignState.value.chapters[currentChapterState.value - 1]?.plot_points?.length ||
-				mappedCampaignChapterId > currentChapterState.value
-			) {
-				additionalStoryInput += startNextChapter();
+			];
+			isGameEnded.value = await checkGameEnded(isGameEnded.value);
+
+			if (!isGameEnded.value) {
+				// Generate the next set of actions.
+				actionAgent
+					.generateActions(
+						currentGameActionState,
+						historyMessagesState.value,
+						storyState.value,
+						characterState.value,
+						characterStatsState.value,
+						inventoryState.value,
+						customSystemInstruction.value
+					)
+					.then((actions) => {
+						if (actions) {
+							console.log(stringifyPretty(actions));
+							characterActionsState.value = actions;
+							renderGameState(currentGameActionState, actions);
+						}
+					});
+				checkForLevelUp();
 			}
 		}
-		return additionalStoryInput;
 	}
 
-	function addAdditionsFromActionSideeffects(action: Action, additionalStoryInput: string) {
-		if ((action.is_straightforward + '').includes('false')) {
-			additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
-		}
-		const encounterString = '' + action.enemyEncounterExplanation;
-		if (encounterString.includes('high') && !encounterString.includes('low')) {
-			additionalStoryInput +=
-				'\nenemyEncounter: ' +
-				action.enemyEncounterExplanation +
-				' Players take first turn, wait for their action.';
-		}
-		if (!additionalStoryInput.includes('sudo')) {
-			additionalStoryInput +=
-				'\n' + 'Before responding always review the system instructions and apply the given rules.';
-		}
-		return additionalStoryInput;
-	}
-
+	// Main sendAction function that orchestrates the action processing.
 	async function sendAction(action: Action, rollDice = false, additionalStoryInput = '') {
 		try {
 			if (rollDice) {
 				openDiceRollDialog(additionalStoryInput);
 			} else {
 				isAiGeneratingState = true;
-				additionalStoryInput = additionalStoryInput || '';
-				const combatAndNPCState = await getCombatAndNPCState(action);
 
-				if (campaignState.value?.chapters?.length > 0) {
-					additionalStoryInput = await advanceChapterIfApplicable(action, additionalStoryInput);
-				}
-				additionalStoryInput += combatAndNPCState.additionalStoryInput;
-				additionalStoryInput = addAdditionsFromActionSideeffects(action, additionalStoryInput);
-				//additionalStoryInput += '\nIn a conversation always include the NPC response!';
-				//TODO additionalStoryInput += '\nInclude the actions for this scene of all currently_present_npcs';
-
-				additionalStoryInputState.value = additionalStoryInput;
-				didAIProcessActionState.value = false;
-				const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
+				// Prepare the additional story input (including combat and chapter info)
+				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
 					action,
-					additionalStoryInput,
-					customSystemInstruction.value,
-					historyMessagesState.value,
-					storyState.value,
-					characterState.value,
-					playerCharactersGameState,
-					inventoryState.value
+					additionalStoryInput
 				);
-				didAIProcessActionState.value = true;
-				if (newState) {
-					if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
-						//override the gameActionsState stat update with the combat one
-						newState.stats_update =
-							combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
-					} else {
-						//StatsUpdate did not come from combat agent
-						gameLogic.applyGameActionState(
-							playerCharactersGameState,
-							npcState.value,
-							inventoryState.value,
-							$state.snapshot(newState)
-						);
-					}
-					console.log('new state', stringifyPretty(newState));
-					updateMessagesHistory(updatedHistoryMessages);
-					checkForNewNPCs(newState);
-					resetStatesAfterActionProcessed();
-					//ai can more easily remember the middle part and prevents undesired writing style, action values etc...
-					historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(
-						historyMessagesState.value
-					);
-					gameActionsState.value = [
-						...gameActionsState.value,
-						{
-							...newState,
-							id: gameActionsState.value.length
-						}
-					];
-					await checkGameEnded();
-					if (!isGameEnded.value) {
-						actionAgent
-							.generateActions(
-								currentGameActionState,
-								historyMessagesState.value,
-								storyState.value,
-								characterState.value,
-								characterStatsState.value,
-								inventoryState.value,
-								customSystemInstruction.value
-							)
-							.then((actions) => {
-								if (actions) {
-									console.log(stringifyPretty(actions));
-									characterActionsState.value = actions;
-									renderGameState(currentGameActionState, actions);
-								}
-							});
-						checkForLevelUp();
-					}
-				}
+
+				// Process the AI story progression and update game state
+				await processStoryProgression(action, finalAdditionalStoryInput, combatAndNPCState);
+
 				isAiGeneratingState = false;
 			}
 		} catch (e) {
@@ -713,10 +723,14 @@
 			};
 		}
 		levelUpState.reset();
-		refillResourcesFully(
-			characterStatsState.value.resources,
-			characterState.value.name
+		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
+			$state.snapshot(characterStatsState.value.resources),
+			$state.snapshot(characterState.value.name),
+			$state.snapshot(gameActionsState.value),
+			$state.snapshot(playerCharactersGameState)
 		);
+		gameActionsState.value = updatedGameActionsState;
+		playerCharactersGameState = updatedPlayerCharactersGameState;
 		checkForLevelUp();
 	};
 
@@ -847,12 +861,12 @@
 	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
 		{#each Object.entries(playerCharactersGameState[characterState.value.name] || {}) as [resourceKey, resourceValue] (resourceKey)}
 			{#if resourceKey === 'XP'}
-				<output id="XP" class="ml-1 text-lg font-semibold text-green-500 w-full lg:w-fit">
+				<output id="XP" class="ml-1 w-full text-lg font-semibold text-green-500 lg:w-fit">
 					{getCurrentXPText()}
 				</output>
 			{:else}
 				<output
-					class="ml-1 text-lg font-semibold capitalize w-full lg:w-fit"
+					class="ml-1 w-full text-lg font-semibold capitalize lg:w-fit"
 					class:text-red-500={resourceValue.game_ends_when_zero}
 					class:text-blue-500={!resourceValue.game_ends_when_zero}
 				>
@@ -877,9 +891,7 @@
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
 			{#if gameActionState['fallbackUsed']}
-				<small class="text-sm text-red-500">
-					For this action GPT-4o-mini was used.
-				</small>
+				<small class="text-sm text-red-500"> For this action GPT-4o-mini was used. </small>
 			{/if}
 		{/each}
 		{#if isGameEnded.value}
