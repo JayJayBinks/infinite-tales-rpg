@@ -82,7 +82,7 @@ export function mapStatsUpdateToGameLogic(statsUpdate: StatsUpdate): StatsUpdate
 	return statsUpdate;
 }
 
-function getColorForStatUpdate(mappedType: string, resources: Resources) {
+function getColorForStatUpdate(mappedType: string, resources: ResourcesWithCurrentValue) {
 	let color = '';
 	if (mappedType.includes('XP')) color = 'text-green-500';
 	if (mappedType.includes('HP')) color = 'text-red-500';
@@ -104,7 +104,7 @@ function getColorForStatUpdate(mappedType: string, resources: Resources) {
 
 export function renderStatUpdates(
 	statsUpdates: Array<StatsUpdate>,
-	resources: Resources,
+	resources: ResourcesWithCurrentValue,
 	playerName: string
 ): (undefined | RenderedGameUpdate)[] {
 	if (statsUpdates) {

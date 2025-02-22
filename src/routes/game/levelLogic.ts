@@ -80,9 +80,11 @@ export function applyLevelUp(
 	}
 	characterStats.level += 1;
 	for (const resourcesKey in aiLevelUp.resources) {
+		const currentValue = characterStats.resources[resourcesKey];
 		characterStats.resources[resourcesKey] = {
-			...characterStats.resources[resourcesKey],
-			max_value: aiLevelUp.resources[resourcesKey]
+			...currentValue,
+			max_value: aiLevelUp.resources[resourcesKey],
+			start_value: currentValue.start_value === currentValue.max_value ? aiLevelUp.resources[resourcesKey] : currentValue.start_value
 		};
 	}
 

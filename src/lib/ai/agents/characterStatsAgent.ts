@@ -16,7 +16,7 @@ export const abilityFormatForPrompt =
 	'{"name": string, "effect": "Clearly state the effect caused. If causing damage include the dice notation like 1d6+2 or 2d4", "resource_cost": if no cost null else { "resource_key": "the resource to pay for this action; one of character_stats.resources", "cost": number}, "image_prompt": short prompt for an image ai that generates an RPG game icon}';
 
 export type Resources = {
-	[resourceKey: string]: { max_value: number; game_ends_when_zero: boolean };
+	[resourceKey: string]: { max_value: number; start_value: number; game_ends_when_zero: boolean };
 };
 
 export type NPCResources = {
@@ -34,7 +34,7 @@ export type CharacterStats = {
 //need to stringify ourselves because JSON stringify would double escape the string JSON
 const characterStatsStateForPrompt = `{
 		"level": Number; Level of the character according to Description of the story and character,
-    "resources": "Starting maximum resources, based on GAME System, ADVENTURE_AND_MAIN_EVENT, description and level of the character. 2 - 5 different resources, e.g. for a survival game HUNGER, WARMTH, ...; as a vampire BLOOD, etc...) Format: {"{resourceKey}": {"max_value": number, "game_ends_when_zero": true if this is a critical resource, else false}, ...}",
+    "resources": "Starting resources, based on GAME System, ADVENTURE_AND_MAIN_EVENT, description and level of the character. 2 - 5 different resources, e.g. for a survival game HUNGER, WARMTH, ...; as a vampire BLOOD, etc...) Format: {"{resourceKey}": {"max_value": number, "start_value": number, "game_ends_when_zero": true if this is a critical resource; else false}, ...}",
     "traits": "list of the beginning traits of the character in following format: {"trait1": startingValue1, "trait2": startingValue2, ...}",
     "expertise": "Traits where CHARACTER has a high value and a positive dice roll modifier format: {"trait1": value between 1-5, "trait2": 1-5, ...}",
     "disadvantages": "Traits where CHARACTER has a low value and a negative dice roll modifier format: {"trait1": value between -1 to -5, "trait2": -1 to -5, ...}",

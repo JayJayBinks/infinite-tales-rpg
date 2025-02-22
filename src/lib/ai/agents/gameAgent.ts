@@ -35,7 +35,7 @@ export type Action = {
 } & DiceRollDifficulty;
 
 export type ResourcesWithCurrentValue =  {
-	[resourceKey: string]: { current_value: number; max_value: number; game_ends_when_zero: boolean };
+	[resourceKey: string]: { max_value: number; current_value: number; game_ends_when_zero: boolean };
 };
 
 export type PlayerCharactersGameState = {
@@ -185,6 +185,10 @@ export class GameAgent {
 		return { userMessage, modelMessage };
 	};
 
+	static getRefillValue(maxResource: Resources[string]): number {
+		return maxResource.max_value === maxResource.start_value ? maxResource.max_value : maxResource.start_value;
+	}
+
 	static getRefillResourcesUpdateObject(
 		maxResources: Resources,
 		currentResources: ResourcesWithCurrentValue,
@@ -194,11 +198,15 @@ export class GameAgent {
 		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
 		Object.entries(maxResources).filter(([resourceKey]) => resourceKey !== 'XP')
 			.forEach(([resourceKey, maxResource]) => {
+				const refillValue = GameAgent.getRefillValue(maxResource);
+				if(refillValue === 0){
+					return;
+				}
 				returnObject.stats_update.push({
 					sourceId: playerName,
 					targetId: playerName,
 					type: resourceKey + '_gained',
-					value: { result: (maxResource.max_value - (currentResources[resourceKey].current_value || 0)) || 0 }
+					value: { result: (refillValue - (currentResources[resourceKey].current_value || 0)) || 0 }
 				});
 			});
 		return returnObject;
