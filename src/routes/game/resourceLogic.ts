@@ -1,6 +1,9 @@
 import type { Resources } from '$lib/ai/agents/characterStatsAgent';
-import { GameAgent, type GameActionState, type PlayerCharactersGameState } from '$lib/ai/agents/gameAgent';
-
+import {
+	GameAgent,
+	type GameActionState,
+	type PlayerCharactersGameState
+} from '$lib/ai/agents/gameAgent';
 
 export function refillResourcesFully(
 	maxResources: Resources,
@@ -26,25 +29,24 @@ export function refillResourcesFully(
 	const lastIndex = updatedGameActionsState.length - 1;
 	updatedGameActionsState[lastIndex] = {
 		...updatedGameActionsState[lastIndex],
-		stats_update: [
-			...updatedGameActionsState[lastIndex].stats_update,
-			...statsUpdate.stats_update
-		]
+		stats_update: [...updatedGameActionsState[lastIndex].stats_update, ...statsUpdate.stats_update]
 	};
+
+	//then set current values to start or max value or if smaller than current value to current value
+	const newResources = {};
+	for (const key in maxResources) {
+		const refillValue = GameAgent.getRefillValue(maxResources[key]);
+		const currentValue = playerCharactersGameState[playerName][key]?.current_value || 0;
+		newResources[key] = {
+			...maxResources[key],
+			current_value: refillValue >= currentValue ? refillValue : currentValue
+		};
+	}
 
 	// Then: update the player's resource values to be set to the maximum.
 	const updatedPlayerResources = {
 		...currentPlayerResources, // preserve existing properties (like XP)
-		...Object.keys(maxResources).reduce(
-			(acc, key) => {
-				acc[key] = {
-					...maxResources[key],
-					current_value: maxResources[key].max_value
-				};
-				return acc;
-			},
-			{} as Record<string, any>
-		)
+		...newResources
 	};
 
 	// Prepare the new playerCharactersGameState with the updated value for playerName.
