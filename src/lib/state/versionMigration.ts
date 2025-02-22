@@ -21,10 +21,12 @@ function migrate062to07(key, state) {
 		if (state.resources.MAX_HP) {
 			state.resources.HP = {
 				max_value: state.resources.MAX_HP,
+				start_value: state.resources.MAX_HP,
 				game_ends_when_zero: true
 			};
 			state.resources.MP = {
 				max_value: state.resources.MAX_MP,
+				start_value: state.resources.MAX_MP,
 				game_ends_when_zero: false
 			};
 			delete state.resources.MAX_HP;
