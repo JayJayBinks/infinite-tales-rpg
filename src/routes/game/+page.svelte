@@ -220,16 +220,21 @@
 			...statsUpdate.stats_update
 		];
 
+		//then set current values to start or max value or if smaller than current value to current value
+		const newResources = {};
+		for (const key in maxResources) {
+			const refillValue = gameAgent.getRefillValue(maxResources[key]);
+			const currentValue = playerCharactersGameState[playerName][key]?.current_value || 0;
+			newResources[key] = {
+				...maxResources[key],
+				current_value: refillValue >= currentValue ? refillValue : currentValue,
+			};
+		}
+
 		//then set current values to max
 		playerCharactersGameState[playerName] = {
 			...playerCharactersGameState[playerName], // Preserve existing properties (like XP)
-			...Object.keys(maxResources).reduce((acc, key) => {
-				acc[key] = {
-					...$state.snapshot(maxResources[key]),
-					current_value: maxResources[key].max_value
-				};
-				return acc;
-			}, {})
+			...newResources
 		};
 	}
 
@@ -301,7 +306,7 @@
 						modifier: chosenActionState.value.dice_roll!.modifier!,
 						modifier_explanation:
 							chosenActionState.value.dice_roll!.modifier_explanation! +
-							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key.replaceAll('_', ' ')}`,
+							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key?.replaceAll('_', ' ')}`,
 						modifier_value: (chosenActionState.value.dice_roll?.modifier_value || 0) - 3
 					}
 				};
@@ -375,7 +380,7 @@
 					storyState.value,
 					getLatestStoryMessages(),
 					newNPCs,
-					characterStatsState.value.level,
+					characterStatsState.value,
 					customSystemInstruction.value
 				)
 				.then((newState: NPCState) => {
@@ -843,12 +848,12 @@
 	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
 		{#each Object.entries(playerCharactersGameState[characterState.value.name] || {}) as [resourceKey, resourceValue] (resourceKey)}
 			{#if resourceKey === 'XP'}
-				<output id="XP" class="ml-1 text-lg font-semibold text-green-500 w-full lg:w-fit">
+				<output id="XP" class="ml-1 w-full text-lg font-semibold text-green-500 lg:w-fit">
 					{getCurrentXPText()}
 				</output>
 			{:else}
 				<output
-					class="ml-1 text-lg font-semibold capitalize w-full lg:w-fit"
+					class="ml-1 w-full text-lg font-semibold capitalize lg:w-fit"
 					class:text-red-500={resourceValue.game_ends_when_zero}
 					class:text-blue-500={!resourceValue.game_ends_when_zero}
 				>
@@ -873,9 +878,7 @@
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>
 			{#if gameActionState['fallbackUsed']}
-				<small class="text-sm text-red-500">
-					For this action GPT-4o-mini was used.
-				</small>
+				<small class="text-sm text-red-500"> For this action GPT-4o-mini was used. </small>
 			{/if}
 		{/each}
 		{#if isGameEnded.value}

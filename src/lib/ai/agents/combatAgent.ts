@@ -123,7 +123,7 @@ export class CombatAgent {
 
 	getNPCsHealthStatePrompt(
 		deadNPCs: Array<string>,
-		aliveNPCs: Array<string>,
+		aliveNPCs?: Array<string>,
 		playerCharactersGameState?: PlayerCharactersGameState
 	) {
 		let text = '';

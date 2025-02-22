@@ -62,7 +62,7 @@ export class PollinationsProvider extends LLM {
 			model: this.model,
 			seed: Math.floor(Math.random() * 1000000),
 		}
-		if(this.model !== 'gemini-thinking'){
+		if(this.model !== 'gemini-thinking' && this.model !== 'openai-reasoning'){
 			body.response_format =  { type: 'json_object' }
 		}
 		let result;
@@ -194,12 +194,11 @@ export class PollinationsProvider extends LLM {
 		switch (model) {
 			case 'deepseek-r1':
 				return this.parseDeepseek(await response.json(), autoFixJson);
-			case 'gemini-thinking':
-				return this.parseGeminiThinking(await response.text(), autoFixJson);
 			case 'openai':
-				return this.parseOpenAI(await response.json(), autoFixJson);
 			case 'openai-large':
 				return this.parseOpenAI(await response.json(), autoFixJson);
+			default:
+				return this.parseJSON(await response.text(), autoFixJson);
 		}
 	}
 }

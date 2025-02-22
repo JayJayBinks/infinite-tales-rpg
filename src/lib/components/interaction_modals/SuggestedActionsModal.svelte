@@ -7,7 +7,7 @@
 	import type { LLMMessage } from '$lib/ai/llm';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
-	import type { Action, GameActionState, InventoryState, ItemWithId } from '$lib/ai/agents/gameAgent';
+	import type { Action, GameActionState, InventoryState, ItemWithId, ResourcesWithCurrentValue } from '$lib/ai/agents/gameAgent';
 	import { getTextForActionButton } from '$lib/util.svelte';
 	import { isEnoughResource } from '../../../routes/game/gameLogic';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
@@ -21,7 +21,7 @@
 	}: {
 		onclose?;
 		currentGameActionState: GameActionState
-		resources: Resources
+		resources: ResourcesWithCurrentValue
 		itemForSuggestActionsState: ItemWithId
 	} = $props();
 

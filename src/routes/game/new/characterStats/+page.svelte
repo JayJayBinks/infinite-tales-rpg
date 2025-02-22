@@ -323,16 +323,31 @@
 									</div>
 									{#if stateValue === 'resources'}
 										<div class="form-control mt-2 sm:w-1/4 m-auto">
-											<p>Starting Maximum Value</p>
+											<p>Maximum Value</p>
 											<input
 												type="number"
 												bind:value={characterStatsState.value[stateValue][statValue].max_value}
-												placeholder="For resources with percentage use 100"
 												oninput={(evt) => {
 													if(!characterStatsStateOverwrites[stateValue][statValue]){
 														characterStatsStateOverwrites[stateValue][statValue] = {};
 													}
 											characterStatsStateOverwrites[stateValue][statValue].max_value =
+												evt.currentTarget.value;
+										}}
+									
+												class="input input-bordered"
+											/>
+										</div>
+										<div class="form-control mt-2 sm:w-1/4 m-auto">
+											<p>Starting Value</p>
+											<input
+												type="number"
+												bind:value={characterStatsState.value[stateValue][statValue].start_value}
+												oninput={(evt) => {
+													if(!characterStatsStateOverwrites[stateValue][statValue]){
+														characterStatsStateOverwrites[stateValue][statValue] = {};
+													}
+											characterStatsStateOverwrites[stateValue][statValue].start_value =
 												evt.currentTarget.value;
 										}}
 												class="input input-bordered"
@@ -385,7 +400,7 @@
 							characterStatsStateOverwrites[stateValue] = {};
 						}
 						if(stateValue === 'resources'){
-								characterStatsState.value[stateValue][name] = {max_value: 0, game_ends_when_zero: false};
+								characterStatsState.value[stateValue][name] = {max_value: 0, start_value: 0, game_ends_when_zero: false};
 						}else{
 								characterStatsStateOverwrites[stateValue][name] = '';
 								characterStatsState.value[stateValue][name] = '';
