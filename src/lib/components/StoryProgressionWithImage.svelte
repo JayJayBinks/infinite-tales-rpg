@@ -11,31 +11,32 @@
 
 	type Props = {
 		story: string;
+		gameStateId?: number;
 		memoryAgent: MemoryAgent;
 		gameUpdates?: Array<RenderedGameUpdate | undefined>;
 		imagePrompt?: string;
 	};
-	let { story, gameUpdates = [], imagePrompt = '', memoryAgent }: Props = $props();
+	let { story, gameUpdates = [], imagePrompt = '', memoryAgent, gameStateId }: Props = $props();
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
 	let isMemory = $state(false);
 	const onMemoryClick = () => {
-		memoryAgent.isMemory(story).then((hasMemory) => {
-			if (hasMemory) {
-				memoryAgent.deleteMemory(story);
+			if (isMemory) {
+				memoryAgent.deleteMemoryByGameStateId(gameStateId!);
 			} else {
-				memoryAgent.saveMemory(story);
+				memoryAgent.saveMemory(story, gameStateId);
 			}
-		});
 	};
 
 	let subscription;
 
 	onMount(() => {
-		subscription = memoryAgent.isMemoryAsObservable(story).subscribe((hasMemory) => {
-			isMemory = hasMemory !== undefined;
-		});
+		if (gameStateId) {
+			subscription = memoryAgent.isMemoryAsObservable(gameStateId!).subscribe((hasMemory) => {
+				isMemory = hasMemory !== undefined;
+			});
+		}
 	});
 
 	onDestroy(() => {
@@ -65,10 +66,12 @@
 		{@html rendered}
 	</div>
 	<div id="gameUpdates mt-2">
-		<button class="btn btn-ghost w-full p-0" onclick={onMemoryClick}>
-			<LightBulb fill={isMemory ? 'yellow' : 'gray'} />
-			{isMemory ? 'Memorized' : 'Not Memorized'}
-		</button>
+		{#if gameStateId}
+			<button class="btn btn-ghost w-full p-0" onclick={onMemoryClick}>
+				<LightBulb fill={isMemory ? 'yellow' : 'gray'} />
+				{isMemory ? 'Memorized' : 'Not Memorized'}
+			</button>
+		{/if}
 		{#each gameUpdates as gameUpdate}
 			<p class="m-1 text-center text-sm capitalize">
 				{gameUpdate.text} <span class={gameUpdate.color}>{gameUpdate.resourceText}</span>

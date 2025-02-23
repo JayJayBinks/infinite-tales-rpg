@@ -14,6 +14,7 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { stringifyPretty } from '$lib/util.svelte';
 	import type { AIConfig } from '$lib';
+	import { MemoryAgent } from '$lib/ai/agents/memoryAgent';
 
 	let {
 		onclose,
@@ -23,6 +24,7 @@
 		onclose?;
 		question: string;
 		playerCharactersGameState: PlayerCharactersGameState;
+
 	} = $props();
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -34,8 +36,10 @@
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
-	let gameAgent;
+	let gameAgent: GameAgent;
+	let memoryAgent: MemoryAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
+	let memoriesState: string[] = $state([]);
 	let isGeneratingState: boolean = $state(false);
 
 	onMount(async () => {
@@ -45,6 +49,7 @@
 			apiKey: apiKeyState.value,
 		}, aiConfigState.value?.useFallbackLlmState);
 		gameAgent = new GameAgent(llm);
+		memoryAgent = new MemoryAgent(llm);
 		isGeneratingState = true;
 		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
@@ -55,6 +60,8 @@
 			playerCharactersGameState,
 			inventoryState.value
 		);
+		memoriesState = await memoryAgent.getRelatedMemories(question);
+		console.log(stringifyPretty(memoriesState));
 		console.log(stringifyPretty(gmAnswerState));
 		isGeneratingState = false;
 		if(!gmAnswerState){
@@ -86,6 +93,24 @@
 							{rule.startsWith('-') ? rule : '- ' + rule}
 						</li>
 					{/each}
+				</ul>
+			</details>
+			<details class="collapse collapse-arrow textarea-bordered border bg-base-200 mt-4 overflow-y-scroll">
+				<summary class="collapse-title capitalize">
+					<p>Related Memories</p>
+				</summary>
+				<ul class="text-start">
+					{#if memoriesState.length === 0}
+						<li class="list-item mt-1 ml-2">
+							No memories found that are above the threshold of relevance.
+						</li>
+					{:else}
+						{#each memoriesState as memory}
+							<li class="list-item mt-1 ml-2">
+								{memory}
+							</li>
+						{/each}
+					{/if}
 				</ul>
 			</details>
 			<button class="btn btn-info mt-3" onclick={() => onclose(true)}>Close</button>

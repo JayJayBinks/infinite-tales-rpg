@@ -544,9 +544,6 @@
 		didAIProcessActionState.value = true;
 
 		if (newState) {
-			if (newState.story_memory_explanation?.includes('HIGH')) {
-				memoryAgent.saveMemory(newState.story);
-			}
 			// If combat provided a specific stat update, use it.
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
@@ -574,14 +571,15 @@
 				memoryAgent.saveMemory(summary);
 			}
 
+			newState.id = gameActionsState.value.length + 1;
 			// Append the new game state to the game actions.
 			gameActionsState.value = [
 				...gameActionsState.value,
-				{
-					...newState,
-					id: gameActionsState.value.length
-				}
+				newState
 			];
+			if (newState.story_memory_explanation?.includes('HIGH')) {
+				memoryAgent.saveMemory(newState.story, newState.id);
+			}
 			isGameEnded.value = await checkGameEnded(isGameEnded.value);
 
 			if (!isGameEnded.value) {
@@ -617,8 +615,8 @@
 				isAiGeneratingState = true;
 
 				const relatedMemories = union(
-					action.text ? await memoryAgent.getRelatedMemories(action.text) : [],
-					currentGameActionState.story ? await memoryAgent.getRelatedMemories(currentGameActionState.story) : []	
+					action.text && action.text !== "Continue The Tale" ? await memoryAgent.getRelatedMemories(action.text, currentGameActionState.id) : [],
+					currentGameActionState.story ? await memoryAgent.getRelatedMemories(currentGameActionState.story, currentGameActionState.id) : []	
 				);
 
 				// Prepare the additional story input (including combat and chapter info)
@@ -643,9 +641,7 @@
 		if (!isGameEnded.value) {
 			//for each action render memories
 			actions.forEach((action) => {
-				memoryAgent.getRelatedMemories(action.text).then((memories) => {
-					console.log(action.text, memories);
-				});
+				memoryAgent.getRelatedMemories(action.text, currentGameActionState.id);
 			});
 
 			actions.forEach((action) =>
@@ -912,6 +908,7 @@
 		{#each gameActionsState.value.slice(-3) as gameActionState (gameActionState.id)}
 			<StoryProgressionWithImage
 				story={gameActionState.story}
+				gameStateId={gameActionState.id}
 				{memoryAgent}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
 				gameUpdates={gameLogic
@@ -927,7 +924,7 @@
 			{/if}
 		{/each}
 		{#if isGameEnded.value}
-			<StoryProgressionWithImage story={gameLogic.getGameEndedMessage()} />
+			<StoryProgressionWithImage story={gameLogic.getGameEndedMessage()} memoryAgent={memoryAgent} />
 		{/if}
 	</div>
 

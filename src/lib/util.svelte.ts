@@ -171,7 +171,7 @@ export function getTextForActionButton(action: Action) {
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
 
 	if (cost > 0) {
-		const costString = ` (${cost} ${action.resource_cost?.resource_key.replaceAll('_', ' ')}).`;
+		const costString = ` (${cost} ${action.resource_cost?.resource_key?.replaceAll('_', ' ')}).`;
 		text = action.text.replaceAll('.', '');
 		text += costString;
 	} else {
