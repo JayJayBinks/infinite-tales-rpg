@@ -122,7 +122,7 @@
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	let useDynamicCombat = useLocalStorage('useDynamicCombat', true);
+	let useDynamicCombat = useLocalStorage('useDynamicCombat', false);
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
