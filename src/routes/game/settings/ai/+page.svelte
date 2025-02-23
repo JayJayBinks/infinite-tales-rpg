@@ -14,7 +14,8 @@
 	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
 	import type { AIConfig } from '$lib';
-
+	import { MemoryAgent } from '$lib/ai/agents/memoryAgent';
+	import type { LLM } from '$lib/ai/llm';
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1.1);
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
@@ -41,15 +42,25 @@
 	const currentChapterState = useLocalStorage('currentChapterState');
 	const characterActionsState = useLocalStorage('characterActionsState');
 	let levelUpState = useLocalStorage('levelUpState');
-
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	let ttsVoices: Voice[] = $state([]);
 	let isGeneratingState = $state(false);
+
+	let storyAgent: StoryAgent;
+	let memoryAgent: MemoryAgent;
+	let llm: LLM;
 
 	onMount(async () => {
 		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
 			a.Locale === b.Locale ? 0 : a.Locale.includes(navigator.language) ? -1 : 1
 		);
+		llm = LLMProvider.provideLLM({
+			temperature: 2,
+			apiKey: apiKeyState.value,
+			language: aiLanguage.value,
+		}, aiConfigState.value?.useFallbackLlmState);
+		storyAgent = new StoryAgent(llm);
+		memoryAgent = new MemoryAgent(llm);
 	});
 
 	function clearStates() {
@@ -67,16 +78,11 @@
 		currentChapterState.reset();
 		characterActionsState.reset();
 		levelUpState.reset();
+		memoryAgent.clearMemories();
 	}
 
 	async function onQuickstartNew() {
 		clearStates();
-		const llm = LLMProvider.provideLLM({
-			temperature: 2,
-			apiKey: apiKeyState.value,
-			language: aiLanguage.value,
-		}, aiConfigState.value?.useFallbackLlmState);
-		const storyAgent = new StoryAgent(llm);
 		isGeneratingState = true;
 		const newStoryState = await storyAgent.generateRandomStorySettings();
 		if (newStoryState) {

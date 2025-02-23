@@ -1,4 +1,4 @@
-import type { GenerationConfig, SafetySetting } from '@google/generative-ai';
+import type { GenerationConfig, SafetySetting, TaskType } from '@google/generative-ai';
 
 export interface LLMMessage {
 	role: 'user' | 'model';
@@ -43,4 +43,6 @@ export abstract class LLM {
 	abstract getDefaultTemperature(): number;
 
 	abstract getMaxTemperature(): number;
+
+	abstract embedContent(content: string, taskType?: TaskType): Promise<Array<number>>;
 }

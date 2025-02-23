@@ -5,11 +5,42 @@
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import type { AIConfig } from '$lib';
+	import LightBulb from './visuals/LightBulb.svelte';
+	import type { MemoryAgent } from '$lib/ai/agents/memoryAgent';
+	import { onDestroy, onMount } from 'svelte';
 
-	type Props = { story: string; gameUpdates?: Array<RenderedGameUpdate | undefined>; imagePrompt?: string };
-	let { story, gameUpdates = [], imagePrompt = '' }: Props = $props();
+	type Props = {
+		story: string;
+		memoryAgent: MemoryAgent;
+		gameUpdates?: Array<RenderedGameUpdate | undefined>;
+		imagePrompt?: string;
+	};
+	let { story, gameUpdates = [], imagePrompt = '', memoryAgent }: Props = $props();
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+
+	let isMemory = $state(false);
+	const onMemoryClick = () => {
+		memoryAgent.isMemory(story).then((hasMemory) => {
+			if (hasMemory) {
+				memoryAgent.deleteMemory(story);
+			} else {
+				memoryAgent.saveMemory(story);
+			}
+		});
+	};
+
+	let subscription;
+
+	onMount(() => {
+		subscription = memoryAgent.isMemoryAsObservable(story).subscribe((hasMemory) => {
+			isMemory = hasMemory !== undefined;
+		});
+	});
+
+	onDestroy(() => {
+		if (subscription) subscription.unsubscribe();
+	});
 
 	let rendered = (marked(story) as string)
 		.replaceAll('\\n', '<br>')
@@ -34,6 +65,10 @@
 		{@html rendered}
 	</div>
 	<div id="gameUpdates mt-2">
+		<button class="btn btn-ghost w-full p-0" onclick={onMemoryClick}>
+			<LightBulb fill={isMemory ? 'yellow' : 'gray'} />
+			{isMemory ? 'Memorized' : 'Not Memorized'}
+		</button>
 		{#each gameUpdates as gameUpdate}
 			<p class="m-1 text-center text-sm capitalize">
 				{gameUpdate.text} <span class={gameUpdate.color}>{gameUpdate.resourceText}</span>

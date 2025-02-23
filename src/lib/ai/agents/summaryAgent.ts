@@ -18,9 +18,9 @@ export class SummaryAgent {
 		historyMessages: Array<LLMMessage>,
 		startSummaryAtSize = 12 * 2,
 		numOfLastActions = 3 * 2
-	): Promise<Array<LLMMessage>> {
+	): Promise<{newHistory: Array<LLMMessage>, summary: string}> {
 		if (historyMessages.length < startSummaryAtSize) {
-			return historyMessages;
+			return {newHistory: historyMessages, summary: ''};
 		}
 		const agent =
 			'You are a Summary Agent for a RPG adventure, who is responsible for summarizing the most important bits of a continuous story.' +
@@ -38,11 +38,11 @@ export class SummaryAgent {
 		};
 		console.log('Summary returned ' + stringifyPretty(response));
 		if (!response) {
-			return historyMessages;
+			return {newHistory: historyMessages, summary: ''};
 		}
 		const newHistory = historyMessages.slice(0, 2);
 		newHistory.push({ role: 'model', content: JSON.stringify(response) });
 		historyMessages.slice(numOfLastActions * -1).forEach((message) => newHistory.push(message));
-		return newHistory;
+		return {newHistory, summary: response.story};
 	}
 }

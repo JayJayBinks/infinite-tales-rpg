@@ -54,7 +54,12 @@
 	import SuggestedActionsModal from '$lib/components/interaction_modals/SuggestedActionsModal.svelte';
 	import type { AIConfig } from '$lib';
 	import { initializeMissingResources, refillResourcesFully } from './resourceLogic';
-	import { advanceChapterIfApplicable, getNextChapterPrompt, mapPlotStringToIds } from './campaignLogic';
+	import {
+		advanceChapterIfApplicable,
+		getNextChapterPrompt
+	} from './campaignLogic';
+	import { MemoryAgent } from '$lib/ai/agents/memoryAgent';
+	import union from 'lodash/union';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -73,7 +78,8 @@
 		characterStatsAgent: CharacterStatsAgent,
 		combatAgent: CombatAgent,
 		campaignAgent: CampaignAgent,
-		actionAgent: ActionAgent;
+		actionAgent: ActionAgent,
+		memoryAgent: MemoryAgent;
 
 	//game state
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
@@ -143,6 +149,7 @@
 		summaryAgent = new SummaryAgent(llm);
 		campaignAgent = new CampaignAgent(llm);
 		actionAgent = new ActionAgent(llm);
+		memoryAgent = new MemoryAgent(llm);
 
 		characterStatsState.value = migrateIfApplicable(
 			'characterStatsState',
@@ -441,7 +448,8 @@
 	// Helper to prepare additional story input by incorporating combat prompts
 	async function prepareAdditionalStoryInput(
 		action: Action,
-		initialAdditionalStoryInput: string
+		initialAdditionalStoryInput: string,
+		relatedMemories: string[]
 	): Promise<{
 		finalAdditionalStoryInput: string;
 		combatAndNPCState: {
@@ -502,6 +510,9 @@
 			additionalStoryInput
 		);
 
+		if (relatedMemories.length > 0) {
+			additionalStoryInput += `\n\nFollowing events happened before, the story progression must be consistent with them:\n${relatedMemories.join('\n')}`;
+		}
 		// Update the store for additional story input.
 		additionalStoryInputState.value = additionalStoryInput;
 
@@ -533,6 +544,9 @@
 		didAIProcessActionState.value = true;
 
 		if (newState) {
+			if (newState.story_memory_explanation?.includes('HIGH')) {
+				memoryAgent.saveMemory(newState.story);
+			}
 			// If combat provided a specific stat update, use it.
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
@@ -552,9 +566,13 @@
 			resetStatesAfterActionProcessed();
 
 			// Let the summary agent shorten the history, if needed.
-			historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(
+			const {newHistory, summary} = await summaryAgent.summarizeStoryIfTooLong(
 				historyMessagesState.value
 			);
+			historyMessagesState.value = newHistory;
+			if (summary) {
+				memoryAgent.saveMemory(summary);
+			}
 
 			// Append the new game state to the game actions.
 			gameActionsState.value = [
@@ -598,10 +616,16 @@
 			} else {
 				isAiGeneratingState = true;
 
+				const relatedMemories = union(
+					action.text ? await memoryAgent.getRelatedMemories(action.text) : [],
+					currentGameActionState.story ? await memoryAgent.getRelatedMemories(currentGameActionState.story) : []	
+				);
+
 				// Prepare the additional story input (including combat and chapter info)
 				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
 					action,
-					additionalStoryInput
+					additionalStoryInput,
+					relatedMemories
 				);
 
 				// Process the AI story progression and update game state
@@ -615,8 +639,15 @@
 		}
 	}
 
-	function renderGameState(state: GameActionState, actions: Array<Action>) {
+	async function renderGameState(state: GameActionState, actions: Array<Action>) {
 		if (!isGameEnded.value) {
+			//for each action render memories
+			actions.forEach((action) => {
+				memoryAgent.getRelatedMemories(action.text).then((memories) => {
+					console.log(action.text, memories);
+				});
+			});
+
 			actions.forEach((action) =>
 				addActionButton(action, state.is_character_in_combat, 'ai-gen-action')
 			);
@@ -881,6 +912,7 @@
 		{#each gameActionsState.value.slice(-3) as gameActionState (gameActionState.id)}
 			<StoryProgressionWithImage
 				story={gameActionState.story}
+				{memoryAgent}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
 				gameUpdates={gameLogic
 					.renderStatUpdates(

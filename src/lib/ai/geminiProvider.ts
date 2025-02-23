@@ -7,7 +7,8 @@ import {
 	HarmBlockThreshold,
 	HarmCategory,
 	type Part,
-	type SafetySetting
+	type SafetySetting,
+	TaskType
 } from '@google/generative-ai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
 import {
@@ -17,7 +18,11 @@ import {
 	type LLMRequest,
 	type LLMReasoningResponse
 } from '$lib/ai/llm';
-import { errorState, getIsGeminiOverloaded, setIsGeminiOverloaded } from '$lib/state/errorState.svelte';
+import {
+	errorState,
+	getIsGeminiOverloaded,
+	setIsGeminiOverloaded
+} from '$lib/state/errorState.svelte';
 
 const safetySettings: Array<SafetySetting> = [
 	{
@@ -69,6 +74,12 @@ export class GeminiProvider extends LLM {
 		return 2;
 	}
 
+	async embedContent(content: string, taskType = TaskType.SEMANTIC_SIMILARITY): Promise<Array<number>> {
+		const model = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
+		const result = await model.embedContent({ content: { role: 'user', parts: [{ text: content }] }, taskType });
+		return result.embedding.values;
+	}
+
 	async generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
@@ -109,7 +120,7 @@ export class GeminiProvider extends LLM {
 
 		let result: GenerateContentResult;
 		try {
-			if(getIsGeminiOverloaded()){
+			if (getIsGeminiOverloaded()) {
 				//fallback early to avoid waiting for the response
 				throw new Error('Gemini is overloaded! Fallback early to avoid waiting for the response.');
 			}
