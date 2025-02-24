@@ -11,7 +11,7 @@ import {
 import isPlainObject from 'lodash.isplainobject';
 
 export const defaultGPT4JsonConfig: GenerationConfig = {
-	temperature: 0.1,
+	temperature: 1.1,
 	topP: 0.95,
 	topK: 40,
 	maxOutputTokens: 8192,
@@ -30,11 +30,11 @@ export class PollinationsProvider extends LLM {
 	}
 
 	getDefaultTemperature(): number {
-		return defaultGPT4JsonConfig.temperature as number;
+		return 1.1;
 	}
 
 	getMaxTemperature(): number {
-		return 1;
+		return 2;
 	}
 
 	async generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined> {
@@ -53,7 +53,6 @@ export class PollinationsProvider extends LLM {
 			request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
 			this.getMaxTemperature()
 		);
-		temperature = this.getDefaultTemperature();
 		console.log('calling llm with temperature', temperature);
 		const url = `https://text.pollinations.ai`;
 		const body: any = {

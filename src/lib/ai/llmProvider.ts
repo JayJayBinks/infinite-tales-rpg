@@ -13,7 +13,7 @@ export class LLMProvider {
 	static provideLLM(llmConfig: LLMconfig, useFallback: boolean = false): LLM {
 		const configToUse: LLMconfig = { ...defaultLLMConfig, ...llmConfig };
 		if (configToUse.provider === 'pollinations') {
-			return new PollinationsProvider(configToUse);
+			return new PollinationsProvider({ ...configToUse, model: 'openai' })
 		} else {
 			//fallback to flash-exp if thinking-exp fails and then to pollinations gpt-4o-mini
 			return new GeminiProvider(
