@@ -1,6 +1,7 @@
 import type {
 	Action,
 	GameActionState,
+	InventoryState,
 	InventoryUpdate,
 	PlayerCharactersGameState,
 	ResourcesWithCurrentValue,
@@ -322,8 +323,16 @@ export function getGameEndedMessage() {
 	return 'Your Tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new Tale in the menu.';
 }
 
-export function isEnoughResource(action: Action, resources: ResourcesWithCurrentValue) {
+export function isEnoughResource(action: Action, resources: ResourcesWithCurrentValue, inventory: InventoryState): boolean {
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+	if(cost === 0) {
+		return true;
+	}
 	const resourceKey = Object.keys(resources).find((key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase());
-	return cost === 0 || resources[resourceKey || '']?.current_value >= cost;
+	let inventoryKey: string | undefined = undefined;
+	if(!resourceKey) {
+		inventoryKey = Object.keys(inventory).find((key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase());
+		return !!inventoryKey;
+	}
+	return resources[resourceKey || '']?.current_value >= cost;
 }

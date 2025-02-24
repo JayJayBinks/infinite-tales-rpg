@@ -642,7 +642,7 @@
 			button.className += ' ' + addClass;
 		}
 		button.textContent = getTextForActionButton(action);
-		if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name])) {
+		if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name], inventoryState.value)) {
 			button.disabled = true;
 		}
 		button.addEventListener('click', () => {
@@ -755,7 +755,7 @@
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
-			if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name])) {
+			if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name], inventoryState.value)) {
 				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
