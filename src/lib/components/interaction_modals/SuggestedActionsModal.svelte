@@ -81,7 +81,7 @@
 			{#each suggestedActions as action}
 				<button
 					type="button"
-					disabled={!isEnoughResource(action, resources)}
+					disabled={!isEnoughResource(action, resources, inventoryState.value)}
 					class="components btn btn-neutral no-animation mt-2"
 					onclick={() => onclose(action)}
 				>
