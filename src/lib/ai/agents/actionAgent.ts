@@ -54,7 +54,7 @@ export class ActionAgent {
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 
 		const agent = [
-			`You are RPG action agent, you are given a RPG story and one action the player wants to perform then determine difficulty, mp cost etc. considering the story, currently_present_npcs and character traits.
+			`You are RPG action agent, you are given a RPG story and one action the player wants to perform; Determine difficulty, resource cost etc. for this action; Consider the story, currently_present_npcs and character traits.
 				Action Rules:
 				- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
 				- For puzzles, the player —not the character— must solve them. Offer a set of possible actions, including both correct and incorrect choices.
@@ -80,7 +80,7 @@ export class ActionAgent {
 		const userMessage =
 			'The player wants to perform following action, you must use these exact words as action text: ' +
 			action.text +
-			'\nDetermine the difficulty and mp cost with considering their personality, skills, items and following game state\n' +
+			'\nDetermine the difficulty and resource cost with considering their personality, skills, items and following game state\n' +
 			stringifyPretty(currentGameStateMapped);
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
