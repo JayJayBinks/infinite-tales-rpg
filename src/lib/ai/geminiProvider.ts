@@ -17,7 +17,13 @@ import {
 	type LLMRequest,
 	type LLMReasoningResponse
 } from '$lib/ai/llm';
-import { errorState, getIsGeminiOverloaded, setIsGeminiOverloaded } from '$lib/state/errorState.svelte';
+import {
+	errorState,
+	getIsGeminiFlashExpOverloaded,
+	getIsGeminiThinkingOverloaded,
+	setIsGeminiFlashExpOverloaded,
+	setIsGeminiThinkingOverloaded
+} from '$lib/state/errorState.svelte';
 
 const safetySettings: Array<SafetySetting> = [
 	{
@@ -109,15 +115,26 @@ export class GeminiProvider extends LLM {
 
 		let result: GenerateContentResult;
 		try {
-			if(getIsGeminiOverloaded()){
+			if (model.model.includes('thinking') && getIsGeminiThinkingOverloaded()) {
 				//fallback early to avoid waiting for the response
-				throw new Error('Gemini is overloaded! Fallback early to avoid waiting for the response.');
+				throw new Error(
+					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
+				);
+			}
+			if (!model.model.includes('thinking') && getIsGeminiFlashExpOverloaded()) {
+				throw new Error(
+					'Gemini Flash is overloaded! Fallback early to avoid waiting for the response.'
+				);
 			}
 			result = await model.generateContent({ contents, systemInstruction });
 		} catch (e) {
 			if (e instanceof Error) {
 				if (e.message.includes('503') || e.message.includes('500')) {
-					setIsGeminiOverloaded(true);
+					if (model.model?.includes('thinking')) {
+						setIsGeminiThinkingOverloaded(true);
+					} else {
+						setIsGeminiFlashExpOverloaded(true);
+					}
 					e.message =
 						'The Gemini AI is overloaded! You can try again or wait some time. Alternatively, you can go to the settings and enable GPT-4o-mini as fallback.';
 				}

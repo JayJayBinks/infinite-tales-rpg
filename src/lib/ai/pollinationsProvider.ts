@@ -87,7 +87,9 @@ export class PollinationsProvider extends LLM {
 				if (!fallbackResult) {
 					handleError(e as unknown as string);
 				}else{
-					fallbackResult.parsedObject['fallbackUsed'] = true;
+					if(this.model === 'openai'){
+						fallbackResult.parsedObject['fallbackUsed'] = true;
+					}
 				}
 				return fallbackResult;
 			} else {
