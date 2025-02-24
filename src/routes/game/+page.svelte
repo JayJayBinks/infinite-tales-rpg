@@ -312,8 +312,11 @@
 				};
 			}
 			//either not enough resource or impossible, anyway no resource cost
-			chosenActionState.value.resource_cost!.cost = 0;
-			const costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
+			let costString = 'No resource cost';
+			if (chosenActionState.value.resource_cost) {
+				chosenActionState.value.resource_cost.cost = 0;
+				costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
+			}
 			if (additionalStoryInputState.value) {
 				additionalStoryInputState.value += costString;
 			} else {
