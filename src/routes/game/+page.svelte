@@ -797,6 +797,17 @@
 		}
 		gmQuestionState = '';
 	};
+
+
+	function onDeleteItem(item_id: string): void {
+		delete inventoryState.value[item_id];
+		if (gameActionsState.value[gameActionsState.value.length - 1].inventory_update) {
+			gameActionsState.value[gameActionsState.value.length - 1].inventory_update.push({
+				item_id,
+				type: 'remove_item'
+			});
+		}
+	}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -827,6 +838,7 @@
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
+		onDeleteItem={onDeleteItem}
 		playerName={characterState.value.name}
 		inventoryState={inventoryState.value}
 		storyImagePrompt={storyState.value.general_image_prompt}
