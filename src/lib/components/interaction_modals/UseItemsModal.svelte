@@ -12,12 +12,14 @@
 
 	let {
 		inventoryState,
+		onDeleteItem,
 		playerName,
 		storyImagePrompt,
 		onclose,
 		dialogRef = $bindable()
 	}: {
 		inventoryState: InventoryState;
+		onDeleteItem: (item_id: string) => void;	
 		playerName: string;
 		storyImagePrompt: string;
 		onclose;
@@ -92,7 +94,7 @@
 						</p>
 						<button
 							class="components btn btn-error no-animation btn-sm m-auto mt-2"
-							onclick={() => delete inventoryState[item_id]}
+							onclick={() => onDeleteItem(item_id)}
 						>
 							Delete
 						</button>
