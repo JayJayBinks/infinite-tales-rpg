@@ -36,6 +36,7 @@
 	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
 	const npcState = useLocalStorage('npcState', []);
 	const storyState = useLocalStorage('storyState', initialStoryState);
+	const storySummaryState = useLocalStorage('storySummaryState');
 	const isGameEnded = useLocalStorage('isGameEnded', false);
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 	const campaignState = useLocalStorage('campaignState', initialCampaignState);
@@ -70,6 +71,7 @@
 		characterImageState.reset();
 		characterStatsState.reset();
 		storyState.reset();
+		storySummaryState.reset();
 		isGameEnded.reset();
 		rollDifferenceHistoryState.reset();
 		npcState.reset();

@@ -84,7 +84,10 @@ export function applyLevelUp(
 		characterStats.resources[resourcesKey] = {
 			...currentValue,
 			max_value: aiLevelUp.resources[resourcesKey],
-			start_value: currentValue.start_value === currentValue.max_value ? aiLevelUp.resources[resourcesKey] : currentValue.start_value
+			start_value:
+				currentValue.start_value === currentValue.max_value
+					? aiLevelUp.resources[resourcesKey]
+					: currentValue.start_value
 		};
 	}
 

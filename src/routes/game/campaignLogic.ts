@@ -1,8 +1,8 @@
-import type { Campaign, CampaignAgent } from "$lib/ai/agents/campaignAgent";
-import { SLOW_STORY_PROMPT, type GameActionState } from "$lib/ai/agents/gameAgent";
-import type { LLMMessage } from "$lib/ai/llm";
-import type { Action } from "$lib/ai/agents/gameAgent";
-import { stringifyPretty } from "$lib/util.svelte";
+import type { Campaign, CampaignAgent } from '$lib/ai/agents/campaignAgent';
+import { SLOW_STORY_PROMPT, type GameActionState } from '$lib/ai/agents/gameAgent';
+import type { LLMMessage } from '$lib/ai/llm';
+import type { Action } from '$lib/ai/agents/gameAgent';
+import { stringifyPretty } from '$lib/util.svelte';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
 export function mapPlotStringToIds(text: string, splitDelimeter: string = 'plotId: ') {
@@ -35,7 +35,7 @@ export async function advanceChapterIfApplicable(
 	gameActionsState: GameActionState[],
 	campaignAgent: CampaignAgent,
 	historyMessages: LLMMessage[]
-): Promise<{newAdditionalStoryInput: string, newChapter: boolean}> {
+): Promise<{ newAdditionalStoryInput: string; newChapter: boolean }> {
 	let newChapter = false;
 	if (
 		didAIProcessAction &&
@@ -57,7 +57,7 @@ export async function advanceChapterIfApplicable(
 					campaignDeviations.plotNudge.nudgeExplanation +
 					'\n' +
 					campaignDeviations.plotNudge.nudgeStory +
-					'Always describe the story as a Game Master and never mention meta elements such as plot points or story progression.';
+					'\n\nAlways describe the story as a Game Master and never mention meta elements such as plot points or story progression.\n\n';
 			}
 		}
 		const mappedCurrentPlotPoint: number = mapPlotStringToIds(
@@ -69,14 +69,13 @@ export async function advanceChapterIfApplicable(
 			'chapterId: '
 		)[0];
 		if (
-			mappedCurrentPlotPoint >
-				campaignState.chapters[currentChapter - 1]?.plot_points?.length ||
+			mappedCurrentPlotPoint > campaignState.chapters[currentChapter - 1]?.plot_points?.length ||
 			mappedCampaignChapterId > currentChapter
 		) {
 			newChapter = true;
 		}
 	}
-	return {newAdditionalStoryInput, newChapter};
+	return { newAdditionalStoryInput, newChapter };
 }
 
 export function getNextChapterPrompt(
@@ -85,9 +84,7 @@ export function getNextChapterPrompt(
 	story: Story
 ): { prompt: string; updatedStory: Story } {
 	// Create a snapshot of the campaign data and find the chapter matching the current chapter.
-	const newChapter = campaign.chapters.find(
-		(chapter) => chapter.chapterId === currentChapter
-	);
+	const newChapter = campaign.chapters.find((chapter) => chapter.chapterId === currentChapter);
 
 	if (newChapter) {
 		// Add first plot point from next chapter to determine when current chapter ends.
@@ -121,4 +118,4 @@ export function getNextChapterPrompt(
 			'\nNotify the players that the campaign has ended but they can continue with free exploration.',
 		updatedStory: story
 	};
-} 
+}

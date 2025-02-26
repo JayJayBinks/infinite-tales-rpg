@@ -12,12 +12,22 @@ class ErrorState {
 
 export const errorState = new ErrorState();
 
-let isGeminiOverloaded = $state(false);
+let isGeminiThinkingOverloaded = $state(false);
 
-export const getIsGeminiOverloaded = () => {
-	return isGeminiOverloaded;
+export const getIsGeminiThinkingOverloaded = () => {
+	return isGeminiThinkingOverloaded;
 };
 
-export const setIsGeminiOverloaded = (value: boolean) => {
-	isGeminiOverloaded = value;
+export const setIsGeminiThinkingOverloaded = (value: boolean) => {
+	isGeminiThinkingOverloaded = value;
+};
+
+let isGeminiFlashExpOverloaded = $state(false);
+
+export const getIsGeminiFlashExpOverloaded = () => {
+	return isGeminiFlashExpOverloaded;
+};
+
+export const setIsGeminiFlashExpOverloaded = (value: boolean) => {
+	isGeminiFlashExpOverloaded = value;
 };

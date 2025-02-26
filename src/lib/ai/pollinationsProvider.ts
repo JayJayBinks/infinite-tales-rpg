@@ -11,7 +11,7 @@ import {
 import isPlainObject from 'lodash.isplainobject';
 
 export const defaultGPT4JsonConfig: GenerationConfig = {
-	temperature: 0.1,
+	temperature: 1.1,
 	topP: 0.95,
 	topK: 40,
 	maxOutputTokens: 8192,
@@ -30,11 +30,11 @@ export class PollinationsProvider extends LLM {
 	}
 
 	getDefaultTemperature(): number {
-		return defaultGPT4JsonConfig.temperature as number;
+		return 1.1;
 	}
 
 	getMaxTemperature(): number {
-		return 1;
+		return 2;
 	}
 
 	async generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined> {
@@ -49,21 +49,20 @@ export class PollinationsProvider extends LLM {
 			systemInstructions.push({ role: 'system', content: languageInstruction });
 		}
 
-		let temperature = Math.min(
+		const temperature = Math.min(
 			request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
 			this.getMaxTemperature()
 		);
-		temperature = this.getDefaultTemperature();
 		console.log('calling llm with temperature', temperature);
 		const url = `https://text.pollinations.ai`;
 		const body: any = {
 			messages: [...systemInstructions, ...contents],
 			temperature,
 			model: this.model,
-			seed: Math.floor(Math.random() * 1000000),
-		}
-		if(this.model !== 'gemini-thinking' && this.model !== 'openai-reasoning'){
-			body.response_format =  { type: 'json_object' }
+			seed: Math.floor(Math.random() * 1000000)
+		};
+		if (this.model !== 'gemini-thinking' && this.model !== 'openai-reasoning') {
+			body.response_format = { type: 'json_object' };
 		}
 		let result;
 		try {
@@ -74,7 +73,7 @@ export class PollinationsProvider extends LLM {
 				},
 				body: JSON.stringify(body)
 			});
-			if(response.status === 500){
+			if (response.status === 500) {
 				throw new Error(await response.text());
 			}
 			result = response;
@@ -86,8 +85,10 @@ export class PollinationsProvider extends LLM {
 				const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
 				if (!fallbackResult) {
 					handleError(e as unknown as string);
-				}else{
-					fallbackResult.parsedObject['fallbackUsed'] = true;
+				} else {
+					if (this.model === 'openai') {
+						fallbackResult.parsedObject['fallbackUsed'] = true;
+					}
 				}
 				return fallbackResult;
 			} else {

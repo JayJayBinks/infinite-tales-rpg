@@ -34,12 +34,7 @@
 			characterName: playerName,
 			...ability,
 			type: 'Spell',
-			text:
-				playerName +
-				' casts ' +
-				ability.name +
-				': ' +
-				ability.effect
+			text: playerName + ' casts ' + ability.name + ': ' + ability.effect
 		};
 	}
 </script>
@@ -70,24 +65,25 @@
 										noLogo={true}
 										enhance={false}
 										imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-										imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-											ability,
-											storyImagePrompt
-										)}
+										imagePrompt={CharacterStatsAgent.getSpellImagePrompt(ability, storyImagePrompt)}
 										showGenerateButton={false}
 									></AIGeneratedImage>
 								</div>
 							{/if}
 							<div class="m-auto w-full sm:col-span-2">
 								{#if ability.resource_cost?.cost > 0}
-									<p class="badge badge-info h-fit">{ability.resource_cost?.cost} {(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}</p>
+									<p class="badge badge-info h-fit">
+										{ability.resource_cost?.cost}
+										{(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}
+									</p>
 								{/if}
 								<p class="mt-2 overflow-hidden overflow-ellipsis">{ability.name}</p>
 								<button
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
-									disabled={ability.resource_cost?.cost > 0
-														&& ability.resource_cost?.cost > resources[ability.resource_cost.resource_key || '']?.current_value}
+									disabled={ability.resource_cost?.cost > 0 &&
+										ability.resource_cost?.cost >
+											resources[ability.resource_cost.resource_key || '']?.current_value}
 									onclick={() => {
 										mapAbilityToAction(ability);
 										dialogRef.close();

@@ -7,7 +7,10 @@
 	import isEqual from 'lodash.isequal';
 	import cloneDeep from 'lodash.clonedeep';
 	import isPlainObject from 'lodash.isplainobject';
-	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
+	import {
+		CharacterStatsAgent,
+		initialCharacterStatsState
+	} from '$lib/ai/agents/characterStatsAgent';
 	import { goto } from '$app/navigation';
 	import { initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { initialCharacterState } from '$lib/ai/agents/characterAgent';
@@ -29,11 +32,14 @@
 
 	onMount(() => {
 		characterStatsAgent = new CharacterStatsAgent(
-			LLMProvider.provideLLM({
-				temperature: 2,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-			}, aiConfigState.value?.useFallbackLlmState)
+			LLMProvider.provideLLM(
+				{
+					temperature: 2,
+					apiKey: apiKeyState.value,
+					language: aiLanguage.value
+				},
+				aiConfigState.value?.useFallbackLlmState
+			)
 		);
 	});
 
@@ -50,9 +56,11 @@
 		if (newState) {
 			console.log(newState);
 			parseState(newState);
-			newState.spells_and_abilities = newState.spells_and_abilities.map(ability => ({
+			newState.spells_and_abilities = newState.spells_and_abilities.map((ability) => ({
 				...ability,
-				resource_cost: ability.resource_cost ? ability.resource_cost : { cost: 0, resource_key: undefined }
+				resource_cost: ability.resource_cost
+					? ability.resource_cost
+					: { cost: 0, resource_key: undefined }
 			}));
 			characterStatsState.value = newState;
 		}
@@ -190,7 +198,7 @@
 			<div class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
-					>{stateValue.replaceAll('_', ' ')}</summary
+						>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
@@ -248,17 +256,22 @@
 													</div>
 													{#if deepNestedValue === 'resource_cost'}
 														{#if characterStatsState.value[stateValue][statValue][deepNestedValue]?.resource_key}
-															<input class="input input-bordered mt-2" type="number"
-																		 placeholder="Cost as number"
-																		 bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue].cost} />
+															<input
+																class="input input-bordered mt-2"
+																type="number"
+																placeholder="Cost as number"
+																bind:value={characterStatsState.value[stateValue][statValue][
+																	deepNestedValue
+																].cost}
+															/>
 														{/if}
 														<select
-															bind:value={characterStatsState.value[stateValue][statValue][deepNestedValue].resource_key}
+															bind:value={characterStatsState.value[stateValue][statValue][
+																deepNestedValue
+															].resource_key}
 															class="select select-bordered mt-2 text-center"
 														>
-															<option class="capitalize" value={undefined}>
-																No Cost
-															</option>
+															<option class="capitalize" value={undefined}> No Cost </option>
 															{#each Object.keys(characterStatsState.value.resources || {}) as resourceKey (resourceKey)}
 																<option class="capitalize" value={resourceKey}>
 																	{resourceKey.replaceAll('_', ' ')}
@@ -266,28 +279,29 @@
 															{/each}
 														</select>
 													{:else}
-													<textarea
-														bind:value={characterStatsState.value[stateValue][statValue][
-															deepNestedValue
-														]}
-														rows={characterStatsState.value[stateValue][statValue][deepNestedValue]
-															?.length > 30
-															? 2
-															: 1}
-														oninput={(evt) => {
-															if (!characterStatsStateOverwrites[stateValue]) {
-																characterStatsStateOverwrites[stateValue] = {};
-															}
-															if (!characterStatsStateOverwrites[stateValue][statValue]) {
-																characterStatsStateOverwrites[stateValue][statValue] = {};
-															}
-															characterStatsStateOverwrites[stateValue][statValue][
+														<textarea
+															bind:value={characterStatsState.value[stateValue][statValue][
 																deepNestedValue
-															] = evt.target?.value;
-														}}
-														class="textarea textarea-bordered textarea-md mt-2 w-full"
-													>
-													</textarea>
+															]}
+															rows={characterStatsState.value[stateValue][statValue][
+																deepNestedValue
+															]?.length > 30
+																? 2
+																: 1}
+															oninput={(evt) => {
+																if (!characterStatsStateOverwrites[stateValue]) {
+																	characterStatsStateOverwrites[stateValue] = {};
+																}
+																if (!characterStatsStateOverwrites[stateValue][statValue]) {
+																	characterStatsStateOverwrites[stateValue][statValue] = {};
+																}
+																characterStatsStateOverwrites[stateValue][statValue][
+																	deepNestedValue
+																] = evt.target?.value;
+															}}
+															class="textarea textarea-bordered textarea-md mt-2 w-full"
+														>
+														</textarea>
 													{/if}
 												</div>
 											</div>
@@ -304,7 +318,7 @@
 									<!-- SpellsAndAbilities -->
 								{:else}
 									<!-- Resources Traits etc. TODO refactor or leave for now?-->
-									<div class="flex-row m-auto capitalize">
+									<div class="m-auto flex-row capitalize">
 										{statValue.replaceAll('_', ' ')}
 
 										{#if characterStatsStateOverwrites[stateValue][statValue]}
@@ -322,63 +336,63 @@
 										</button>
 									</div>
 									{#if stateValue === 'resources'}
-										<div class="form-control mt-2 sm:w-1/4 m-auto">
+										<div class="form-control m-auto mt-2 sm:w-1/4">
 											<p>Maximum Value</p>
 											<input
 												type="number"
 												bind:value={characterStatsState.value[stateValue][statValue].max_value}
 												oninput={(evt) => {
-													if(!characterStatsStateOverwrites[stateValue][statValue]){
+													if (!characterStatsStateOverwrites[stateValue][statValue]) {
 														characterStatsStateOverwrites[stateValue][statValue] = {};
 													}
-											characterStatsStateOverwrites[stateValue][statValue].max_value =
-												evt.currentTarget.value;
-										}}
-									
+													characterStatsStateOverwrites[stateValue][statValue].max_value =
+														evt.currentTarget.value;
+												}}
 												class="input input-bordered"
 											/>
 										</div>
-										<div class="form-control mt-2 sm:w-1/4 m-auto">
+										<div class="form-control m-auto mt-2 sm:w-1/4">
 											<p>Starting Value</p>
 											<input
 												type="number"
 												bind:value={characterStatsState.value[stateValue][statValue].start_value}
 												oninput={(evt) => {
-													if(!characterStatsStateOverwrites[stateValue][statValue]){
+													if (!characterStatsStateOverwrites[stateValue][statValue]) {
 														characterStatsStateOverwrites[stateValue][statValue] = {};
 													}
-											characterStatsStateOverwrites[stateValue][statValue].start_value =
-												evt.currentTarget.value;
-										}}
+													characterStatsStateOverwrites[stateValue][statValue].start_value =
+														evt.currentTarget.value;
+												}}
 												class="input input-bordered"
 											/>
 										</div>
-										<div class="form-control mt-2 mb-4 sm:w-1/4 m-auto">
+										<div class="form-control m-auto mb-4 mt-2 sm:w-1/4">
 											<p>Game Ends When Zero</p>
 											<input
 												type="checkbox"
-												bind:checked={characterStatsState.value[stateValue][statValue].game_ends_when_zero}
+												bind:checked={characterStatsState.value[stateValue][statValue]
+													.game_ends_when_zero}
 												oninput={(evt) => {
-														if(!characterStatsStateOverwrites[stateValue][statValue]){
+													if (!characterStatsStateOverwrites[stateValue][statValue]) {
 														characterStatsStateOverwrites[stateValue][statValue] = {};
 													}
-											characterStatsStateOverwrites[stateValue][statValue].game_ends_when_zero =
-												evt.currentTarget.checked;
-										}}
+													characterStatsStateOverwrites[stateValue][statValue].game_ends_when_zero =
+														evt.currentTarget.checked;
+												}}
 												class="toggle m-auto"
 											/>
 										</div>
 									{:else}
-								<textarea
-									bind:value={characterStatsState.value[stateValue][statValue]}
-									rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
-									oninput={(evt) => {
-											characterStatsStateOverwrites[stateValue][statValue] =
-												evt.currentTarget.value;
-										}}
-									class="textarea textarea-bordered textarea-md mt-2 sm:w-1/4 m-auto"
-								>
-									</textarea>
+										<textarea
+											bind:value={characterStatsState.value[stateValue][statValue]}
+											rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue][statValue] : 1}
+											oninput={(evt) => {
+												characterStatsStateOverwrites[stateValue][statValue] =
+													evt.currentTarget.value;
+											}}
+											class="textarea textarea-bordered textarea-md m-auto mt-2 sm:w-1/4"
+										>
+										</textarea>
 									{/if}
 									<!-- Traits etc. -->
 								{/if}
@@ -392,18 +406,27 @@
 				onclick={() => {
 					if (Array.isArray(characterStatsState.value[stateValue])) {
 						//TODO spells_and_abilities not generic yet
-						characterStatsState.value[stateValue].push({ name: '', effect: '', resource_cost: {cost: 0, resource_key: undefined}, image_prompt: '' });
+						characterStatsState.value[stateValue].push({
+							name: '',
+							effect: '',
+							resource_cost: { cost: 0, resource_key: undefined },
+							image_prompt: ''
+						});
 					} else {
 						const name = prompt('Enter the name');
-						if(!name) return;
+						if (!name) return;
 						if (!characterStatsStateOverwrites[stateValue]) {
 							characterStatsStateOverwrites[stateValue] = {};
 						}
-						if(stateValue === 'resources'){
-								characterStatsState.value[stateValue][name] = {max_value: 0, start_value: 0, game_ends_when_zero: false};
-						}else{
-								characterStatsStateOverwrites[stateValue][name] = '';
-								characterStatsState.value[stateValue][name] = '';
+						if (stateValue === 'resources') {
+							characterStatsState.value[stateValue][name] = {
+								max_value: 0,
+								start_value: 0,
+								game_ends_when_zero: false
+							};
+						} else {
+							characterStatsStateOverwrites[stateValue][name] = '';
+							characterStatsState.value[stateValue][name] = '';
 						}
 					}
 				}}

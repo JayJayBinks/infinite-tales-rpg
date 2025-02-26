@@ -14,7 +14,8 @@
 	<div class="modal-box flex flex-col items-center text-center">
 		<span class="m-auto font-bold">Action is not possible!</span>
 		{#if action.is_possible !== false}
-			You do not have enough {action.resource_cost?.resource_key} to perform this action: <span class="text-blue-500"
+			You do not have enough {action.resource_cost?.resource_key} to perform this action:
+			<span class="text-blue-500"
 				>{action.resource_cost?.cost} {action.resource_cost?.resource_key}</span
 			>
 		{:else}

@@ -3,7 +3,13 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { getRowsForTextarea, loadPDF, navigate, removeEmptyValues, stringifyPretty } from '$lib/util.svelte';
+	import {
+		getRowsForTextarea,
+		loadPDF,
+		navigate,
+		removeEmptyValues,
+		stringifyPretty
+	} from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
@@ -30,14 +36,17 @@
 	let campaignStateOverwrites = $state({});
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-		
+
 	onMount(() => {
 		campaignAgent = new CampaignAgent(
-			LLMProvider.provideLLM({
-				temperature: 2,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-			}, aiConfigState.value?.useFallbackLlmState)
+			LLMProvider.provideLLM(
+				{
+					temperature: 2,
+					apiKey: apiKeyState.value,
+					language: aiLanguage.value
+				},
+				aiConfigState.value?.useFallbackLlmState
+			)
 		);
 
 		beforeNavigate(() => {
@@ -45,13 +54,12 @@
 		});
 	});
 
-
 	function onUploadClicked() {
 		const fileInput = document.createElement('input');
 		fileInput.type = 'file';
 		fileInput.accept = 'application/pdf';
 		fileInput.click();
-		fileInput.addEventListener('change', function(event) {
+		fileInput.addEventListener('change', function (event) {
 			// @ts-expect-error can never be null
 			const file = event.target.files[0];
 			if (file) {
@@ -145,7 +153,7 @@
 
 	async function _goto(page: string) {
 		if (isEqual(initialCampaignState, campaignState.value)) {
-			if (!await onRandomize()) {
+			if (!(await onRandomize())) {
 				return;
 			}
 		}
@@ -170,9 +178,10 @@
 	};
 
 	const getCurrentChapterMapped = () => {
-
 		const currentChapterNumber = currentChapterState.value || 1;
-		const currentChapter: CampaignChapter = $state.snapshot(campaignState.value.chapters[currentChapterNumber - 1]);
+		const currentChapter: CampaignChapter = $state.snapshot(
+			campaignState.value.chapters[currentChapterNumber - 1]
+		);
 		//currentChapterNumber is actually next chapter as it starts with 1
 		const nextPlotPoint = campaignState.value.chapters[currentChapterNumber]?.plot_points[0];
 		if (nextPlotPoint) {
@@ -252,7 +261,7 @@
 											{#if chapterProperty === 'plot_points'}
 												<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 													<summary class="collapse-title capitalize"
-													>{chapterProperty.replaceAll('_', ' ')}</summary
+														>{chapterProperty.replaceAll('_', ' ')}</summary
 													>
 													<div class="collapse-content">
 														{#each Object.keys(campaignState.value[stateValue][chapterNumber][chapterProperty]) as plotPoint}
@@ -277,7 +286,8 @@
 																								chapterProperty
 																							].splice(Number.parseInt(plotPoint), 1);
 																							if (
-																								campaignStateOverwrites[stateValue] && campaignStateOverwrites[stateValue][chapterNumber][
+																								campaignStateOverwrites[stateValue] &&
+																								campaignStateOverwrites[stateValue][chapterNumber][
 																									chapterProperty
 																								][plotPoint]
 																							) {
@@ -307,7 +317,7 @@
 																						{plotPointProperty.replaceAll('_', ' ')}
 																						{#if campaignStateOverwrites[stateValue] && campaignStateOverwrites[stateValue][chapterNumber] && campaignStateOverwrites[stateValue][chapterNumber][chapterProperty] && campaignStateOverwrites[stateValue][chapterNumber][chapterProperty][plotPoint] && campaignStateOverwrites[stateValue][chapterNumber][chapterProperty][plotPoint][plotPointProperty]}
 																							<span class="badge badge-accent ml-2"
-																							>overwritten</span
+																								>overwritten</span
 																							>
 																						{/if}
 																					</div>
@@ -397,7 +407,10 @@
 																		Number.parseInt(chapterNumber),
 																		1
 																	);
-																	if (campaignStateOverwrites[stateValue] && campaignStateOverwrites[stateValue][chapterNumber]) {
+																	if (
+																		campaignStateOverwrites[stateValue] &&
+																		campaignStateOverwrites[stateValue][chapterNumber]
+																	) {
 																		delete campaignStateOverwrites[stateValue][chapterNumber];
 																	}
 																	campaignState.value[stateValue] = campaignState.value[

@@ -3,7 +3,8 @@
 		type Action,
 		GameAgent,
 		type InventoryState,
-		type Item, type ItemWithId
+		type Item,
+		type ItemWithId
 	} from '$lib/ai/agents/gameAgent';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { formatItemId } from '../../../routes/game/gameLogic';
@@ -12,12 +13,14 @@
 
 	let {
 		inventoryState,
+		onDeleteItem,
 		playerName,
 		storyImagePrompt,
 		onclose,
 		dialogRef = $bindable()
 	}: {
 		inventoryState: InventoryState;
+		onDeleteItem: (item_id: string) => void;
 		playerName: string;
 		storyImagePrompt: string;
 		onclose;
@@ -26,7 +29,7 @@
 
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
-	function mapToAction(item_id: string, item: Item): ItemWithId & Action{
+	function mapToAction(item_id: string, item: Item): ItemWithId & Action {
 		return {
 			...item,
 			item_id,
@@ -83,7 +86,7 @@
 							</div>
 						</div>
 					</summary>
-					<div class="collapse-content flex justify-center flex-col items-center">
+					<div class="collapse-content flex flex-col items-center justify-center">
 						<p class="m-5 mt-2">
 							{item.effect}
 						</p>
@@ -92,7 +95,7 @@
 						</p>
 						<button
 							class="components btn btn-error no-animation btn-sm m-auto mt-2"
-							onclick={() => delete inventoryState[item_id]}
+							onclick={() => onDeleteItem(item_id)}
 						>
 							Delete
 						</button>

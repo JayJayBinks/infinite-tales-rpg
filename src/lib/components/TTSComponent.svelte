@@ -15,4 +15,3 @@
 <audio preload="none" {hidden} bind:this={storyTTSAudioElement} controls class="m-auto">
 	The "audio" tag is not supported by your browser.
 </audio>
-

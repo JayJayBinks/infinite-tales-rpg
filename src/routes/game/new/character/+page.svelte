@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { CharacterAgent, type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import {
+		CharacterAgent,
+		type CharacterDescription,
+		initialCharacterState
+	} from '$lib/ai/agents/characterAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
@@ -30,11 +34,14 @@
 	let characterAgent: CharacterAgent;
 	onMount(() => {
 		characterAgent = new CharacterAgent(
-			LLMProvider.provideLLM({
-				temperature: 2,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-			}, aiConfigState.value?.useFallbackLlmState)
+			LLMProvider.provideLLM(
+				{
+					temperature: 2,
+					apiKey: apiKeyState.value,
+					language: aiLanguage.value
+				},
+				aiConfigState.value?.useFallbackLlmState
+			)
 		);
 	});
 
@@ -181,7 +188,7 @@
 			<div class="m-auto flex w-full flex-col">
 				<AIGeneratedImage
 					storageKey="characterImageState"
-					resetImageState={resetImageState}
+					{resetImageState}
 					imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
 				/>
 			</div>

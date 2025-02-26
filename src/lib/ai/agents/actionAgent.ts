@@ -3,7 +3,12 @@ import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
-import { type Action, type GameActionState, type InventoryState, type Item } from '$lib/ai/agents/gameAgent';
+import {
+	type Action,
+	type GameActionState,
+	type InventoryState,
+	type Item
+} from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
 export class ActionAgent {
@@ -45,7 +50,8 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string
+		customSystemInstruction?: string,
+		storySummary?: string
 	): Promise<Action> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -54,7 +60,7 @@ export class ActionAgent {
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 
 		const agent = [
-			`You are RPG action agent, you are given a RPG story and one action the player wants to perform then determine difficulty, mp cost etc. considering the story, currently_present_npcs and character traits.
+			`You are RPG action agent, you are given a RPG story and one action the player wants to perform; Determine difficulty, resource cost etc. for this action; Consider the story, currently_present_npcs and character traits.
 				Action Rules:
 				- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
 				- For puzzles, the player —not the character— must solve them. Offer a set of possible actions, including both correct and incorrect choices.
@@ -77,11 +83,18 @@ export class ActionAgent {
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		const userMessage =
+
+		let userMessage =
 			'The player wants to perform following action, you must use these exact words as action text: ' +
 			action.text +
-			'\nDetermine the difficulty and mp cost with considering their personality, skills, items and following game state\n' +
+			'\nDetermine the difficulty and resource cost with considering their personality, skills, items, story summary and following game state\n' +
 			stringifyPretty(currentGameStateMapped);
+
+		if (storySummary) {
+			userMessage +=
+				'\n\nFollowing is a summary of the story so far, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
+				storySummary;
+		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
@@ -109,7 +122,8 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string
+		customSystemInstruction?: string,
+		storySummary?: string
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -141,11 +155,16 @@ export class ActionAgent {
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		const userMessage =
+		let userMessage =
 			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
+		if (storySummary) {
+			userMessage +=
+				'\nFollowing is a summary of the story so far, the actions must be possible in this context:\n' +
+				storySummary;
+		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
@@ -172,7 +191,8 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string
+		customSystemInstruction?: string,
+		storySummary?: string
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -184,17 +204,17 @@ export class ActionAgent {
 			'You are RPG action agent, you are given an item description and then suggest the actions the player character can take with that item, considering the story, currently_present_npcs and character traits.',
 			this.actionRules,
 			'The suggested actions must fit to the setting of the story:' +
-			'\n' +
-			stringifyPretty(storySettingsMapped),
+				'\n' +
+				stringifyPretty(storySettingsMapped),
 			'Suggest actions according to the following description of the character temper, e.g. acting smart or with force, ...' +
-			'\n' +
-			stringifyPretty(characterDescription),
+				'\n' +
+				stringifyPretty(characterDescription),
 			'As an action, the character could also combine the item with other items from the inventory:' +
-			'\n' +
-			stringifyPretty(inventoryState),
+				'\n' +
+				stringifyPretty(inventoryState),
 			'Consider the following character stats only for dice_roll modifiers' +
-			'\n' +
-			stringifyPretty(characterStatsMapped),
+				'\n' +
+				stringifyPretty(characterStatsMapped),
 			`Most important instruction! You must always respond with following JSON format! 
       [
 				${this.jsonFormat},
@@ -204,11 +224,17 @@ export class ActionAgent {
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		const userMessage =
-			'Suggest specific actions the CHARACTER can take with the item:\n' + stringifyPretty(item) +
+		let userMessage =
+			'Suggest specific actions the CHARACTER can take with the item:\n' +
+			stringifyPretty(item) +
 			'\nEach action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
+		if (storySummary) {
+			userMessage +=
+				'\nFollowing is a summary of the story so far, the actions must be possible in this context:\n' +
+				storySummary;
+		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,

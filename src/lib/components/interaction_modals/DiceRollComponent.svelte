@@ -104,8 +104,9 @@
 			<output>{action.difficulty_explanation}</output>
 			<output class="font-semibold"
 				>This action will cost <p class="text-blue-500">
-				{action.resource_cost?.cost} {action.resource_cost?.resource_key.replaceAll('_', ' ')}
-			</p></output
+					{action.resource_cost?.cost}
+					{action.resource_cost?.resource_key?.replaceAll('_', ' ')}
+				</p></output
 			>
 		{/if}
 		<button

@@ -106,7 +106,7 @@ const mainAgent =
 	'You are Pen & Paper campaign agent, crafting an epic, overarching campaign with chapters. Each chapter is an own adventure with an own climax and then fades gradually into the next chapter.\n' +
 	'Design the Campaign to gradually increase the complexity of chapters as the players progress.\n' +
 	'Include at least one major obstacle or antagonist in each chapter that ties into the overall campaign theme.\n' +
-	'Provide a vivid and in-depth description of the world\'s important details, including its geography, cultures, history, key events, technologies, political systems, and any unique elements that set it apart.\n' +
+	"Provide a vivid and in-depth description of the world's important details, including its geography, cultures, history, key events, technologies, political systems, and any unique elements that set it apart.\n" +
 	'Include important events, locations, NPCs and encounters that can adapt based on player choices, like alliances, moral dilemmas, or major battles.';
 
 export class CampaignAgent {
@@ -208,22 +208,23 @@ export class CampaignAgent {
 		chapterNumberToGenerate: number,
 		chapter: CampaignChapter
 	): Promise<CampaignChapter> {
-		const agentInstruction = [
-			mainAgent,
-			plotPointNumberPrompt
-		];
+		const agentInstruction = [mainAgent, plotPointNumberPrompt];
 		if (chapter) {
-			agentInstruction.push('Important instruction! The new chapter must be based on the following: ' +
-				stringifyPretty(chapter));
+			agentInstruction.push(
+				'Important instruction! The new chapter must be based on the following: ' +
+					stringifyPretty(chapter)
+			);
 		}
-		agentInstruction.push('The new chapter must fit within the other chapters, generate a chapter with chapterId: ' +
-			chapterNumberToGenerate);
-		agentInstruction.push('Always respond with following JSON!\n' +
-			chaptersPrompt);
+		agentInstruction.push(
+			'The new chapter must fit within the other chapters, generate a chapter with chapterId: ' +
+				chapterNumberToGenerate
+		);
+		agentInstruction.push('Always respond with following JSON!\n' + chaptersPrompt);
 
 		let userMessage = 'Generate the new chapter.';
 		if (chapter) {
-			userMessage += ' Important! The new chapter must be based on the following:\n' + stringifyPretty(chapter);
+			userMessage +=
+				' Important! The new chapter must be based on the following:\n' + stringifyPretty(chapter);
 		}
 		const request: LLMRequest = {
 			userMessage,

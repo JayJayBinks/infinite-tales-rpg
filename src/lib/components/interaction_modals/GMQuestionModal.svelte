@@ -31,6 +31,7 @@
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const storyState = useLocalStorage<Story>('storyState');
+	const storySummaryState = useLocalStorage<string>('storySummaryState');
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
@@ -43,11 +44,14 @@
 	let isGeneratingState: boolean = $state(false);
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM({
-			temperature: 0.7,
-			language: aiLanguage.value,
-			apiKey: apiKeyState.value,
-		}, aiConfigState.value?.useFallbackLlmState);
+		const llm = LLMProvider.provideLLM(
+			{
+				temperature: 0.7,
+				language: aiLanguage.value,
+				apiKey: apiKeyState.value
+			},
+			aiConfigState.value?.useFallbackLlmState
+		);
 		gameAgent = new GameAgent(llm);
 		memoryAgent = new MemoryAgent(llm);
 		isGeneratingState = true;
@@ -58,13 +62,14 @@
 			storyState.value,
 			characterState.value,
 			playerCharactersGameState,
-			inventoryState.value
+			inventoryState.value,
+			storySummaryState.value
 		);
 		memoriesState = await memoryAgent.getRelatedMemories(question);
 		console.log(stringifyPretty(memoriesState));
 		console.log(stringifyPretty(gmAnswerState));
 		isGeneratingState = false;
-		if(!gmAnswerState){
+		if (!gmAnswerState) {
 			onclose(false);
 		}
 	});
@@ -76,20 +81,24 @@
 	<dialog open class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
 		<div class="modal-box flex flex-col items-center text-center">
 			<span class="m-auto font-bold">Game Master Answer</span>
-			<p class="max-h-48 mt-4 overflow-y-scroll">{gmAnswerState?.answerToPlayer}</p>
-			<details class="collapse collapse-arrow textarea-bordered border bg-base-200 mt-4 overflow-y-scroll">
+			<p class="mt-4 max-h-48 overflow-y-scroll">{gmAnswerState?.answerToPlayer}</p>
+			<details
+				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
+			>
 				<summary class="collapse-title capitalize">
 					<p>Considered Game State</p>
 				</summary>
 				<p>{gmAnswerState?.game_state_considered || 'The AI did not return a response...'}</p>
 			</details>
-			<details class="collapse collapse-arrow textarea-bordered border bg-base-200 mt-4 overflow-y-scroll">
+			<details
+				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
+			>
 				<summary class="collapse-title capitalize">
 					<p>Considered Rules</p>
 				</summary>
 				<ul class="text-start">
 					{#each gmAnswerState?.rules_considered || [] as rule}
-						<li class="list-item mt-1 ml-2">
+						<li class="ml-2 mt-1 list-item">
 							{rule.startsWith('-') ? rule : '- ' + rule}
 						</li>
 					{/each}
