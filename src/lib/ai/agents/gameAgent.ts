@@ -29,12 +29,12 @@ export type Action = {
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: string;
 	resource_cost?: {
-		resource_key: string | undefined,
-		cost: number,
+		resource_key: string | undefined;
+		cost: number;
 	};
 } & DiceRollDifficulty;
 
-export type ResourcesWithCurrentValue =  {
+export type ResourcesWithCurrentValue = {
 	[resourceKey: string]: { max_value: number; current_value: number; game_ends_when_zero: boolean };
 };
 
@@ -53,12 +53,13 @@ export type GameActionState = {
 	stats_update: Array<StatsUpdate>;
 	is_character_in_combat: boolean;
 	currently_present_npcs: Targets;
+	story_memory_explanation: string;
 };
 export type GameMasterAnswer = {
-	answerToPlayer: string,
-	rules_considered: Array<string>,
-	game_state_considered: string
-}
+	answerToPlayer: string;
+	rules_considered: Array<string>;
+	game_state_considered: string;
+};
 
 export class GameAgent {
 	llm: LLM;
@@ -85,7 +86,8 @@ export class GameAgent {
 		storyState: Story,
 		characterState: CharacterDescription,
 		playerCharactersGameState: PlayerCharactersGameState,
-		inventoryState: InventoryState
+		inventoryState: InventoryState,
+		storySummary: string
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let playerActionText = action.characterName + ': ' + action.text;
 		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
@@ -95,8 +97,18 @@ export class GameAgent {
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
 		if (additionalStoryInput) combinedText += '\n\n' + additionalStoryInput;
-
-		const gameAgent = this.getGameAgentSystemInstructionsFromStates(storyState, characterState, playerCharactersGameState, inventoryState, customSystemInstruction);
+		if (storySummary) {
+			combinedText +=
+				'\n\nFollowing is a summary of the story so far, the next story progression must be consistent with it:\n' +
+				storySummary;
+		}
+		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
+			storyState,
+			characterState,
+			playerCharactersGameState,
+			inventoryState,
+			customSystemInstruction
+		);
 		gameAgent.push(jsonSystemInstructionForGameAgent);
 
 		console.log(combinedText);
@@ -123,42 +135,57 @@ export class GameAgent {
 		storyState: Story,
 		characterState: CharacterDescription,
 		playerCharactersGameState: PlayerCharactersGameState,
-		inventoryState: InventoryState
+		inventoryState: InventoryState,
+		storySummary: string
 	): Promise<GameMasterAnswer> {
-
-		const gameAgent = ['You are Reviewer Agent, your task is to answer a players question.\n' +
-		'You can refer to the internal state, rules and previous messages that the Game Master has considered',
-			jsonSystemInstructionForPlayerQuestion];
+		const gameAgent = [
+			'You are Reviewer Agent, your task is to answer a players question.\n' +
+				'You can refer to the internal state, rules and previous messages that the Game Master has considered',
+			jsonSystemInstructionForPlayerQuestion
+		];
 
 		const userMessage =
-			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question: ' + question +
-			'\nIn your answer, identify the relevant Game Master\'s rules that are related to the question:\n' +
-			'Game Master\'s rules:\n' +
-			this.getGameAgentSystemInstructionsFromStates(storyState, characterState, playerCharactersGameState, inventoryState, customSystemInstruction)
-				.join('\n');
+			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question: ' +
+			question +
+			(storySummary
+				? '\n\nFollowing is a summary of the story so far, consider it when answering the question:\n' +
+					storySummary
+				: '') +
+			"\n\nIn your answer, identify the relevant Game Master's rules that are related to the question:\n" +
+			"Game Master's rules:\n" +
+			this.getGameAgentSystemInstructionsFromStates(
+				storyState,
+				characterState,
+				playerCharactersGameState,
+				inventoryState,
+				customSystemInstruction
+			).join('\n');
 
 		const request: LLMRequest = {
 			userMessage: userMessage,
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		return (await this.llm.generateReasoningContent(request))
-			?.parsedObject as GameMasterAnswer;
+		return (await this.llm.generateReasoningContent(request))?.parsedObject as GameMasterAnswer;
 	}
 
-	private getGameAgentSystemInstructionsFromStates(storyState: Story, characterState: CharacterDescription,
-																									 playerCharactersGameState: PlayerCharactersGameState,
-																									 inventoryState: InventoryState, customSystemInstruction: string) {
+	private getGameAgentSystemInstructionsFromStates(
+		storyState: Story,
+		characterState: CharacterDescription,
+		playerCharactersGameState: PlayerCharactersGameState,
+		inventoryState: InventoryState,
+		customSystemInstruction: string
+	) {
 		const gameAgent = [
 			systemBehaviour,
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-			'\n' +
-			stringifyPretty(characterState),
-			'The following are the character\'s CURRENT resources, consider it in your response\n' +
-			stringifyPretty(playerCharactersGameState),
-			'The following is the character\'s inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n' +
-			stringifyPretty(inventoryState)
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are the character's CURRENT resources, consider it in your response\n" +
+				stringifyPretty(playerCharactersGameState),
+			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
+				stringifyPretty(inventoryState)
 		];
 		if (customSystemInstruction) {
 			gameAgent.push(customSystemInstruction);
@@ -179,14 +206,16 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function(userText: string, modelStateObject: GameActionState) {
+	buildHistoryMessages = function (userText: string, modelStateObject: GameActionState) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
 	};
 
 	static getRefillValue(maxResource: Resources[string]): number {
-		return maxResource.max_value === maxResource.start_value ? maxResource.max_value : maxResource.start_value;
+		return maxResource.max_value === maxResource.start_value
+			? maxResource.max_value
+			: maxResource.start_value;
 	}
 
 	static getRefillResourcesUpdateObject(
@@ -194,19 +223,19 @@ export class GameAgent {
 		currentResources: ResourcesWithCurrentValue,
 		playerName: string
 	): Pick<GameActionState, 'stats_update'> {
-
 		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
-		Object.entries(maxResources).filter(([resourceKey]) => resourceKey !== 'XP')
+		Object.entries(maxResources)
+			.filter(([resourceKey]) => resourceKey !== 'XP')
 			.forEach(([resourceKey, maxResource]) => {
 				const refillValue = GameAgent.getRefillValue(maxResource);
-				if(refillValue === 0){
+				if (refillValue === 0) {
 					return;
 				}
 				returnObject.stats_update.push({
 					sourceId: playerName,
 					targetId: playerName,
 					type: resourceKey + '_gained',
-					value: { result: (refillValue - (currentResources[resourceKey].current_value || 0)) || 0 }
+					value: { result: refillValue - (currentResources[resourceKey].current_value || 0) || 0 }
 				});
 			});
 		return returnObject;
@@ -246,6 +275,7 @@ The Game Master's General Responsibilities Include:
 - Craft varied NPCs, ranging from good to evil.
 
 Storytelling:
+- The story history always takes precedence over the story progression, if the history does not allow for the progression to happen, the progression must be adjusted to fit the history.
 - Keep story secrets until they are discovered by the player.
 - Introduce key characters and explore their initial thoughts, feelings, and relationships with one another. Showcase their emotions, motivations, and backstories. 
 - Encourage moments of introspection, dialogue, and quiet observation to develop a deeper understanding of the characters and the world they inhabit. 
@@ -286,6 +316,7 @@ const jsonSystemInstructionForGameAgent = `Important Instruction! You must alway
   "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
   "plotPointAdvancingNudgeExplanation": "Explain the currentPlotPoint and what could happen next to advance the story towards nextPlotPoint",
   "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${storyWordLimit} For character speech use single quotes. Format the different parts of the narration using HTML tags for easier reading.",
+  "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} longTermImpact: LOW, MEDIUM, HIGH",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
   "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
   ${statsUpdatePromptObject},

@@ -6,9 +6,7 @@
 		GameAgent,
 		type InventoryState,
 		type Item,
-		type PlayerCharactersGameState,
-		type ResourcesWithCurrentValue,
-		SLOW_STORY_PROMPT
+		type PlayerCharactersGameState
 	} from '$lib/ai/agents/gameAgent';
 	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
 	import { onMount, tick } from 'svelte';
@@ -21,8 +19,7 @@
 		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
-		type NPCState,
-		type Resources
+		type NPCState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
@@ -54,7 +51,7 @@
 	import SuggestedActionsModal from '$lib/components/interaction_modals/SuggestedActionsModal.svelte';
 	import type { AIConfig } from '$lib';
 	import { initializeMissingResources, refillResourcesFully } from './resourceLogic';
-	import { advanceChapterIfApplicable, getNextChapterPrompt, mapPlotStringToIds } from './campaignLogic';
+	import { advanceChapterIfApplicable, getNextChapterPrompt } from './campaignLogic';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -89,6 +86,7 @@
 	);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
+	const storySummaryState = useLocalStorage<string>('storySummaryState', '');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
 
@@ -191,7 +189,8 @@
 				characterState.value,
 				characterStatsState.value,
 				inventoryState.value,
-				customSystemInstruction.value
+				customSystemInstruction.value,
+				storySummaryState.value
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -228,7 +227,8 @@
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
-		combatAgent: CombatAgent
+		combatAgent: CombatAgent,
+		storySummary?: string
 	): Promise<{
 		additionalStoryInput: string;
 		determinedActionsAndStatsUpdate: ReturnType<typeof combatAgent.generateActionsFromContext>;
@@ -248,7 +248,8 @@
 			allNpcsDetailsAsList,
 			customSystemInstruction,
 			latestStoryMessages,
-			storyState
+			storyState,
+			storySummary
 		);
 
 		// Apply the action state update on the playerCharactersGameState (and related states)
@@ -340,7 +341,8 @@
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
 		combatAgent: CombatAgent,
-		useDynamicCombat: boolean
+		useDynamicCombat: boolean,
+		storySummary?: string
 	): Promise<{
 		additionalStoryInput: string;
 		allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
@@ -362,7 +364,8 @@
 					latestStoryMessages,
 					storyState,
 					playerCharactersGameState,
-					combatAgent
+					combatAgent,
+					storySummary
 				);
 				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
@@ -468,7 +471,8 @@
 			storyState.value,
 			playerCharactersGameState,
 			combatAgent,
-			useDynamicCombat.value
+			useDynamicCombat.value,
+			storySummaryState.value
 		);
 
 		// If there are defined campaign chapters, advance the chapter if applicable.
@@ -531,7 +535,8 @@
 			storyState.value,
 			characterState.value,
 			playerCharactersGameState,
-			inventoryState.value
+			inventoryState.value,
+			storySummaryState.value
 		);
 		didAIProcessActionState.value = true;
 
@@ -555,10 +560,14 @@
 			resetStatesAfterActionProcessed();
 
 			// Let the summary agent shorten the history, if needed.
-			historyMessagesState.value = await summaryAgent.summarizeStoryIfTooLong(
-				historyMessagesState.value
+			const { newHistory, summary } = await summaryAgent.summarizeStoryIfTooLong(
+				historyMessagesState.value,
+				gameActionsState.value
 			);
-
+			if (summary) {
+				storySummaryState.value = summary;
+			}
+			historyMessagesState.value = newHistory;
 			// Append the new game state to the game actions.
 			gameActionsState.value = [
 				...gameActionsState.value,
@@ -579,7 +588,8 @@
 						characterState.value,
 						characterStatsState.value,
 						inventoryState.value,
-						customSystemInstruction.value
+						customSystemInstruction.value,
+						storySummaryState.value
 					)
 					.then((actions) => {
 						if (actions) {
@@ -654,7 +664,13 @@
 			button.className += ' ' + addClass;
 		}
 		button.textContent = getTextForActionButton(action);
-		if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name], inventoryState.value)) {
+		if (
+			!isEnoughResource(
+				action,
+				playerCharactersGameState[characterState.value.name],
+				inventoryState.value
+			)
+		) {
 			button.disabled = true;
 		}
 		button.addEventListener('click', () => {
@@ -695,7 +711,8 @@
 			customSystemInstruction.value,
 			getLatestStoryMessages(),
 			characterState.value,
-			characterStatsState.value
+			characterStatsState.value,
+			storySummaryState.value
 		);
 		if (difficultyResponse) {
 			action = { ...action, ...difficultyResponse };
@@ -763,15 +780,22 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			customSystemInstruction.value
+			customSystemInstruction.value,
+			storySummaryState.value
 		);
-		console.log('action', stringifyPretty(action));
+		console.log('action', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };
 		chosenActionState.value = action;
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
-			if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name], inventoryState.value)) {
+			if (
+				!isEnoughResource(
+					action,
+					playerCharactersGameState[characterState.value.name],
+					inventoryState.value
+				)
+			) {
 				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
@@ -810,7 +834,6 @@
 		}
 		gmQuestionState = '';
 	};
-
 
 	function onDeleteItem(item_id: string): void {
 		delete inventoryState.value[item_id];
@@ -851,7 +874,7 @@
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
-		onDeleteItem={onDeleteItem}
+		{onDeleteItem}
 		playerName={characterState.value.name}
 		inventoryState={inventoryState.value}
 		storyImagePrompt={storyState.value.general_image_prompt}

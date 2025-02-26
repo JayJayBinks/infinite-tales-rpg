@@ -9,7 +9,7 @@ import {
 	type Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
-import type { NPCState, NPCStats, Resources } from '$lib/ai/agents/characterStatsAgent';
+import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
 
@@ -252,7 +252,8 @@ export function applyGameActionState(
 					if (!res) continue;
 					const gained = Number.parseInt(statUpdate.value.result) || 0;
 					if ((res.current_value || 0) + gained <= res.max_value) {
-						res.current_value = (res.current_value || 0) + (Number.parseInt(statUpdate.value.result) || 0);
+						res.current_value =
+							(res.current_value || 0) + (Number.parseInt(statUpdate.value.result) || 0);
 					} else {
 						res.current_value = res.max_value;
 					}
@@ -326,15 +327,23 @@ export function getGameEndedMessage() {
 	return 'Your Tale has come to an end...\\nThanks for playing Infinite Tales RPG!\\nYou can start a new Tale in the menu.';
 }
 
-export function isEnoughResource(action: Action, resources: ResourcesWithCurrentValue, inventory: InventoryState): boolean {
+export function isEnoughResource(
+	action: Action,
+	resources: ResourcesWithCurrentValue,
+	inventory: InventoryState
+): boolean {
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
-	if(cost === 0) {
+	if (cost === 0) {
 		return true;
 	}
-	const resourceKey = Object.keys(resources).find((key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase());
+	const resourceKey = Object.keys(resources).find(
+		(key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase()
+	);
 	let inventoryKey: string | undefined = undefined;
-	if(!resourceKey) {
-		inventoryKey = Object.keys(inventory).find((key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase());
+	if (!resourceKey) {
+		inventoryKey = Object.keys(inventory).find(
+			(key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase()
+		);
 		return !!inventoryKey;
 	}
 	return resources[resourceKey || '']?.current_value >= cost;

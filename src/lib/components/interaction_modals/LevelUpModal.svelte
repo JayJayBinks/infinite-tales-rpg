@@ -42,12 +42,15 @@
 
 	onMount(async () => {
 		characterStatsAgent = new CharacterStatsAgent(
-			LLMProvider.provideLLM({
-				temperature: 2,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-				,
-			}, aiConfigState.value?.useFallbackLlmState));
+			LLMProvider.provideLLM(
+				{
+					temperature: 2,
+					apiKey: apiKeyState.value,
+					language: aiLanguage.value
+				},
+				aiConfigState.value?.useFallbackLlmState
+			)
+		);
 		await generateLevelUp();
 	});
 
@@ -89,7 +92,9 @@
 			{#each Object.keys(aiLevelUp.resources) as resourceKey}
 				<p class="m-1 font-bold">{resourceKey.replaceAll('_', ' ')}:</p>
 				<p>
-					{characterStatsState.value.resources[resourceKey].max_value} -> {aiLevelUp.resources[resourceKey]}
+					{characterStatsState.value.resources[resourceKey].max_value} -> {aiLevelUp.resources[
+						resourceKey
+					]}
 				</p>
 			{/each}
 			{#if aiLevelUp.formerAbilityName}
@@ -100,7 +105,7 @@
 			<label class="form-control textarea-bordered mt-3 w-full border bg-base-200">
 				<div
 					class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
-					class="mt-4 grid grid-cols overflow-hidden overflow-ellipsis text-center"
+					class="grid-cols mt-4 grid overflow-hidden overflow-ellipsis text-center"
 				>
 					<div class="m-auto sm:col-span-3">
 						{#if !aiConfigState.value?.disableImagesState}
@@ -116,10 +121,15 @@
 							></AIGeneratedImage>
 						{/if}
 					</div>
-					<div class:sm:col-span-3={aiConfigState.value?.disableImagesState}
-						class="m-auto w-full sm:col-span-2">
+					<div
+						class:sm:col-span-3={aiConfigState.value?.disableImagesState}
+						class="m-auto w-full sm:col-span-2"
+					>
 						{#if aiLevelUp.ability.resource_cost?.cost > 0}
-							<p class="badge badge-info h-fit">{aiLevelUp.ability.resource_cost?.cost} {(aiLevelUp.ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}</p>
+							<p class="badge badge-info h-fit">
+								{aiLevelUp.ability.resource_cost?.cost}
+								{(aiLevelUp.ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}
+							</p>
 						{/if}
 						<p class="mt-2 overflow-hidden overflow-ellipsis">{aiLevelUp.ability.name}</p>
 					</div>

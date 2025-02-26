@@ -24,7 +24,10 @@
 
 	const importSettings = () => {
 		importJsonFromFile((parsed) => {
-			parsed.characterStatsState = migrateIfApplicable('characterStatsState', parsed.characterStatsState);
+			parsed.characterStatsState = migrateIfApplicable(
+				'characterStatsState',
+				parsed.characterStatsState
+			);
 			if (isSaveGame) {
 				Object.keys(parsed).forEach((key) => {
 					const state = migrateIfApplicable(key, parsed[key]);

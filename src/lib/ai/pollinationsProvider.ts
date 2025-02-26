@@ -49,7 +49,7 @@ export class PollinationsProvider extends LLM {
 			systemInstructions.push({ role: 'system', content: languageInstruction });
 		}
 
-		let temperature = Math.min(
+		const temperature = Math.min(
 			request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
 			this.getMaxTemperature()
 		);
@@ -59,10 +59,10 @@ export class PollinationsProvider extends LLM {
 			messages: [...systemInstructions, ...contents],
 			temperature,
 			model: this.model,
-			seed: Math.floor(Math.random() * 1000000),
-		}
-		if(this.model !== 'gemini-thinking' && this.model !== 'openai-reasoning'){
-			body.response_format =  { type: 'json_object' }
+			seed: Math.floor(Math.random() * 1000000)
+		};
+		if (this.model !== 'gemini-thinking' && this.model !== 'openai-reasoning') {
+			body.response_format = { type: 'json_object' };
 		}
 		let result;
 		try {
@@ -73,7 +73,7 @@ export class PollinationsProvider extends LLM {
 				},
 				body: JSON.stringify(body)
 			});
-			if(response.status === 500){
+			if (response.status === 500) {
 				throw new Error(await response.text());
 			}
 			result = response;
@@ -85,8 +85,8 @@ export class PollinationsProvider extends LLM {
 				const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
 				if (!fallbackResult) {
 					handleError(e as unknown as string);
-				}else{
-					if(this.model === 'openai'){
+				} else {
+					if (this.model === 'openai') {
 						fallbackResult.parsedObject['fallbackUsed'] = true;
 					}
 				}

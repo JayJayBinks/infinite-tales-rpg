@@ -15,7 +15,6 @@ function migrate051to06(key, state) {
 	return state;
 }
 
-
 function migrate062to07(key, state) {
 	if (key === 'characterStatsState') {
 		if (state.resources.MAX_HP) {
@@ -32,9 +31,9 @@ function migrate062to07(key, state) {
 			delete state.resources.MAX_HP;
 			delete state.resources.MAX_MP;
 		}
-		state.spells_and_abilities.forEach(spell => {	
-			if(spell.mp_cost) {	
-				spell.resource_cost = {cost: spell.mp_cost, resource_key: 'MP'};
+		state.spells_and_abilities.forEach((spell) => {
+			if (spell.mp_cost) {
+				spell.resource_cost = { cost: spell.mp_cost, resource_key: 'MP' };
 				delete spell.mp_cost;
 			}
 		});

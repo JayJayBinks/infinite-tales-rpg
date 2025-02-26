@@ -35,6 +35,7 @@
 	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
 	const npcState = useLocalStorage('npcState', []);
 	const storyState = useLocalStorage('storyState', initialStoryState);
+	const storySummaryState = useLocalStorage('storySummaryState');
 	const isGameEnded = useLocalStorage('isGameEnded', false);
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 	const campaignState = useLocalStorage('campaignState', initialCampaignState);
@@ -59,6 +60,7 @@
 		characterImageState.reset();
 		characterStatsState.reset();
 		storyState.reset();
+		storySummaryState.reset();
 		isGameEnded.reset();
 		rollDifferenceHistoryState.reset();
 		npcState.reset();
@@ -71,11 +73,14 @@
 
 	async function onQuickstartNew() {
 		clearStates();
-		const llm = LLMProvider.provideLLM({
-			temperature: 2,
-			apiKey: apiKeyState.value,
-			language: aiLanguage.value,
-		}, aiConfigState.value?.useFallbackLlmState);
+		const llm = LLMProvider.provideLLM(
+			{
+				temperature: 2,
+				apiKey: apiKeyState.value,
+				language: aiLanguage.value
+			},
+			aiConfigState.value?.useFallbackLlmState
+		);
 		const storyAgent = new StoryAgent(llm);
 		isGeneratingState = true;
 		const newStoryState = await storyAgent.generateRandomStorySettings();

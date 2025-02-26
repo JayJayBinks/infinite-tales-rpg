@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type CharacterStats, type Resources } from '$lib/ai/agents/characterStatsAgent';
+	import { type CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 	import { onMount } from 'svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
@@ -7,7 +7,13 @@
 	import type { LLMMessage } from '$lib/ai/llm';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
-	import type { Action, GameActionState, InventoryState, ItemWithId, ResourcesWithCurrentValue } from '$lib/ai/agents/gameAgent';
+	import type {
+		Action,
+		GameActionState,
+		InventoryState,
+		ItemWithId,
+		ResourcesWithCurrentValue
+	} from '$lib/ai/agents/gameAgent';
 	import { getTextForActionButton } from '$lib/util.svelte';
 	import { isEnoughResource } from '../../../routes/game/gameLogic';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
@@ -20,9 +26,9 @@
 		itemForSuggestActionsState
 	}: {
 		onclose?;
-		currentGameActionState: GameActionState
-		resources: ResourcesWithCurrentValue
-		itemForSuggestActionsState: ItemWithId
+		currentGameActionState: GameActionState;
+		resources: ResourcesWithCurrentValue;
+		itemForSuggestActionsState: ItemWithId;
 	} = $props();
 
 	const storyState = useLocalStorage<Story>('storyState');
@@ -35,6 +41,7 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const temperatureState = useLocalStorage<number>('temperatureState');
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const storySummaryState = useLocalStorage<string>('storySummaryState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let suggestedActions: Array<Action> = $state([]);
 	let customActionInput: string = $state('');
@@ -43,11 +50,14 @@
 	let actionAgent: ActionAgent;
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM({
-			temperature: temperatureState.value,
-			language: aiLanguage.value,
-			apiKey: apiKeyState.value
-		}, aiConfigState.value?.useFallbackLlmState);
+		const llm = LLMProvider.provideLLM(
+			{
+				temperature: temperatureState.value,
+				language: aiLanguage.value,
+				apiKey: apiKeyState.value
+			},
+			aiConfigState.value?.useFallbackLlmState
+		);
 		actionAgent = new ActionAgent(llm);
 
 		isGeneratingState = true;
@@ -59,7 +69,8 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			customSystemInstruction.value
+			customSystemInstruction.value,
+			storySummaryState.value
 		);
 		console.log('suggestedActions', suggestedActions);
 		isGeneratingState = false;
@@ -69,9 +80,11 @@
 <dialog open class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
 	<div class="modal-box flex flex-col items-center text-center">
 		<span class="m-auto font-bold">Suggested Actions</span>
-		<button onclick={() => onclose()} class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2">✕</button>
+		<button onclick={() => onclose()} class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2"
+			>✕</button
+		>
 		{#if isGeneratingState}
-			<div class="flex flex-col mt-2">
+			<div class="mt-2 flex flex-col">
 				<span class="m-auto">Generating actions...</span>
 				<div class="m-auto">
 					<LoadingIcon />
@@ -89,26 +102,26 @@
 				</button>
 			{/each}
 		{/if}
-		<div class="lg:join w-full mt-2">
+		<div class="mt-2 w-full lg:join">
 			<input
 				type="text"
 				bind:value={customActionInput}
 				class="input input-bordered w-full"
 				id="user-input"
-				placeholder='Custom action for item'
+				placeholder="Custom action for item"
 			/>
 			<button
 				type="submit"
-				onclick={() => onclose({
-					characterName: characterState.value.name,
-					text: 'Use item ' + itemForSuggestActionsState.item_id + " - " + customActionInput,
-					is_custom_action: true
-				})}
+				onclick={() =>
+					onclose({
+						characterName: characterState.value.name,
+						text: 'Use item ' + itemForSuggestActionsState.item_id + ' - ' + customActionInput,
+						is_custom_action: true
+					})}
 				class="btn btn-neutral w-full lg:w-1/4"
 				id="submit-button"
-			>Submit
+				>Submit
 			</button>
 		</div>
 	</div>
 </dialog>
-
