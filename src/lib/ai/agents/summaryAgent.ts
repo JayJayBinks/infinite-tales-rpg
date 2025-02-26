@@ -22,7 +22,7 @@ export class SummaryAgent {
 		numOfLastActions = 3 * 2
 	): Promise<{newHistory: Array<LLMMessage>; summary: string }> {
 		if (historyMessages.length < startSummaryAtSize) {
-			return { newHistory: historyMessages, summary: ''}};
+			return { newHistory: historyMessages, summary: ''};
 		}
 		const mostImportantEvents = gameActions
 			.filter((state) => state.story_memory_explanation?.includes('HIGH'))
