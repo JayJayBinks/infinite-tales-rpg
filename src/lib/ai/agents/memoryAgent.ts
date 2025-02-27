@@ -119,7 +119,7 @@ export class MemoryAgent {
 				.belowOrEqual(game_state_id - 10)
 				.toArray();
 		} else {
-			memories = await this.db.memories.toArray();
+			memories = await this.db.memories.where('memory').notEqual(text).toArray();
 		}
 
 		// For each memory, compute four similarity scores:
@@ -165,7 +165,7 @@ export class MemoryAgent {
 
 		// Sort by the combined score in descending order.
 		scoredMemories.sort((a, b) => b.highestScore - a.highestScore);
-		const similarityThreshold = 0.5968;
+		const similarityThreshold = 0.625;
 		const bestMatches = scoredMemories
 			.filter((item) => item.highestScore >= similarityThreshold)
 			.slice(0, maxResults)

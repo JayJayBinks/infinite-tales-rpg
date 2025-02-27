@@ -189,6 +189,9 @@
 		playerCharactersGameState = updatedPlayerCharactersGameState;
 		tick().then(() => customActionInput.scrollIntoView(false));
 		if (characterActionsState.value.length === 0) {
+			const relatedMemories = union(
+					currentGameActionState.story ? await memoryAgent.getRelatedMemories(currentGameActionState.story, currentGameActionState.id) : []	
+				);
 			characterActionsState.value = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
@@ -197,7 +200,7 @@
 				characterStatsState.value,
 				inventoryState.value,
 				customSystemInstruction.value,
-				storySummaryState.value
+				relatedMemories.join('\n')//storySummaryState.value
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -547,7 +550,8 @@
 			characterState.value,
 			playerCharactersGameState,
 			inventoryState.value,
-			storySummaryState.value
+			''
+			//storySummaryState.value
 		);
 		didAIProcessActionState.value = true;
 
@@ -797,6 +801,11 @@
 
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;
+		const relatedMemories = union(
+					action.text && action.text !== "Continue The Tale" ? await memoryAgent.getRelatedMemories(action.text, currentGameActionState.id) : [],
+					currentGameActionState.story ? await memoryAgent.getRelatedMemories(currentGameActionState.story, currentGameActionState.id) : []	
+				);
+
 		const generatedAction = await actionAgent.generateSingleAction(
 			action,
 			currentGameActionState,
@@ -806,7 +815,7 @@
 			characterStatsState.value,
 			inventoryState.value,
 			customSystemInstruction.value,
-			storySummaryState.value
+			relatedMemories.join('\n')
 		);
 		console.log('action', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };
