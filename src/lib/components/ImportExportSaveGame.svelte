@@ -3,6 +3,7 @@
 	import { downloadLocalStorageAsJson, importJsonFromFile } from '$lib/util.svelte';
 	import type { Snippet } from 'svelte';
 	import { migrateIfApplicable } from '$lib/state/versionMigration';
+	import type { RelatedStoryHistory } from '../../routes/game/memoryLogic';
 
 	let {
 		isSaveGame,
@@ -21,6 +22,8 @@
 	const difficultyState = useLocalStorage('difficultyState');
 	const useKarmicDice = useLocalStorage('useKarmicDice');
 	const useDynamicCombat = useLocalStorage('useDynamicCombat');
+	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>('relatedStoryHistoryState', { relatedDetails: [] });
+	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
 
 	const importSettings = () => {
 		importJsonFromFile((parsed) => {
@@ -28,6 +31,8 @@
 				'characterStatsState',
 				parsed.characterStatsState
 			);
+			relatedStoryHistoryState.reset();
+			relatedActionHistoryState.reset();
 			if (isSaveGame) {
 				Object.keys(parsed).forEach((key) => {
 					const state = migrateIfApplicable(key, parsed[key]);

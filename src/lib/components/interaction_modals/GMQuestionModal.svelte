@@ -3,6 +3,7 @@
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import {
 		GameAgent,
+		type GameActionState,
 		type GameMasterAnswer,
 		type InventoryState,
 		type PlayerCharactersGameState
@@ -14,6 +15,7 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { stringifyPretty } from '$lib/util.svelte';
 	import type { AIConfig } from '$lib';
+	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 
 	let {
 		onclose,
@@ -29,11 +31,11 @@
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const storyState = useLocalStorage<Story>('storyState');
-	const storySummaryState = useLocalStorage<string>('storySummaryState');
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState');
 
 	let gameAgent: GameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
@@ -49,7 +51,14 @@
 			aiConfigState.value?.useFallbackLlmState
 		);
 		gameAgent = new GameAgent(llm);
+		const summaryAgent = new SummaryAgent(llm);
 		isGeneratingState = true;
+		const relatedQuestionHistory = (
+			await summaryAgent.retrieveRelatedHistory(question, gameActionsState.value)
+		)?.relatedDetails
+			.filter((detail) => detail.relevanceScore >= 0.7)
+			.map((detail) => detail.storyReference);
+
 		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
 			customSystemInstruction.value,
@@ -58,7 +67,7 @@
 			characterState.value,
 			playerCharactersGameState,
 			inventoryState.value,
-			storySummaryState.value
+			relatedQuestionHistory
 		);
 		console.log(stringifyPretty(gmAnswerState));
 		isGeneratingState = false;

@@ -14,9 +14,10 @@
 	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
 	import type { AIConfig } from '$lib';
+	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const temperatureState = useLocalStorage<number>('temperatureState', 1.1);
+	const temperatureState = useLocalStorage<number>('temperatureState', 1);
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 
@@ -35,13 +36,18 @@
 	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
 	const npcState = useLocalStorage('npcState', []);
 	const storyState = useLocalStorage('storyState', initialStoryState);
-	const storySummaryState = useLocalStorage('storySummaryState');
 	const isGameEnded = useLocalStorage('isGameEnded', false);
 	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
 	const campaignState = useLocalStorage('campaignState', initialCampaignState);
 	const currentChapterState = useLocalStorage('currentChapterState');
 	const characterActionsState = useLocalStorage('characterActionsState');
-	let levelUpState = useLocalStorage('levelUpState');
+	const levelUpState = useLocalStorage('levelUpState');
+
+	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
+		'relatedStoryHistoryState',
+		{ relatedDetails: [] }
+	);
+	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
 
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	let ttsVoices: Voice[] = $state([]);
@@ -60,7 +66,6 @@
 		characterImageState.reset();
 		characterStatsState.reset();
 		storyState.reset();
-		storySummaryState.reset();
 		isGameEnded.reset();
 		rollDifferenceHistoryState.reset();
 		npcState.reset();
@@ -69,6 +74,8 @@
 		currentChapterState.reset();
 		characterActionsState.reset();
 		levelUpState.reset();
+		relatedStoryHistoryState.reset();
+		relatedActionHistoryState.reset();
 	}
 
 	async function onQuickstartNew() {

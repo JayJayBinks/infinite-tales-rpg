@@ -58,8 +58,7 @@ export class PollinationsProvider extends LLM {
 		const body: any = {
 			messages: [...systemInstructions, ...contents],
 			temperature,
-			model: this.model,
-			seed: Math.floor(Math.random() * 1000000)
+			model: this.model
 		};
 		if (this.model !== 'gemini-thinking' && this.model !== 'openai-reasoning') {
 			body.response_format = { type: 'json_object' };

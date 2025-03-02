@@ -50,8 +50,7 @@ export class CombatAgent {
 		npcsList: Array<object>,
 		customSystemInstruction: string,
 		historyMessages: Array<LLMMessage>,
-		storyState: Story,
-		storySummary?: string
+		storyState: Story
 	) {
 		const agent = [
 			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
@@ -72,7 +71,7 @@ export class CombatAgent {
                     {
                       "sourceId": "NPC id or player character name, who is the initiator of this action",
                       "targetId": "NPC id or player character name, whose stats must be updated. if sourceId targets self then same as sourceId",
-                      "text": "description of the action the NPC takes",
+					  "text": "description of the action the NPC takes",
                       "explanation": "Short explanation for the reason of this action"
                     },
                     ...
@@ -82,12 +81,6 @@ export class CombatAgent {
 		];
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
-		}
-		if (storySummary) {
-			agent.push(
-				'\nFollowing is a summary of the story so far, consider it when deciding the actions:\n' +
-					storySummary
-			);
 		}
 		const actionToSend =
 			'player character named ' +

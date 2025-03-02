@@ -41,7 +41,6 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const temperatureState = useLocalStorage<number>('temperatureState');
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
-	const storySummaryState = useLocalStorage<string>('storySummaryState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let suggestedActions: Array<Action> = $state([]);
 	let customActionInput: string = $state('');
@@ -69,8 +68,7 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			customSystemInstruction.value,
-			storySummaryState.value
+			customSystemInstruction.value
 		);
 		console.log('suggestedActions', suggestedActions);
 		isGeneratingState = false;

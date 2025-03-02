@@ -51,7 +51,7 @@ export class ActionAgent {
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
 		customSystemInstruction?: string,
-		storySummary?: string
+		relatedHistory?: string[]
 	): Promise<Action> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -90,10 +90,10 @@ export class ActionAgent {
 			'\nDetermine the difficulty and resource cost with considering their personality, skills, items, story summary and following game state\n' +
 			stringifyPretty(currentGameStateMapped);
 
-		if (storySummary) {
+		if (relatedHistory && relatedHistory.length > 0) {
 			userMessage +=
-				'\n\nFollowing is a summary of the story so far, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
-				storySummary;
+				'\n\nFollowing are related story history details, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
+				relatedHistory.join('\n');
 		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
@@ -122,8 +122,7 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string,
-		storySummary?: string
+		customSystemInstruction?: string
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -160,11 +159,6 @@ export class ActionAgent {
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
-		if (storySummary) {
-			userMessage +=
-				'\nFollowing is a summary of the story so far, the actions must be possible in this context:\n' +
-				storySummary;
-		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
@@ -191,8 +185,7 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string,
-		storySummary?: string
+		customSystemInstruction?: string
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -230,11 +223,6 @@ export class ActionAgent {
 			'\nEach action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
-		if (storySummary) {
-			userMessage +=
-				'\nFollowing is a summary of the story so far, the actions must be possible in this context:\n' +
-				storySummary;
-		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,

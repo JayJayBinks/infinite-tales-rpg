@@ -87,7 +87,7 @@ export class GameAgent {
 		characterState: CharacterDescription,
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
-		storySummary: string
+		relatedHistory: string[]
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let playerActionText = action.characterName + ': ' + action.text;
 		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
@@ -97,10 +97,10 @@ export class GameAgent {
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
 		if (additionalStoryInput) combinedText += '\n\n' + additionalStoryInput;
-		if (storySummary) {
+		if (relatedHistory.length > 0) {
 			combinedText +=
-				'\n\nFollowing is a summary of the story so far, the next story progression must be consistent with it:\n' +
-				storySummary;
+				'\n\nFollowing are related story history details, the next story progression must be consistent with it:\n' +
+				relatedHistory.join('\n');
 		}
 		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
 			storyState,
@@ -136,7 +136,7 @@ export class GameAgent {
 		characterState: CharacterDescription,
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
-		storySummary: string
+		relatedHistory: string[]
 	): Promise<GameMasterAnswer> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
@@ -144,13 +144,9 @@ export class GameAgent {
 			jsonSystemInstructionForPlayerQuestion
 		];
 
-		const userMessage =
-			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question: ' +
+		let userMessage =
+			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question:\n' +
 			question +
-			(storySummary
-				? '\n\nFollowing is a summary of the story so far, consider it when answering the question:\n' +
-					storySummary
-				: '') +
 			"\n\nIn your answer, identify the relevant Game Master's rules that are related to the question:\n" +
 			"Game Master's rules:\n" +
 			this.getGameAgentSystemInstructionsFromStates(
@@ -160,7 +156,11 @@ export class GameAgent {
 				inventoryState,
 				customSystemInstruction
 			).join('\n');
-
+		if (relatedHistory.length > 0) {
+			userMessage +=
+				'\n\nFollowing are related story history details, consider it when answering the question:\n' +
+				relatedHistory.join('\n');
+		}
 		const request: LLMRequest = {
 			userMessage: userMessage,
 			historyMessages: historyMessages,

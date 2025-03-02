@@ -52,7 +52,8 @@
 	import type { AIConfig } from '$lib';
 	import { initializeMissingResources, refillResourcesFully } from './resourceLogic';
 	import { advanceChapterIfApplicable, getNextChapterPrompt } from './campaignLogic';
-
+	import { getRelatedHistory } from './memoryLogic';
+	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -86,7 +87,8 @@
 	);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
-	const storySummaryState = useLocalStorage<string>('storySummaryState', '');
+	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>('relatedStoryHistoryState', { relatedDetails: [] });
+	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
 
@@ -154,6 +156,9 @@
 			...$state.snapshot(characterStatsState.value.resources),
 			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
 		};
+		if (relatedStoryHistoryState.value.relatedDetails.length === 0) {
+			getRelatedHistoryForStory();
+		}
 
 		// Start game when not already started
 		if (!currentGameActionState?.story) {
@@ -189,8 +194,7 @@
 				characterState.value,
 				characterStatsState.value,
 				inventoryState.value,
-				customSystemInstruction.value,
-				storySummaryState.value
+				customSystemInstruction.value
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -227,8 +231,7 @@
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
-		combatAgent: CombatAgent,
-		storySummary?: string
+		combatAgent: CombatAgent
 	): Promise<{
 		additionalStoryInput: string;
 		determinedActionsAndStatsUpdate: ReturnType<typeof combatAgent.generateActionsFromContext>;
@@ -248,8 +251,7 @@
 			allNpcsDetailsAsList,
 			customSystemInstruction,
 			latestStoryMessages,
-			storyState,
-			storySummary
+			storyState
 		);
 
 		// Apply the action state update on the playerCharactersGameState (and related states)
@@ -341,8 +343,7 @@
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
 		combatAgent: CombatAgent,
-		useDynamicCombat: boolean,
-		storySummary?: string
+		useDynamicCombat: boolean
 	): Promise<{
 		additionalStoryInput: string;
 		allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
@@ -364,8 +365,7 @@
 					latestStoryMessages,
 					storyState,
 					playerCharactersGameState,
-					combatAgent,
-					storySummary
+					combatAgent
 				);
 				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
@@ -404,6 +404,8 @@
 		chosenActionState.reset();
 		additionalStoryInputState.reset();
 		characterActionsState.reset();
+		relatedActionHistoryState.reset();
+		relatedStoryHistoryState.reset();
 		if (actionsDiv) actionsDiv.innerHTML = '';
 		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
@@ -471,8 +473,7 @@
 			storyState.value,
 			playerCharactersGameState,
 			combatAgent,
-			useDynamicCombat.value,
-			storySummaryState.value
+			useDynamicCombat.value
 		);
 
 		// If there are defined campaign chapters, advance the chapter if applicable.
@@ -519,6 +520,7 @@
 	async function processStoryProgression(
 		action: Action,
 		additionalStoryInput: string,
+		relatedHistory: string[],
 		combatAndNPCState: {
 			additionalStoryInput: string;
 			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
@@ -536,7 +538,7 @@
 			characterState.value,
 			playerCharactersGameState,
 			inventoryState.value,
-			storySummaryState.value
+			relatedHistory
 		);
 		didAIProcessActionState.value = true;
 
@@ -561,12 +563,8 @@
 
 			// Let the summary agent shorten the history, if needed.
 			const { newHistory, summary } = await summaryAgent.summarizeStoryIfTooLong(
-				historyMessagesState.value,
-				gameActionsState.value
+				historyMessagesState.value
 			);
-			if (summary) {
-				storySummaryState.value = summary;
-			}
 			historyMessagesState.value = newHistory;
 			// Append the new game state to the game actions.
 			gameActionsState.value = [
@@ -579,6 +577,7 @@
 			isGameEnded.value = await checkGameEnded(isGameEnded.value);
 
 			if (!isGameEnded.value) {
+				getRelatedHistoryForStory();
 				// Generate the next set of actions.
 				actionAgent
 					.generateActions(
@@ -588,8 +587,7 @@
 						characterState.value,
 						characterStatsState.value,
 						inventoryState.value,
-						customSystemInstruction.value,
-						storySummaryState.value
+						customSystemInstruction.value
 					)
 					.then((actions) => {
 						if (actions) {
@@ -603,10 +601,31 @@
 		}
 	}
 
+	function getRelatedHistoryForStory() {
+		summaryAgent
+			.retrieveRelatedHistory(currentGameActionState.story, gameActionsState.value, 2)
+			.then((relatedHistory) => {
+				if (relatedHistory) {
+					relatedStoryHistoryState.value = relatedHistory;
+				} else {
+					relatedStoryHistoryState.reset();
+				}
+			});
+	}
 	// Main sendAction function that orchestrates the action processing.
 	async function sendAction(action: Action, rollDice = false, additionalStoryInput = '') {
 		try {
 			if (rollDice) {
+				if (relatedActionHistoryState.value.length === 0) {
+					getRelatedHistory(
+						action,
+						gameActionsState.value,
+						summaryAgent,
+						$state.snapshot(relatedStoryHistoryState.value)
+					).then((relatedHistory) => {
+						relatedActionHistoryState.value = relatedHistory;
+					});
+				}
 				openDiceRollDialog(additionalStoryInput);
 			} else {
 				isAiGeneratingState = true;
@@ -616,9 +635,21 @@
 					action,
 					additionalStoryInput
 				);
-
+				if (relatedActionHistoryState.value.length === 0) {
+					relatedActionHistoryState.value = await getRelatedHistory(
+						action,
+						gameActionsState.value,
+						summaryAgent,
+						$state.snapshot(relatedStoryHistoryState.value)
+					);
+				}
 				// Process the AI story progression and update game state
-				await processStoryProgression(action, finalAdditionalStoryInput, combatAndNPCState);
+				await processStoryProgression(
+					action,
+					finalAdditionalStoryInput,
+					relatedActionHistoryState.value,
+					combatAndNPCState
+				);
 
 				isAiGeneratingState = false;
 			}
@@ -706,13 +737,19 @@
 		if (targets?.length > 0 && !targets.includes('No specific target')) {
 			targetAddition = targets?.length === 0 ? '' : gameLogic.getTargetPromptAddition(targets);
 		}
+		relatedActionHistoryState.value = await getRelatedHistory(
+			action,
+			gameActionsState.value,
+			summaryAgent,
+			$state.snapshot(relatedStoryHistoryState.value)
+		);
 		const difficultyResponse = await difficultyAgent.generateDifficulty(
 			action.text + targetAddition,
 			customSystemInstruction.value,
 			getLatestStoryMessages(),
 			characterState.value,
 			characterStatsState.value,
-			storySummaryState.value
+			relatedActionHistoryState.value
 		);
 		if (difficultyResponse) {
 			action = { ...action, ...difficultyResponse };
@@ -772,6 +809,13 @@
 
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;
+		const relatedHistoryDetails = await getRelatedHistory(
+			action,
+			gameActionsState.value,
+			summaryAgent,
+			relatedStoryHistoryState.value
+		);
+		console.log('relatedHistoryDetails', stringifyPretty(relatedHistoryDetails));
 		const generatedAction = await actionAgent.generateSingleAction(
 			action,
 			currentGameActionState,
@@ -781,7 +825,7 @@
 			characterStatsState.value,
 			inventoryState.value,
 			customSystemInstruction.value,
-			storySummaryState.value
+			relatedHistoryDetails
 		);
 		console.log('action', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };

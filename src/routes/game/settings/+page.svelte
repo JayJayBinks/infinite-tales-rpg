@@ -9,7 +9,6 @@
 	let useKarmicDice = useLocalStorage<boolean>('useKarmicDice', true);
 	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
-	const storySummaryState = useLocalStorage<string>('storySummaryState');
 
 	const taleSettingsClicked = () => {
 		if (campaignState.value?.chapters.length > 0) {
@@ -75,13 +74,4 @@
 	<button class="btn btn-neutral mt-2 w-3/4 sm:w-1/2" onclick={taleSettingsClicked}>
 		View Tale Settings
 	</button>
-	<label class="form-control mt-2 w-full">
-		<p>Tale Summary (free to edit)</p>
-		<textarea
-			rows={5}
-			placeholder="Summary will be created automatically after each 12 actions"
-			bind:value={storySummaryState.value}
-			class="textarea textarea-bordered mt-2 w-full"
-		></textarea>
-	</label>
 </form>

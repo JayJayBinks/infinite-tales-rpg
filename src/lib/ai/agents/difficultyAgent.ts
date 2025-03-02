@@ -26,7 +26,7 @@ export class DifficultyAgent {
 		historyMessages: Array<LLMMessage>,
 		characterState: CharacterDescription,
 		characterStats: CharacterStats,
-		storySummary?: string
+		relatedActionHistory: string[]
 	): Promise<DiceRollDifficulty> {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['spells_and_abilities']: _, ...characterStatsStateMapped } = characterStats;
@@ -56,10 +56,10 @@ export class DifficultyAgent {
 			agent.push(customSystemInstruction);
 		}
 		let userMessage = actionText;
-		if (storySummary) {
+		if (relatedActionHistory.length > 0) {
 			userMessage +=
-				'\nFollowing is a summary of the story so far, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
-				storySummary;
+				'\nFollowing are related story history details, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
+				relatedActionHistory.join('\n');
 		}
 		const request: LLMRequest = {
 			userMessage: userMessage,
