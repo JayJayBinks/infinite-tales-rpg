@@ -154,7 +154,7 @@ export class ActionAgent {
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		let userMessage =
+		const userMessage =
 			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
@@ -217,7 +217,7 @@ export class ActionAgent {
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		let userMessage =
+		const userMessage =
 			'Suggest specific actions the CHARACTER can take with the item:\n' +
 			stringifyPretty(item) +
 			'\nEach action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +

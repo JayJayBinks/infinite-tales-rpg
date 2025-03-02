@@ -2,7 +2,9 @@ import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { GameActionState } from './gameAgent';
 
-export type RelatedStoryHistory = { relatedDetails: { storyReference: string; relevanceScore: number }[] }
+export type RelatedStoryHistory = {
+	relatedDetails: { storyReference: string; relevanceScore: number }[];
+};
 
 export class SummaryAgent {
 	llm: LLM;

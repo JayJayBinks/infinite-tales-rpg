@@ -1,6 +1,5 @@
 import type { GameActionState } from '$lib/ai/agents/gameAgent';
 import type { SummaryAgent, RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
-import { stringifyPretty } from '$lib/util.svelte';
 import type { Action } from '$lib/ai/agents/gameAgent';
 
 export const getRelatedHistory = async (

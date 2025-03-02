@@ -87,7 +87,10 @@
 	);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
-	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>('relatedStoryHistoryState', { relatedDetails: [] });
+	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
+		'relatedStoryHistoryState',
+		{ relatedDetails: [] }
+	);
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
