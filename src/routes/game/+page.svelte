@@ -53,6 +53,7 @@
 	import GMQuestionModal from '$lib/components/interaction_modals/GMQuestionModal.svelte';
 	import SuggestedActionsModal from '$lib/components/interaction_modals/SuggestedActionsModal.svelte';
 	import type { AIConfig } from '$lib';
+	import ResourcesComponent from '$lib/components/ResourcesComponent.svelte';
 
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
@@ -126,11 +127,14 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM({
-			temperature: temperatureState.value,
-			language: aiLanguage.value,
-			apiKey: apiKeyState.value
-		}, aiConfigState.value?.useFallbackLlmState);
+		const llm = LLMProvider.provideLLM(
+			{
+				temperature: temperatureState.value,
+				language: aiLanguage.value,
+				apiKey: apiKeyState.value
+			},
+			aiConfigState.value?.useFallbackLlmState
+		);
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);
 		combatAgent = new CombatAgent(llm);
@@ -160,10 +164,7 @@
 				text: gameAgent.getStartingPrompt()
 			});
 			// Initialize all resources when the game is first started.
-			refillResourcesFully(
-				characterStatsState.value.resources,
-				currentCharacterName
-			);
+			refillResourcesFully(characterStatsState.value.resources, currentCharacterName);
 		} else {
 			// Apply previously saved game actions
 			gameLogic.applyGameActionStates(
@@ -176,14 +177,12 @@
 			const missingResources: Resources = Object.entries(characterStatsState.value.resources)
 				.filter(
 					([resourceKey]) =>
-						playerCharactersGameState[currentCharacterName][resourceKey]?.current_value === undefined
+						playerCharactersGameState[currentCharacterName][resourceKey]?.current_value ===
+						undefined
 				)
 				.reduce((acc, [resourceKey, resource]) => ({ ...acc, [resourceKey]: resource }), {});
 			if (Object.keys(missingResources).length > 0) {
-				refillResourcesFully(
-					missingResources,
-					currentCharacterName
-				);
+				refillResourcesFully(missingResources, currentCharacterName);
 			}
 			tick().then(() => customActionInput.scrollIntoView(false));
 			if (characterActionsState.value.length === 0) {
@@ -205,10 +204,7 @@
 		checkForLevelUp();
 	});
 
-	function refillResourcesFully(
-		maxResources: Resources,
-		playerName: string,
-	) {
+	function refillResourcesFully(maxResources: Resources, playerName: string) {
 		//first apply the difference in the update log
 		const statsUpdate = gameAgent.getRefillResourcesUpdateObject(
 			maxResources,
@@ -227,7 +223,7 @@
 			const currentValue = playerCharactersGameState[playerName][key]?.current_value || 0;
 			newResources[key] = {
 				...maxResources[key],
-				current_value: refillValue >= currentValue ? refillValue : currentValue,
+				current_value: refillValue >= currentValue ? refillValue : currentValue
 			};
 		}
 
@@ -361,9 +357,8 @@
 			});
 		}
 		//calculate again as dying action could also be a rescue in some cases
-		isGameEnded.value = Object.values(playerCharactersGameState[characterState.value.name]).some(
-			(v) => v.game_ends_when_zero && v.current_value <= 0
-		);
+		isGameEnded.value =
+			getEmptyCriticalResourceKeys(playerCharactersGameState[characterState.value.name]).length > 0;
 	}
 
 	function resetStatesAfterActionProcessed() {
@@ -645,7 +640,13 @@
 			button.className += ' ' + addClass;
 		}
 		button.textContent = getTextForActionButton(action);
-		if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name], inventoryState.value)) {
+		if (
+			!isEnoughResource(
+				action,
+				playerCharactersGameState[characterState.value.name],
+				inventoryState.value
+			)
+		) {
 			button.disabled = true;
 		}
 		button.addEventListener('click', () => {
@@ -717,10 +718,7 @@
 			};
 		}
 		levelUpState.reset();
-		refillResourcesFully(
-			characterStatsState.value.resources,
-			characterState.value.name
-		);
+		refillResourcesFully(characterStatsState.value.resources, characterState.value.name);
 		checkForLevelUp();
 	};
 
@@ -735,10 +733,6 @@
 		}
 		itemForSuggestActionsState = undefined;
 	};
-
-	function getCurrentXPText() {
-		return `XP: ${playerCharactersGameState[characterState.value.name]?.XP.current_value}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
-	}
 
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;
@@ -758,7 +752,13 @@
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
-			if (!isEnoughResource(action, playerCharactersGameState[characterState.value.name], inventoryState.value)) {
+			if (
+				!isEnoughResource(
+					action,
+					playerCharactersGameState[characterState.value.name],
+					inventoryState.value
+				)
+			) {
 				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
@@ -797,7 +797,6 @@
 		}
 		gmQuestionState = '';
 	};
-
 
 	function onDeleteItem(item_id: string): void {
 		delete inventoryState.value[item_id];
@@ -838,7 +837,7 @@
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
-		onDeleteItem={onDeleteItem}
+		{onDeleteItem}
 		playerName={characterState.value.name}
 		inventoryState={inventoryState.value}
 		storyImagePrompt={storyState.value.general_image_prompt}
@@ -860,24 +859,10 @@
 		action={chosenActionState.value}
 		resetState={didAIProcessDiceRollActionState.value}
 	></DiceRollComponent>
-	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
-		{#each Object.entries(playerCharactersGameState[characterState.value.name] || {}) as [resourceKey, resourceValue] (resourceKey)}
-			{#if resourceKey === 'XP'}
-				<output id="XP" class="ml-1 w-full text-lg font-semibold text-green-500 lg:w-fit">
-					{getCurrentXPText()}
-				</output>
-			{:else}
-				<output
-					class="ml-1 w-full text-lg font-semibold capitalize lg:w-fit"
-					class:text-red-500={resourceValue.game_ends_when_zero}
-					class:text-blue-500={!resourceValue.game_ends_when_zero}
-				>
-					{resourceKey.replaceAll('_', ' ')}: {resourceValue.current_value ||
-						0}/{resourceValue.max_value}
-				</output>
-			{/if}
-		{/each}
-	</div>
+	<ResourcesComponent
+		resources={playerCharactersGameState[characterState.value.name]}
+		currentLevel={characterStatsState.value?.level}
+	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		<!-- For proper updating, need to use gameActionsState.id as each block id -->
 		{#each gameActionsState.value.slice(-3) as gameActionState (gameActionState.id)}
