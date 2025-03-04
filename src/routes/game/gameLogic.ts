@@ -86,6 +86,8 @@ function getColorForStatUpdate(mappedType: string, resources: ResourcesWithCurre
 	let color = '';
 	if (mappedType.includes('XP')) color = 'text-green-500';
 	if (mappedType.includes('LEVEL')) color = 'text-green-500';
+	if (mappedType.includes('HP')) color = 'text-red-500';
+	if (mappedType.includes('MP')) color = 'text-blue-500';
 	if (!color) {
 		const foundResourceEntry = Object.entries(resources).find((res) => {
 			const processedKey = res[0].replaceAll('_', ' ').toUpperCase();

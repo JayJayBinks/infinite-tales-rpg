@@ -244,6 +244,7 @@
 
 		const determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(
 			playerAction,
+			playerCharactersGameState[characterState.value.name],
 			inventoryState.value,
 			allNpcsDetailsAsList,
 			customSystemInstruction.value,
