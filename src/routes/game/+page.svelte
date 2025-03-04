@@ -50,6 +50,8 @@
 	import GMQuestionModal from '$lib/components/interaction_modals/GMQuestionModal.svelte';
 	import SuggestedActionsModal from '$lib/components/interaction_modals/SuggestedActionsModal.svelte';
 	import type { AIConfig } from '$lib';
+	import ResourcesComponent from '$lib/components/ResourcesComponent.svelte';
+
 	import { initializeMissingResources, refillResourcesFully } from './resourceLogic';
 	import { advanceChapterIfApplicable, getNextChapterPrompt } from './campaignLogic';
 	import { getRelatedHistory } from './memoryLogic';
@@ -201,7 +203,6 @@
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
-
 		if (!didAIProcessDiceRollActionState.value) {
 			openDiceRollDialog(additionalStoryInputState.value);
 		}
@@ -250,6 +251,7 @@
 		// Compute the determined combat actions and stats update.
 		const determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(
 			playerAction,
+			playerCharactersGameState[characterState.value.name],
 			inventoryState,
 			allNpcsDetailsAsList,
 			customSystemInstruction,
@@ -397,9 +399,8 @@
 			});
 		}
 		//calculate again as dying action could also be a rescue in some cases
-		endGame = Object.values(playerCharactersGameState[characterState.value.name]).some(
-			(v) => v.game_ends_when_zero && v.current_value <= 0
-		);
+		endGame =
+			getEmptyCriticalResourceKeys(playerCharactersGameState[characterState.value.name]).length > 0;
 		return endGame;
 	}
 
@@ -784,8 +785,7 @@
 		}
 		levelUpState.reset();
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
-			$state.snapshot(characterStatsState.value.resources),
-			$state.snapshot(characterState.value.name),
+			$state.snapshot(characterStatsState.value.resources), $state.snapshot(characterState.value.name),
 			$state.snapshot(gameActionsState.value),
 			$state.snapshot(playerCharactersGameState)
 		);
@@ -805,10 +805,6 @@
 		}
 		itemForSuggestActionsState = undefined;
 	};
-
-	function getCurrentXPText() {
-		return `XP: ${playerCharactersGameState[characterState.value.name]?.XP.current_value}/${getXPNeededForLevel(characterStatsState.value?.level)}`;
-	}
 
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;
@@ -943,24 +939,10 @@
 		action={chosenActionState.value}
 		resetState={didAIProcessDiceRollActionState.value}
 	></DiceRollComponent>
-	<div class="menu menu-horizontal sticky top-0 z-10 flex justify-between bg-base-200">
-		{#each Object.entries(playerCharactersGameState[characterState.value.name] || {}) as [resourceKey, resourceValue] (resourceKey)}
-			{#if resourceKey === 'XP'}
-				<output id="XP" class="ml-1 w-full text-lg font-semibold text-green-500 lg:w-fit">
-					{getCurrentXPText()}
-				</output>
-			{:else}
-				<output
-					class="ml-1 w-full text-lg font-semibold capitalize lg:w-fit"
-					class:text-red-500={resourceValue.game_ends_when_zero}
-					class:text-blue-500={!resourceValue.game_ends_when_zero}
-				>
-					{resourceKey.replaceAll('_', ' ')}: {resourceValue.current_value ||
-						0}/{resourceValue.max_value}
-				</output>
-			{/if}
-		{/each}
-	</div>
+	<ResourcesComponent
+		resources={playerCharactersGameState[characterState.value.name]}
+		currentLevel={characterStatsState.value?.level}
+	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		<!-- For proper updating, need to use gameActionsState.id as each block id -->
 		{#each gameActionsState.value.slice(-3) as gameActionState (gameActionState.id)}
