@@ -58,46 +58,47 @@
 			<label class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
 					<summary class="collapse-title capitalize">
-						<div
-							class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
-							class:grid-cols-2={!aiConfigState.value?.disableImagesState}
-							class:grid-cols-1={aiConfigState.value?.disableImagesState}
-							class="grid overflow-hidden overflow-ellipsis text-center"
-						>
-							{#if !aiConfigState.value?.disableImagesState}
-								<div class="m-auto sm:col-span-3">
+						<div class="flex flex-col h-full justify-between text-center">
+							<!-- Top: Badge always at the top -->
+							<div>
+								{#if ability.resource_cost?.cost > 0}
+									<p class="badge badge-info h-fit break-all overflow-auto">
+										{ability.resource_cost?.cost} {(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}
+									</p>
+								{/if}
+							</div>
+
+							<!-- Middle: Image (if enabled) and ability name -->
+							<div class="flex flex-col mt-3 items-center">
+								{#if !aiConfigState.value?.disableImagesState}
 									<AIGeneratedImage
 										noLogo={true}
 										enhance={false}
 										imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-										imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-											ability,
-											storyImagePrompt
-										)}
+										imagePrompt={CharacterStatsAgent.getSpellImagePrompt(ability, storyImagePrompt)}
 										showGenerateButton={false}
-									></AIGeneratedImage>
-								</div>
-							{/if}
-							<div class="m-auto w-full sm:col-span-2">
-								{#if ability.resource_cost?.cost > 0}
-									<p class="badge badge-info h-fit">{ability.resource_cost?.cost} {(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}</p>
+									/>
 								{/if}
 								<p class="mt-2 overflow-hidden overflow-ellipsis">{ability.name}</p>
+							</div>
+
+							<!-- Bottom: Cast Button always at the bottom -->
+							<div>
 								<button
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
-									disabled={ability.resource_cost?.cost > 0
-														&& ability.resource_cost?.cost > resources[ability.resource_cost.resource_key || '']?.current_value}
+									disabled={ability.resource_cost?.cost > 0 && ability.resource_cost?.cost > resources[ability.resource_cost?.resource_key || '']?.current_value}
 									onclick={() => {
-										mapAbilityToAction(ability);
-										dialogRef.close();
-										targetModalRef.showModal();
-									}}
+        mapAbilityToAction(ability);
+        dialogRef.close();
+        targetModalRef.showModal();
+      }}
 								>
 									Cast
 								</button>
 							</div>
 						</div>
+
 					</summary>
 					<div class="collapse-content">
 						<p class="m-5 mt-2">
