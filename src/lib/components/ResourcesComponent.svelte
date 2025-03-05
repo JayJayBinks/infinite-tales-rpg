@@ -57,7 +57,7 @@
 			</output>
 		{:else}
 			<output
-				class="text-center text-lg font-semibold capitalize"
+				class="overflow-auto text-center text-lg font-semibold capitalize"
 				class:text-end={isDisplayedInGrid}
 				class:mr-3={isDisplayedInGrid}
 				class:text-red-500={resourceValue.game_ends_when_zero}

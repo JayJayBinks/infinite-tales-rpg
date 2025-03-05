@@ -785,7 +785,8 @@
 		}
 		levelUpState.reset();
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
-			$state.snapshot(characterStatsState.value.resources), $state.snapshot(characterState.value.name),
+			$state.snapshot(characterStatsState.value.resources),
+			$state.snapshot(characterState.value.name),
 			$state.snapshot(gameActionsState.value),
 			$state.snapshot(playerCharactersGameState)
 		);
