@@ -6,10 +6,18 @@ export const getRelatedHistory = async (
 	action: Action,
 	gameActions: GameActionState[],
 	summaryAgent: SummaryAgent,
-	relatedStoryHistoryState?: RelatedStoryHistory
+	relatedStoryHistoryState?: RelatedStoryHistory,
+	customMemories?: string
 ) => {
 	let relatedHistory: string[] = [];
 	const relatedHistoryWithRelevance: RelatedStoryHistory = { relatedDetails: [] };
+	if(customMemories){
+		relatedHistoryWithRelevance.relatedDetails.push({
+				storyReference: customMemories,
+				relevanceScore: 2 //overrules other memories if conflicting
+			}
+		);
+	}
 	relatedHistoryWithRelevance.relatedDetails.push(
 		...(relatedStoryHistoryState?.relatedDetails || [])
 	);

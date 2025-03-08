@@ -96,12 +96,14 @@ export class GameAgent {
 		}
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
-		if (additionalStoryInput) combinedText += '\n\n' + additionalStoryInput;
 		if (relatedHistory.length > 0) {
 			combinedText +=
-				'\n\nFollowing are related story history details, the next story progression must be consistent with it:\n' +
+				'\n\nFollowing are related story history details, the next story progression must be consistent with it;\n' +
+				//make sure custom player history takes precedence
+				'If historical details contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored:\n' +
 				relatedHistory.join('\n');
 		}
+		if (additionalStoryInput) combinedText += '\n\n' + additionalStoryInput;
 		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
 			storyState,
 			characterState,
@@ -312,9 +314,8 @@ Always review context from system instructions and my last message before respon
 const jsonSystemInstructionForGameAgent = `Important Instruction! You must always respond with valid JSON in the following format:
 {
   "currentPlotPoint": Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
-  "nextPlotPoint": Identify the next plotId according to ADVENTURE_AND_MAIN_EVENT, must be greater than currentPlotPoint or null if there is no next plot point; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
   "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
-  "plotPointAdvancingNudgeExplanation": "Explain the currentPlotPoint and what could happen next to advance the story towards nextPlotPoint",
+  "plotPointAdvancingNudgeExplanation": "Explain what could happen next to advance the story towards nextPlotId according to ADVENTURE_AND_MAIN_EVENT; Include brief explanation of nextPlotId; Format "currentPlotId: {plotId}; nextPlotId: {currentPlotId + 1}; {Reasoning}",
   "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${storyWordLimit} For character speech use single quotes. Format the different parts of the narration using HTML tags for easier reading.",
   "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} longTermImpact: LOW, MEDIUM, HIGH",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",

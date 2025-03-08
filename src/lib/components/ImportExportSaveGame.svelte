@@ -3,7 +3,7 @@
 	import { downloadLocalStorageAsJson, importJsonFromFile } from '$lib/util.svelte';
 	import type { Snippet } from 'svelte';
 	import { migrateIfApplicable } from '$lib/state/versionMigration';
-	import type { RelatedStoryHistory } from '../../routes/game/memoryLogic';
+	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 
 	let {
 		isSaveGame,

@@ -9,6 +9,7 @@
 	let useKarmicDice = useLocalStorage<boolean>('useKarmicDice', true);
 	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
+	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 
 	const taleSettingsClicked = () => {
 		if (campaignState.value?.chapters.length > 0) {
@@ -74,4 +75,13 @@
 	<button class="btn btn-neutral mt-2 w-3/4 sm:w-1/2" onclick={taleSettingsClicked}>
 		View Tale Settings
 	</button>
+	<label class="form-control mt-2 w-full">
+		<p>Custom Tale Memories</p>
+		<textarea
+			rows={3}
+			placeholder="If the AI forgets important events during the Tale, you can enter custom memories here. This text will be added to every action, don't make it too long."
+			bind:value={customMemoriesState.value}
+			class="textarea textarea-bordered mt-2 w-full"
+		></textarea>
+	</label>
 </form>

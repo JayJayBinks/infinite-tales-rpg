@@ -48,10 +48,11 @@ export async function advanceChapterIfApplicable(
 			campaignDeviations = await campaignAgent.checkCampaignDeviations(
 				action,
 				campaignState,
-				historyMessages
+				historyMessages,
 			);
 			console.log(JSON.stringify(campaignDeviations, null, 2));
-			if (campaignDeviations && campaignDeviations.deviation > 70) {
+			//TODO disabled for now as it tries to reintroduce the campaign plot, lets see if memory system can handle this better
+			if (campaignDeviations && campaignDeviations.deviation > 150) { // > 70
 				newAdditionalStoryInput +=
 					'\n' +
 					campaignDeviations.plotNudge.nudgeExplanation +

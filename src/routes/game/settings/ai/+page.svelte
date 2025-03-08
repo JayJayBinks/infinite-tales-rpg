@@ -42,6 +42,7 @@
 	const currentChapterState = useLocalStorage('currentChapterState');
 	const characterActionsState = useLocalStorage('characterActionsState');
 	const levelUpState = useLocalStorage('levelUpState');
+	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 
 	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
 		'relatedStoryHistoryState',
@@ -76,6 +77,7 @@
 		levelUpState.reset();
 		relatedStoryHistoryState.reset();
 		relatedActionHistoryState.reset();
+		customMemoriesState.reset();
 	}
 
 	async function onQuickstartNew() {

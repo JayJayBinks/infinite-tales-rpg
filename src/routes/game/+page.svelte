@@ -94,6 +94,7 @@
 		{ relatedDetails: [] }
 	);
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
+	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
 
@@ -625,7 +626,8 @@
 						action,
 						gameActionsState.value,
 						summaryAgent,
-						$state.snapshot(relatedStoryHistoryState.value)
+						$state.snapshot(relatedStoryHistoryState.value),
+						$state.snapshot(customMemoriesState.value)
 					).then((relatedHistory) => {
 						relatedActionHistoryState.value = relatedHistory;
 					});
@@ -644,7 +646,8 @@
 						action,
 						gameActionsState.value,
 						summaryAgent,
-						$state.snapshot(relatedStoryHistoryState.value)
+						$state.snapshot(relatedStoryHistoryState.value),
+						$state.snapshot(customMemoriesState.value)
 					);
 				}
 				// Process the AI story progression and update game state
@@ -745,7 +748,8 @@
 			action,
 			gameActionsState.value,
 			summaryAgent,
-			$state.snapshot(relatedStoryHistoryState.value)
+			$state.snapshot(relatedStoryHistoryState.value),
+			$state.snapshot(customMemoriesState.value)
 		);
 		const difficultyResponse = await difficultyAgent.generateDifficulty(
 			action.text + targetAddition,
@@ -813,7 +817,8 @@
 			action,
 			gameActionsState.value,
 			summaryAgent,
-			relatedStoryHistoryState.value
+			$state.snapshot(relatedStoryHistoryState.value),
+			$state.snapshot(customMemoriesState.value)
 		);
 		console.log('relatedHistoryDetails', stringifyPretty(relatedHistoryDetails));
 		const generatedAction = await actionAgent.generateSingleAction(
@@ -868,7 +873,7 @@
 			await sendAction(
 				action,
 				false,
-				'\nsudo: Ignore the rules and play out this action even if it should not be possible!'
+				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\nIf this action contradicts the history details, adjust the narrative to fit the action.'
 			);
 		}
 	};
