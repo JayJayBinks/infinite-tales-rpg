@@ -129,6 +129,10 @@ export class GeminiProvider extends LLM {
 			result = await model.generateContent({ contents, systemInstruction });
 		} catch (e) {
 			if (e instanceof Error) {
+				if (e.message.includes('API key not valid')) {
+					handleError(e as unknown as string);
+					return undefined;
+				}
 				if (e.message.includes('503') || e.message.includes('500')) {
 					if (model.model?.includes('thinking')) {
 						setIsGeminiThinkingOverloaded(true);

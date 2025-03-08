@@ -61,6 +61,15 @@
 	let storyAgent: StoryAgent | undefined = $state();
 
 	onMount(async () => {
+		if(apiKeyState.value) {
+			provideLLM();
+		}
+		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
+			a.Locale === b.Locale ? 0 : a.Locale.includes(navigator.language) ? -1 : 1
+		);
+	});
+
+	const provideLLM = () => {
 		llm = LLMProvider.provideLLM(
 			{
 				temperature: 2,
@@ -70,10 +79,14 @@
 			aiConfigState.value?.useFallbackLlmState
 		);
 		storyAgent = new StoryAgent(llm);
-		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
-			a.Locale === b.Locale ? 0 : a.Locale.includes(navigator.language) ? -1 : 1
-		);
-	});
+	}
+
+	const onQuickstartClicked = () => {
+		provideLLM();
+		if(apiKeyState.value){
+			quickstartModalOpen = true;
+		}
+	};
 
 	function clearStates() {
 		historyMessagesState.reset();
@@ -189,7 +202,7 @@
 			></small
 		>
 	</label>
-	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={() => (quickstartModalOpen = true)}>
+	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={onQuickstartClicked}>
 		Quickstart:<br />New Tale
 	</button>
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
