@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { navigate, parseState, playAudioFromStream } from '$lib/util.svelte';
+	import { handleError, navigate, parseState, playAudioFromStream } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
-	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
+	import {
+		CharacterStatsAgent,
+		initialCharacterStatsState
+	} from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
@@ -96,47 +99,52 @@
 		clearStates();
 		isGeneratingState = true;
 		let newStoryState;
-		if (story && isPlainObject(story)) {
-			newStoryState = story as Story;
-		} else {
-			const overwriteStory = !story ? {} : { adventure_and_main_event: story as string };
-			newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
-		}
-		if (newStoryState) {
-			storyState.value = newStoryState;
-			const characterAgent = new CharacterAgent(llm);
-			const newCharacterState = await characterAgent.generateCharacterDescription(
-				$state.snapshot(storyState.value)
-			);
-			if (newCharacterState) {
-				characterState.value = newCharacterState;
-				const characterStatsAgent = new CharacterStatsAgent(llm);
-				const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(
-					storyState.value,
-					characterState.value,
-					{
-						resources: {
-							HP: { max_value: 0, game_ends_when_zero: true },
-							MP: { max_value: 0, game_ends_when_zero: false }
-						}
-					}
+		try {
+			if (story && isPlainObject(story)) {
+				newStoryState = story as Story;
+			} else {
+				const overwriteStory = !story ? {} : { adventure_and_main_event: story as string };
+				newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
+			}
+			if (newStoryState) {
+				storyState.value = newStoryState;
+				const characterAgent = new CharacterAgent(llm);
+				const newCharacterState = await characterAgent.generateCharacterDescription(
+					$state.snapshot(storyState.value)
 				);
-				parseState(newCharacterStatsState);
-				if (newCharacterStatsState) {
-					newCharacterStatsState.spells_and_abilities =
-						newCharacterStatsState.spells_and_abilities.map((ability) => ({
-							...ability,
-							resource_cost: ability.resource_cost
-								? ability.resource_cost
-								: { cost: 0, resource_key: undefined }
-						}));
-					characterStatsState.value = newCharacterStatsState;
-					await goto('/game');
+				if (newCharacterState) {
+					characterState.value = newCharacterState;
+					const characterStatsAgent = new CharacterStatsAgent(llm);
+					const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(
+						storyState.value,
+						characterState.value,
+						{
+							resources: {
+								HP: { max_value: 0, game_ends_when_zero: true },
+								MP: { max_value: 0, game_ends_when_zero: false }
+							}
+						}
+					);
+					parseState(newCharacterStatsState);
+					if (newCharacterStatsState) {
+						newCharacterStatsState.spells_and_abilities =
+							newCharacterStatsState.spells_and_abilities.map((ability) => ({
+								...ability,
+								resource_cost: ability.resource_cost
+									? ability.resource_cost
+									: { cost: 0, resource_key: undefined }
+							}));
+						characterStatsState.value = newCharacterStatsState;
+						quickstartModalOpen = false;
+						await goto('/game');
+					}
 				}
 			}
+			isGeneratingState = false;
+		} catch (e) {
+			isGeneratingState = false;
+			handleError(e);
 		}
-		quickstartModalOpen = false;
-		isGeneratingState = false;
 	}
 
 	function onStartCustom() {
@@ -171,7 +179,7 @@
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2"
-		>View the
+			>View the
 			<a
 				target="_blank"
 				href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
@@ -230,7 +238,7 @@
 		>
 		</textarea>
 		<small class="m-auto mt-2"
-		>You may have to start a new Tale after setting the instruction.</small
+			>You may have to start a new Tale after setting the instruction.</small
 		>
 	</label>
 	<label class="form-control mt-3 w-full sm:w-2/3">
@@ -266,7 +274,7 @@
 			onclick={() => {
 				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
 			}}
-		>Test Voice
+			>Test Voice
 		</button>
 		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
 			{#each ttsVoices as v}
@@ -286,7 +294,7 @@
 			class="range mt-2"
 		/>
 		<small class="m-auto mt-2"
-		>Higher temperature makes the AI more creative, but also errors more likely</small
+			>Higher temperature makes the AI more creative, but also errors more likely</small
 		>
 	</label>
 </form>

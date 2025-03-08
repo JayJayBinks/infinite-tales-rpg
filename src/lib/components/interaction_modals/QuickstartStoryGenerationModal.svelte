@@ -51,15 +51,14 @@
 	<div class="modal-box flex flex-col items-center">
 		<span class="m-auto">Tale Description</span>
 		<button class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2" onclick={onclose}
-		>✕
-		</button
-		>
+			>✕
+		</button>
 
 		<textarea
 			bind:value={storyDescription}
 			class="textarea textarea-bordered mt-3 w-full"
 			rows="5"
-			oninput={() => storyState = undefined}
+			oninput={() => (storyState = undefined)}
 			placeholder="Type your idea or let the AI generate one.
 By entering an idea and click Generate Idea, the AI will enhance what you entered."
 		>
