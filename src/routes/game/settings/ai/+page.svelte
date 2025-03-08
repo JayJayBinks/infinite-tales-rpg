@@ -182,7 +182,7 @@
 		>
 	</label>
 	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={() => (quickstartModalOpen = true)}>
-		Quickstart:<br />New Random Tale
+		Quickstart:<br />New Tale
 	</button>
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
 	<button
