@@ -3,7 +3,7 @@
 	import { navigate, parseState, playAudioFromStream } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { initialStoryState, StoryAgent } from '$lib/ai/agents/storyAgent';
+	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
 	import {
@@ -15,18 +15,19 @@
 	import { onMount } from 'svelte';
 	import type { AIConfig } from '$lib';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
+	import QuickstartStoryGenerationModal from '$lib/components/interaction_modals/QuickstartStoryGenerationModal.svelte';
+	import type { LLM } from '$lib/ai/llm';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1);
-	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
-
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
 		disableImagesState: false,
 		useFallbackLlmState: false
 	});
+	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 
 	const gameActionsState = useLocalStorage('gameActionsState', []);
 	const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -54,7 +55,20 @@
 	let ttsVoices: Voice[] = $state([]);
 	let isGeneratingState = $state(false);
 
+	let quickstartModalOpen = $state(false);
+	let llm: LLM;
+	let storyAgent: StoryAgent | undefined = $state();
+
 	onMount(async () => {
+		llm = LLMProvider.provideLLM(
+			{
+				temperature: 2,
+				apiKey: apiKeyState.value,
+				language: aiLanguage.value
+			},
+			aiConfigState.value?.useFallbackLlmState
+		);
+		storyAgent = new StoryAgent(llm);
 		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
 			a.Locale === b.Locale ? 0 : a.Locale.includes(navigator.language) ? -1 : 1
 		);
@@ -80,19 +94,14 @@
 		customMemoriesState.reset();
 	}
 
-	async function onQuickstartNew() {
+	async function onQuickstartNew(story: string | undefined) {
 		clearStates();
-		const llm = LLMProvider.provideLLM(
-			{
-				temperature: 2,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
-		const storyAgent = new StoryAgent(llm);
 		isGeneratingState = true;
-		const newStoryState = await storyAgent.generateRandomStorySettings();
+		let overwriteStory: Partial<Story> = {};
+		if (story) {
+			overwriteStory = { adventure_and_main_event: story };
+		}
+		const newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 		if (newStoryState) {
 			storyState.value = newStoryState;
 			const characterAgent = new CharacterAgent(llm);
@@ -126,6 +135,7 @@
 				}
 			}
 		}
+		quickstartModalOpen = false;
 		isGeneratingState = false;
 	}
 
@@ -140,6 +150,13 @@
 	}
 </script>
 
+{#if quickstartModalOpen}
+	<QuickstartStoryGenerationModal
+		{storyAgent}
+		onsubmit={onQuickstartNew}
+		onclose={() => (quickstartModalOpen = false)}
+	/>
+{/if}
 {#if isGeneratingState}
 	<LoadingModal loadingText="Creating Your New Tale..." />
 {/if}
@@ -164,7 +181,7 @@
 			></small
 		>
 	</label>
-	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={onQuickstartNew}>
+	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={() => (quickstartModalOpen = true)}>
 		Quickstart:<br />New Random Tale
 	</button>
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>

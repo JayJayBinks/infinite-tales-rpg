@@ -11,12 +11,11 @@ export const getRelatedHistory = async (
 ) => {
 	let relatedHistory: string[] = [];
 	const relatedHistoryWithRelevance: RelatedStoryHistory = { relatedDetails: [] };
-	if(customMemories){
+	if (customMemories) {
 		relatedHistoryWithRelevance.relatedDetails.push({
-				storyReference: customMemories,
-				relevanceScore: 2 //overrules other memories if conflicting
-			}
-		);
+			storyReference: customMemories,
+			relevanceScore: 2 //overrules other memories if conflicting
+		});
 	}
 	relatedHistoryWithRelevance.relatedDetails.push(
 		...(relatedStoryHistoryState?.relatedDetails || [])

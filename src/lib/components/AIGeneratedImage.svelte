@@ -10,7 +10,7 @@
 		buttonClassesString = 'btn-md',
 		showLoadingSpinner = true,
 		noLogo = false,
-		enhance = true,
+		enhance = false,
 		onClickGenerate = () => {},
 		resetImageState = false,
 		imagePrompt = '',
