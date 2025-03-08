@@ -6,10 +6,7 @@
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
-	import {
-		CharacterStatsAgent,
-		initialCharacterStatsState
-	} from '$lib/ai/agents/characterStatsAgent';
+	import { CharacterStatsAgent, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
@@ -17,6 +14,7 @@
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import QuickstartStoryGenerationModal from '$lib/components/interaction_modals/QuickstartStoryGenerationModal.svelte';
 	import type { LLM } from '$lib/ai/llm';
+	import isPlainObject from 'lodash.isplainobject';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1);
@@ -94,14 +92,16 @@
 		customMemoriesState.reset();
 	}
 
-	async function onQuickstartNew(story: string | undefined) {
+	async function onQuickstartNew(story: string | Story | undefined) {
 		clearStates();
 		isGeneratingState = true;
-		let overwriteStory: Partial<Story> = {};
-		if (story) {
-			overwriteStory = { adventure_and_main_event: story };
+		let newStoryState;
+		if (story && isPlainObject(story)) {
+			newStoryState = story as Story;
+		} else {
+			const overwriteStory = !story ? {} : { adventure_and_main_event: story as string };
+			newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 		}
-		const newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 		if (newStoryState) {
 			storyState.value = newStoryState;
 			const characterAgent = new CharacterAgent(llm);
@@ -171,7 +171,7 @@
 			class="input input-bordered mt-2"
 		/>
 		<small class="m-auto mt-2"
-			>View the
+		>View the
 			<a
 				target="_blank"
 				href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
@@ -230,7 +230,7 @@
 		>
 		</textarea>
 		<small class="m-auto mt-2"
-			>You may have to start a new Tale after setting the instruction.</small
+		>You may have to start a new Tale after setting the instruction.</small
 		>
 	</label>
 	<label class="form-control mt-3 w-full sm:w-2/3">
@@ -266,7 +266,7 @@
 			onclick={() => {
 				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
 			}}
-			>Test Voice
+		>Test Voice
 		</button>
 		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
 			{#each ttsVoices as v}
@@ -286,7 +286,7 @@
 			class="range mt-2"
 		/>
 		<small class="m-auto mt-2"
-			>Higher temperature makes the AI more creative, but also errors more likely</small
+		>Higher temperature makes the AI more creative, but also errors more likely</small
 		>
 	</label>
 </form>
