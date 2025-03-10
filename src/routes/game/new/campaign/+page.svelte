@@ -30,7 +30,7 @@
 	let campaignAgent: CampaignAgent;
 
 	const campaignState = useLocalStorage<Campaign>('campaignState', initialCampaignState);
-	const storyState = useLocalStorage<Story>('storyState');
+	const storyState = useLocalStorage<Story>('storyState', {} as Story);
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const textAreaRowsDerived = $derived(getRowsForTextarea(campaignState.value));
 	let campaignStateOverwrites = $state({});
