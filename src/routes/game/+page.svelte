@@ -95,7 +95,12 @@
 			const oldState = $state.snapshot(dynamicGameState.value);
 			dynamicGameState.value = storyProgression.newState;
 			historyMessagesState.value = storyProgression.updatedHistoryMessages;
-			window.gameState = storyProgression.newState;
+			if(storyProgression.newState.gameState){
+				window.gameState = storyProgression.newState.gameState;
+			}else{
+				window.gameState = storyProgression.newState;
+			}
+
 
 			if (!compareObjectKeys(oldState, storyProgression.newState).areSame) {
 				await generateUIData();
@@ -103,6 +108,9 @@
 				window.location.reload();
 			}
 			isAiGeneratingState = false;
+		}else{
+			isAiGeneratingState = false;
+			handleError('Game Master did not return a new game state');
 		}
 	};
 

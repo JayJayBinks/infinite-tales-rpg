@@ -20,7 +20,7 @@ export const defaultGPT4JsonConfig: GenerationConfig = {
 
 export class PollinationsProvider extends LLM {
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
-	model = 'deepseek-r1';
+	model = 'openai-thinking';
 
 	constructor(llmConfig: LLMconfig) {
 		super(llmConfig);
@@ -173,6 +173,10 @@ export class PollinationsProvider extends LLM {
 			case 'openai':
 				return this.parseOpenAI(response, autoFixJson);
 			case 'openai-large':
+				return this.parseOpenAI(response, autoFixJson);
+				case 'openai-thinking':
+				return this.parseOpenAI(response, autoFixJson);
+			default:
 				return this.parseOpenAI(response, autoFixJson);
 		}
 	}
