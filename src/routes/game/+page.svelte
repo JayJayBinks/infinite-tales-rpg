@@ -813,14 +813,14 @@
 
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;
-		const relatedHistoryDetails = await getRelatedHistory(
+		relatedActionHistoryState.value = await getRelatedHistory(
 			action,
 			gameActionsState.value,
 			summaryAgent,
 			$state.snapshot(relatedStoryHistoryState.value),
 			$state.snapshot(customMemoriesState.value)
 		);
-		console.log('relatedHistoryDetails', stringifyPretty(relatedHistoryDetails));
+		console.log('relatedHistoryDetails', stringifyPretty($state.snapshot(relatedStoryHistoryState.value)));
 		const generatedAction = await actionAgent.generateSingleAction(
 			action,
 			currentGameActionState,
@@ -830,7 +830,7 @@
 			characterStatsState.value,
 			inventoryState.value,
 			customSystemInstruction.value,
-			relatedHistoryDetails
+			relatedActionHistoryState.value
 		);
 		console.log('action', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };

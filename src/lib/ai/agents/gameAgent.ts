@@ -96,6 +96,8 @@ export class GameAgent {
 		}
 		const playerActionTextForHistory = playerActionText;
 		let combinedText = playerActionText;
+		if (additionalStoryInput) combinedText += '\n' + additionalStoryInput;
+
 		if (relatedHistory.length > 0) {
 			combinedText +=
 				'\n\nFollowing are related story history details, the next story progression must be consistent with it;\n' +
@@ -103,7 +105,6 @@ export class GameAgent {
 				'If historical details contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored:\n' +
 				relatedHistory.join('\n');
 		}
-		if (additionalStoryInput) combinedText += '\n\n' + additionalStoryInput;
 		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
 			storyState,
 			characterState,
@@ -257,7 +258,7 @@ export class GameAgent {
 	}
 }
 
-const storyWordLimit = 'must be between 100 and 150 words, do not exceed this range.';
+const storyWordLimit = 'must be between 100 and 180 words, do not exceed this range.';
 
 export const SLOW_STORY_PROMPT =
 	'Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.';
@@ -307,7 +308,7 @@ NPC Interactions:
 - Creating and speaking as all NPCs in the GAME, which are complex and can have intelligent conversations.
 - Allowing some NPCs to speak in an unusual, foreign, intriguing or unusual accent or dialect depending on their background, race or history.
 - Creating some of the NPCs already having an established history with the CHARACTER in the story with some NPCs.
-- When the player character speaks to an NPC always include the NPC response
+- When the player character interacts with a NPC you must always include the NPC response within the same story progression
 
 Always review context from system instructions and my last message before responding.`;
 

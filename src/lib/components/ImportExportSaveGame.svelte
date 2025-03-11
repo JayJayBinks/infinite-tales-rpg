@@ -52,8 +52,8 @@
 				difficultyState.value = parsed.difficultyState;
 				useKarmicDice.value = parsed.useKarmicDice;
 				useDynamicCombat.value = parsed.useDynamicCombat;
-				window.location.reload();
 			}
+			window.location.reload();
 		});
 	};
 </script>
