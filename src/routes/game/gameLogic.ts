@@ -50,11 +50,13 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 		return false;
 	}
 
+	//TODO this only works for english but can stay for now
 	const listOfDiceRollingActions = ['attempt', 'try', 'seek', 'search', 'investigate'];
 	const includesTrying = listOfDiceRollingActions.some((value) => actionText.includes(value));
 	if (
 		action.type?.toLowerCase() === 'social_manipulation' ||
-		action.type?.toLowerCase() === 'spell'
+		action.type?.toLowerCase() === 'spell' ||
+		action.type?.toLowerCase() === 'investigation'
 	) {
 		return true;
 	}

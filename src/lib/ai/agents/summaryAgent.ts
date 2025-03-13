@@ -62,10 +62,11 @@ export class SummaryAgent {
 			return { relatedDetails: [] };
 		}
 		const agent =
-			'Scan the FULL STORY HISTORY and identify any SPECIFIC STORY REFERENCES from past events that are HIGHLY RELEVANT to the current STORY PROGRESSION. Focus on details that will help maintain consistency and plausibility.' +
-			'\nThe RELEVANT REFERENCES must be only relevant to the current STORY PROGRESSION and not the whole story.\n' +
-			'\nList the RELEVANT STORY REFERENCES including narration details from the story history.\n' +
-			'\nAlways respond with following JSON! {"relatedDetails": [{"storyReference": string, "relevanceScore": 0-1}] array length ' +
+			'Scan the FULL STORY HISTORY and identify any SPECIFIC STORY REFERENCES from past events that are HIGHLY RELEVANT to the current STORY PROGRESSION. Focus on details that will help maintain consistency and plausibility.\n' +
+			'The RELEVANT REFERENCES must be only relevant to the current STORY PROGRESSION and not the whole story.\n' +
+			'Never reference the STORY PROGRESSION itself in your response!\n' +
+			'List the RELEVANT STORY REFERENCES including narration details from the story history.\n' +
+			'Always respond with following JSON! {"relatedDetails": [{"storyReference": string, "relevanceScore": 0-1}] array length ' +
 			maxRelatedDetails +
 			'}';
 

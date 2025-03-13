@@ -22,7 +22,7 @@ export class ActionAgent {
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
-					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation",
+					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation",
 					"required_trait": "the skill the dice is rolled for",
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
@@ -122,7 +122,8 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string
+		customSystemInstruction?: string,
+		relatedHistory?: string[]
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -151,6 +152,16 @@ export class ActionAgent {
 				...
   		]`
 		];
+
+		if (relatedHistory && relatedHistory.length > 0) {
+			agent.push(
+				'The actions must be consistent with HISTORY DETAILS;\n' +
+				'Do not suggest actions to investigate HISTORY DETAILS as they are already known;\n' +
+				//make sure custom player history takes precedence
+				'If HISTORY DETAILS contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nHISTORY DETAILS:\n' +
+				relatedHistory.join('\n')
+			);
+		}
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}

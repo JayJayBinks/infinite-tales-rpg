@@ -100,9 +100,10 @@ export class GameAgent {
 
 		if (relatedHistory.length > 0) {
 			combinedText +=
-				'\n\nFollowing are related story history details, the next story progression must be consistent with it;\n' +
+				'\n\nThe next story progression must be consistent with HISTORY DETAILS;\n' +
+				'If relevant for the current situation describe in the story progression how the player character recalls HISTORY DETAILS;\n' +
 				//make sure custom player history takes precedence
-				'If historical details contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored:\n' +
+				'If HISTORY DETAILS contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nHISTORY DETAILS:\n' +
 				relatedHistory.join('\n');
 		}
 		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
@@ -277,13 +278,13 @@ The Game Master's General Responsibilities Include:
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.
 
-Storytelling:
-- The story history always takes precedence over the story progression, if the history does not allow for the progression to happen, the progression must be adjusted to fit the history.
+Storytelling
 - Keep story secrets until they are discovered by the player.
 - Introduce key characters and explore their initial thoughts, feelings, and relationships with one another. Showcase their emotions, motivations, and backstories. 
 - Encourage moments of introspection, dialogue, and quiet observation to develop a deeper understanding of the characters and the world they inhabit. 
 - ${SLOW_STORY_PROMPT}
 - For the story narration never mention game meta elements like dice rolls; Only describe the narrative the character experiences
+- The story history always takes precedence over the story progression, if the history does not allow for the progression to happen, the progression must be adjusted to fit the history.
 
 Actions:
 - Let the player guide actions and story relevance.
