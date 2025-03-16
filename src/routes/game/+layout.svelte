@@ -17,13 +17,28 @@
 
 	onMount(() => {
 		window.onerror = (event, source, lineno, colno, error) => {
-			let text = event + '\n';
-			text += error.stack ? error.stack : error;
+			let text = ''
+			if(error.message){
+				text += error.message
+			}
+			if(error.stack){
+				text += '\n' + error.stack
+			}else{
+				text += '\n' + stringifyPretty({ event, source, lineno, colno, error })
+			}
 			handleError(text);
 			return false;
 		};
 		window.onunhandledrejection = (a) => {
-			let text = a.reason.stack ? a.reason.stack : a.reason
+			let text = ''
+			if(a.reason.message){
+				text += a.reason.message
+			}
+			if(a.reason.stack){
+				text += '\n' + a.reason.stack
+			}else{
+				text += '\n' + a.reason
+			}
 			handleError(text);
 			return false;
 		};
