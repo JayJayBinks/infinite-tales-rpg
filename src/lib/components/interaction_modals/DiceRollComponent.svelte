@@ -102,12 +102,14 @@
 		{#if action.is_custom_action}
 			<output>{action.plausibility}</output>
 			<output>{action.difficulty_explanation}</output>
-			<output class="font-semibold"
-				>This action will cost <p class="text-blue-500">
-					{action.resource_cost?.cost}
-					{action.resource_cost?.resource_key?.replaceAll('_', ' ')}
-				</p></output
-			>
+			{#if action.resource_cost}
+				<output class="font-semibold"
+					>This action will cost <p class="text-blue-500">
+						{action.resource_cost?.cost}
+						{action.resource_cost?.resource_key?.replaceAll('_', ' ')}
+					</p></output
+				>
+			{/if}
 		{/if}
 		<button
 			id="roll-dice-button"

@@ -6,7 +6,7 @@ import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 import { mapGameState } from '$lib/ai/agents/mappers';
-import type { Resources } from '$lib/ai/agents/characterStatsAgent';
+import type { NPCState, Resources } from '$lib/ai/agents/characterStatsAgent';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -61,6 +61,11 @@ export type GameMasterAnswer = {
 	game_state_considered: string;
 };
 
+export const PAST_STORY_PLOT_RULE = '\n\nThe next story progression must be plausible in context of PAST STORY PLOT;\n' +
+	'Do not reintroduce or repeat elements that have already been established.\n' +
+	//make sure custom player history takes precedence
+	'If PAST STORY PLOT contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nPAST STORY PLOT:\n';
+
 export class GameAgent {
 	llm: LLM;
 
@@ -100,10 +105,7 @@ export class GameAgent {
 
 		if (relatedHistory.length > 0) {
 			combinedText +=
-				'\n\nFollowing are related story history details, the next story progression must be consistent with it;\n' +
-				//make sure custom player history takes precedence
-				'If historical details contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored:\n' +
-				relatedHistory.join('\n');
+				PAST_STORY_PLOT_RULE + relatedHistory.join('\n');
 		}
 		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
 			storyState,
@@ -139,19 +141,23 @@ export class GameAgent {
 		characterState: CharacterDescription,
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
+		npcState: NPCState,
 		relatedHistory: string[]
 	): Promise<GameMasterAnswer> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
-				'You can refer to the internal state, rules and previous messages that the Game Master has considered',
+			'You can refer to the internal state, rules and previous messages that the Game Master has considered',
+			'The following is the internal state of the NPCs.' +
+			'\n' +
+			stringifyPretty(npcState),
 			jsonSystemInstructionForPlayerQuestion
 		];
 
 		let userMessage =
 			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question:\n' +
 			question +
-			"\n\nIn your answer, identify the relevant Game Master's rules that are related to the question:\n" +
-			"Game Master's rules:\n" +
+			'\n\nIn your answer, identify the relevant Game Master\'s rules that are related to the question:\n' +
+			'Game Master\'s rules:\n' +
 			this.getGameAgentSystemInstructionsFromStates(
 				storyState,
 				characterState,
@@ -160,9 +166,7 @@ export class GameAgent {
 				customSystemInstruction
 			).join('\n');
 		if (relatedHistory.length > 0) {
-			userMessage +=
-				'\n\nFollowing are related story history details, consider it when answering the question:\n' +
-				relatedHistory.join('\n');
+			userMessage += '\nHistory Rules:' + PAST_STORY_PLOT_RULE + relatedHistory.join('\n');
 		}
 		const request: LLMRequest = {
 			userMessage: userMessage,
@@ -183,12 +187,12 @@ export class GameAgent {
 			systemBehaviour,
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-				'\n' +
-				stringifyPretty(characterState),
-			"The following are the character's CURRENT resources, consider it in your response\n" +
-				stringifyPretty(playerCharactersGameState),
-			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
-				stringifyPretty(inventoryState)
+			'\n' +
+			stringifyPretty(characterState),
+			'The following are the character\'s CURRENT resources, consider it in your response\n' +
+			stringifyPretty(playerCharactersGameState),
+			'The following is the character\'s inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n' +
+			stringifyPretty(inventoryState)
 		];
 		if (customSystemInstruction) {
 			gameAgent.push(customSystemInstruction);
@@ -209,7 +213,7 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function (userText: string, modelStateObject: GameActionState) {
+	buildHistoryMessages = function(userText: string, modelStateObject: GameActionState) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
@@ -258,7 +262,7 @@ export class GameAgent {
 	}
 }
 
-const storyWordLimit = 'must be between 100 and 180 words, do not exceed this range.';
+const storyWordLimit = 'must be between 130 and 180 words, do not exceed this range.';
 
 export const SLOW_STORY_PROMPT =
 	'Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.';
@@ -277,13 +281,13 @@ The Game Master's General Responsibilities Include:
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.
 
-Storytelling:
-- The story history always takes precedence over the story progression, if the history does not allow for the progression to happen, the progression must be adjusted to fit the history.
+Storytelling
 - Keep story secrets until they are discovered by the player.
 - Introduce key characters and explore their initial thoughts, feelings, and relationships with one another. Showcase their emotions, motivations, and backstories. 
 - Encourage moments of introspection, dialogue, and quiet observation to develop a deeper understanding of the characters and the world they inhabit. 
 - ${SLOW_STORY_PROMPT}
 - For the story narration never mention game meta elements like dice rolls; Only describe the narrative the character experiences
+- The story history always takes precedence over the story progression, if the history does not allow for the progression to happen, the progression must be adjusted to fit the history.
 
 Actions:
 - Let the player guide actions and story relevance.
@@ -308,7 +312,7 @@ NPC Interactions:
 - Creating and speaking as all NPCs in the GAME, which are complex and can have intelligent conversations.
 - Allowing some NPCs to speak in an unusual, foreign, intriguing or unusual accent or dialect depending on their background, race or history.
 - Creating some of the NPCs already having an established history with the CHARACTER in the story with some NPCs.
-- When the player character interacts with a NPC you must always include the NPC response within the same story progression
+- When the player character interacts with a NPC you must always include the NPC response within the same action
 
 Always review context from system instructions and my last message before responding.`;
 

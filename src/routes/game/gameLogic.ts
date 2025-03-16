@@ -1,11 +1,11 @@
 import {
-	SLOW_STORY_PROMPT,
 	type Action,
 	type GameActionState,
 	type InventoryState,
 	type InventoryUpdate,
 	type PlayerCharactersGameState,
 	type ResourcesWithCurrentValue,
+	SLOW_STORY_PROMPT,
 	type Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
@@ -50,11 +50,13 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 		return false;
 	}
 
+	//TODO this only works for english but can stay for now
 	const listOfDiceRollingActions = ['attempt', 'try', 'seek', 'search', 'investigate'];
 	const includesTrying = listOfDiceRollingActions.some((value) => actionText.includes(value));
 	if (
 		action.type?.toLowerCase() === 'social_manipulation' ||
-		action.type?.toLowerCase() === 'spell'
+		action.type?.toLowerCase() === 'spell' ||
+		action.type?.toLowerCase() === 'investigation'
 	) {
 		return true;
 	}
@@ -66,7 +68,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	);
 }
 
-export const getTargetPromptAddition = function (targets: string[]) {
+export const getTargetPromptAddition = function(targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -118,7 +120,7 @@ export function renderStatUpdates(
 				if (
 					!statsUpdate.value?.result ||
 					isPlainObject(statsUpdate.value.result) ||
-					Number.parseInt(statsUpdate.value.result) === 0 ||
+					Number.parseInt(statsUpdate.value.result) <= 0 ||
 					statsUpdate.type === 'null'
 				) {
 					return undefined;
@@ -252,10 +254,10 @@ export function applyGameActionState(
 						resource
 					);
 					if (!res) continue;
-					const gained = Number.parseInt(statUpdate.value.result) || 0;
+					let gained = Number.parseInt(statUpdate.value.result) || 0;
+					gained = gained > 0 ? gained : 0;
 					if ((res.current_value || 0) + gained <= res.max_value) {
-						res.current_value =
-							(res.current_value || 0) + (Number.parseInt(statUpdate.value.result) || 0);
+						res.current_value = (res.current_value || 0) + gained;
 					} else {
 						res.current_value = res.max_value;
 					}
@@ -265,24 +267,27 @@ export function applyGameActionState(
 				const resource: string = statUpdate.type.replace('_lost', '');
 				const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
 				if (!res) continue;
-				res.current_value -= Number.parseInt(statUpdate.value.result) || 0;
+				let lost = Number.parseInt(statUpdate.value.result) || 0;
+				lost = lost > 0 ? lost : 0;
+				res.current_value -= lost;
 			}
 		} else {
 			if (!prohibitNPCChange) {
 				const npc: NPCStats = npcState[statUpdate.targetId];
 				if (npc && npc.resources) {
+					const result = Number.parseInt(statUpdate.value.result);
 					switch (statUpdate.type) {
 						case 'hp_gained':
-							npc.resources.current_hp += Number.parseInt(statUpdate.value.result) || 0;
+							npc.resources.current_hp += result > 0 ? result : 0;
 							break;
 						case 'hp_lost':
-							npc.resources.current_hp -= Number.parseInt(statUpdate.value.result) || 0;
+							npc.resources.current_hp -= result > 0 ? result : 0;
 							break;
 						case 'mp_gained':
-							npc.resources.current_mp += Number.parseInt(statUpdate.value.result) || 0;
+							npc.resources.current_mp += result > 0 ? result : 0;
 							break;
 						case 'mp_lost':
-							npc.resources.current_mp -= Number.parseInt(statUpdate.value.result) || 0;
+							npc.resources.current_mp -= result > 0 ? result : 0;
 							break;
 					}
 				}

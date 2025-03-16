@@ -200,7 +200,8 @@
 				characterState.value,
 				characterStatsState.value,
 				inventoryState.value,
-				customSystemInstruction.value
+				customSystemInstruction.value,
+				await getRelatedHistory(summaryAgent, undefined, undefined, relatedStoryHistoryState.value, customMemoriesState.value)
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -592,7 +593,8 @@
 						characterState.value,
 						characterStatsState.value,
 						inventoryState.value,
-						customSystemInstruction.value
+						customSystemInstruction.value,
+						relatedHistory
 					)
 					.then((actions) => {
 						if (actions) {
@@ -623,9 +625,9 @@
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
 					getRelatedHistory(
+						summaryAgent,
 						action,
 						gameActionsState.value,
-						summaryAgent,
 						$state.snapshot(relatedStoryHistoryState.value),
 						$state.snapshot(customMemoriesState.value)
 					).then((relatedHistory) => {
@@ -643,9 +645,9 @@
 				);
 				if (relatedActionHistoryState.value.length === 0) {
 					relatedActionHistoryState.value = await getRelatedHistory(
+						summaryAgent,
 						action,
 						gameActionsState.value,
-						summaryAgent,
 						$state.snapshot(relatedStoryHistoryState.value),
 						$state.snapshot(customMemoriesState.value)
 					);
@@ -745,9 +747,9 @@
 			targetAddition = targets?.length === 0 ? '' : gameLogic.getTargetPromptAddition(targets);
 		}
 		relatedActionHistoryState.value = await getRelatedHistory(
+			summaryAgent,
 			action,
 			gameActionsState.value,
-			summaryAgent,
 			$state.snapshot(relatedStoryHistoryState.value),
 			$state.snapshot(customMemoriesState.value)
 		);
@@ -814,9 +816,9 @@
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;
 		relatedActionHistoryState.value = await getRelatedHistory(
+			summaryAgent,
 			action,
 			gameActionsState.value,
-			summaryAgent,
 			$state.snapshot(relatedStoryHistoryState.value),
 			$state.snapshot(customMemoriesState.value)
 		);
@@ -873,7 +875,7 @@
 			await sendAction(
 				action,
 				false,
-				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\nIf this action contradicts the history details, adjust the narrative to fit the action.'
+				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\nIf this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.'
 			);
 		}
 	};

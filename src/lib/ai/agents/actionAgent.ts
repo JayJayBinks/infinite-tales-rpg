@@ -22,7 +22,7 @@ export class ActionAgent {
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
-					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation",
+					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation",
 					"required_trait": "the skill the dice is rolled for",
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
@@ -92,7 +92,8 @@ export class ActionAgent {
 
 		if (relatedHistory && relatedHistory.length > 0) {
 			userMessage +=
-				'\n\nFollowing are related story history details, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
+				'\n\nFollowing is related past story plot, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically;\n' +
+				'If no history detail directly contradicts the action, it is possible.\n' +
 				relatedHistory.join('\n');
 		}
 		console.log('actions prompt: ', userMessage);
@@ -122,7 +123,8 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string
+		customSystemInstruction?: string,
+		relatedHistory?: string[]
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -151,14 +153,27 @@ export class ActionAgent {
 				...
   		]`
 		];
+
+		if (relatedHistory && relatedHistory.length > 0) {
+			agent.push(
+				'The actions must be plausible with PAST STORY PLOT;\n' +
+				'Never suggest actions to investigate PAST STORY PLOT as they are already known;\n' +
+				//make sure custom player history takes precedence
+				'If PAST STORY PLOT contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nPAST STORY PLOT:\n' +
+				relatedHistory.join('\n')
+			);
+		}
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		const userMessage =
+		let userMessage =
 			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
-			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
+			'\nThe actions must be plausible in the current situation, e.g. before investigating, a tense situation must be resolved.';
+		if(currentGameState.is_character_in_combat){
+			userMessage += '\nOnly suggest combat actions given the situation';
+		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,

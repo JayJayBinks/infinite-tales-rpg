@@ -16,6 +16,7 @@
 	import { stringifyPretty } from '$lib/util.svelte';
 	import type { AIConfig } from '$lib';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
+	import type { NPCState } from '$lib/ai/agents/characterStatsAgent';
 
 	let {
 		onclose,
@@ -36,6 +37,8 @@
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState');
+	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	const npcState = useLocalStorage<NPCState>('npcState', {});
 
 	let gameAgent: GameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
@@ -59,6 +62,9 @@
 			.filter((detail) => detail.relevanceScore >= 0.7)
 			.map((detail) => detail.storyReference);
 
+		if(customMemoriesState.value) {
+			relatedQuestionHistory.push(customMemoriesState.value);
+		}
 		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
 			customSystemInstruction.value,
@@ -67,6 +73,7 @@
 			characterState.value,
 			playerCharactersGameState,
 			inventoryState.value,
+			npcState.value,
 			relatedQuestionHistory
 		);
 		console.log(stringifyPretty(gmAnswerState));
