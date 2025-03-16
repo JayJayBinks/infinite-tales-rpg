@@ -92,7 +92,8 @@ export class ActionAgent {
 
 		if (relatedHistory && relatedHistory.length > 0) {
 			userMessage +=
-				'\n\nFollowing are related story history details, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
+				'\n\nFollowing is related past story plot, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically;\n' +
+				'If no history detail directly contradicts the action, it is possible.\n' +
 				relatedHistory.join('\n');
 		}
 		console.log('actions prompt: ', userMessage);
@@ -155,21 +156,24 @@ export class ActionAgent {
 
 		if (relatedHistory && relatedHistory.length > 0) {
 			agent.push(
-				'The actions must be consistent with HISTORY DETAILS;\n' +
-				'Do not suggest actions to investigate HISTORY DETAILS as they are already known;\n' +
+				'The actions must be plausible with PAST STORY PLOT;\n' +
+				'Never suggest actions to investigate PAST STORY PLOT as they are already known;\n' +
 				//make sure custom player history takes precedence
-				'If HISTORY DETAILS contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nHISTORY DETAILS:\n' +
+				'If PAST STORY PLOT contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nPAST STORY PLOT:\n' +
 				relatedHistory.join('\n')
 			);
 		}
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
-		const userMessage =
+		let userMessage =
 			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
-			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
+			'\nThe actions must be plausible in the current situation, e.g. before investigating, a tense situation must be resolved.';
+		if(currentGameState.is_character_in_combat){
+			userMessage += '\nOnly suggest combat actions given the situation';
+		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,

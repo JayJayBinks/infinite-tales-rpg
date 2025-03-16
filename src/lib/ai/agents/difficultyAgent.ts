@@ -58,7 +58,7 @@ export class DifficultyAgent {
 		let userMessage = actionText;
 		if (relatedActionHistory.length > 0) {
 			userMessage +=
-				'\nFollowing are related story history details, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
+				'\nFollowing are related past story plot, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically:\n' +
 				relatedActionHistory.join('\n');
 		}
 		const request: LLMRequest = {

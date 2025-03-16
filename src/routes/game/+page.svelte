@@ -875,7 +875,7 @@
 			await sendAction(
 				action,
 				false,
-				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\nIf this action contradicts the HISTORY DETAILS, adjust the narrative to fit the action.'
+				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\nIf this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.'
 			);
 		}
 	};

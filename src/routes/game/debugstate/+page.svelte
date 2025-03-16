@@ -7,13 +7,34 @@
 	const characterActionsState = useLocalStorage('characterActionsState', {});
 </script>
 
-<div class="divider mt-7">NPC State</div>
-<output style="white-space: pre-wrap">{stringifyPretty(npcState.value)}</output>
-<div class="divider mt-7">Action State</div>
-<output style="white-space: pre-wrap">{stringifyPretty(characterActionsState.value)}</output>
-<div class="divider mt-7">Game State</div>
-<output style="white-space: pre-wrap"
+<details
+	class="menu collapse collapse-arrow menu-vertical bg-base-200 mt-7"
+>
+	<summary class="collapse-title text-lg font-bold capitalize">
+		<p class="text-center">NPC State</p>
+	</summary>
+	<output style="white-space: pre-wrap">{stringifyPretty(npcState.value)}</output>
+</details>
+
+<details
+	class="menu collapse collapse-arrow menu-vertical bg-base-200 mt-7"
+>
+	<summary class="collapse-title text-lg font-bold capitalize">
+		<p class="text-center">Action State</p>
+	</summary>
+	<output style="white-space: pre-wrap">{stringifyPretty(characterActionsState.value)}</output>
+</details>
+
+<details
+	class="menu collapse collapse-arrow menu-vertical bg-base-200 mt-7"
+>
+	<summary class="collapse-title text-lg font-bold capitalize">
+		<p class="text-center">Game State</p>
+	</summary>
+	<output style="white-space: pre-wrap"
 	>{stringifyPretty(
 		gameActionsState.value ? gameActionsState.value[gameActionsState.value.length - 1] : {}
 	)}</output
->
+	>
+
+</details>
