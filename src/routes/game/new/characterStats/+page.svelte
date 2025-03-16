@@ -45,6 +45,10 @@
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
 
+	const mapResourceCost = (resourceCost?: any) => {
+		return resourceCost ? resourceCost : { cost: 0, resource_key: undefined };
+	};
+
 	const onRandomize = async () => {
 		isGeneratingState = true;
 		const filteredOverwrites = removeEmptyValues(characterStatsStateOverwrites);
@@ -58,9 +62,7 @@
 			parseState(newState);
 			newState.spells_and_abilities = newState.spells_and_abilities.map((ability) => ({
 				...ability,
-				resource_cost: ability.resource_cost
-					? ability.resource_cost
-					: { cost: 0, resource_key: undefined }
+				resource_cost: mapResourceCost(ability.resource_cost)
 			}));
 			characterStatsState.value = newState;
 		}
@@ -90,12 +92,16 @@
 
 		if (deepNested) {
 			// TODO only works for ability section
-			const newAbility = await characterStatsAgent.generateSingleAbility(
+			let newAbility = await characterStatsAgent.generateSingleAbility(
 				$state.snapshot(storyState.value),
 				$state.snapshot(characterState.value),
 				characterStatsInput,
 				singleAbilityOverwritten
 			);
+			newAbility = {
+				...newAbility,
+				resource_cost: mapResourceCost(newAbility.resource_cost)
+			};
 			characterStatsState.value[stateValue][deepNested] = newAbility;
 		} else {
 			const newState = await characterStatsAgent.generateCharacterStats(
@@ -198,7 +204,7 @@
 			<div class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
-						>{stateValue.replaceAll('_', ' ')}</summary
+					>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}
@@ -271,7 +277,7 @@
 															].resource_key}
 															class="select select-bordered mt-2 text-center"
 														>
-															<option class="capitalize" value={undefined}> No Cost </option>
+															<option class="capitalize" value={undefined}> No Cost</option>
 															{#each Object.keys(characterStatsState.value.resources || {}) as resourceKey (resourceKey)}
 																<option class="capitalize" value={resourceKey}>
 																	{resourceKey.replaceAll('_', ' ')}
@@ -409,7 +415,7 @@
 						characterStatsState.value[stateValue].push({
 							name: '',
 							effect: '',
-							resource_cost: { cost: 0, resource_key: undefined },
+							resource_cost: mapResourceCost(),
 							image_prompt: ''
 						});
 					} else {
