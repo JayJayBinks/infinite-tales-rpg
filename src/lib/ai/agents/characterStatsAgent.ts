@@ -99,7 +99,8 @@ export class CharacterStatsAgent {
 	): Promise<CharacterStats> {
 		const agentInstruction = [
 			'You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n' +
-				'Scale the stats and abilities according to the level. A low level character has expertise of 1.',
+				'Scale the stats and abilities according to the level. A low level character has expertise of 1.\n' +
+			'If there is a HP resource or deviation, it must be greater than 20.\n',
 			'Always respond with following JSON!\n' + characterStatsStateForPrompt
 		];
 
@@ -108,7 +109,7 @@ export class CharacterStatsAgent {
 		}
 		const request: LLMRequest = {
 			userMessage:
-				'Create the character according to the descriptions and already existing stats.\n Scale the stats and abilities according to the level.',
+				'Create the character according to the descriptions and already existing stats.\nScale the stats and abilities according to the level.\n',
 			historyMessages: [
 				{
 					role: 'user',
@@ -129,8 +130,9 @@ export class CharacterStatsAgent {
 					stringifyPretty(statsOverwrites)
 			});
 		}
+		const stats = (await this.llm.generateReasoningContent(request))?.parsedObject as CharacterStats
 		console.log(request);
-		return (await this.llm.generateReasoningContent(request))?.parsedObject as CharacterStats;
+		return stats;
 	}
 
 	async levelUpCharacter(
