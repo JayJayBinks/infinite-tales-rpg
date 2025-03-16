@@ -17,11 +17,14 @@
 
 	onMount(() => {
 		window.onerror = (event, source, lineno, colno, error) => {
-			handleError(stringifyPretty({ event, source, lineno, colno, error }));
+			let text = event + '\n';
+			text += error.stack ? error.stack : error;
+			handleError(text);
 			return false;
 		};
 		window.onunhandledrejection = (a) => {
-			handleError(a.reason);
+			let text = a.reason.stack ? a.reason.stack : a.reason
+			handleError(text);
 			return false;
 		};
 	});
