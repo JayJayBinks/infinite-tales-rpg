@@ -64,7 +64,7 @@ export class StoryAgent {
 			...storyStateForPrompt,
 			...overwrites
 		};
-		if (isEqual(overwrites, {})) {
+		if (isEqual(overwrites, {}) && characterDescription === undefined) {
 			preset.game = exampleGameSystems[getRandomInteger(0, exampleGameSystems.length - 1)];
 		}
 		const request: LLMRequest = {
@@ -78,7 +78,7 @@ export class StoryAgent {
 			request.historyMessages?.push({
 				role: 'user',
 				content:
-					'The adventure_and_main_event must have the character_simple_description as player character protagonist: ' +
+					'Set following to character_simple_description; The adventure_and_main_event must be based on this;\n' +
 					stringifyPretty(characterDescription)
 			});
 		}
