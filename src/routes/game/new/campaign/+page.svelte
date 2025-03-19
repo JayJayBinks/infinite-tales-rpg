@@ -246,6 +246,13 @@
 	>
 		Next Step:<br /> Customize Character
 	</button>
+	<p>The Campaign mode is currently in alpha, bugs are still expected.</p>
+	<p>Please report any bugs in the Discord!</p>
+	<p>Watch out for:</p>
+	<ul>
+		<li>Transition between chapters.</li>
+		<li>Consistency with decisions that deviate from the planned plot.</li>
+	</ul>
 	{#if campaignState.value}
 		{#each Object.keys(initialCampaignState) as stateValue}
 			{#if stateValue === 'chapters'}
