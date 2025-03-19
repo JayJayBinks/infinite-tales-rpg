@@ -204,7 +204,7 @@
 			<div class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 					<summary class="collapse-title items-center text-center capitalize"
-					>{stateValue.replaceAll('_', ' ')}</summary
+						>{stateValue.replaceAll('_', ' ')}</summary
 					>
 					<div class="collapse-content">
 						{#each Object.keys(characterStatsState.value[stateValue]) as statValue}

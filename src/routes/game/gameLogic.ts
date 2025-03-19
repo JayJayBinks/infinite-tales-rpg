@@ -68,7 +68,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	);
 }
 
-export const getTargetPromptAddition = function(targets: string[]) {
+export const getTargetPromptAddition = function (targets: string[]) {
 	return '\n I target ' + targets.join(' and ');
 };
 
@@ -121,7 +121,8 @@ export function renderStatUpdates(
 					!statsUpdate.value?.result ||
 					isPlainObject(statsUpdate.value.result) ||
 					Number.parseInt(statsUpdate.value.result) <= 0 ||
-					statsUpdate.type === 'null'
+					statsUpdate.type === 'null' ||
+					statsUpdate.type === 'none'
 				) {
 					return undefined;
 				}
@@ -361,7 +362,7 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 		additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
 	}
 	const encounterString = '' + action.enemyEncounterExplanation;
-	if (encounterString.includes('high') && !encounterString.includes('low')) {
+	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
 		additionalStoryInput +=
 			'\nenemyEncounter: ' +
 			action.enemyEncounterExplanation +

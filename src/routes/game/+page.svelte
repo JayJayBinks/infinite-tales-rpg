@@ -2,8 +2,10 @@
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import {
 		type Action,
+		defaultGameSettings,
 		type GameActionState,
 		GameAgent,
+		type GameSettings,
 		type InventoryState,
 		type Item,
 		type PlayerCharactersGameState
@@ -131,6 +133,7 @@
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let useDynamicCombat = useLocalStorage('useDynamicCombat', false);
+	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
@@ -201,7 +204,13 @@
 				characterStatsState.value,
 				inventoryState.value,
 				customSystemInstruction.value,
-				await getRelatedHistory(summaryAgent, undefined, undefined, relatedStoryHistoryState.value, customMemoriesState.value)
+				await getRelatedHistory(
+					summaryAgent,
+					undefined,
+					undefined,
+					relatedStoryHistoryState.value,
+					customMemoriesState.value
+				)
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -544,7 +553,8 @@
 			characterState.value,
 			playerCharactersGameState,
 			inventoryState.value,
-			relatedHistory
+			relatedHistory,
+			gameSettingsState.value
 		);
 		didAIProcessActionState.value = true;
 
@@ -619,6 +629,7 @@
 				}
 			});
 	}
+
 	// Main sendAction function that orchestrates the action processing.
 	async function sendAction(action: Action, rollDice = false, additionalStoryInput = '') {
 		try {
@@ -822,7 +833,10 @@
 			$state.snapshot(relatedStoryHistoryState.value),
 			$state.snapshot(customMemoriesState.value)
 		);
-		console.log('relatedHistoryDetails', stringifyPretty($state.snapshot(relatedStoryHistoryState.value)));
+		console.log(
+			'relatedHistoryDetails',
+			stringifyPretty($state.snapshot(relatedStoryHistoryState.value))
+		);
 		const generatedAction = await actionAgent.generateSingleAction(
 			action,
 			currentGameActionState,

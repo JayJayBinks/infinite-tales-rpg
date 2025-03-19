@@ -13,9 +13,7 @@
 >
 	<div class="modal-box flex flex-col">
 		<span class="text-center font-bold">Error</span>
-		<span class="mt-2 break-words max-w-sm sm:max-w-md"
-			>{errorState.userMessage}</span
-		>
+		<span class="mt-2 max-w-sm break-words sm:max-w-md">{errorState.userMessage}</span>
 		{#if errorState.exception && errorState.retryable}
 			<span class="mt-3 font-bold">
 				Please retry the action or reload the page. If the error persists report it in the Discord.

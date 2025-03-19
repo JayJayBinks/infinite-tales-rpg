@@ -109,7 +109,8 @@ export class GeminiProvider extends LLM {
 		});
 		if (this.llmConfig.language) {
 			const languageInstruction =
-				'Important! You must respond in the following language: ' + this.llmConfig.language;
+				'Important! For every JSON property you must respond in the following language: ' +
+				this.llmConfig.language;
 			systemInstruction.parts.push({ text: languageInstruction });
 		}
 

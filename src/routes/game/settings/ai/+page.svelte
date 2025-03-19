@@ -61,7 +61,7 @@
 	let storyAgent: StoryAgent | undefined = $state();
 
 	onMount(async () => {
-		if(apiKeyState.value) {
+		if (apiKeyState.value) {
 			provideLLM();
 		}
 		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
@@ -79,11 +79,11 @@
 			aiConfigState.value?.useFallbackLlmState
 		);
 		storyAgent = new StoryAgent(llm);
-	}
+	};
 
 	const onQuickstartClicked = () => {
 		provideLLM();
-		if(apiKeyState.value){
+		if (apiKeyState.value) {
 			quickstartModalOpen = true;
 		}
 	};

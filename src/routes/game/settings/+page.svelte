@@ -4,12 +4,15 @@
 	import { navigate } from '$lib/util.svelte';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
+	import { defaultGameSettings, type GameSettings } from '$lib/ai/agents/gameAgent';
 
 	const difficultyState = useLocalStorage<string>('difficultyState', 'Default');
 	let useKarmicDice = useLocalStorage<boolean>('useKarmicDice', true);
 	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	//TODO migrate all settings that can be changed during game here
+	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 
 	const taleSettingsClicked = () => {
 		if (campaignState.value?.chapters.length > 0) {
@@ -58,6 +61,17 @@
 		<small class="m-auto mb-3 mt-2"
 			>Complex combat with stats and reactions, spanning multiple rounds<br />
 			Disable for faster, story-focused combat.</small
+		>
+	</label>
+	<label class="form-control mt-2 w-full">
+		<p>Detailed Narration Length</p>
+		<input
+			type="checkbox"
+			bind:checked={gameSettingsState.value.detailedNarrationLength}
+			class="toggle m-auto mt-2 text-center"
+		/>
+		<small class="m-auto mb-3 mt-2"
+			>Enabled longer detailed narration, disabled shorter concise length</small
 		>
 	</label>
 	<ImportExportSaveGame isSaveGame={true}>

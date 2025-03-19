@@ -100,7 +100,7 @@ export class CharacterStatsAgent {
 		const agentInstruction = [
 			'You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n' +
 				'Scale the stats and abilities according to the level. A low level character has expertise of 1.\n' +
-			'If there is a HP resource or deviation, it must be greater than 20.\n',
+				'If there is a HP resource or deviation, it must be greater than 20.\n',
 			'Always respond with following JSON!\n' + characterStatsStateForPrompt
 		];
 
@@ -130,7 +130,8 @@ export class CharacterStatsAgent {
 					stringifyPretty(statsOverwrites)
 			});
 		}
-		const stats = (await this.llm.generateReasoningContent(request))?.parsedObject as CharacterStats
+		const stats = (await this.llm.generateReasoningContent(request))
+			?.parsedObject as CharacterStats;
 		console.log(request);
 		return stats;
 	}

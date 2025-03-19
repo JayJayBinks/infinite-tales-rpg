@@ -42,6 +42,13 @@ export type PlayerCharactersGameState = {
 	[playerCharacterName: string]: ResourcesWithCurrentValue;
 };
 
+export type GameSettings = {
+	detailedNarrationLength: boolean;
+};
+export const defaultGameSettings = () => ({
+	detailedNarrationLength: true
+});
+
 export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
 export type GameActionState = {
 	id: number;
@@ -61,7 +68,8 @@ export type GameMasterAnswer = {
 	game_state_considered: string;
 };
 
-export const PAST_STORY_PLOT_RULE = '\n\nThe next story progression must be plausible in context of PAST STORY PLOT;\n' +
+export const PAST_STORY_PLOT_RULE =
+	'\n\nThe next story progression must be plausible in context of PAST STORY PLOT;\n' +
 	'Do not reintroduce or repeat elements that have already been established.\n' +
 	//make sure custom player history takes precedence
 	'If PAST STORY PLOT contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nPAST STORY PLOT:\n';
@@ -92,7 +100,8 @@ export class GameAgent {
 		characterState: CharacterDescription,
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
-		relatedHistory: string[]
+		relatedHistory: string[],
+		gameSettings: GameSettings
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let playerActionText = action.characterName + ': ' + action.text;
 		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
@@ -104,17 +113,17 @@ export class GameAgent {
 		if (additionalStoryInput) combinedText += '\n' + additionalStoryInput;
 
 		if (relatedHistory.length > 0) {
-			combinedText +=
-				PAST_STORY_PLOT_RULE + relatedHistory.join('\n');
+			combinedText += PAST_STORY_PLOT_RULE + relatedHistory.join('\n');
 		}
 		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
 			storyState,
 			characterState,
 			playerCharactersGameState,
 			inventoryState,
-			customSystemInstruction
+			customSystemInstruction,
+			gameSettings
 		);
-		gameAgent.push(jsonSystemInstructionForGameAgent);
+		gameAgent.push(jsonSystemInstructionForGameAgent(gameSettings));
 
 		console.log(combinedText);
 		const request: LLMRequest = {
@@ -142,28 +151,28 @@ export class GameAgent {
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
 		npcState: NPCState,
-		relatedHistory: string[]
+		relatedHistory: string[],
+		gameSettings: GameSettings
 	): Promise<GameMasterAnswer> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
-			'You can refer to the internal state, rules and previous messages that the Game Master has considered',
-			'The following is the internal state of the NPCs.' +
-			'\n' +
-			stringifyPretty(npcState),
+				'You can refer to the internal state, rules and previous messages that the Game Master has considered',
+			'The following is the internal state of the NPCs.' + '\n' + stringifyPretty(npcState),
 			jsonSystemInstructionForPlayerQuestion
 		];
 
 		let userMessage =
 			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question:\n' +
 			question +
-			'\n\nIn your answer, identify the relevant Game Master\'s rules that are related to the question:\n' +
-			'Game Master\'s rules:\n' +
+			"\n\nIn your answer, identify the relevant Game Master's rules that are related to the question:\n" +
+			"Game Master's rules:\n" +
 			this.getGameAgentSystemInstructionsFromStates(
 				storyState,
 				characterState,
 				playerCharactersGameState,
 				inventoryState,
-				customSystemInstruction
+				customSystemInstruction,
+				gameSettings
 			).join('\n');
 		if (relatedHistory.length > 0) {
 			userMessage += '\nHistory Rules:' + PAST_STORY_PLOT_RULE + relatedHistory.join('\n');
@@ -181,18 +190,19 @@ export class GameAgent {
 		characterState: CharacterDescription,
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
-		customSystemInstruction: string
+		customSystemInstruction: string,
+		gameSettings: GameSettings
 	) {
 		const gameAgent = [
-			systemBehaviour,
+			systemBehaviour(gameSettings),
 			stringifyPretty(storyState),
 			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-			'\n' +
-			stringifyPretty(characterState),
-			'The following are the character\'s CURRENT resources, consider it in your response\n' +
-			stringifyPretty(playerCharactersGameState),
-			'The following is the character\'s inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n' +
-			stringifyPretty(inventoryState)
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are the character's CURRENT resources, consider it in your response\n" +
+				stringifyPretty(playerCharactersGameState),
+			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
+				stringifyPretty(inventoryState)
 		];
 		if (customSystemInstruction) {
 			gameAgent.push(customSystemInstruction);
@@ -213,7 +223,7 @@ export class GameAgent {
 		);
 	}
 
-	buildHistoryMessages = function(userText: string, modelStateObject: GameActionState) {
+	buildHistoryMessages = function (userText: string, modelStateObject: GameActionState) {
 		const userMessage: LLMMessage = { role: 'user', content: userText };
 		const modelMessage: LLMMessage = { role: 'model', content: stringifyPretty(modelStateObject) };
 		return { userMessage, modelMessage };
@@ -262,11 +272,11 @@ export class GameAgent {
 	}
 }
 
-const storyWordLimit = 'must be between 130 and 180 words, do not exceed this range.';
+const storyWordLimit = 'must be between 100 and 160 words, do not exceed this range.';
 
 export const SLOW_STORY_PROMPT =
 	'Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.';
-const systemBehaviour = `
+const systemBehaviour = (gameSettingsState: GameSettings) => `
 You are a Pen & Paper Game Master, crafting captivating, limitless GAME experiences using ADVENTURE_AND_MAIN_EVENT, THEME, TONALITY for CHARACTER.
 
 The Game Master's General Responsibilities Include:
@@ -277,7 +287,7 @@ The Game Master's General Responsibilities Include:
 - Use GAME's core knowledge and rules.
 - Handle CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
 - Handle NPC resources, you must explicitly use resourceKey "hp" or "mp", and no deviations of that
-- The story narration ${storyWordLimit}
+${!gameSettingsState.detailedNarrationLength ? '- The story narration ' + storyWordLimit : ''}
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.
 
@@ -316,12 +326,14 @@ NPC Interactions:
 
 Always review context from system instructions and my last message before responding.`;
 
-const jsonSystemInstructionForGameAgent = `Important Instruction! You must always respond with valid JSON in the following format:
+const jsonSystemInstructionForGameAgent = (
+	gameSettingsState: GameSettings
+) => `Important Instruction! You must always respond with valid JSON in the following format:
 {
   "currentPlotPoint": Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
   "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
   "plotPointAdvancingNudgeExplanation": "Explain what could happen next to advance the story towards nextPlotId according to ADVENTURE_AND_MAIN_EVENT; Include brief explanation of nextPlotId; Format "currentPlotId: {plotId}; nextPlotId: {currentPlotId + 1}; {Reasoning}",
-  "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${storyWordLimit} For character speech use single quotes. Format the different parts of the narration using HTML tags for easier reading.",
+  "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${!gameSettingsState.detailedNarrationLength ? storyWordLimit : ''} For character speech use single quotes. Format the narration using HTML tags for easier reading.",
   "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} longTermImpact: LOW, MEDIUM, HIGH",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
   "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
