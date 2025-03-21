@@ -155,7 +155,8 @@ export class GameAgent {
 		npcState: NPCState,
 		relatedHistory: string[],
 		gameSettings: GameSettings,
-		campaignChapterState?: CampaignChapter
+		campaignChapterState?: CampaignChapter,
+		customGmNotes?: string
 	): Promise<GameMasterAnswer> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
@@ -169,8 +170,20 @@ export class GameAgent {
 					stringifyPretty(campaignChapterState)
 			);
 		}
+		if (customGmNotes) {
+			gameAgent.push(
+				'The following are custom gm notes considered to be rules.' +
+				'\n' +
+				customGmNotes
+			);
+		}
+		if (relatedHistory.length > 0) {
+			gameAgent.push(
+				'History Rules:\n' + PAST_STORY_PLOT_RULE + relatedHistory.join('\n')
+			);
+		}
 		gameAgent.push(jsonSystemInstructionForPlayerQuestion);
-		let userMessage =
+		const userMessage =
 			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question:\n' +
 			question +
 			"\n\nIn your answer, identify the relevant Game Master's rules that are related to the question:\n" +
@@ -183,9 +196,6 @@ export class GameAgent {
 				customSystemInstruction,
 				gameSettings
 			).join('\n');
-		if (relatedHistory.length > 0) {
-			userMessage += '\nHistory Rules:' + PAST_STORY_PLOT_RULE + relatedHistory.join('\n');
-		}
 		const request: LLMRequest = {
 			userMessage: userMessage,
 			historyMessages: historyMessages,
@@ -279,6 +289,14 @@ export class GameAgent {
 	static getItemImagePrompt(item_id: string, item: Item, storyImagePrompt: string): string {
 		return `${storyImagePrompt} RPG game icon ${item_id} ${item.description}`;
 	}
+
+	static getPromptForGameMasterNotes = (notes: Array<string>) => {
+		if (!notes || notes.length === 0) {
+			return '';
+		}
+		return '\nFollowing are Game Master Notes to consider for the next story progression:\n' +
+			notes.join('\n') + '\n';
+	};
 }
 
 const storyWordLimit = 'must be between 100 and 160 words, do not exceed this range.';

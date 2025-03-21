@@ -45,6 +45,7 @@
 	const characterActionsState = useLocalStorage('characterActionsState');
 	const levelUpState = useLocalStorage('levelUpState');
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 
 	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
 		'relatedStoryHistoryState',
@@ -106,6 +107,7 @@
 		relatedStoryHistoryState.reset();
 		relatedActionHistoryState.reset();
 		customMemoriesState.reset();
+		customGMNotesState.reset();
 	}
 
 	async function onQuickstartNew(story: string | Story | undefined) {
@@ -243,10 +245,10 @@
 		</div>
 	</label>
 	<label class="form-control mt-5 w-full sm:w-2/3">
-		Tale System Instruction
+		System Instruction
 		<textarea
 			bind:value={customSystemInstruction.value}
-			placeholder="For example: Make every action difficulty easy. Make every character speak in riddles."
+			placeholder="For example: Make every action difficulty easy."
 			class="textarea textarea-bordered mt-2"
 		>
 		</textarea>

@@ -11,6 +11,7 @@
 	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	//TODO migrate all settings that can be changed during game here
 	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 
@@ -59,7 +60,7 @@
 			class="toggle m-auto mt-2 text-center"
 		/>
 		<small class="m-auto mb-3 mt-2"
-			>Complex combat with stats and reactions, spanning multiple rounds<br />
+			>Enable for reactions for every NPC during combat.<br />
 			Disable for faster, story-focused combat.</small
 		>
 	</label>
@@ -93,8 +94,17 @@
 		<p>Custom Tale Memories</p>
 		<textarea
 			rows={3}
-			placeholder="If the AI forgets important events during the Tale, you can enter custom memories here. This text will be added to every action, don't make it too long."
+			placeholder="If the AI forgets important events during the Tale, you can enter custom memories here. Added to every action, don't make it too long."
 			bind:value={customMemoriesState.value}
+			class="textarea textarea-bordered mt-2 w-full"
+		></textarea>
+	</label>
+	<label class="form-control mt-2 w-full">
+		<p>Custom GM Notes</p>
+		<textarea
+			rows={3}
+			placeholder="Use for specific/temporary game rules, added to every action, don't make it too long."
+			bind:value={customGMNotesState.value}
 			class="textarea textarea-bordered mt-2 w-full"
 		></textarea>
 	</label>

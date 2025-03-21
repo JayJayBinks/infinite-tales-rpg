@@ -41,6 +41,7 @@
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState');
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const npcState = useLocalStorage<NPCState>('npcState', {});
 	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 
@@ -87,7 +88,8 @@
 			npcState.value,
 			relatedQuestionHistory,
 			gameSettingsState.value,
-			getCurrentCampaignChapter()
+			getCurrentCampaignChapter(),
+			customGMNotesState.value
 		);
 		console.log(stringifyPretty(gmAnswerState));
 		isGeneratingState = false;

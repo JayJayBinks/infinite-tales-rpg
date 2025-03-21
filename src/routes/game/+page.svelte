@@ -40,8 +40,7 @@
 	import {
 		type Campaign,
 		CampaignAgent,
-		type CampaignChapter,
-		getPromptForGameMasterNotes
+		type CampaignChapter
 	} from '$lib/ai/agents/campaignAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
@@ -101,6 +100,7 @@
 	);
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
 
@@ -482,10 +482,10 @@
 			);
 			additionalStoryInput = newAdditionalStoryInput;
 
-			let plotPointForNotes: string = currentGameActionState.currentPlotPoint;
+
 			if (newChapter) {
 				currentChapterState.value += 1;
-				plotPointForNotes = 'PLOT_ID: 1';
+				currentGameActionState.currentPlotPoint = 'PLOT_ID: 1';
 				const { prompt, updatedStory } = getNextChapterPrompt(
 					campaignState.value,
 					currentChapterState.value,
@@ -494,13 +494,6 @@
 				additionalStoryInput += prompt;
 				storyState.value = updatedStory;
 			}
-
-			additionalStoryInput += getPromptForGameMasterNotes(
-				getGameMasterNotesForCampaignChapter(
-					getCurrentCampaignChapter(),
-					plotPointForNotes
-				)
-			);
 		}
 		return additionalStoryInput;
 	}
@@ -538,6 +531,15 @@
 		additionalStoryInput += combatAndNPCState.additionalStoryInput;
 
 		additionalStoryInput = await addCampaignAdditionalStoryInput(action, additionalStoryInput);
+
+		const gmNotes = getGameMasterNotesForCampaignChapter(
+			getCurrentCampaignChapter(),
+			currentGameActionState.currentPlotPoint
+		);
+		if(customGMNotesState.value){
+			gmNotes.unshift(customGMNotesState.value)
+		}
+		additionalStoryInput += GameAgent.getPromptForGameMasterNotes(gmNotes);
 
 		// Add any extra side effects that should modify the story input.
 		additionalStoryInput = gameLogic.addAdditionsFromActionSideeffects(

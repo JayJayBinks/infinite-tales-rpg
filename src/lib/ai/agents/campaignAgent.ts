@@ -43,14 +43,6 @@ export const getNewChapterObject = (chapterId: number) => {
 	};
 };
 
-export const getPromptForGameMasterNotes = (notes: Array<string>) => {
-	if (!notes || notes.length === 0) {
-		return '';
-	}
-	return '\nFollowing are Game Master Notes to consider for the next story progression:\n' +
-		notes.join('\n') + '\n';
-};
-
 export const getNewPlotPointObject = (plotId) => {
 	return {
 		plotId: plotId,
