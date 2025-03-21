@@ -1,7 +1,7 @@
-import type { Campaign, CampaignAgent } from '$lib/ai/agents/campaignAgent';
-import { SLOW_STORY_PROMPT, type GameActionState } from '$lib/ai/agents/gameAgent';
-import type { LLMMessage } from '$lib/ai/llm';
+import type { Campaign, CampaignAgent, CampaignChapter } from '$lib/ai/agents/campaignAgent';
 import type { Action } from '$lib/ai/agents/gameAgent';
+import { type GameActionState, SLOW_STORY_PROMPT } from '$lib/ai/agents/gameAgent';
+import type { LLMMessage } from '$lib/ai/llm';
 import { stringifyPretty } from '$lib/util.svelte';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
@@ -78,6 +78,25 @@ export async function advanceChapterIfApplicable(
 		}
 	}
 	return { newAdditionalStoryInput, newChapter };
+}
+
+export function getGameMasterNotesForCampaignChapter(
+	campaignChapter?: CampaignChapter,
+	currentPlotPointString?: string
+): Array<string> {
+	if (campaignChapter) {
+		if (currentPlotPointString) {
+			const mappedPlotPoint = mapPlotStringToIds(currentPlotPointString)[0];
+			if (mappedPlotPoint > 0) {
+				return (
+					campaignChapter.plot_points.find((p) => p.plotId === mappedPlotPoint)
+						?.game_master_notes || []
+				);
+			}
+		}
+		return campaignChapter.plot_points.map((p) => p.game_master_notes).flat();
+	}
+	return [];
 }
 
 export function getNextChapterPrompt(

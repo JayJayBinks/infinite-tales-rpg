@@ -7,6 +7,7 @@ import type { Story } from '$lib/ai/agents/storyAgent';
 import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 import { mapGameState } from '$lib/ai/agents/mappers';
 import type { NPCState, Resources } from '$lib/ai/agents/characterStatsAgent';
+import type { CampaignChapter } from '$lib/ai/agents/campaignAgent';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -152,15 +153,22 @@ export class GameAgent {
 		inventoryState: InventoryState,
 		npcState: NPCState,
 		relatedHistory: string[],
-		gameSettings: GameSettings
+		gameSettings: GameSettings,
+		campaignChapterState?: CampaignChapter
 	): Promise<GameMasterAnswer> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
 				'You can refer to the internal state, rules and previous messages that the Game Master has considered',
-			'The following is the internal state of the NPCs.' + '\n' + stringifyPretty(npcState),
-			jsonSystemInstructionForPlayerQuestion
+			'The following is the internal state of the NPCs.' + '\n' + stringifyPretty(npcState)
 		];
-
+		if (campaignChapterState) {
+			gameAgent.push(
+				'The following is the state of the current campaign chapter.' +
+					'\n' +
+					stringifyPretty(campaignChapterState)
+			);
+		}
+		gameAgent.push(jsonSystemInstructionForPlayerQuestion);
 		let userMessage =
 			'Most important! Answer outside of character, do not describe the story, but give an explanation to this question:\n' +
 			question +
@@ -296,6 +304,7 @@ Storytelling
 - Introduce key characters and explore their initial thoughts, feelings, and relationships with one another. Showcase their emotions, motivations, and backstories. 
 - Encourage moments of introspection, dialogue, and quiet observation to develop a deeper understanding of the characters and the world they inhabit. 
 - ${SLOW_STORY_PROMPT}
+- Do not make decisions on behalf of the player character. If the story reaches a point where the player character must make a choice, pause the narration and wait for the player's action before continuing.
 - For the story narration never mention game meta elements like dice rolls; Only describe the narrative the character experiences
 - The story history always takes precedence over the story progression, if the history does not allow for the progression to happen, the progression must be adjusted to fit the history.
 

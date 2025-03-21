@@ -2,13 +2,13 @@
 	import { onMount } from 'svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import {
-		GameAgent,
+		defaultGameSettings,
 		type GameActionState,
+		GameAgent,
 		type GameMasterAnswer,
-		type InventoryState,
-		type PlayerCharactersGameState,
 		type GameSettings,
-		defaultGameSettings
+		type InventoryState,
+		type PlayerCharactersGameState
 	} from '$lib/ai/agents/gameAgent';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { Story } from '$lib/ai/agents/storyAgent';
@@ -19,6 +19,7 @@
 	import type { AIConfig } from '$lib';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import type { NPCState } from '$lib/ai/agents/characterStatsAgent';
+	import type { Campaign, CampaignChapter } from '$lib/ai/agents/campaignAgent';
 
 	let {
 		onclose,
@@ -42,6 +43,13 @@
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const npcState = useLocalStorage<NPCState>('npcState', {});
 	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
+
+	const campaignState = useLocalStorage<Campaign>('campaignState');
+	const currentChapterState = useLocalStorage<number>('currentChapterState');
+	const getCurrentCampaignChapter = (): CampaignChapter | undefined =>
+		campaignState.value?.chapters.find(
+			(chapter) => chapter.chapterId === currentChapterState.value
+		);
 
 	let gameAgent: GameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
@@ -78,7 +86,8 @@
 			inventoryState.value,
 			npcState.value,
 			relatedQuestionHistory,
-			gameSettingsState.value
+			gameSettingsState.value,
+			getCurrentCampaignChapter()
 		);
 		console.log(stringifyPretty(gmAnswerState));
 		isGeneratingState = false;

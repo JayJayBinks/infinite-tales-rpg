@@ -1,7 +1,7 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
-import type { Story } from '$lib/ai/agents/storyAgent';
+import { type Story, TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
 
 export type Ability = {
 	name: string;
@@ -190,6 +190,7 @@ export class CharacterStatsAgent {
 			'Scale the stats and abilities according to the player character level: ' +
 				characterStats.level +
 				'\n',
+			TROPES_CLICHE_PROMPT,
 			`Most important instruction! You must always respond with following JSON format! 
                             {"uniqueNpcName": ${npcStatsStateForPromptAsString}, ...}`
 		];

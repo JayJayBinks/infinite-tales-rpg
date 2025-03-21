@@ -250,6 +250,7 @@
 	<p>Please report any bugs in the Discord!</p>
 	<p>Watch out for:</p>
 	<ul>
+		<li>Consistency with plot points and GM notes.</li>
 		<li>Transition between chapters.</li>
 		<li>Consistency with decisions that deviate from the planned plot.</li>
 	</ul>

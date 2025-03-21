@@ -18,6 +18,9 @@ export const exampleGameSystems = [
 	'Dungeons & Dragons'
 ];
 
+export const TROPES_CLICHE_PROMPT =
+	'Create a unique world with fresh names, avoiding clichés, generic prefixes, and overused tropes;\n';
+
 // stringifyPretty(storyStateForPrompt) works because no json included in the values
 //TODO if we remove this as object new tale form placeholder wont work anymore...
 export const storyStateForPrompt = {
@@ -57,6 +60,7 @@ export class StoryAgent {
 	): Promise<Story> {
 		const storyAgent =
 			'You are RPG story agent, crafting captivating, limitless GAME experiences using BOOKS, THEME, TONALITY for CHARACTER.\n' +
+			TROPES_CLICHE_PROMPT +
 			'Always respond with following JSON!\n' +
 			stringifyPretty(storyStateForPrompt);
 

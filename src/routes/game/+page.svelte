@@ -15,6 +15,7 @@
 	import { getTextForActionButton, handleError, stringifyPretty } from '$lib/util.svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import StoryProgressionWithImage from '$lib/components/StoryProgressionWithImage.svelte';
+	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import {
 		type AiLevelUp,
@@ -41,7 +42,12 @@
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/interaction_modals/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
-	import { type Campaign, CampaignAgent } from '$lib/ai/agents/campaignAgent';
+	import {
+		type Campaign,
+		CampaignAgent,
+		type CampaignChapter,
+		getPromptForGameMasterNotes
+	} from '$lib/ai/agents/campaignAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
@@ -55,9 +61,12 @@
 	import ResourcesComponent from '$lib/components/ResourcesComponent.svelte';
 
 	import { initializeMissingResources, refillResourcesFully } from './resourceLogic';
-	import { advanceChapterIfApplicable, getNextChapterPrompt } from './campaignLogic';
+	import {
+		advanceChapterIfApplicable,
+		getGameMasterNotesForCampaignChapter,
+		getNextChapterPrompt
+	} from './campaignLogic';
 	import { getRelatedHistory } from './memoryLogic';
-	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -461,6 +470,44 @@
 		historyMessagesState.value = updatedHistoryMessages;
 	}
 
+	async function addCampaignAdditionalStoryInput(action: Action, additionalStoryInput: string) {
+		// If the game is played in campaign mode
+		if (campaignState.value?.chapters?.length > 0) {
+			//advance the chapter if applicable.
+			const { newAdditionalStoryInput, newChapter } = await advanceChapterIfApplicable(
+				action,
+				additionalStoryInput,
+				didAIProcessActionState.value,
+				campaignState.value,
+				currentChapterState.value,
+				currentGameActionState,
+				gameActionsState.value,
+				campaignAgent,
+				historyMessagesState.value
+			);
+			additionalStoryInput = newAdditionalStoryInput;
+
+			if (newChapter) {
+				currentChapterState.value += 1;
+				const { prompt, updatedStory } = getNextChapterPrompt(
+					campaignState.value,
+					currentChapterState.value,
+					storyState.value
+				);
+				additionalStoryInput += prompt;
+				storyState.value = updatedStory;
+			}
+
+			additionalStoryInput += getPromptForGameMasterNotes(
+				getGameMasterNotesForCampaignChapter(
+					getCurrentCampaignChapter(),
+					currentGameActionState.currentPlotPoint
+				)
+			);
+		}
+		return additionalStoryInput;
+	}
+
 	// Helper to prepare additional story input by incorporating combat prompts
 	async function prepareAdditionalStoryInput(
 		action: Action,
@@ -490,35 +537,11 @@
 			combatAgent,
 			useDynamicCombat.value
 		);
-
-		// If there are defined campaign chapters, advance the chapter if applicable.
-		if (campaignState.value?.chapters?.length > 0) {
-			const { newAdditionalStoryInput, newChapter } = await advanceChapterIfApplicable(
-				action,
-				additionalStoryInput,
-				didAIProcessActionState.value,
-				campaignState.value,
-				currentChapterState.value,
-				currentGameActionState,
-				gameActionsState.value,
-				campaignAgent,
-				historyMessagesState.value
-			);
-			additionalStoryInput = newAdditionalStoryInput;
-			if (newChapter) {
-				currentChapterState.value += 1;
-				const { prompt, updatedStory } = getNextChapterPrompt(
-					campaignState.value,
-					currentChapterState.value,
-					storyState.value
-				);
-				additionalStoryInput += prompt;
-				storyState.value = updatedStory;
-			}
-		}
-
 		// Combine combat-related additional story input.
 		additionalStoryInput += combatAndNPCState.additionalStoryInput;
+
+		additionalStoryInput = await addCampaignAdditionalStoryInput(action, additionalStoryInput);
+
 		// Add any extra side effects that should modify the story input.
 		additionalStoryInput = gameLogic.addAdditionsFromActionSideeffects(
 			action,
@@ -823,6 +846,11 @@
 		}
 		itemForSuggestActionsState = undefined;
 	};
+
+	const getCurrentCampaignChapter = (): CampaignChapter | undefined =>
+		campaignState.value?.chapters.find(
+			(chapter) => chapter.chapterId === currentChapterState.value
+		);
 
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;

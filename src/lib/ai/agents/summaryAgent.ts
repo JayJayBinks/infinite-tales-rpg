@@ -56,9 +56,10 @@ export class SummaryAgent {
 	async retrieveRelatedHistory(
 		storyProgression: string,
 		gameStates: GameActionState[],
-		maxRelatedDetails = 3
+		maxRelatedDetails = 3,
+		additionalHistory?: string[]
 	): Promise<RelatedStoryHistory> {
-		if (gameStates.length <= 20) {
+		if ((!additionalHistory || additionalHistory?.length === 0) && gameStates.length <= 20) {
 			return { relatedDetails: [] };
 		}
 		const agent =
@@ -77,13 +78,19 @@ export class SummaryAgent {
 				state.story_memory_explanation?.includes('HIGH') ||
 				state.story_memory_explanation?.includes('MEDIUM'));
 
+		const consideredHistory: LLMMessage[] = gameStates.filter(isRelevant).map((state) => ({
+			role: 'model',
+			content: state.story
+		}));
+		if (additionalHistory) {
+			additionalHistory.forEach((note) => {
+				consideredHistory.push({ role: 'model', content: note });
+			});
+		}
 		const request: LLMRequest = {
 			userMessage: 'STORY PROGRESSION:\n' + storyProgression,
 			systemInstruction: agent,
-			historyMessages: gameStates.filter(isRelevant).map((state) => ({
-				role: 'model',
-				content: state.story
-			})),
+			historyMessages: consideredHistory,
 			model: 'gemini-2.0-flash',
 			temperature: 0.1
 		};
