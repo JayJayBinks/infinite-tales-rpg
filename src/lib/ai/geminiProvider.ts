@@ -15,7 +15,7 @@ import {
 	type LLMconfig,
 	type LLMMessage,
 	type LLMRequest,
-	type LLMReasoningResponse
+	type LLMReasoningResponse, LANGUAGE_PROMPT
 } from '$lib/ai/llm';
 import {
 	errorState,
@@ -109,8 +109,7 @@ export class GeminiProvider extends LLM {
 		});
 		if (this.llmConfig.language) {
 			const languageInstruction =
-				'Important! Each JSON key must stay as english but the value must be in the following language: ' +
-				this.llmConfig.language;
+				LANGUAGE_PROMPT + this.llmConfig.language;
 			systemInstruction.parts.push({ text: languageInstruction });
 		}
 

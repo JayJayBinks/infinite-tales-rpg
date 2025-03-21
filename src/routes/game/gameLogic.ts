@@ -62,7 +62,7 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	}
 	return (
 		difficulty !== ActionDifficulty.medium ||
-		('' + action.is_straightforward).includes('false') ||
+		('' + action.narration_details).includes('HIGH') ||
 		isInCombat ||
 		includesTrying
 	);
@@ -358,7 +358,9 @@ export function isEnoughResource(
 }
 
 export function addAdditionsFromActionSideeffects(action: Action, additionalStoryInput: string) {
-	if ((action.is_straightforward + '').includes('false')) {
+	const is_travel = action.type?.toLowerCase().includes('travel');
+	const narration_details = action.narration_details + '';
+	if (is_travel || narration_details.includes('HIGH') || narration_details.includes('MEDIUM')) {
 		additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
 	}
 	const encounterString = '' + action.enemyEncounterExplanation;
@@ -368,9 +370,17 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 			action.enemyEncounterExplanation +
 			' Players take first turn, wait for their action.';
 	}
+	const is_interruptible = '' + action.is_interruptible;
+	const directly_interrupted = is_interruptible.includes('HIGH');
+	const travel_interrupted = is_travel && is_interruptible.includes('MEDIUM');
+	if (directly_interrupted || travel_interrupted) {
+		additionalStoryInput +=
+			'\naction is possibly interrupted: ' + action.is_interruptible + ' probability.';
+	}
+
 	if (!additionalStoryInput.includes('sudo')) {
 		additionalStoryInput +=
-			'\n' + 'Before responding always review the system instructions and apply the given rules.';
+			'\n\n' + 'Before responding always review the system instructions and apply the given rules.';
 	}
 	return additionalStoryInput;
 }

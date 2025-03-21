@@ -27,12 +27,7 @@
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
-	import {
-		ActionDifficulty,
-		getEmptyCriticalResourceKeys,
-		isEnoughResource,
-		mustRollDice
-	} from './gameLogic';
+	import { ActionDifficulty, getEmptyCriticalResourceKeys, isEnoughResource, mustRollDice } from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
@@ -125,7 +120,7 @@
 	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-			({} as GameActionState)
+		({} as GameActionState)
 	);
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
@@ -310,7 +305,7 @@
 		diceRollDialog.show();
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
-			additionalStoryInput = (additionalStoryInput || '') + '\n ' + diceRollDialog.returnValue;
+			additionalStoryInput = diceRollDialog.returnValue + '\n' + (additionalStoryInput || '');
 			sendAction(chosenActionState.value, false, additionalStoryInput);
 		});
 	}
@@ -487,8 +482,10 @@
 			);
 			additionalStoryInput = newAdditionalStoryInput;
 
+			let plotPointForNotes: string = currentGameActionState.currentPlotPoint;
 			if (newChapter) {
 				currentChapterState.value += 1;
+				plotPointForNotes = 'PLOT_ID: 1';
 				const { prompt, updatedStory } = getNextChapterPrompt(
 					campaignState.value,
 					currentChapterState.value,
@@ -501,7 +498,7 @@
 			additionalStoryInput += getPromptForGameMasterNotes(
 				getGameMasterNotesForCampaignChapter(
 					getCurrentCampaignChapter(),
-					currentGameActionState.currentPlotPoint
+					plotPointForNotes
 				)
 			);
 		}
@@ -1044,7 +1041,7 @@
 							text: 'Continue The Tale'
 						})}
 					class="text-md btn btn-neutral mb-3 w-full"
-					>Continue The Tale.
+				>Continue The Tale.
 				</button>
 
 				{#if levelUpState.value.buttonEnabled}
@@ -1053,7 +1050,7 @@
 							levelUpClicked(characterState.value.name);
 						}}
 						class="text-md btn btn-success mb-3 w-full"
-						>Level up!
+					>Level up!
 					</button>
 				{/if}
 				<button
@@ -1061,14 +1058,14 @@
 						useSpellsAbilitiesModal.showModal();
 					}}
 					class="text-md btn btn-primary w-full"
-					>Spells & Abilities
+				>Spells & Abilities
 				</button>
 				<button
 					onclick={() => {
 						useItemsModal.showModal();
 					}}
 					class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
+				>Inventory
 				</button>
 			</div>
 		{/if}
@@ -1095,21 +1092,21 @@
 					onclick={onCustomActionSubmitted}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
-					>Submit
+				>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-		.btn {
-			height: fit-content;
-			padding: 1rem;
-		}
+      .btn {
+          height: fit-content;
+          padding: 1rem;
+      }
 
-		canvas {
-			height: 100%;
-			width: 100%;
-		}
+      canvas {
+          height: 100%;
+          width: 100%;
+      }
 	</style>
 </div>

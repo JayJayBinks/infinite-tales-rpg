@@ -48,7 +48,7 @@ export const getPromptForGameMasterNotes = (notes: Array<string>) => {
 		return '';
 	}
 	return '\nFollowing are Game Master Notes to consider for the next story progression:\n' +
-		notes.join('\n');
+		notes.join('\n') + '\n';
 };
 
 export const getNewPlotPointObject = (plotId) => {
@@ -178,9 +178,9 @@ export class CampaignAgent {
 			'Do not micro manage every single plot point but only take care that the overall chapter and campaign stay on track.\n' +
 			'Always respond with following JSON!\n' +
 			`{
-				"currentChapter": Identify the most relevant chapterId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - chapterId: {chapterId}",
-				"currentPlotPoint": Identify the most relevant plotId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
-  			"nextPlotPoint": Identify the next plotId in plannedCampaign, must be greater than currentPlotPoint or null if there is no next plot point; Format: "Reasoning why story is currently at this plotId - plotId: {plotId}",
+				"currentChapter": Identify the most relevant chapterId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - CHAPTER_ID: {chapterId}",
+				"currentPlotPoint": Identify the most relevant plotId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
+  			"nextPlotPoint": Identify the next plotId in plannedCampaign, must be greater than currentPlotPoint or null if there is no next plot point; Format: "Reasoning why story is currently at this plotId - PLOT_ID: {plotId}",
   			"deviationExplanation": is the currentChapter still on track; if not include reasons why the actualCampaign deviated from currentChapter,
 				"deviation": integer 0 - 100 how much the actualCampaign deviated from currentChapter,
 				"pacingExplanation": reasoning on how quickly the characters are proceeding through the currentChapter,

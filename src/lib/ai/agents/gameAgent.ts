@@ -26,9 +26,10 @@ export type Action = {
 	plausibility?: string;
 	difficulty_explanation?: string;
 	type?: string;
-	is_straightforward?: string;
+	narration_details?: string;
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: string;
+	is_interruptible?: string;
 	resource_cost?: {
 		resource_key: string | undefined;
 		cost: number;
@@ -71,7 +72,7 @@ export type GameMasterAnswer = {
 
 export const PAST_STORY_PLOT_RULE =
 	'\n\nThe next story progression must be plausible in context of PAST STORY PLOT;\n' +
-	'Do not reintroduce or repeat elements that have already been established.\n' +
+	'From PAST STORY PLOT do not reintroduce or repeat elements that have already been established.\n' +
 	//make sure custom player history takes precedence
 	'If PAST STORY PLOT contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nPAST STORY PLOT:\n';
 
@@ -294,7 +295,7 @@ The Game Master's General Responsibilities Include:
 - Never narrate events briefly or summarize; Always describe detailed scenes with character conversation in direct speech
 - Use GAME's core knowledge and rules.
 - Handle CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
-- Handle NPC resources, you must explicitly use resourceKey "hp" or "mp", and no deviations of that
+- Handle NPC resources, you must exactly use resourceKey "hp" or "mp", and no deviations of that
 ${!gameSettingsState.detailedNarrationLength ? '- The story narration ' + storyWordLimit : ''}
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.
@@ -339,11 +340,11 @@ const jsonSystemInstructionForGameAgent = (
 	gameSettingsState: GameSettings
 ) => `Important Instruction! You must always respond with valid JSON in the following format:
 {
-  "currentPlotPoint": Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - plotId: {plotId}",
+  "currentPlotPoint": Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
   "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
-  "plotPointAdvancingNudgeExplanation": "Explain what could happen next to advance the story towards nextPlotId according to ADVENTURE_AND_MAIN_EVENT; Include brief explanation of nextPlotId; Format "currentPlotId: {plotId}; nextPlotId: {currentPlotId + 1}; {Reasoning}",
+  "plotPointAdvancingNudgeExplanation": "Explain what could happen next to advance the story towards NEXT_PLOT_ID according to ADVENTURE_AND_MAIN_EVENT; Include brief explanation of NEXT_PLOT_ID; Format "CURRENT_PLOT_ID: {plotId}; NEXT_PLOT_ID: {currentPlotId + 1}; {Reasoning}",
   "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${!gameSettingsState.detailedNarrationLength ? storyWordLimit : ''} For character speech use single quotes. Format the narration using HTML tags for easier reading.",
-  "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} longTermImpact: LOW, MEDIUM, HIGH",
+  "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} LONG_TERM_IMPACT: LOW, MEDIUM, HIGH",
   "image_prompt": "Create a prompt for an image generating ai that describes the scene of the story progression, do not use character names but appearance description. Always include the gender. Keep the prompt similar to previous prompts to maintain image consistency. When describing CHARACTER, always refer to appearance variable. Always use the format: {sceneDetailed} {adjective} {charactersDetailed}",
   "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
   ${statsUpdatePromptObject},
@@ -366,7 +367,7 @@ const jsonSystemInstructionForGameAgent = (
   ],
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
-  "currently_present_npcs": List of NPCs or party members that are present in the current situation. Also list objects if story relevant. Format: {"hostile": ["uniqueNameId", ...], "friendly": ["uniqueNameId", ...], "neutral": ["uniqueNameId", ...]}
+  "currently_present_npcs": List of NPCs or party members that are present in the current situation. Also list objects if story relevant. ID must be technical and unique, same NPC always keeps same ID; Format: {"hostile": ["uniqueTechnicalNameId", ...], "friendly": ["uniqueTechnicalNameId", ...], "neutral": ["uniqueTechnicalNameId", ...]}
 }`;
 
 const jsonSystemInstructionForPlayerQuestion = `Important Instruction! You must always respond with valid JSON in the following format:

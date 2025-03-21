@@ -5,7 +5,7 @@ import type { LLMMessage } from '$lib/ai/llm';
 import { stringifyPretty } from '$lib/util.svelte';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
-export function mapPlotStringToIds(text: string, splitDelimeter: string = 'plotId: ') {
+export function mapPlotStringToIds(text: string, splitDelimeter: string = 'PLOT_ID: ') {
 	if (!text) {
 		return [0];
 	}
@@ -64,11 +64,11 @@ export async function advanceChapterIfApplicable(
 		}
 		const mappedCurrentPlotPoint: number = mapPlotStringToIds(
 			currentGameActionState.currentPlotPoint,
-			'plotId: '
+			'PLOT_ID: '
 		)[0];
 		const mappedCampaignChapterId: number = mapPlotStringToIds(
 			campaignDeviations?.currentChapter || '',
-			'chapterId: '
+			'CHAPTER_ID: '
 		)[0];
 		if (
 			mappedCurrentPlotPoint > campaignState.chapters[currentChapter - 1]?.plot_points?.length ||
@@ -84,17 +84,12 @@ export function getGameMasterNotesForCampaignChapter(
 	campaignChapter?: CampaignChapter,
 	currentPlotPointString?: string
 ): Array<string> {
-	if (campaignChapter) {
-		if (currentPlotPointString) {
-			const mappedPlotPoint = mapPlotStringToIds(currentPlotPointString)[0];
-			if (mappedPlotPoint > 0) {
-				return (
-					campaignChapter.plot_points.find((p) => p.plotId === mappedPlotPoint)
-						?.game_master_notes || []
-				);
-			}
+	if (campaignChapter && currentPlotPointString) {
+		const mappedPlotPoint = mapPlotStringToIds(currentPlotPointString)[0];
+		if (mappedPlotPoint > 0) {
+			return [campaignChapter.plot_points.find((p) => p.plotId === mappedPlotPoint)
+				?.game_master_notes].flat() as Array<string> || []
 		}
-		return campaignChapter.plot_points.map((p) => p.game_master_notes).flat();
 	}
 	return [];
 }

@@ -64,7 +64,7 @@ export class CombatAgent {
 				'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
 				'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
 				'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
-			`Only for the player character ${action.characterName} use the following resources:\n ${stringifyPretty(playerCharResources)}\n\nFor stats_update regarding NPC, you must explicitly use resourceKey "hp" or "mp", and no deviations of that.`,
+			`Only for the player character ${action.characterName} use the following resources:\n ${stringifyPretty(playerCharResources)}\n\nFor stats_update regarding NPC, you must exactly use resourceKey "hp" or "mp", and no deviations of that.`,
 			"The following is the character's inventory, if an item is relevant in the current situation then apply it's effect." +
 				'\n' +
 				stringifyPretty(inventoryState),

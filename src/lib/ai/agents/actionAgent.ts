@@ -22,7 +22,7 @@ export class ActionAgent {
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
-					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation",
+					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation|Travel",
 					"required_trait": "the skill the dice is rolled for",
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
@@ -31,9 +31,10 @@ export class ActionAgent {
 						"resource_key": "the resource to pay for this action; one of character_stats.resources",
 						"cost": number,
 					},
-					"is_straightforward": true if it involves few steps or has a clear outcome; false if it involves multiple narrative moments or decisions; include brief {reasoning}. Use the string format: "{reasoning}: true|false",
+					"narration_details": Use the string format: "{reasoning}: {details}"; Brief {reasoning} how many {details: LOW|MEDIUM|HIGH} the narration for this action should include; LOW|MEDIUM if it involves few steps; HIGH if it involves multiple narrative moments or decisions; or takes longer time,
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
   				"enemyEncounterExplanation": {reasoning} for the {probability: LOW|MEDIUM|HIGH} of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened; Format "{reasoning} - {probability}",
+					"is_interruptible": {reasoning} for the {probability: LOW|MEDIUM|HIGH} that this action is interrupted; e.g. travel in dangerous environment is HIGH; Format "{reasoning} - {probability}",
 					"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Modifier can be applied due to a character's proficiency, disadvantage, high difficulty, passive attributes in spells_and_abilities and inventory, or situational factors specific to previous actions. Give an in game story explanation why a modifier is applied or not and how you decided that.",
 						# If action_difficulty is difficult apply a bonus.

@@ -6,7 +6,7 @@ import {
 	type LLMconfig,
 	type LLMMessage,
 	type LLMRequest,
-	type LLMReasoningResponse
+	type LLMReasoningResponse, LANGUAGE_PROMPT
 } from '$lib/ai/llm';
 import isPlainObject from 'lodash.isplainobject';
 
@@ -44,8 +44,7 @@ export class PollinationsProvider extends LLM {
 		);
 		if (this.llmConfig.language) {
 			const languageInstruction =
-				'Important! For every JSON property you must respond in the following language: ' +
-				this.llmConfig.language;
+				LANGUAGE_PROMPT + this.llmConfig.language;
 			systemInstructions.push({ role: 'system', content: languageInstruction });
 		}
 
