@@ -15,18 +15,14 @@ export class LLMProvider {
 		if (configToUse.provider === 'pollinations') {
 			return new PollinationsProvider({ ...configToUse, model: 'openai' });
 		} else {
-			//fallback to flash-exp if thinking-exp fails and then to pollinations gpt-4o-mini
+			//fallback to flash-exp if thinking-exp fails
 			return new GeminiProvider(
 				configToUse,
-				new PollinationsProvider(
-					{ ...configToUse, model: 'gemini-thinking' },
-					!useFallback
-						? undefined
-						: new GeminiProvider(
-								{ ...configToUse, model: 'gemini-2.0-flash-exp' },
-								new PollinationsProvider(configToUse)
-							)
-				)
+				!useFallback
+					? undefined
+					: new GeminiProvider(
+						{ ...configToUse, model: 'gemini-2.0-flash-exp' }
+					)
 			);
 		}
 	}

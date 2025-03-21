@@ -226,7 +226,7 @@
 
 	<label class="form-control mt-5 w-full sm:w-2/3">
 		<div class="flex flex-col items-center gap-2">
-			<span>Use GPT-4o-mini as fallback</span>
+			<span>Use Gemini Flash as fallback</span>
 			<div class="flex items-center gap-2">
 				<input
 					type="checkbox"
@@ -235,7 +235,7 @@
 				/>
 			</div>
 			<small class="m-auto mt-2">
-				When Gemini is overloaded, Pollinations GPT-4o-mini will be used.
+				When Gemini Thinking is overloaded, Flash will be used.
 			</small>
 			<small class="m-auto mt-2">
 				Keep in mind that the game experience can be decreased with this option.

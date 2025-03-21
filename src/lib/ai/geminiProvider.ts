@@ -121,11 +121,6 @@ export class GeminiProvider extends LLM {
 					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
 				);
 			}
-			if (!model.model.includes('thinking') && getIsGeminiFlashExpOverloaded()) {
-				throw new Error(
-					'Gemini Flash is overloaded! Fallback early to avoid waiting for the response.'
-				);
-			}
 			result = await model.generateContent({ contents, systemInstruction });
 		} catch (e) {
 			if (e instanceof Error) {
@@ -140,13 +135,15 @@ export class GeminiProvider extends LLM {
 						setIsGeminiFlashExpOverloaded(true);
 					}
 					e.message =
-						'The Gemini AI is overloaded! You can try again or wait some time. Alternatively, you can go to the settings and enable GPT-4o-mini as fallback.';
+						'The Gemini AI is overloaded! You can try again or wait some time. Alternatively, you can go to the settings and enable the fallback.';
 				}
 				if (this.fallbackLLM) {
 					console.log('Fallback LLM for error: ', e.message);
 					const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
 					if (!fallbackResult) {
 						handleError(e as unknown as string);
+					}else{
+						fallbackResult['fallbackUsed'] = true;
 					}
 					return fallbackResult;
 				} else {
