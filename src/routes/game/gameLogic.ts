@@ -9,9 +9,10 @@ import {
 	type Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
-import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
+import type { NpcID, NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
+import { getNPCDisplayName, getNPCTechnicalID } from '$lib/util.svelte';
 
 export enum ActionDifficulty {
 	simple = 'simple',
@@ -26,15 +27,27 @@ export function getEmptyCriticalResourceKeys(resources: ResourcesWithCurrentValu
 		.map((entry) => entry[0]);
 }
 
-export function getAllTargetsAsList(targets: Targets) {
+export function getAllTargetsAsList(targets: Targets, displayNames = true): Array<string> {
 	if (!targets || !targets.hostile) {
 		return [];
 	}
-	return [...targets.hostile, ...targets.neutral, ...targets.friendly];
+	if(displayNames){
+		return [
+			...targets.hostile.map(getNPCDisplayName),
+			...targets.neutral.map(getNPCDisplayName),
+			...targets.friendly.map(getNPCDisplayName)
+		];
+	}else{
+		return [
+			...targets.hostile.map(getNPCTechnicalID),
+			...targets.neutral.map(getNPCTechnicalID),
+			...targets.friendly.map(getNPCTechnicalID)
+		];
+	}
 }
 
 export function getNewNPCs(targets: Targets, npcState: NPCState) {
-	return getAllTargetsAsList(targets).filter((newNPC) => !Object.keys(npcState).includes(newNPC));
+	return getAllTargetsAsList(targets, false).filter((newNPC) => !Object.keys(npcState).includes(newNPC));
 }
 
 //TODO implement parsing to enums directly from json
@@ -68,8 +81,8 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	);
 }
 
-export const getTargetPromptAddition = function (targets: string[]) {
-	return '\n I target ' + targets.join(' and ');
+export const getTargetPromptAddition = function (targets: NpcID[]) {
+	return '\n I target ' + targets.map(getNPCTechnicalID).join(' and ');
 };
 
 export function formatItemId(item_id: string) {

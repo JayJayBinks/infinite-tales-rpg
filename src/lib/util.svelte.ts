@@ -4,6 +4,7 @@ import isString from 'lodash.isstring';
 import * as pdfjs from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import type { Action } from '$lib/ai/agents/gameAgent';
+import type { NpcID } from '$lib/ai/agents/characterStatsAgent';
 
 export function stringifyPretty(object: unknown) {
 	return JSON.stringify(object, null, 2);
@@ -171,7 +172,7 @@ export function getTextForActionButton(action: Action) {
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
 
 	if (cost > 0) {
-		const costString = ` (${cost} ${action.resource_cost?.resource_key.replaceAll('_', ' ')}).`;
+		const costString = ` (${cost} ${action.resource_cost?.resource_key?.replaceAll('_', ' ')}).`;
 		text = action.text.replaceAll('.', '');
 		text += costString;
 	} else {
@@ -186,3 +187,11 @@ export function getTextForActionButton(action: Action) {
 	}
 	return text;
 }
+
+export const getNPCDisplayName = (npc: NpcID) => {
+	return npc.displayName || npc.uniqueTechnicalNameId;
+};
+
+export const getNPCTechnicalID = (npc: NpcID) => {
+	return npc.uniqueTechnicalNameId || npc.displayName;
+};

@@ -236,9 +236,7 @@
 					bind:checked={aiConfigState.value.useFallbackLlmState}
 				/>
 			</div>
-			<small class="m-auto mt-2">
-				When Gemini Thinking is overloaded, Flash will be used.
-			</small>
+			<small class="m-auto mt-2"> When Gemini Thinking is overloaded, Flash will be used. </small>
 			<small class="m-auto mt-2">
 				Keep in mind that the game experience can be decreased with this option.
 			</small>

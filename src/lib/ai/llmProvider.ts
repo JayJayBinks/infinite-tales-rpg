@@ -20,9 +20,7 @@ export class LLMProvider {
 				configToUse,
 				!useFallback
 					? undefined
-					: new GeminiProvider(
-						{ ...configToUse, model: 'gemini-2.0-flash-exp' }
-					)
+					: new GeminiProvider({ ...configToUse, model: 'gemini-2.0-flash-exp' })
 			);
 		}
 	}

@@ -24,6 +24,10 @@ export type NPCResources = {
 	current_mp: number;
 };
 
+export const npcIDForPrompt = `{"uniqueTechnicalNameId": "technical ID that NEVER changes for the same NPC, NEVER include state adjectives", "displayName": "Name that is displayed to the player, can include state adjectives"}`;
+export type NpcID = { uniqueTechnicalNameId: string; displayName: string };
+export const currentlyPresentNPCSForPrompt = `{"hostile": array of ${npcIDForPrompt}, "friendly": array of ${npcIDForPrompt}, "neutral": array of ${npcIDForPrompt}}`;
+
 export type CharacterStats = {
 	level: number;
 	resources: Resources;

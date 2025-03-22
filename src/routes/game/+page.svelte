@@ -22,12 +22,18 @@
 		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
+		type NpcID,
 		type NPCState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
-	import { ActionDifficulty, getEmptyCriticalResourceKeys, isEnoughResource, mustRollDice } from './gameLogic';
+	import {
+		ActionDifficulty,
+		getEmptyCriticalResourceKeys,
+		isEnoughResource,
+		mustRollDice
+	} from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
@@ -37,11 +43,7 @@
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/interaction_modals/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
-	import {
-		type Campaign,
-		CampaignAgent,
-		type CampaignChapter
-	} from '$lib/ai/agents/campaignAgent';
+	import { type Campaign, CampaignAgent, type CampaignChapter } from '$lib/ai/agents/campaignAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
@@ -120,7 +122,7 @@
 	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-		({} as GameActionState)
+			({} as GameActionState)
 	);
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
@@ -482,7 +484,6 @@
 			);
 			additionalStoryInput = newAdditionalStoryInput;
 
-
 			if (newChapter) {
 				currentChapterState.value += 1;
 				currentGameActionState.currentPlotPoint = 'PLOT_ID: 1';
@@ -536,8 +537,8 @@
 			getCurrentCampaignChapter(),
 			currentGameActionState.currentPlotPoint
 		);
-		if(customGMNotesState.value){
-			gmNotes.unshift(customGMNotesState.value)
+		if (customGMNotesState.value) {
+			gmNotes.unshift(customGMNotesState.value);
 		}
 		additionalStoryInput += GameAgent.getPromptForGameMasterNotes(gmNotes);
 
@@ -773,10 +774,10 @@
 		itemForSuggestActionsState = item;
 	};
 
-	const onTargetedSpellsOrAbility = async (action: Action, targets: string[]) => {
+	const onTargetedSpellsOrAbility = async (action: Action, targets: NpcID[]) => {
 		isAiGeneratingState = true;
 		let targetAddition = '';
-		if (targets?.length > 0 && !targets.includes('No specific target')) {
+		if (targets?.length > 0 && !targets.some((t) => t === undefined)) {
 			targetAddition = targets?.length === 0 ? '' : gameLogic.getTargetPromptAddition(targets);
 		}
 		relatedActionHistoryState.value = await getRelatedHistory(
@@ -1043,7 +1044,7 @@
 							text: 'Continue The Tale'
 						})}
 					class="text-md btn btn-neutral mb-3 w-full"
-				>Continue The Tale.
+					>Continue The Tale.
 				</button>
 
 				{#if levelUpState.value.buttonEnabled}
@@ -1052,7 +1053,7 @@
 							levelUpClicked(characterState.value.name);
 						}}
 						class="text-md btn btn-success mb-3 w-full"
-					>Level up!
+						>Level up!
 					</button>
 				{/if}
 				<button
@@ -1060,14 +1061,14 @@
 						useSpellsAbilitiesModal.showModal();
 					}}
 					class="text-md btn btn-primary w-full"
-				>Spells & Abilities
+					>Spells & Abilities
 				</button>
 				<button
 					onclick={() => {
 						useItemsModal.showModal();
 					}}
 					class="text-md btn btn-primary mt-3 w-full"
-				>Inventory
+					>Inventory
 				</button>
 			</div>
 		{/if}
@@ -1094,21 +1095,21 @@
 					onclick={onCustomActionSubmitted}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
-				>Submit
+					>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-      .btn {
-          height: fit-content;
-          padding: 1rem;
-      }
+		.btn {
+			height: fit-content;
+			padding: 1rem;
+		}
 
-      canvas {
-          height: 100%;
-          width: 100%;
-      }
+		canvas {
+			height: 100%;
+			width: 100%;
+		}
 	</style>
 </div>

@@ -15,7 +15,8 @@ import {
 	type LLMconfig,
 	type LLMMessage,
 	type LLMRequest,
-	type LLMReasoningResponse, LANGUAGE_PROMPT
+	type LLMReasoningResponse,
+	LANGUAGE_PROMPT
 } from '$lib/ai/llm';
 import {
 	errorState,
@@ -107,8 +108,7 @@ export class GeminiProvider extends LLM {
 			safetySettings
 		});
 		if (this.llmConfig.language) {
-			const languageInstruction =
-				LANGUAGE_PROMPT + this.llmConfig.language;
+			const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
 			systemInstruction.parts.push({ text: languageInstruction });
 		}
 
@@ -141,7 +141,7 @@ export class GeminiProvider extends LLM {
 					const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
 					if (!fallbackResult) {
 						handleError(e as unknown as string);
-					}else{
+					} else {
 						fallbackResult['fallbackUsed'] = true;
 					}
 					return fallbackResult;

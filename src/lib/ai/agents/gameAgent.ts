@@ -6,7 +6,12 @@ import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 import { mapGameState } from '$lib/ai/agents/mappers';
-import type { NPCState, Resources } from '$lib/ai/agents/characterStatsAgent';
+import {
+	currentlyPresentNPCSForPrompt,
+	type NpcID,
+	type NPCState,
+	type Resources
+} from '$lib/ai/agents/characterStatsAgent';
 import type { CampaignChapter } from '$lib/ai/agents/campaignAgent';
 
 export type InventoryUpdate = {
@@ -51,7 +56,7 @@ export const defaultGameSettings = () => ({
 	detailedNarrationLength: true
 });
 
-export type Targets = { hostile: Array<string>; friendly: Array<string>; neutral: Array<string> };
+export type Targets = { hostile: Array<NpcID>; friendly: Array<NpcID>; neutral: Array<NpcID> };
 export type GameActionState = {
 	id: number;
 	currentPlotPoint: string;
@@ -172,15 +177,11 @@ export class GameAgent {
 		}
 		if (customGmNotes) {
 			gameAgent.push(
-				'The following are custom gm notes considered to be rules.' +
-				'\n' +
-				customGmNotes
+				'The following are custom gm notes considered to be rules.' + '\n' + customGmNotes
 			);
 		}
 		if (relatedHistory.length > 0) {
-			gameAgent.push(
-				'History Rules:\n' + PAST_STORY_PLOT_RULE + relatedHistory.join('\n')
-			);
+			gameAgent.push('History Rules:\n' + PAST_STORY_PLOT_RULE + relatedHistory.join('\n'));
 		}
 		gameAgent.push(jsonSystemInstructionForPlayerQuestion);
 		const userMessage =
@@ -294,8 +295,11 @@ export class GameAgent {
 		if (!notes || notes.length === 0) {
 			return '';
 		}
-		return '\nFollowing are Game Master Notes to consider for the next story progression:\n' +
-			notes.join('\n') + '\n';
+		return (
+			'\nFollowing are Game Master Notes to consider for the next story progression:\n' +
+			notes.join('\n') +
+			'\n'
+		);
 	};
 }
 
@@ -385,7 +389,7 @@ const jsonSystemInstructionForGameAgent = (
   ],
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
-  "currently_present_npcs": List of NPCs or party members that are present in the current situation. Also list objects if story relevant. ID must be technical and unique, same NPC always keeps same ID; Format: {"hostile": ["uniqueTechnicalNameId", ...], "friendly": ["uniqueTechnicalNameId", ...], "neutral": ["uniqueTechnicalNameId", ...]}
+  "currently_present_npcs": List of NPCs or party members that are present in the current situation. Format: ${currentlyPresentNPCSForPrompt}
 }`;
 
 const jsonSystemInstructionForPlayerQuestion = `Important Instruction! You must always respond with valid JSON in the following format:

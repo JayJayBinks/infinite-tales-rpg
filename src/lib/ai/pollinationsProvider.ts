@@ -6,7 +6,8 @@ import {
 	type LLMconfig,
 	type LLMMessage,
 	type LLMRequest,
-	type LLMReasoningResponse, LANGUAGE_PROMPT
+	type LLMReasoningResponse,
+	LANGUAGE_PROMPT
 } from '$lib/ai/llm';
 import isPlainObject from 'lodash.isplainobject';
 
@@ -43,8 +44,7 @@ export class PollinationsProvider extends LLM {
 			request.systemInstruction || this.llmConfig.systemInstruction
 		);
 		if (this.llmConfig.language) {
-			const languageInstruction =
-				LANGUAGE_PROMPT + this.llmConfig.language;
+			const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
 			systemInstructions.push({ role: 'system', content: languageInstruction });
 		}
 

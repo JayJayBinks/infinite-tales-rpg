@@ -87,8 +87,11 @@ export function getGameMasterNotesForCampaignChapter(
 	if (campaignChapter && currentPlotPointString) {
 		const mappedPlotPoint = mapPlotStringToIds(currentPlotPointString)[0];
 		if (mappedPlotPoint > 0) {
-			return [campaignChapter.plot_points.find((p) => p.plotId === mappedPlotPoint)
-				?.game_master_notes].flat() as Array<string> || []
+			return (
+				([
+					campaignChapter.plot_points.find((p) => p.plotId === mappedPlotPoint)?.game_master_notes
+				].flat() as Array<string>) || []
+			);
 		}
 	}
 	return [];

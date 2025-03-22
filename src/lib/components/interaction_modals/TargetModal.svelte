@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
+	import { getNPCDisplayName } from '$lib/util.svelte';
 
 	let {
 		targets,
@@ -24,7 +25,7 @@
 				return elm.value;
 			});
 		if (customTargetState) {
-			mappedTargets.push(customTargetState);
+			mappedTargets.push({ uniqueTechnicalNameId: undefined, displayName: customTargetState });
 		}
 		customTargetState = undefined;
 		return mappedTargets;
@@ -46,7 +47,7 @@
 			</div>
 			<div class="form-control">
 				<label class="label cursor-pointer">
-					<input type="checkbox" class="checkbox" value="No specific target" />
+					<input type="checkbox" class="checkbox" value={undefined} />
 					<span class="ml-2 capitalize">No specific target</span>
 				</label>
 			</div>
@@ -58,7 +59,9 @@
 				<div class="form-control">
 					<label class="label cursor-pointer">
 						<input type="checkbox" class="checkbox" value={target} />
-						<span class="ml-2 capitalize">{target.replaceAll('_', ' ').replaceAll('id', '')}</span>
+						<span class="ml-2 capitalize"
+							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
+						>
 					</label>
 				</div>
 			{/each}
@@ -70,7 +73,9 @@
 				<div class="form-control">
 					<label class="label cursor-pointer">
 						<input type="checkbox" class="checkbox" value={target} />
-						<span class="ml-2 capitalize">{target.replaceAll('_', ' ').replaceAll('id', '')}</span>
+						<span class="ml-2 capitalize"
+							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
+						>
 					</label>
 				</div>
 			{/each}
@@ -82,7 +87,9 @@
 				<div class="form-control">
 					<label class="label cursor-pointer">
 						<input type="checkbox" class="checkbox" value={target} />
-						<span class="ml-2 capitalize">{target.replaceAll('_', ' ').replaceAll('id', '')}</span>
+						<span class="ml-2 capitalize"
+							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
+						>
 					</label>
 				</div>
 			{/each}
