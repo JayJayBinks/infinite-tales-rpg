@@ -67,7 +67,7 @@ export class SummaryAgent {
 			'The RELEVANT REFERENCES must be only relevant to the current STORY PROGRESSION and not the whole story.\n' +
 			'Never reference the STORY PROGRESSION itself in your response!\n' +
 			'List the RELEVANT STORY REFERENCES including narration details from the story history.\n' +
-			'Always respond with following JSON! {"relatedDetails": [{"storyReference": string, "relevanceScore": 0-1}] array length ' +
+			'Always respond with following JSON! {"relatedDetails": [{"storyReference": string, "relevanceScore": decimal number; 0-1}] array length ' +
 			maxRelatedDetails +
 			'}';
 
