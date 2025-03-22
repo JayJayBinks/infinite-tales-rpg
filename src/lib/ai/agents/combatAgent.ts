@@ -95,7 +95,7 @@ export class CombatAgent {
 			' takes following action: ' +
 			action.text +
 			'\n' +
-			'Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action.' +
+			'Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action. Important: You must reuse the exact nameIds that are given!' +
 			'\n' +
 			stringifyPretty(npcsList);
 		console.log('combat', actionToSend);

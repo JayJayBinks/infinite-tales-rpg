@@ -259,10 +259,10 @@
 	}> {
 		// Get details for all NPC targets based on the current game action state.
 		const allNpcsDetailsAsList = gameLogic
-			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
-			.map((npcName) => ({
-				nameId: npcName,
-				...npcState[npcName]
+			.getAllTargetsAsList(currentGameActionState.currently_present_npcs, false)
+			.map((nameId) => ({
+				nameId,
+				...npcState[nameId]
 			}));
 
 		// Compute the determined combat actions and stats update.
@@ -389,16 +389,13 @@
 					playerCharactersGameState,
 					combatAgent
 				);
+				//dynamic combat already handled the getNPCsHealthStatePrompt
 				additionalStoryInput += combatObject.additionalStoryInput;
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
-			} else {
-				deadNPCs = gameLogic.removeDeadNPCs(npcState);
-				additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 			}
-		} else {
-			deadNPCs = gameLogic.removeDeadNPCs(npcState);
-			additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		}
+		deadNPCs = gameLogic.removeDeadNPCs(npcState);
+		additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
 	}
 
