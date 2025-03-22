@@ -31,13 +31,13 @@ export function getAllTargetsAsList(targets: Targets, displayNames = true): Arra
 	if (!targets || !targets.hostile) {
 		return [];
 	}
-	if(displayNames){
+	if (displayNames) {
 		return [
 			...targets.hostile.map(getNPCDisplayName),
 			...targets.neutral.map(getNPCDisplayName),
 			...targets.friendly.map(getNPCDisplayName)
 		];
-	}else{
+	} else {
 		return [
 			...targets.hostile.map(getNPCTechnicalID),
 			...targets.neutral.map(getNPCTechnicalID),
@@ -47,7 +47,9 @@ export function getAllTargetsAsList(targets: Targets, displayNames = true): Arra
 }
 
 export function getNewNPCs(targets: Targets, npcState: NPCState) {
-	return getAllTargetsAsList(targets, false).filter((newNPC) => !Object.keys(npcState).includes(newNPC));
+	return getAllTargetsAsList(targets, false).filter(
+		(newNPC) => !Object.keys(npcState).includes(newNPC)
+	);
 }
 
 //TODO implement parsing to enums directly from json
@@ -385,8 +387,7 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 	const directly_interrupted = is_interruptible.includes('HIGH');
 	const travel_interrupted = is_travel && is_interruptible.includes('MEDIUM');
 	if (directly_interrupted || travel_interrupted) {
-		additionalStoryInput +=
-			`\naction is possibly interrupted: ${is_interruptible} probability.`;
+		additionalStoryInput += `\naction is possibly interrupted: ${is_interruptible} probability.`;
 	}
 
 	if (!additionalStoryInput.includes('sudo')) {

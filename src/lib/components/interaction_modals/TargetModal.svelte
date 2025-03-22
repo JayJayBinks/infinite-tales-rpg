@@ -22,7 +22,7 @@
 			.filter((elm) => elm.checked)
 			.map((elm) => {
 				elm.checked = false;
-				if(typeof elm.value === 'string') {
+				if (typeof elm.value === 'string') {
 					return { uniqueTechnicalNameId: undefined, displayName: elm.value };
 				}
 				return elm.value;
