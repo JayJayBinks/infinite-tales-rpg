@@ -31,7 +31,7 @@ export class ActionAgent {
 						"resource_key": "the resource to pay for this action; one of character_stats.resources",
 						"cost": number,
 					},
-					"narration_details": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} how many details the narration for this action should include; LOW|MEDIUM if it involves few steps; HIGH if it involves multiple narrative moments or decisions; or takes longer time,
+					"narration_details": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} how many details the narration for this action should include; LOW if it involves few steps or can be done quickly; MEDIUM|HIGH if it involves thorough planning or decisions,
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
   				"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
 					"is_interruptible": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,

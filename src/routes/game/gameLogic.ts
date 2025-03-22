@@ -379,16 +379,14 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 	const encounterString = JSON.stringify(action.is_interruptible) || '';
 	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
 		additionalStoryInput +=
-			'\nenemyEncounter: ' +
-			action.enemyEncounterExplanation +
-			' Players take first turn, wait for their action.';
+			'\nenemyEncounter: ' + encounterString + '; Players take first turn, wait for their action.';
 	}
 	const is_interruptible = JSON.stringify(action.is_interruptible) || '';
 	const directly_interrupted = is_interruptible.includes('HIGH');
 	const travel_interrupted = is_travel && is_interruptible.includes('MEDIUM');
 	if (directly_interrupted || travel_interrupted) {
 		additionalStoryInput +=
-			'\naction is possibly interrupted: ' + action.is_interruptible + ' probability.';
+			`\naction is possibly interrupted: ${is_interruptible} probability.`;
 	}
 
 	if (!additionalStoryInput.includes('sudo')) {
