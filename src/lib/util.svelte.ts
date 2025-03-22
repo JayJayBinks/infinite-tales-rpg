@@ -189,9 +189,9 @@ export function getTextForActionButton(action: Action) {
 }
 
 export const getNPCDisplayName = (npc: NpcID) => {
-	return npc.displayName || npc.uniqueTechnicalNameId;
+	return npc.displayName || npc.uniqueTechnicalNameId || JSON.stringify(npc);
 };
 
 export const getNPCTechnicalID = (npc: NpcID) => {
-	return npc.uniqueTechnicalNameId || npc.displayName;
+	return npc.uniqueTechnicalNameId || npc.displayName || JSON.stringify(npc);
 };
