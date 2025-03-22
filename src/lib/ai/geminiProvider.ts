@@ -19,7 +19,6 @@ import {
 } from '$lib/ai/llm';
 import {
 	errorState,
-	getIsGeminiFlashExpOverloaded,
 	getIsGeminiThinkingOverloaded,
 	setIsGeminiFlashExpOverloaded,
 	setIsGeminiThinkingOverloaded

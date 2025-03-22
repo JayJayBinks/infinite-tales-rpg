@@ -31,10 +31,10 @@ export class ActionAgent {
 						"resource_key": "the resource to pay for this action; one of character_stats.resources",
 						"cost": number,
 					},
-					"narration_details": VALUE MUST BE ALWAYS IN ENGLISH; Use the string format: "{reasoning}: {details}"; Brief {reasoning} how many {details: LOW|MEDIUM|HIGH} the narration for this action should include; LOW|MEDIUM if it involves few steps; HIGH if it involves multiple narrative moments or decisions; or takes longer time,
+					"narration_details": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} how many details the narration for this action should include; LOW|MEDIUM if it involves few steps; HIGH if it involves multiple narrative moments or decisions; or takes longer time,
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
-  				"enemyEncounterExplanation": VALUE MUST BE ALWAYS IN ENGLISH; {reasoning} for the {probability: LOW|MEDIUM|HIGH} of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened; Format "{reasoning} - {probability}",
-					"is_interruptible": VALUE MUST BE ALWAYS IN ENGLISH; {reasoning} for the {probability: LOW|MEDIUM|HIGH} that this action is interrupted; e.g. travel in dangerous environment is HIGH; Format "{reasoning} - {probability}",
+  				"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
+					"is_interruptible": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,
 					"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Modifier can be applied due to a character's proficiency, disadvantage, high difficulty, passive attributes in spells_and_abilities and inventory, or situational factors specific to previous actions. Give an in game story explanation why a modifier is applied or not and how you decided that.",
 						# If action_difficulty is difficult apply a bonus.

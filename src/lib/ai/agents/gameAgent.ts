@@ -26,10 +26,10 @@ export type Action = {
 	plausibility?: string;
 	difficulty_explanation?: string;
 	type?: string;
-	narration_details?: string;
+	narration_details?: object;
 	actionSideEffects?: string;
-	enemyEncounterExplanation?: string;
-	is_interruptible?: string;
+	enemyEncounterExplanation?: object;
+	is_interruptible?: object;
 	resource_cost?: {
 		resource_key: string | undefined;
 		cost: number;

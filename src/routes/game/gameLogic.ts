@@ -359,18 +359,18 @@ export function isEnoughResource(
 
 export function addAdditionsFromActionSideeffects(action: Action, additionalStoryInput: string) {
 	const is_travel = action.type?.toLowerCase().includes('travel');
-	const narration_details = action.narration_details + '';
+	const narration_details = JSON.stringify(action.narration_details) || '';
 	if (is_travel || narration_details.includes('HIGH') || narration_details.includes('MEDIUM')) {
 		additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
 	}
-	const encounterString = '' + action.enemyEncounterExplanation;
+	const encounterString = JSON.stringify(action.is_interruptible) || '';
 	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
 		additionalStoryInput +=
 			'\nenemyEncounter: ' +
 			action.enemyEncounterExplanation +
 			' Players take first turn, wait for their action.';
 	}
-	const is_interruptible = '' + action.is_interruptible;
+	const is_interruptible = JSON.stringify(action.is_interruptible) || '';
 	const directly_interrupted = is_interruptible.includes('HIGH');
 	const travel_interrupted = is_travel && is_interruptible.includes('MEDIUM');
 	if (directly_interrupted || travel_interrupted) {
