@@ -6,7 +6,6 @@ import {
 	type LLMconfig,
 	type LLMMessage,
 	type LLMRequest,
-	type LLMReasoningResponse,
 	LANGUAGE_PROMPT
 } from '$lib/ai/llm';
 import isPlainObject from 'lodash.isplainobject';
@@ -38,7 +37,7 @@ export class PollinationsProvider extends LLM {
 		return 2;
 	}
 
-	async generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined> {
+	async generateContent(request: LLMRequest): Promise<object | undefined> {
 		const contents = this.buildContentsFormat(request.userMessage, request.historyMessages || []);
 		const systemInstructions = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
@@ -80,12 +79,12 @@ export class PollinationsProvider extends LLM {
 			e.message = fallbackMessage + ' ' + e.message;
 			if (this.fallbackLLM) {
 				console.log('Pollinations Fallback LLM for error: ', this.model, e.message);
-				const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
+				const fallbackResult = await this.fallbackLLM.generateContent(request);
 				if (!fallbackResult) {
 					handleError(e as unknown as string);
 				} else {
 					if (this.model === 'openai') {
-						fallbackResult.parsedObject['fallbackUsed'] = true;
+						fallbackResult['fallbackUsed'] = true;
 					}
 				}
 				return fallbackResult;
@@ -105,10 +104,6 @@ export class PollinationsProvider extends LLM {
 			handleError(e as string);
 		}
 		return undefined;
-	}
-
-	async generateContent(request: LLMRequest): Promise<object | undefined> {
-		return (await this.generateReasoningContent(request))?.parsedObject;
 	}
 
 	buildSystemInstruction(systemInstruction?: Array<string> | string) {

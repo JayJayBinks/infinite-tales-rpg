@@ -15,7 +15,6 @@ import {
 	type LLMconfig,
 	type LLMMessage,
 	type LLMRequest,
-	type LLMReasoningResponse,
 	LANGUAGE_PROMPT
 } from '$lib/ai/llm';
 import {
@@ -75,7 +74,7 @@ export class GeminiProvider extends LLM {
 		return 2;
 	}
 
-	async generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined> {
+	async generateContent(request: LLMRequest): Promise<object | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
 			return;
@@ -138,7 +137,7 @@ export class GeminiProvider extends LLM {
 				}
 				if (this.fallbackLLM) {
 					console.log('Fallback LLM for error: ', e.message);
-					const fallbackResult = await this.fallbackLLM.generateReasoningContent(request);
+					const fallbackResult = await this.fallbackLLM.generateContent(request);
 					if (!fallbackResult) {
 						handleError(e as unknown as string);
 					} else {
@@ -207,10 +206,6 @@ export class GeminiProvider extends LLM {
 			handleError(e as string);
 		}
 		return undefined;
-	}
-
-	async generateContent(request: LLMRequest): Promise<object | undefined> {
-		return (await this.generateReasoningContent(request))?.parsedObject;
 	}
 
 	buildSystemInstruction(systemInstruction?: Array<string> | string): Content {

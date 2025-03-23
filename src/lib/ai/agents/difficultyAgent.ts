@@ -67,6 +67,6 @@ export class DifficultyAgent {
 			systemInstruction: agent,
 			temperature: this.llm.getDefaultTemperature()
 		};
-		return (await this.llm.generateReasoningContent(request))?.parsedObject as DiceRollDifficulty;
+		return (await this.llm.generateContent(request)) as DiceRollDifficulty;
 	}
 }

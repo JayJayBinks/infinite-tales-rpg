@@ -27,8 +27,6 @@ export interface LLMconfig {
 	model?: string;
 }
 
-export type LLMReasoningResponse = { reasoning: string | undefined; parsedObject: object };
-
 export const LANGUAGE_PROMPT =
 	'Important! Each JSON key must stay as english but the value must be translated; Enums (LOW, MEDIUM, HIGH, or any fully capitalized value) must always remain in English! Translate to following language: ';
 
@@ -38,8 +36,6 @@ export abstract class LLM {
 	protected constructor(llmConfig: LLMconfig) {
 		this.llmConfig = llmConfig;
 	}
-
-	abstract generateReasoningContent(request: LLMRequest): Promise<LLMReasoningResponse | undefined>;
 
 	abstract generateContent(request: LLMRequest): Promise<object | undefined>;
 

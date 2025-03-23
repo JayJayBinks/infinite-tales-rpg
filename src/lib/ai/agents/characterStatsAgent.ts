@@ -134,8 +134,7 @@ export class CharacterStatsAgent {
 					stringifyPretty(statsOverwrites)
 			});
 		}
-		const stats = (await this.llm.generateReasoningContent(request))
-			?.parsedObject as CharacterStats;
+		const stats = await this.llm.generateContent(request) as CharacterStats;
 		console.log(request);
 		return stats;
 	}
@@ -174,7 +173,7 @@ export class CharacterStatsAgent {
 			systemInstruction: agentInstruction
 		};
 		console.log(stringifyPretty(request));
-		const aiLevelUp = (await this.llm.generateReasoningContent(request))?.parsedObject as AiLevelUp;
+		const aiLevelUp = (await this.llm.generateContent(request)) as AiLevelUp;
 		aiLevelUp.character_name = characterState.name;
 		return aiLevelUp;
 	}
@@ -208,7 +207,7 @@ export class CharacterStatsAgent {
 			userMessage: action,
 			systemInstruction: agent
 		};
-		return (await this.llm.generateReasoningContent(request))?.parsedObject as NPCState;
+		return (await this.llm.generateContent(request)) as NPCState;
 	}
 
 	async generateSingleAbility(
@@ -245,7 +244,7 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		return (await this.llm.generateReasoningContent(request))?.parsedObject as Ability;
+		return (await this.llm.generateContent(request)) as Ability;
 	}
 
 	static getSpellImagePrompt(ability: Ability, storyImagePrompt: string): string {

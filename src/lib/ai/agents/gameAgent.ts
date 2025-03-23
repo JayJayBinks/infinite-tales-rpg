@@ -138,8 +138,7 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		const newState = (await this.llm.generateReasoningContent(request))
-			?.parsedObject as GameActionState;
+		const newState = await this.llm.generateContent(request) as GameActionState;
 		const { userMessage, modelMessage } = this.buildHistoryMessages(
 			playerActionTextForHistory,
 			newState
@@ -202,7 +201,7 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		return (await this.llm.generateReasoningContent(request))?.parsedObject as GameMasterAnswer;
+		return (await this.llm.generateContent(request)) as GameMasterAnswer;
 	}
 
 	private getGameAgentSystemInstructionsFromStates(

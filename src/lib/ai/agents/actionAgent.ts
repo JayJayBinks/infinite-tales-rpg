@@ -103,7 +103,7 @@ export class ActionAgent {
 			historyMessages,
 			systemInstruction: agent
 		};
-		return (await this.llm.generateReasoningContent(request))?.parsedObject as Action;
+		return (await this.llm.generateContent(request)) as Action;
 	}
 
 	private readonly actionRules = `Action Rules:
@@ -181,7 +181,7 @@ export class ActionAgent {
 			historyMessages,
 			systemInstruction: agent
 		};
-		const response = (await this.llm.generateReasoningContent(request))?.parsedObject as any;
+		const response = (await this.llm.generateContent(request)) as any;
 
 		//can get not directly arrays but wrapped responses from ai sometimes...
 		if (response && response.actions) {
@@ -245,7 +245,7 @@ export class ActionAgent {
 			historyMessages,
 			systemInstruction: agent
 		};
-		const response = (await this.llm.generateReasoningContent(request))?.parsedObject as any;
+		const response = (await this.llm.generateContent(request)) as any;
 
 		//can get not directly arrays but wrapped responses from ai sometimes...
 		if (response && response.actions) {
