@@ -153,25 +153,15 @@ export class GeminiProvider extends LLM {
 			return undefined;
 		}
 		try {
-			let reasoning;
 			let json;
 			if (result.response?.candidates) {
-				if (result.response.candidates[0].content.parts.length > 1) {
-					reasoning = result.response.candidates[0].content.parts[0].text;
-					json = result.response.candidates[0].content.parts[1].text;
-				} else {
-					//for some reason no thoughts present
-					json = result.response.candidates[0].content.parts[0].text;
-				}
+				json = result.response.candidates[0].content.parts[0].text;
 			} else {
 				handleError('Gemini did not send a response...');
 				return undefined;
 			}
 			try {
-				return {
-					reasoning,
-					parsedObject: JSON.parse(json.replaceAll('```json', '').replaceAll('```', ''))
-				};
+				return JSON.parse(json.replaceAll('```json', '').replaceAll('```', ''));
 			} catch (firstError) {
 				try {
 					console.log('Error parsing JSON: ' + json, firstError);
@@ -179,9 +169,9 @@ export class GeminiProvider extends LLM {
 					if (
 						(firstError as SyntaxError).message.includes('Bad control character in string literal')
 					) {
-						return { reasoning, parsedObject: JSON.parse(json.replaceAll('\\', '')) };
+						return JSON.parse(json.replaceAll('\\', ''));
 					}
-					return { reasoning, parsedObject: JSON.parse('{' + json.replaceAll('\\', '')) };
+					return JSON.parse('{' + json.replaceAll('\\', ''));
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				} catch (secondError) {
 					//autofix if true or not set and llm allows it
@@ -190,13 +180,10 @@ export class GeminiProvider extends LLM {
 						this.llmConfig.tryAutoFixJSONError
 					) {
 						console.log('Try json fix with llm agent');
-						return {
-							reasoning,
-							parsedObject: this.jsonFixingInterceptorAgent.fixJSON(
-								json,
-								(firstError as SyntaxError).message
-							)
-						};
+						return this.jsonFixingInterceptorAgent.fixJSON(
+							json,
+							(firstError as SyntaxError).message
+						)
 					}
 					handleError(firstError as string);
 					return undefined;

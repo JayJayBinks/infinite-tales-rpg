@@ -207,7 +207,7 @@ export class CharacterStatsAgent {
 			userMessage: action,
 			systemInstruction: agent
 		};
-		return (await this.llm.generateContent(request)) as NPCState;
+		return await this.llm.generateContent(request) as NPCState;
 	}
 
 	async generateSingleAbility(
@@ -244,7 +244,7 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		return (await this.llm.generateContent(request)) as Ability;
+		return await this.llm.generateContent(request) as Ability;
 	}
 
 	static getSpellImagePrompt(ability: Ability, storyImagePrompt: string): string {

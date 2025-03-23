@@ -138,20 +138,14 @@ export class PollinationsProvider extends LLM {
 
 	parseDeepseek(response: any, autoFixJSON: boolean) {
 		if (isPlainObject(response)) {
-			return {
-				reasoning: undefined,
-				parsedObject: response
-			};
+			return response;
 		}
 		return this.parseJSON(response, autoFixJSON);
 	}
 
 	parseOpenAI(response: any, autoFixJSON: boolean) {
 		if (!response.choices) {
-			return {
-				reasoning: undefined,
-				parsedObject: response
-			};
+			return response;
 		}
 		const responseText = response.choices[0].message.content;
 		return this.parseJSON(responseText, autoFixJSON);
@@ -163,21 +157,15 @@ export class PollinationsProvider extends LLM {
 
 	parseJSON(response: string, autoFix: boolean) {
 		try {
-			return {
-				reasoning: undefined,
-				parsedObject: JSON.parse(response.replaceAll('```json', '').replaceAll('```', ''))
-			};
+			return JSON.parse(response.replaceAll('```json', '').replaceAll('```', ''));
 		} catch (firstError) {
 			//autofix if true or not set and llm allows it
 			if (autoFix) {
 				console.log('Try json fix with llm agent');
-				return {
-					reasoning: undefined,
-					parsedObject: this.jsonFixingInterceptorAgent.fixJSON(
-						response,
-						(firstError as SyntaxError).message
-					)
-				};
+				return this.jsonFixingInterceptorAgent.fixJSON(
+					response,
+					(firstError as SyntaxError).message
+				);
 			}
 			handleError(firstError as string);
 			return undefined;
