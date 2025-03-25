@@ -142,13 +142,6 @@
 					);
 					parseState(newCharacterStatsState);
 					if (newCharacterStatsState) {
-						newCharacterStatsState.spells_and_abilities =
-							newCharacterStatsState.spells_and_abilities.map((ability) => ({
-								...ability,
-								resource_cost: ability.resource_cost
-									? ability.resource_cost
-									: { cost: 0, resource_key: undefined }
-							}));
 						characterStatsState.value = newCharacterStatsState;
 						quickstartModalOpen = false;
 						await goto('/game');

@@ -47,13 +47,21 @@ export class CharacterAgent {
 
 	async generateCharacterDescription(
 		storyState: object,
-		characterOverwrites: Partial<CharacterDescription> | undefined = undefined
+		characterOverwrites: Partial<CharacterDescription> | undefined = undefined,
+		transformInto?: string
 	): Promise<CharacterDescription> {
-		const agentInstruction =
+		const agentInstruction = [
 			'You are RPG character agent, describing a single character according to game system, adventure and character description.\n' +
-			TROPES_CLICHE_PROMPT +
-			'Always respond with following JSON!\n' +
-			characterDescriptionForPrompt;
+				TROPES_CLICHE_PROMPT
+		];
+		if (transformInto) {
+			agentInstruction.push(
+				'Determine if following transformation completely changes or just adapts the character; ' +
+					'Describe how the character changed based on already existing values;\nTransform into:\n' +
+					transformInto
+			);
+		}
+		agentInstruction.push('Always respond with following JSON!\n' + characterDescriptionForPrompt);
 
 		const preset = {
 			...storyState,

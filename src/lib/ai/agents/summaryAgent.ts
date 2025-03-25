@@ -40,7 +40,7 @@ export class SummaryAgent {
 			systemInstruction: agent,
 			temperature: 1
 		};
-		const response = await this.llm.generateContent(request) as {
+		const response = (await this.llm.generateContent(request)) as {
 			story: string;
 		};
 		console.log('Summary returned ' + stringifyPretty(response));
@@ -94,7 +94,7 @@ export class SummaryAgent {
 			model: 'gemini-2.0-flash',
 			temperature: 0.1
 		};
-		const response = await this.llm.generateContent(request) as {
+		const response = (await this.llm.generateContent(request)) as {
 			relatedDetails: { storyReference: string; relevanceScore: number }[];
 		};
 		console.log(storyProgression, 'Related history returned ', stringifyPretty(response));

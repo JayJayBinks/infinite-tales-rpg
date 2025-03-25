@@ -24,6 +24,6 @@ export class JsonFixingInterceptorAgent {
 			temperature: 0,
 			tryAutoFixJSONError: false
 		};
-		return (await this.llm.generateContent(request));
+		return await this.llm.generateContent(request);
 	}
 }

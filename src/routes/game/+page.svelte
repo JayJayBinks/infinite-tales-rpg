@@ -40,7 +40,11 @@
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import type { LLMMessage } from '$lib/ai/llm';
 	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
-	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import {
+		CharacterAgent,
+		type CharacterDescription,
+		initialCharacterState
+	} from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/interaction_modals/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
 	import { type Campaign, CampaignAgent, type CampaignChapter } from '$lib/ai/agents/campaignAgent';
@@ -63,6 +67,9 @@
 		getNextChapterPrompt
 	} from './campaignLogic';
 	import { getRelatedHistory } from './memoryLogic';
+	import { type CharacterChangedInto, EventAgent } from '$lib/ai/agents/eventAgent';
+	import CharacterChangedConfirmationModal from '$lib/components/interaction_modals/CharacterChangedConfirmationModal.svelte';
+	import { applyCharacterChange } from './characterLogic';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -77,10 +84,12 @@
 	let gameAgent: GameAgent,
 		difficultyAgent: DifficultyAgent,
 		summaryAgent: SummaryAgent,
+		characterAgent: CharacterAgent,
 		characterStatsAgent: CharacterStatsAgent,
 		combatAgent: CombatAgent,
 		campaignAgent: CampaignAgent,
-		actionAgent: ActionAgent;
+		actionAgent: ActionAgent,
+		eventAgent: EventAgent;
 
 	//game state
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
@@ -134,7 +143,13 @@
 		$state(undefined);
 
 	let gmQuestionState: string = $state('');
+	let characterTransformState = useLocalStorage<CharacterChangedInto>('characterTransformState', {
+		changed_into: '',
+		description: '',
+		aiProcessingComplete: true
+	});
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
+	let showEventConfirmationDialog = $state(false);
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -158,6 +173,8 @@
 		summaryAgent = new SummaryAgent(llm);
 		campaignAgent = new CampaignAgent(llm);
 		actionAgent = new ActionAgent(llm);
+		eventAgent = new EventAgent(llm);
+		characterAgent = new CharacterAgent(llm);
 
 		characterStatsState.value = migrateIfApplicable(
 			'characterStatsState',
@@ -185,6 +202,7 @@
 
 	async function initializeGameFromSavedState() {
 		// Apply previously saved game actions
+		//TODO what happens when character transformed, if stat existed before damage/heal will be applied
 		gameLogic.applyGameActionStates(
 			playerCharactersGameState,
 			npcState.value,
@@ -614,6 +632,13 @@
 
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
+				eventAgent.evaluateEvents(gameActionsState.value.slice(-3)).then((evaluated) => {
+					const changeInto = evaluated?.character_changed?.changed_into;
+					if (changeInto && changeInto !== characterTransformState.value.changed_into) {
+						evaluated.character_changed.aiProcessingComplete = false;
+						characterTransformState.value = evaluated.character_changed;
+					}
+				});
 				// Generate the next set of actions.
 				actionAgent
 					.generateActions(
@@ -934,6 +959,57 @@
 			});
 		}
 	}
+
+	function getEventToConfirm(gamEvent: CharacterChangedInto): {
+		title: string;
+		description: string;
+	} {
+		return {
+			title: 'Character Change: ' + gamEvent.changed_into,
+			description: gamEvent.description
+		};
+	}
+
+	async function confirmEvent(changedInto: CharacterChangedInto, confirmed: boolean) {
+		showEventConfirmationDialog = false;
+		if (confirmed === undefined) {
+			return;
+		}
+		if (confirmed) {
+			isAiGeneratingState = true;
+			const { transformedCharacter, transformedCharacterStats } = await applyCharacterChange(
+				changedInto,
+				$state.snapshot(storyState.value),
+				$state.snapshot(characterState.value),
+				$state.snapshot(characterStatsState.value),
+				characterAgent,
+				characterStatsAgent
+			);
+
+			const oldName = $state.snapshot(characterState.value.name);
+			if (transformedCharacter) {
+				characterState.value = transformedCharacter;
+			}
+			if (transformedCharacterStats) {
+				characterStatsState.value = transformedCharacterStats;
+			}
+			//apply new resources
+			playerCharactersGameState[characterState.value.name] = {
+				...$state.snapshot(characterStatsState.value.resources),
+				XP: playerCharactersGameState[oldName].XP
+			};
+			const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
+				$state.snapshot(characterStatsState.value.resources),
+				$state.snapshot(characterState.value.name),
+				$state.snapshot(gameActionsState.value),
+				$state.snapshot(playerCharactersGameState)
+			);
+			gameActionsState.value = updatedGameActionsState;
+			playerCharactersGameState = updatedPlayerCharactersGameState;
+		}
+		characterTransformState.value.aiProcessingComplete = true;
+		isAiGeneratingState = false;
+	}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -951,6 +1027,12 @@
 			onclose={onGMQuestionClosed}
 			question={gmQuestionState}
 			{playerCharactersGameState}
+		/>
+	{/if}
+	{#if showEventConfirmationDialog && !characterTransformState.value.aiProcessingComplete}
+		<CharacterChangedConfirmationModal
+			onclose={(confirmed) => confirmEvent(characterTransformState.value, confirmed)}
+			eventToConfirm={getEventToConfirm(characterTransformState.value)}
 		/>
 	{/if}
 	<UseSpellsAbilitiesModal
@@ -1051,6 +1133,16 @@
 						}}
 						class="text-md btn btn-success mb-3 w-full"
 						>Level up!
+					</button>
+				{/if}
+
+				{#if !characterTransformState.value.aiProcessingComplete}
+					<button
+						onclick={() => {
+							showEventConfirmationDialog = true;
+						}}
+						class="text-md btn btn-success mb-3 w-full"
+						>Transform into {characterTransformState.value.changed_into}
 					</button>
 				{/if}
 				<button

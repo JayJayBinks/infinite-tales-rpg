@@ -99,15 +99,22 @@ export class CharacterStatsAgent {
 	async generateCharacterStats(
 		storyState: Story,
 		characterState: CharacterDescription,
-		statsOverwrites: Partial<CharacterStats> | undefined = undefined
+		statsOverwrites: Partial<CharacterStats> | undefined = undefined,
+		transformInto?: string
 	): Promise<CharacterStats> {
 		const agentInstruction = [
 			'You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n' +
 				'Scale the stats and abilities according to the level. A low level character has expertise of 1.\n' +
-				'If there is a HP resource or deviation, it must be greater than 20.\n',
-			'Always respond with following JSON!\n' + characterStatsStateForPrompt
+				'If there is a HP resource or deviation, it must be greater than 20.\n'
 		];
-
+		if (transformInto) {
+			agentInstruction.push(
+				'Determine if following transformation completely changes or just adapts the character; ' +
+					'If complete transformation ignore the already existing stats and generate all new, else adapt the stats based on already existing;\nTransform into:\n' +
+					transformInto
+			);
+		}
+		agentInstruction.push('Always respond with following JSON!\n' + characterStatsStateForPrompt);
 		if (!statsOverwrites?.level) {
 			statsOverwrites = { ...statsOverwrites, level: 1 };
 		}
@@ -134,10 +141,22 @@ export class CharacterStatsAgent {
 					stringifyPretty(statsOverwrites)
 			});
 		}
-		const stats = await this.llm.generateContent(request) as CharacterStats;
-		console.log(request);
+		const stats = this.mapStats((await this.llm.generateContent(request)) as CharacterStats);
+		console.log(stats);
 		return stats;
 	}
+
+	mapAbility = (ability: Ability): Ability => {
+		if (!ability.resource_cost) {
+			ability.resource_cost = { cost: 0, resource_key: undefined };
+		}
+		return ability;
+	};
+
+	mapStats = (stats: CharacterStats): CharacterStats => {
+		stats.spells_and_abilities = stats.spells_and_abilities.map(this.mapAbility);
+		return stats;
+	};
 
 	async levelUpCharacter(
 		storyState: Story,
@@ -207,7 +226,7 @@ export class CharacterStatsAgent {
 			userMessage: action,
 			systemInstruction: agent
 		};
-		return await this.llm.generateContent(request) as NPCState;
+		return (await this.llm.generateContent(request)) as NPCState;
 	}
 
 	async generateSingleAbility(
@@ -244,7 +263,7 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		return await this.llm.generateContent(request) as Ability;
+		return this.mapAbility((await this.llm.generateContent(request)) as Ability);
 	}
 
 	static getSpellImagePrompt(ability: Ability, storyImagePrompt: string): string {

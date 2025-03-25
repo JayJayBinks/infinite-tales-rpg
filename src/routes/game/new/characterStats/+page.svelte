@@ -45,10 +45,6 @@
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
 
-	const mapResourceCost = (resourceCost?: any) => {
-		return resourceCost ? resourceCost : { cost: 0, resource_key: undefined };
-	};
-
 	const onRandomize = async () => {
 		isGeneratingState = true;
 		const filteredOverwrites = removeEmptyValues(characterStatsStateOverwrites);
@@ -60,10 +56,6 @@
 		if (newState) {
 			console.log(newState);
 			parseState(newState);
-			newState.spells_and_abilities = newState.spells_and_abilities.map((ability) => ({
-				...ability,
-				resource_cost: mapResourceCost(ability.resource_cost)
-			}));
 			characterStatsState.value = newState;
 		}
 		isGeneratingState = false;
@@ -98,10 +90,6 @@
 				characterStatsInput,
 				singleAbilityOverwritten
 			);
-			newAbility = {
-				...newAbility,
-				resource_cost: mapResourceCost(newAbility.resource_cost)
-			};
 			characterStatsState.value[stateValue][deepNested] = newAbility;
 		} else {
 			const newState = await characterStatsAgent.generateCharacterStats(
@@ -415,7 +403,7 @@
 						characterStatsState.value[stateValue].push({
 							name: '',
 							effect: '',
-							resource_cost: mapResourceCost(),
+							resource_cost: { cost: 0, resource_key: undefined },
 							image_prompt: ''
 						});
 					} else {

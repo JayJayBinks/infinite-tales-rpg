@@ -138,7 +138,7 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		const newState = await this.llm.generateContent(request) as GameActionState;
+		const newState = (await this.llm.generateContent(request)) as GameActionState;
 		const { userMessage, modelMessage } = this.buildHistoryMessages(
 			playerActionTextForHistory,
 			newState

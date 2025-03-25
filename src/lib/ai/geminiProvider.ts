@@ -183,7 +183,7 @@ export class GeminiProvider extends LLM {
 						return this.jsonFixingInterceptorAgent.fixJSON(
 							json,
 							(firstError as SyntaxError).message
-						)
+						);
 					}
 					handleError(firstError as string);
 					return undefined;
