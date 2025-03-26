@@ -796,7 +796,7 @@
 		itemForSuggestActionsState = item;
 	};
 
-	const onTargetedSpellsOrAbility = async (action: Action, targets: NpcID[]) => {
+	const onTargetedSpellsOrAbility = async (action: Action, targets: string[]) => {
 		isAiGeneratingState = true;
 		let targetAddition = '';
 		if (targets?.length > 0 && !targets.some((t) => t === undefined)) {

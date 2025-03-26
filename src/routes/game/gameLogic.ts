@@ -83,8 +83,8 @@ export function mustRollDice(action: Action, isInCombat?: boolean) {
 	);
 }
 
-export const getTargetPromptAddition = function (targets: NpcID[]) {
-	return '\n I target ' + targets.map(getNPCTechnicalID).join(' and ');
+export const getTargetPromptAddition = function (targets: string[]) {
+	return '\n I target ' + targets.join(' and ');
 };
 
 export function formatItemId(item_id: string) {
