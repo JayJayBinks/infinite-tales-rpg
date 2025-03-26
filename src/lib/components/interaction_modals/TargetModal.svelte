@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
-	import { getNPCDisplayName } from '$lib/util.svelte';
+	import { getNPCDisplayName, getNPCTechnicalID } from '$lib/util.svelte';
 
 	let {
 		targets,
@@ -15,20 +15,17 @@
 	} = $props();
 
 	let targetForm;
-	let customTargetState = $state();
+	let customTargetState = $state<string>();
 
-	function mapTargets() {
+	function mapTargets(): string[] {
 		const mappedTargets = Array.from(targetForm.elements)
-			.filter((elm) => elm.checked)
+			.filter((elm) => elm.checked && elm.value)
 			.map((elm) => {
 				elm.checked = false;
-				if (typeof elm.value === 'string') {
-					return { uniqueTechnicalNameId: undefined, displayName: elm.value };
-				}
-				return elm.value;
+				return elm.value as string;
 			});
 		if (customTargetState) {
-			mappedTargets.push({ uniqueTechnicalNameId: undefined, displayName: customTargetState });
+			mappedTargets.push(customTargetState);
 		}
 		customTargetState = undefined;
 		return mappedTargets;
@@ -50,7 +47,7 @@
 			</div>
 			<div class="form-control">
 				<label class="label cursor-pointer">
-					<input type="checkbox" class="checkbox" value={undefined} />
+					<input type="checkbox" class="checkbox" value={''} />
 					<span class="ml-2 capitalize">No specific target</span>
 				</label>
 			</div>
@@ -61,7 +58,7 @@
 			{#each targets?.hostile as target}
 				<div class="form-control">
 					<label class="label cursor-pointer">
-						<input type="checkbox" class="checkbox" value={target} />
+						<input type="checkbox" class="checkbox" value={getNPCTechnicalID(target)} />
 						<span class="ml-2 capitalize"
 							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
 						>
@@ -75,7 +72,7 @@
 			{#each targets?.friendly as target}
 				<div class="form-control">
 					<label class="label cursor-pointer">
-						<input type="checkbox" class="checkbox" value={target} />
+						<input type="checkbox" class="checkbox" value={getNPCTechnicalID(target)} />
 						<span class="ml-2 capitalize"
 							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
 						>
@@ -89,7 +86,7 @@
 			{#each targets?.neutral as target}
 				<div class="form-control">
 					<label class="label cursor-pointer">
-						<input type="checkbox" class="checkbox" value={target} />
+						<input type="checkbox" class="checkbox" value={getNPCTechnicalID(target)} />
 						<span class="ml-2 capitalize"
 							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
 						>
