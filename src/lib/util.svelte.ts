@@ -147,6 +147,7 @@ export function getRandomInteger(min: number, max: number) {
 }
 
 export const removeEmptyValues = (object: object) =>
+	object &&
 	Object.fromEntries(
 		Object.entries(object)
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars

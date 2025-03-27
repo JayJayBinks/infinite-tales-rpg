@@ -2,20 +2,25 @@
 	import DiceBox from '@3d-dice/dice-box';
 	import * as diceRollLogic from './diceRollLogic';
 	import type { Action } from '$lib/ai/agents/gameAgent';
+	type Props = { diceRollDialog; action: Action; resetState: boolean };
+
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { onMount } from 'svelte';
 	import { getRandomInteger } from '$lib/util.svelte';
+	import {
+		type CharacterStats,
+		initialCharacterStatsState
+	} from '$lib/ai/agents/characterStatsAgent';
 
-	type Props = { diceRollDialog; action: Action; resetState: boolean };
 	let { diceRollDialog = $bindable(), action, resetState }: Props = $props();
 
-	const rolledValueState = useLocalStorage('rolledValueState');
-	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
-	const difficultyState = useLocalStorage('difficultyState', 'Default');
-	const useKarmicDice = useLocalStorage('useKarmicDice', true);
-	const diceRollRequiredValueState = useLocalStorage('diceRollRequiredValueState');
-	let modifierReasonState = $derived(action?.dice_roll?.modifier_explanation);
-	let modifierState = $derived(
+	const rolledValueState = useLocalStorage<number>('rolledValueState');
+	const rollDifferenceHistoryState = useLocalStorage<number[]>('rollDifferenceHistoryState', []);
+	const difficultyState = useLocalStorage<string>('difficultyState', 'Default');
+	const useKarmicDice = useLocalStorage<boolean>('useKarmicDice', true);
+	const diceRollRequiredValueState = useLocalStorage<number>('diceRollRequiredValueState');
+	let modifierReasonState = $derived<string>(action?.dice_roll?.modifier_explanation || '');
+	let modifierState = $derived<number>(
 		Number.parseInt(action?.dice_roll?.modifier_value as unknown as string) || 0
 	);
 	let karmaModifierState = $derived(
@@ -26,11 +31,35 @@
 					diceRollRequiredValueState.value
 				)
 	);
+
+	const characterStatsState = useLocalStorage<CharacterStats>(
+		'characterStatsState',
+		initialCharacterStatsState
+	);
+
+	let generalAttributeModifier = $derived(
+		() => characterStatsState.value.attributes[action.related_attribute] ?? 0
+	);
+	let specificSkillModifier = $derived(
+		() => characterStatsState.value.skills[action.related_skill] ?? 0
+	);
+
+	const getModifier = () => {
+		const modifier = modifierState + karmaModifierState + generalAttributeModifier() + specificSkillModifier();
+		if(modifier > 10) {
+			return 10;
+		}
+		if(modifier < -10) {
+			return -10;
+		}
+		return modifier;
+	};
+
 	let diceRollResultState = $derived(
 		diceRollLogic.determineDiceRollResult(
 			diceRollRequiredValueState.value,
 			rolledValueState.value,
-			modifierState + karmaModifierState
+			getModifier()
 		)
 	);
 	let isMounted = $state(false);
@@ -64,13 +93,13 @@
 	});
 
 	function getRollResult() {
-		return `${rolledValueState.value || '?'}  + ${modifierState + karmaModifierState} = ${rolledValueState.value + modifierState + karmaModifierState || '?'}`;
+		return `${rolledValueState.value || '?'}  + ${getModifier()} = ${rolledValueState.value + getModifier() || '?'}`;
 	}
 
 	let onRoll = (evt) => {
 		//for easy testing
-		//rolledValueState.value = getRandomInteger(15, 20);
-		//return;
+		rolledValueState.value = getRandomInteger(1, 20);
+		return;
 		evt.currentTarget.disabled = true;
 		diceBox.roll('1d20').then((results) => {
 			rolledValueState.value = results[0].value;
@@ -82,7 +111,7 @@
 		diceRollDialog.close($state.snapshot(diceRollResultState));
 		rollDifferenceHistoryState.value = [
 			...rollDifferenceHistoryState.value.slice(-2),
-			rolledValueState.value + modifierState + karmaModifierState - diceRollRequiredValueState.value
+			rolledValueState.value + getModifier() - diceRollRequiredValueState.value
 		];
 	};
 </script>
@@ -147,7 +176,17 @@
 		{#if karmaModifierState > 0}
 			<output id="Karma" class="mt-2">Karma Modifier: {karmaModifierState}</output>
 		{/if}
-		<output id="modifier" class="mt-2">Modifier: {modifierState}</output>
+		{#if action.related_attribute}
+			<output id="attribute-modifier" class="mt-2"
+				>{action.related_attribute}: {generalAttributeModifier()}</output
+			>
+		{/if}
+		{#if action.related_skill}
+			<output id="skill-modifier" class="mt-2"
+				>{action.related_skill}: {specificSkillModifier()}</output
+			>
+		{/if}
+		<output id="modifier" class="mt-2">Situational Modifier: {modifierState}</output>
 		<p>Reason:</p>
 		<output id="modifier-reason" class="mt-2">{modifierReasonState}</output>
 		<br />

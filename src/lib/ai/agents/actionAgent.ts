@@ -11,6 +11,12 @@ import {
 } from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 
+export const diceRollPrompt = `"dice_roll": {
+						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
+						# If action_difficulty is difficult apply a bonus.
+						"modifier": "none|bonus|malus",
+						"modifier_value": negative number for malus, 0 if none, positive number for bonus
+					}`;
 export class ActionAgent {
 	llm: LLM;
 
@@ -18,12 +24,14 @@ export class ActionAgent {
 		this.llm = llm;
 	}
 
-	private readonly jsonFormat = `{
+	private readonly jsonFormatAndRules = (attributes: string[], skills: string[]): string => `{
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
 					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation|Travel",
-					"required_trait": "the skill the dice is rolled for",
+					"related_attribute": "the attribute the dice is rolled for, must be an attribute from this list: ${attributes.join(', ')}; never create new Attributes!",
+					"reuse_related_skill_explanation": "Explanation why a new skill is created instead of reusing an existing one",
+					"related_skill": "the skill the dice is rolled for, must be more specific than the related_attribute, E.g. melee combat instead of strength; Use an already EXISTING SKILL from the list if fitting, else create a new skill; EXISTING SKILLS: ${skills.join(', ')}",
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
 					"is_possible": true|false,
@@ -35,12 +43,7 @@ export class ActionAgent {
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
   				"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
 					"is_interruptible": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,
-					"dice_roll": {
-						"modifier_explanation": "Keep the text short, max 15 words. Modifier can be applied due to a character's proficiency, disadvantage, high difficulty, passive attributes in spells_and_abilities and inventory, or situational factors specific to previous actions. Give an in game story explanation why a modifier is applied or not and how you decided that.",
-						# If action_difficulty is difficult apply a bonus.
-						"modifier": "none|bonus|malus",
-						"modifier_value": positive or negative value (-5 to +5)
-					}
+					${diceRollPrompt}
 				}`;
 
 	async generateSingleAction(
@@ -57,11 +60,10 @@ export class ActionAgent {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
-		const characterStatsMapped = characterStats;
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 
 		const agent = [
-			`You are RPG action agent, you are given a RPG story and one action the player wants to perform; Determine difficulty, resource cost etc. for this action; Consider the story, currently_present_npcs and character traits.
+			`You are RPG action agent, you are given a RPG story and one action the player wants to perform; Determine difficulty, resource cost etc. for this action; Consider the story, currently_present_npcs and character stats.
 				Action Rules:
 				- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
 				- For puzzles, the player —not the character— must solve them. Offer a set of possible actions, including both correct and incorrect choices.
@@ -75,11 +77,17 @@ export class ActionAgent {
 			'dice_roll can be modified by items from the inventory:' +
 				'\n' +
 				stringifyPretty(inventoryState),
-			'Consider the following character stats only for dice_roll modifiers' +
+			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
-				stringifyPretty(characterStatsMapped),
+				stringifyPretty(characterStats.attributes),
+			'Consider following list of Attributes never for dice roll modifiers, but only to set as related_attribute!' +
+				'\n' +
+				stringifyPretty(Object.keys(characterStats.attributes)),
+			'Consider following list of skills never for dice roll modifiers, but only set as related_skill!' +
+				'\n' +
+				stringifyPretty(Object.keys(characterStats.skills)),
 			`Most important instruction! You must always respond with following JSON format! 
-				${this.jsonFormat}`
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills))}`
 		];
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
@@ -130,11 +138,10 @@ export class ActionAgent {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { ['spells_and_abilities']: __, ...characterStatsMapped } = characterStats;
+
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 		const agent = [
-			'You are RPG action agent, you are given a RPG story and then suggest the next action the player character can take, considering the story, currently_present_npcs and character traits.',
+			'You are RPG action agent, you are given a RPG story and then suggest the next action the player character can take, considering the story, currently_present_npcs and character stats.',
 			this.actionRules,
 			'The suggested actions must fit to the setting of the story:' +
 				'\n' +
@@ -145,12 +152,15 @@ export class ActionAgent {
 			'As an action, the character can make use of items from the inventory:' +
 				'\n' +
 				stringifyPretty(inventoryState),
-			'Consider the following character stats only for dice_roll modifiers' +
+			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
-				stringifyPretty(characterStatsMapped),
+				stringifyPretty(characterStats.resources),
+			'Consider following list of skills never for dice roll modifiers, but only for the related skill!:' +
+				'\n' +
+				stringifyPretty(characterStats.skills),
 			`Most important instruction! You must always respond with following JSON format! 
       [
-				${this.jsonFormat},
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills))},
 				...
   		]`
 		];
@@ -182,7 +192,7 @@ export class ActionAgent {
 			systemInstruction: agent
 		};
 		const response = (await this.llm.generateContent(request)) as any;
-
+		console.log('actions response: ', response);
 		//can get not directly arrays but wrapped responses from ai sometimes...
 		if (response && response.actions) {
 			return response.actions as Array<Action>;
@@ -206,11 +216,10 @@ export class ActionAgent {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { ['spells_and_abilities']: __, ...characterStatsMapped } = characterStats;
+
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 		const agent = [
-			'You are RPG action agent, you are given an item description and then suggest the actions the player character can take with that item, considering the story, currently_present_npcs and character traits.',
+			'You are RPG action agent, you are given an item description and then suggest the actions the player character can take with that item, considering the story, currently_present_npcs and character stats.',
 			this.actionRules,
 			'The suggested actions must fit to the setting of the story:' +
 				'\n' +
@@ -221,12 +230,15 @@ export class ActionAgent {
 			'As an action, the character could also combine the item with other items from the inventory:' +
 				'\n' +
 				stringifyPretty(inventoryState),
-			'Consider the following character stats only for dice_roll modifiers' +
+			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
-				stringifyPretty(characterStatsMapped),
+				stringifyPretty(characterStats.resources),
+			'Consider following list of skills never for dice roll modifiers, but only for the related skill!:' +
+				'\n' +
+				stringifyPretty(characterStats.skills),
 			`Most important instruction! You must always respond with following JSON format! 
       [
-				${this.jsonFormat},
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills))},
 				...
   		]`
 		];

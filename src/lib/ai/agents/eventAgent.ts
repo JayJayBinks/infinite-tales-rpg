@@ -2,6 +2,11 @@ import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 import type { GameActionState } from './gameAgent';
 
+export const initialCharacterTransformState: CharacterChangedInto = {
+	changed_into: '',
+	description: '',
+	aiProcessingComplete: true
+};
 export type CharacterChangedInto = {
 	changed_into: string;
 	description: string;

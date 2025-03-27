@@ -17,13 +17,13 @@ export function getRequiredValue(
 		case ActionDifficulty.simple:
 			return 0;
 		case ActionDifficulty.medium:
-			requiredValue = getRandomInteger(7, 11);
+			requiredValue = getRandomInteger(8, 13);
 			break;
 		case ActionDifficulty.difficult:
-			requiredValue = getRandomInteger(12, 15);
+			requiredValue = getRandomInteger(14, 17);
 			break;
 		case ActionDifficulty.very_difficult:
-			requiredValue = getRandomInteger(16, 20);
+			requiredValue = getRandomInteger(17, 20);
 			break;
 		default:
 			return 0;

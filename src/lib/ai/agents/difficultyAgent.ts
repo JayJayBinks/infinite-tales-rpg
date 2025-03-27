@@ -3,6 +3,7 @@ import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+import { diceRollPrompt } from './actionAgent';
 
 export type DiceRollDifficulty = {
 	action_difficulty?: ActionDifficulty;
@@ -20,6 +21,7 @@ export class DifficultyAgent {
 		this.llm = llm;
 	}
 
+	//TODO remove and replace with actionAgent
 	async generateDifficulty(
 		actionText: string,
 		customSystemInstruction: string,
@@ -45,11 +47,7 @@ export class DifficultyAgent {
                {
                    "difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
                    "action_difficulty": "${Object.keys(ActionDifficulty)}",
-                   "dice_roll": {
-                      "modifier_explanation": "Keep the text short, max 20 words. Modifier can be applied due to a character's proficiency, disadvantage, or situational factors specific to the story. Give an in game story explanation why a modifier is applied or not and how you decided that.",
-                      "modifier": "none|bonus|malus",
-                      "modifier_value": "positive or negative value (-5 to +5)"
-                    }
+                   ${diceRollPrompt}
                 }`
 		];
 		if (customSystemInstruction) {

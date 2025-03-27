@@ -18,6 +18,8 @@
 	import QuickstartStoryGenerationModal from '$lib/components/interaction_modals/QuickstartStoryGenerationModal.svelte';
 	import type { LLM } from '$lib/ai/llm';
 	import isPlainObject from 'lodash.isplainobject';
+	import { initialCharacterTransformState } from '$lib/ai/agents/eventAgent';
+	import type { CharacterChangedInto } from '$lib/ai/agents/eventAgent';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1);
@@ -46,6 +48,10 @@
 	const levelUpState = useLocalStorage('levelUpState');
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
+	const characterTransformState = useLocalStorage<CharacterChangedInto>(
+		'characterTransformState',
+		initialCharacterTransformState
+	);
 
 	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
 		'relatedStoryHistoryState',
@@ -108,6 +114,7 @@
 		relatedActionHistoryState.reset();
 		customMemoriesState.reset();
 		customGMNotesState.reset();
+		characterTransformState.reset();
 	}
 
 	async function onQuickstartNew(story: string | Story | undefined) {

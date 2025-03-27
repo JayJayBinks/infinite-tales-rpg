@@ -30,12 +30,7 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let aiLevelUp: AiLevelUp | undefined = $state();
-	let levelUpText:
-		| {
-				prefix: string;
-				traitUpdate: string;
-		  }
-		| undefined = $state();
+	let levelUpText: string | undefined = $state();
 
 	let isGeneratingState = $state(false);
 	let characterStatsAgent: CharacterStatsAgent;
@@ -64,7 +59,7 @@
 		);
 		console.log(aiLevelUp);
 		if (aiLevelUp) {
-			levelUpText = getLevelUpText(aiLevelUp?.trait, characterStatsState.value);
+			levelUpText = getLevelUpText(aiLevelUp.attribute, characterStatsState.value);
 		}
 		isGeneratingState = false;
 	};
@@ -87,8 +82,7 @@
 			</form>
 			<p class="mt-2">{aiLevelUp.level_up_explanation}</p>
 			<p class="mt-4 font-bold">The AI has chosen following updates:</p>
-			<p class="m-1 font-bold">{levelUpText?.prefix}</p>
-			<p class="m-1">{levelUpText?.traitUpdate}</p>
+			<p class="m-1 font-bold">{levelUpText}</p>
 			{#each Object.keys(aiLevelUp.resources) as resourceKey}
 				<p class="m-1 font-bold">{resourceKey.replaceAll('_', ' ')}:</p>
 				<p>

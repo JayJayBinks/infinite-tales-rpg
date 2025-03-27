@@ -67,7 +67,11 @@
 		getNextChapterPrompt
 	} from './campaignLogic';
 	import { getRelatedHistory } from './memoryLogic';
-	import { type CharacterChangedInto, EventAgent } from '$lib/ai/agents/eventAgent';
+	import {
+		type CharacterChangedInto,
+		EventAgent,
+		initialCharacterTransformState
+	} from '$lib/ai/agents/eventAgent';
 	import CharacterChangedConfirmationModal from '$lib/components/interaction_modals/CharacterChangedConfirmationModal.svelte';
 	import { applyCharacterChange } from './characterLogic';
 	// eslint-disable-next-line svelte/valid-compile
@@ -143,11 +147,10 @@
 		$state(undefined);
 
 	let gmQuestionState: string = $state('');
-	let characterTransformState = useLocalStorage<CharacterChangedInto>('characterTransformState', {
-		changed_into: '',
-		description: '',
-		aiProcessingComplete: true
-	});
+	let characterTransformState = useLocalStorage<CharacterChangedInto>(
+		'characterTransformState',
+		initialCharacterTransformState
+	);
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
 	let showEventConfirmationDialog = $state(false);
 
@@ -279,9 +282,9 @@
 		// Get details for all NPC targets based on the current game action state.
 		const allNpcsDetailsAsList = gameLogic
 			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
-			.map((technicalNameId) => ({
-				technicalNameId,
-				...npcState[technicalNameId]
+			.map((technicalId) => ({
+				technicalId,
+				...npcState[technicalId]
 			}));
 
 		// Compute the determined combat actions and stats update.
@@ -351,7 +354,10 @@
 						modifier_explanation:
 							chosenActionState.value.dice_roll!.modifier_explanation! +
 							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key?.replaceAll('_', ' ')}`,
-						modifier_value: (chosenActionState.value.dice_roll?.modifier_value || 0) - 3
+						modifier_value:
+							Number.parseInt(
+								chosenActionState.value.dice_roll?.modifier_value as unknown as string
+							) || 0 - 3
 					}
 				};
 			}
@@ -598,7 +604,7 @@
 		didAIProcessActionState.value = true;
 
 		if (newState) {
-			// If combat provided a specific stat update, use it.
+			// If combat provided a update, use it.
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
 					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
@@ -618,9 +624,7 @@
 			resetStatesAfterActionProcessed();
 
 			// Let the summary agent shorten the history, if needed.
-			const { newHistory, summary } = await summaryAgent.summarizeStoryIfTooLong(
-				historyMessagesState.value
-			);
+			const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
 			historyMessagesState.value = newHistory;
 			// Append the new game state to the game actions.
 			gameActionsState.value = [
@@ -658,6 +662,18 @@
 							console.log(stringifyPretty(actions));
 							characterActionsState.value = actions;
 							renderGameState(currentGameActionState, actions);
+							// Add all required stats from action to characterStatsState and initialize with dice roll modifier.
+							actions.forEach((action: Action) => {
+								const skill = action.related_skill;
+								if (!skill) return;
+								const existingSkill = Object.keys(characterStatsState.value.skills).some(
+									(s) => s.toLowerCase() === skill.toLowerCase()
+								);
+								if (!existingSkill) {
+									console.log('Adding skill', skill);
+									characterStatsState.value.skills[skill] = 0;
+								}
+							});
 						}
 					});
 				checkForLevelUp();

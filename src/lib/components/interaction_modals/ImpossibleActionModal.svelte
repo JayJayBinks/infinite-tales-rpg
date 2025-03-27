@@ -32,7 +32,7 @@
 			{#if action.is_possible === false}
 				You can perform this action if you roll a natural 20!
 			{:else}
-				Attempt without using {action.resource_cost?.resource_key} but with -3 disadvantage.
+				Attempt without using {action.resource_cost?.resource_key} but with a -3 dice roll penalty.
 			{/if}
 		</p>
 		<button

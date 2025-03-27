@@ -67,25 +67,15 @@
 			</div>
 
 			<div class="section mb-6">
-				<h2 class="class mb-2 border-b border-gray-600 pb-1 text-xl font-semibold">Traits</h2>
-				<ul id="traits" class="class list-inside list-disc space-y-1">
-					{stringifyPretty(characterStatsState.value.traits)}
+				<h2 class="class mb-2 border-b border-gray-600 pb-1 text-xl font-semibold">Attributes</h2>
+				<ul id="attributes" class="class list-inside list-disc space-y-1">
+					{stringifyPretty(characterStatsState.value.attributes)}
 				</ul>
 			</div>
-
 			<div class="section mb-6">
-				<h2 class="class mb-2 border-b border-gray-600 pb-1 text-xl font-semibold">Expertise</h2>
-				<ul id="expertise" class="class list-inside list-disc space-y-1">
-					{stringifyPretty(characterStatsState.value.expertise)}
-				</ul>
-			</div>
-
-			<div class="section mb-6">
-				<h2 class="class mb-2 border-b border-gray-600 pb-1 text-xl font-semibold">
-					Disadvantages
-				</h2>
-				<ul id="disadvantages" class="class list-inside list-disc space-y-1">
-					{stringifyPretty(characterStatsState.value.disadvantages)}
+				<h2 class="class mb-2 border-b border-gray-600 pb-1 text-xl font-semibold">Skills</h2>
+				<ul id="skills" class="class list-inside list-disc space-y-1">
+					{stringifyPretty(characterStatsState.value.skills)}
 				</ul>
 			</div>
 		</div>

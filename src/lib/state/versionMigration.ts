@@ -1,4 +1,4 @@
-export const migrateIfApplicable = (key: string, state: any) => {
+export const migrateIfApplicable = (key: string, state: unknown) => {
 	if (!state) return state;
 	let migrated = migrate051to06(key, state);
 	migrated = migrate062to07(key, migrated);
