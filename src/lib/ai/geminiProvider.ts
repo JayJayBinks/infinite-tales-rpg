@@ -173,7 +173,7 @@ export class GeminiProvider extends LLM {
 			try {
 				return {
 					reasoning,
-					parsedObject: JSON.parse(json!.split('```json')[1].split('```')[0])
+					parsedObject: JSON.parse(json!.replace('```json', '').replace('```', ''))
 				};
 			} catch (firstError) {
 				try {
@@ -182,9 +182,9 @@ export class GeminiProvider extends LLM {
 					if (
 						(firstError as SyntaxError).message.includes('Bad control character in string literal')
 					) {
-						return { reasoning, parsedObject: JSON.parse(json.replaceAll('\\', '')) };
+						return { reasoning, parsedObject: JSON.parse(json!.replaceAll('\\', '')) };
 					}
-					return { reasoning, parsedObject: JSON.parse('{' + json.replaceAll('\\', '')) };
+					return { reasoning, parsedObject: JSON.parse(json!.split('```json')[1].split('```')[0]) };
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				} catch (secondError) {
 					//autofix if true or not set and llm allows it

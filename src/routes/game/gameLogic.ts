@@ -372,7 +372,7 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 	if (is_travel || narration_details.includes('HIGH') || narration_details.includes('MEDIUM')) {
 		additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
 	}
-	const encounterString = JSON.stringify(action.is_interruptible) || '';
+	const encounterString = JSON.stringify(action.enemyEncounterExplanation) || '';
 	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
 		additionalStoryInput +=
 			'\nenemyEncounter: ' + encounterString + '; Players take first turn, wait for their action.';
