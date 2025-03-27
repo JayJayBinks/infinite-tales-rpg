@@ -65,8 +65,8 @@ By entering an idea and click Generate Idea, the AI will enhance what you entere
 		</textarea>
 
 		<div class="mt-3 flex gap-2">
-			<button class="btn btn-primary" onclick={generateIdea}>Generate Idea</button>
-			<button class="btn btn-accent" onclick={generateStory}>Start</button>
+			<button class="btn btn-primary flex-1" onclick={generateIdea}>Generate Idea</button>
+			<button class="btn btn-accent flex-1" onclick={generateStory}>Start</button>
 		</div>
 	</div>
 </dialog>

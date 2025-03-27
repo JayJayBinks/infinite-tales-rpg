@@ -1,5 +1,5 @@
 import { getRandomInteger } from '$lib/util.svelte';
-import { npcRank, type NPCState } from '$lib/ai/agents/characterStatsAgent';
+import { npcRank, type NPCState, type NPCStats } from '$lib/ai/agents/characterStatsAgent';
 
 /**
  *  | Rank         | Level 1  | Level 5  | Level 10 | Level 20 |
@@ -23,19 +23,26 @@ function calculateMaxResource(i: number, level: number) {
 
 //TODO consider class?
 //TODO different modificator for level as it doesnt scale
-function getMaxHPFromRank(rank: string, level: number) {
-	let i = npcRank.indexOf(rank);
+function getMaxHPFromRank(npc: NPCStats): number {
+	let i = npcRank.indexOf(npc.rank_enum_english);
+	if(npc.is_party_member && i < 4){
+		i = 4;
+	}
 	if (i === -1) i = 2; // Default to average if rank not found
-	return calculateMaxResource(i, level);
+	return calculateMaxResource(i, npc.level);
 }
 
 //TODO consider class?
 //TODO different modificator for level as it doesnt scale
-function getMaxMPFromRank(rank: string, level: number): number {
-	let i = npcRank.indexOf(rank);
+function getMaxMPFromRank(npc: NPCStats): number {
+	
+	let i = npcRank.indexOf(npc.rank_enum_english);
+	if(npc.is_party_member && i < 4){
+		i = 4;
+	}
 	//Average if not found
 	if (i === -1) i = 2;
-	return calculateMaxResource(i, level + 2);
+	return calculateMaxResource(i, npc.level + 2);
 }
 
 export function addResourceValues(npcState: NPCState) {
@@ -44,8 +51,8 @@ export function addResourceValues(npcState: NPCState) {
 			(npcState[key] = {
 				...npcState[key],
 				resources: {
-					current_hp: getMaxHPFromRank(npcState[key].rank_enum_english, npcState[key].level),
-					current_mp: getMaxMPFromRank(npcState[key].rank_enum_english, npcState[key].level)
+					current_hp: getMaxHPFromRank(npcState[key]),
+					current_mp: getMaxMPFromRank(npcState[key])
 				}
 			})
 	);
