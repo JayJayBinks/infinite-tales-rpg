@@ -136,7 +136,8 @@ export class GameAgent {
 		const request: LLMRequest = {
 			userMessage: combinedText,
 			historyMessages: historyMessages,
-			systemInstruction: gameAgent
+			systemInstruction: gameAgent,
+			returnFallbackProperty: true
 		};
 		const newState = (await this.llm.generateReasoningContent(request))
 			?.parsedObject as GameActionState;

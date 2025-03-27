@@ -22,7 +22,6 @@
 		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
-		type NpcID,
 		type NPCState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
@@ -30,6 +29,7 @@
 	import * as gameLogic from './gameLogic';
 	import {
 		ActionDifficulty,
+		applyInventoryUpdate,
 		getEmptyCriticalResourceKeys,
 		isEnoughResource,
 		mustRollDice
@@ -231,6 +231,7 @@
 			characterName: characterState.value.name,
 			text: GameAgent.getStartingPrompt()
 		});
+		if (gameActionsState.value.length === 0) return;
 		// Initialize all resources when the game is first started.
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
 			$state.snapshot(characterStatsState.value.resources),
@@ -259,10 +260,10 @@
 	}> {
 		// Get details for all NPC targets based on the current game action state.
 		const allNpcsDetailsAsList = gameLogic
-			.getAllTargetsAsList(currentGameActionState.currently_present_npcs, false)
-			.map((nameId) => ({
-				nameId,
-				...npcState[nameId]
+			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
+			.map((technicalNameId) => ({
+				technicalNameId,
+				...npcState[technicalNameId]
 			}));
 
 		// Compute the determined combat actions and stats update.
@@ -288,7 +289,7 @@
 		// Filter to find the alive NPCs.
 		const aliveNPCs = allNpcsDetailsAsList
 			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
-			.map((npc) => npc.nameId);
+			.map((npc) => npc.technicalNameId);
 
 		// Generate additional story input based on the combat results.
 		const additionalStoryInput = CombatAgent.getAdditionalStoryInput(
@@ -583,6 +584,7 @@
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
 					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
+				applyInventoryUpdate(inventoryState.value, newState);
 			} else {
 				// Otherwise, apply the new state to the game state.
 				gameLogic.applyGameActionState(
