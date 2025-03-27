@@ -75,6 +75,7 @@ export const npcRank = ['Very Weak', 'Weak', 'Average', 'Strong', 'Boss', 'Legen
 
 export type NPCState = { [uniqueNpcName: string]: NPCStats };
 export type NPCStats = {
+	is_party_member: boolean;
 	resources?: NPCResources;
 	class: string;
 	rank_enum_english: string;
@@ -86,6 +87,7 @@ export const npcStatsStateForPromptAsString = `{
     "class": string,
     "rank_enum_english": "Power ranking of the NPC. Must be one of " + ${npcRank.join('|')},
     "level": number; scale the level to the rank and player character level,
+    "is_party_member": boolean; true if the NPC is a party member,
     "spells_and_abilities": List 2 actively usable spells or abilities according to game system and level. The damage must be limited to only 1 dice, 1d6 or 1d8 etc. At last include a 'Standard Attack'. Format: [${abilityFormatForPrompt}]
 }`;
 
