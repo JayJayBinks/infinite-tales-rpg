@@ -425,22 +425,17 @@
 	}
 
 	//TODO sendAction should not be handled here so it can be externally called
-	async function checkGameEnded(isGameEnded: boolean) {
-		let endGame = false;
-		const emptyResourceKey = getEmptyCriticalResourceKeys(
+	async function checkGameEnded() {
+		const emptyResourceKeys = getEmptyCriticalResourceKeys(
 			playerCharactersGameState[characterState.value.name]
 		);
-		if (!isGameEnded && emptyResourceKey.length > 0) {
-			endGame = true;
+		if (!isGameEnded.value && emptyResourceKeys.length > 0) {
+			isGameEnded.value = true;
 			await sendAction({
 				characterName: characterState.value.name,
-				text: GameAgent.getGameEndedPrompt(emptyResourceKey)
+				text: GameAgent.getGameEndedPrompt(emptyResourceKeys)
 			});
 		}
-		//calculate again as dying action could also be a rescue in some cases
-		endGame =
-			getEmptyCriticalResourceKeys(playerCharactersGameState[characterState.value.name]).length > 0;
-		return endGame;
 	}
 
 	function resetStatesAfterActionProcessed() {
@@ -603,8 +598,8 @@
 		);
 		didAIProcessActionState.value = true;
 
-		if (newState) {
-			// If combat provided a update, use it.
+		if (newState?.story) {
+			// If combat provided a specific stat update, use it.
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
 					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
@@ -634,7 +629,7 @@
 					id: gameActionsState.value.length
 				}
 			];
-			isGameEnded.value = await checkGameEnded(isGameEnded.value);
+			await checkGameEnded();
 
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
