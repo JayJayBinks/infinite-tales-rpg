@@ -136,7 +136,8 @@ export class GameAgent {
 		const request: LLMRequest = {
 			userMessage: combinedText,
 			historyMessages: historyMessages,
-			systemInstruction: gameAgent
+			systemInstruction: gameAgent,
+			returnFallbackProperty: true
 		};
 		const newState = (await this.llm.generateContent(request)) as GameActionState;
 		const { userMessage, modelMessage } = this.buildHistoryMessages(

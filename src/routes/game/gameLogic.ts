@@ -9,10 +9,10 @@ import {
 	type Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
-import type { NpcID, NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
+import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
-import { getNPCDisplayName, getNPCTechnicalID } from '$lib/util.svelte';
+import { getNPCTechnicalID } from '$lib/util.svelte';
 
 export enum ActionDifficulty {
 	simple = 'simple',
@@ -27,29 +27,19 @@ export function getEmptyCriticalResourceKeys(resources: ResourcesWithCurrentValu
 		.map((entry) => entry[0]);
 }
 
-export function getAllTargetsAsList(targets: Targets, displayNames = true): Array<string> {
+export function getAllTargetsAsList(targets: Targets): Array<string> {
 	if (!targets || !targets.hostile) {
 		return [];
 	}
-	if (displayNames) {
-		return [
-			...targets.hostile.map(getNPCDisplayName),
-			...targets.neutral.map(getNPCDisplayName),
-			...targets.friendly.map(getNPCDisplayName)
-		];
-	} else {
-		return [
-			...targets.hostile.map(getNPCTechnicalID),
-			...targets.neutral.map(getNPCTechnicalID),
-			...targets.friendly.map(getNPCTechnicalID)
-		];
-	}
+	return [
+		...targets.hostile.map(getNPCTechnicalID),
+		...targets.neutral.map(getNPCTechnicalID),
+		...targets.friendly.map(getNPCTechnicalID)
+	];
 }
 
 export function getNewNPCs(targets: Targets, npcState: NPCState) {
-	return getAllTargetsAsList(targets, false).filter(
-		(newNPC) => !Object.keys(npcState).includes(newNPC)
-	);
+	return getAllTargetsAsList(targets).filter((newNPC) => !Object.keys(npcState).includes(newNPC));
 }
 
 //TODO implement parsing to enums directly from json
@@ -240,7 +230,7 @@ function getTakeLessDamageForManyHits(
 export function applyGameActionState(
 	playerCharactersGameState: PlayerCharactersGameState,
 	npcState: NPCState,
-	inventoryState,
+	inventoryState: InventoryState,
 	state: GameActionState,
 	prohibitNPCChange = false
 ) {
@@ -252,7 +242,7 @@ export function applyGameActionState(
 		return resource;
 	}
 
-	for (const statUpdate of state.stats_update.map(mapStatsUpdateToGameLogic) || []) {
+	for (const statUpdate of state?.stats_update?.map(mapStatsUpdateToGameLogic) || []) {
 		if (playerCharactersGameState[statUpdate.targetId]) {
 			if (statUpdate.type.includes('now_level')) {
 				playerCharactersGameState[statUpdate.targetId].XP.current_value -=
@@ -311,7 +301,11 @@ export function applyGameActionState(
 		}
 	}
 
-	for (const inventoryUpdate of state.inventory_update || []) {
+	applyInventoryUpdate(inventoryState, state);
+}
+
+export function applyInventoryUpdate(inventoryState: InventoryState, state: GameActionState) {
+	for (const inventoryUpdate of state?.inventory_update || []) {
 		if (inventoryUpdate.type === 'remove_item') {
 			delete inventoryState[inventoryUpdate.item_id];
 		}

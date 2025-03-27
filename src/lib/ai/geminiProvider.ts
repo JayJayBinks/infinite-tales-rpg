@@ -141,9 +141,11 @@ export class GeminiProvider extends LLM {
 					if (!fallbackResult) {
 						handleError(e as unknown as string);
 					} else {
-						fallbackResult['fallbackUsed'] = true;
+						if (this.llmConfig.returnFallbackProperty || request.returnFallbackProperty) {
+							fallbackResult['fallbackUsed'] = true;
+						}
+						return fallbackResult;
 					}
-					return fallbackResult;
 				} else {
 					handleError(e as unknown as string);
 					return undefined;
@@ -153,15 +155,15 @@ export class GeminiProvider extends LLM {
 			return undefined;
 		}
 		try {
-			let json;
+			let json: string;
 			if (result.response?.candidates) {
-				json = result.response.candidates[0].content.parts[0].text;
+				json = result.response.candidates[0].content.parts[0].text as string;
 			} else {
 				handleError('Gemini did not send a response...');
 				return undefined;
 			}
 			try {
-				return JSON.parse(json.replaceAll('```json', '').replaceAll('```', ''));
+				return JSON.parse(json.split('```json')[1].split('```')[0]);
 			} catch (firstError) {
 				try {
 					console.log('Error parsing JSON: ' + json, firstError);

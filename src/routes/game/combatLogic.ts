@@ -1,23 +1,24 @@
 import { getRandomInteger } from '$lib/util.svelte';
 import { npcRank, type NPCState } from '$lib/ai/agents/characterStatsAgent';
 
-/*
-Logarithmic Modifier Calculation
-Rank	Min HP	Max HP
-Very Weak	4	7
-Weak	11	22
-Average	21	42
-Strong	33	65
-Boss	45	90
-Legendary	59	117
-*/
-function calculateMaxResource(i: number, minRandom: number, maxRandom: number) {
+/**
+ *  | Rank         | Level 1  | Level 5  | Level 10 | Level 20 |
+ * | :----------- | :------: | :------: | :------: | :------: |
+ * | 'Very Weak'  |  [2, 4]  |  [9, 10] | [17, 19] | [34, 36] |
+ * | 'Weak'       |  [4, 8]  | [16, 21] | [32, 37] | [64, 69] |
+ * | 'Average'    |  [6, 14] | [26, 35] | [52, 60] | [104, 112]|
+ * | 'Strong'     |  [8, 21] | [38, 51] | [75, 88] | [149, 162]|
+ * | 'Boss'       | [10, 28] | [50, 68] | [100, 118]| [200, 218]|
+ * | 'Legendary'  | [13, 37] | [64, 87] | [127, 151]| [254, 277]|
+ * | *Unknown*    |  [6, 14] | [26, 35] | [52, 60] | [104, 112]|
+ */
+function calculateMaxResource(i: number, level: number) {
 	// Using logarithmic growth
 	//TODO boss fight too difficult, limit HP
-	if (i > 2) {
-		i = 2;
+	if (i > 3) {
+		i = 3;
 	}
-	return Math.ceil(Math.log(i + 2) * (i + 1) * getRandomInteger(minRandom, maxRandom));
+	return Math.ceil(Math.log(i + 2) * (i + 1) * getRandomInteger(level, level + 2));
 }
 
 //TODO consider class?
@@ -25,7 +26,7 @@ function calculateMaxResource(i: number, minRandom: number, maxRandom: number) {
 function getMaxHPFromRank(rank: string, level: number) {
 	let i = npcRank.indexOf(rank);
 	if (i === -1) i = 2; // Default to average if rank not found
-	return calculateMaxResource(i, 5, 8) + level;
+	return calculateMaxResource(i, level);
 }
 
 //TODO consider class?
@@ -34,7 +35,7 @@ function getMaxMPFromRank(rank: string, level: number): number {
 	let i = npcRank.indexOf(rank);
 	//Average if not found
 	if (i === -1) i = 2;
-	return calculateMaxResource(i, 7, 13) + level;
+	return calculateMaxResource(i, level + 2);
 }
 
 export function addResourceValues(npcState: NPCState) {
@@ -43,8 +44,8 @@ export function addResourceValues(npcState: NPCState) {
 			(npcState[key] = {
 				...npcState[key],
 				resources: {
-					current_hp: getMaxHPFromRank(npcState[key].rank, npcState[key].level),
-					current_mp: getMaxMPFromRank(npcState[key].rank, npcState[key].level)
+					current_hp: getMaxHPFromRank(npcState[key].rank_enum_english, npcState[key].level),
+					current_mp: getMaxMPFromRank(npcState[key].rank_enum_english, npcState[key].level)
 				}
 			})
 	);

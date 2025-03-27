@@ -77,14 +77,14 @@ export type NPCState = { [uniqueNpcName: string]: NPCStats };
 export type NPCStats = {
 	resources?: NPCResources;
 	class: string;
-	rank: string;
+	rank_enum_english: string;
 	level: number;
 	spells_and_abilities: Array<Ability>;
 };
 
 export const npcStatsStateForPromptAsString = `{
     "class": string,
-    "rank": "Power ranking of the NPC. Can be one of " + ${npcRank.join('|')},
+    "rank_enum_english": "Power ranking of the NPC. Must be one of " + ${npcRank.join('|')},
     "level": number; scale the level to the rank and player character level,
     "spells_and_abilities": List 2 actively usable spells or abilities according to game system and level. The damage must be limited to only 1 dice, 1d6 or 1d8 etc. At last include a 'Standard Attack'. Format: [${abilityFormatForPrompt}]
 }`;
@@ -214,13 +214,13 @@ export class CharacterStatsAgent {
 				'\n',
 			TROPES_CLICHE_PROMPT,
 			`Most important instruction! You must always respond with following JSON format! 
-                            {"uniqueNpcName": ${npcStatsStateForPromptAsString}, ...}`
+                            {"uniqueTechnicalNameId": ${npcStatsStateForPromptAsString}, ...}`
 		];
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
 		}
 		const action =
-			'Generate the following NPCs. You must reuse the names given: ' +
+			'Generate the following NPCs. You must exactly reuse the uniqueTechnicalNameId given: ' +
 			stringifyPretty(npcsToGenerate);
 		const request: LLMRequest = {
 			userMessage: action,

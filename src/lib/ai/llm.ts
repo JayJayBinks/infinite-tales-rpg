@@ -14,6 +14,7 @@ export interface LLMRequest {
 	safetySettings?: Array<SafetySetting>;
 	tryAutoFixJSONError?: boolean;
 	model?: string;
+	returnFallbackProperty?: boolean;
 }
 
 export interface LLMconfig {
@@ -25,6 +26,7 @@ export interface LLMconfig {
 	tryAutoFixJSONError?: boolean;
 	apiKey?: string;
 	model?: string;
+	returnFallbackProperty?: boolean;
 }
 
 export const LANGUAGE_PROMPT =
