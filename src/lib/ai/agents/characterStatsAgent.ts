@@ -105,16 +105,21 @@ export class CharacterStatsAgent {
 	): Promise<CharacterStats> {
 		const agentInstruction = [
 			'You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n' +
-				'Scale the stats and abilities according to the level. A low level character has stats around 1 to 2.\n' +
-				'If there is a HP resource or deviation, it must be greater than 20.\n' +
-				'Stats should be determined based on character description and can be positive (1 to 10), neutral (0), or negative (-10 to -1).\n' +
-				'Limit the number of skills to 2 with values of -1 or 1.\n'
+			'Attributes and skills should be determined based on character description.\n' +
+			'Scale the attributes, skills and abilities according to the level. A low level character has attributes and skills -1 to 1.\n' +
+			'If there is a HP resource or deviation, it must be greater than 20.\n'
 		];
 		if (transformInto) {
 			agentInstruction.push(
 				'Determine if following transformation completely changes or just adapts the character; ' +
 					'If complete transformation ignore the already existing stats and generate all new, else adapt the stats based on already existing;\nTransform into:\n' +
 					transformInto
+			);
+		}
+		if (statsOverwrites) {
+			agentInstruction.push(
+				'You must set exactly the following stats as given:\n' +
+					stringifyPretty(statsOverwrites)
 			);
 		}
 		agentInstruction.push('Always respond with following JSON!\n' + characterStatsStateForPrompt);
@@ -136,14 +141,6 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		if (statsOverwrites) {
-			request.historyMessages?.push({
-				role: 'user',
-				content:
-					'Already existing stats to be reused, if level is given you must reuse the same value: ' +
-					stringifyPretty(statsOverwrites)
-			});
-		}
 		const stats = this.mapStats((await this.llm.generateContent(request)) as CharacterStats);
 		console.log(stats);
 		return stats;

@@ -173,6 +173,9 @@
 			class="btn btn-neutral m-3"
 			>Continue
 		</button>
+		{#if getModifier() === 10 || getModifier() === -10}
+			<output class="mt-2">Modifier is capped at 10</output>
+		{/if}
 		{#if karmaModifierState > 0}
 			<output id="Karma" class="mt-2">Karma Modifier: {karmaModifierState}</output>
 		{/if}

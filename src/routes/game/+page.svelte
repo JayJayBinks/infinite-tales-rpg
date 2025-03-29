@@ -73,7 +73,7 @@
 		initialCharacterTransformState
 	} from '$lib/ai/agents/eventAgent';
 	import CharacterChangedConfirmationModal from '$lib/components/interaction_modals/CharacterChangedConfirmationModal.svelte';
-	import { applyCharacterChange } from './characterLogic';
+	import { applyCharacterChange, getSkillIfApplicable } from './characterLogic';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -657,20 +657,16 @@
 							console.log(stringifyPretty(actions));
 							characterActionsState.value = actions;
 							renderGameState(currentGameActionState, actions);
-							// Add all required stats from action to characterStatsState and initialize with dice roll modifier.
-							actions.forEach((action: Action) => {
-								const skill = action.related_skill;
-								if (!skill) return;
-								const existingSkill = Object.keys(characterStatsState.value.skills).some(
-									(s) => s.toLowerCase() === skill.toLowerCase()
-								);
-								if (!existingSkill) {
-									console.log('Adding skill', skill);
-									characterStatsState.value.skills[skill] = 0;
-								}
-							});
+							// Add all skills from action to characterStatsState
+							if (gameSettingsState.value.aiIntroducesSkills) {
+								actions.forEach((action: Action) => {
+									const skill = getSkillIfApplicable($state.snapshot(characterStatsState.value), action);
+									if (skill) {
+										characterStatsState.value.skills[skill] = 0;
+									}
+								});
 						}
-					});
+					}});
 				checkForLevelUp();
 			}
 		}
@@ -1023,6 +1019,8 @@
 		characterTransformState.value.aiProcessingComplete = true;
 		isAiGeneratingState = false;
 	}
+
+
 </script>
 
 <div id="game-container" class="container mx-auto p-4">

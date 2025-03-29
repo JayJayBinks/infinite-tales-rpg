@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import type { AIConfig } from '$lib';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
 	import { initialCharacterState, type CharacterDescription } from '$lib/ai/agents/characterAgent';
 	import {
@@ -13,12 +12,14 @@
 	import { type Story, initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { parseState, removeEmptyValues } from '$lib/util.svelte';
+	import { navigate, parseState, removeEmptyValues } from '$lib/util.svelte';
 	import { onMount } from 'svelte';
 	import cloneDeep from 'lodash/cloneDeep';
 	import isEqual from 'lodash/isEqual';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
+	import { defaultGameSettings, type GameSettings } from '$lib/ai/agents/gameAgent';
+	import type { AIConfig } from '$lib';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -36,6 +37,7 @@
 	);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	const gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
 
@@ -213,7 +215,7 @@
 		if (isEqual(characterStatsState.value, initialCharacterStatsState)) {
 			await onRandomize();
 		}
-		await goto('/game');
+		navigate('/');
 	};
 
 	function addLevelOverwrite(value: number): void {
@@ -482,8 +484,20 @@
 
 	<!-- Dynamically render skills -->
 	<details class="collapse collapse-arrow border border-base-300 bg-base-200">
-		<summary class="collapse-title items-center text-center">skills</summary>
+		<summary class="collapse-title items-center text-center">Skills</summary>
 		<div class="collapse-content">
+			<label class="form-control mt-2 w-full">
+				<p>AI creates new skills</p>
+				<input
+					type="checkbox"
+					bind:checked={gameSettingsState.value.aiIntroducesSkills}
+					class="toggle m-auto mt-2 text-center"
+				/>
+				<small class="m-auto mb-1 mt-2"
+					>Allow the AI to introduce new skills during the game.</small
+				>
+			</label>
+			<p class="m-auto mt-4">Skills increase the more you use them.</p>
 			{#if characterStatsState.value.skills}
 				{#each Object.entries(characterStatsState.value.skills) as [statName]}
 					<div class="form-control m-auto flex w-full max-w-md">
@@ -531,7 +545,7 @@
 						}
 					}}
 				>
-					Add skill
+					Add Skill
 				</button>
 				<button
 					class="btn btn-accent flex-1"

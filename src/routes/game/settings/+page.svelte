@@ -75,6 +75,17 @@
 			>Enabled longer detailed narration, disabled shorter concise length</small
 		>
 	</label>
+	<label class="form-control mt-2 w-full">
+		<p>AI creates new skills</p>
+		<input
+			type="checkbox"
+			bind:checked={gameSettingsState.value.aiIntroducesSkills}
+			class="toggle m-auto mt-2 text-center"
+		/>
+		<small class="m-auto mb-3 mt-2"
+			>Allow the AI to introduce new skills during the game.</small
+		>
+	</label>
 	<ImportExportSaveGame isSaveGame={true}>
 		{#snippet exportButton(onclick)}
 			<button {onclick} class="btn btn-neutral m-auto mt-4 w-3/4 sm:w-1/2">

@@ -53,9 +53,11 @@ export type PlayerCharactersGameState = {
 
 export type GameSettings = {
 	detailedNarrationLength: boolean;
+	aiIntroducesSkills: boolean;
 };
 export const defaultGameSettings = () => ({
-	detailedNarrationLength: true
+	detailedNarrationLength: true,
+	aiIntroducesSkills: false
 });
 
 export type Targets = { hostile: Array<NpcID>; friendly: Array<NpcID>; neutral: Array<NpcID> };

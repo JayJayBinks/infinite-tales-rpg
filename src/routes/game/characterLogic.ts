@@ -2,6 +2,7 @@ import type { CharacterChangedInto } from '$lib/ai/agents/eventAgent';
 import { CharacterAgent, type CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { CharacterStats, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
+import type { Action } from '$lib/ai/agents/gameAgent';
 
 export async function applyCharacterChange(
 	gameEvent: CharacterChangedInto,
@@ -53,4 +54,20 @@ export async function applyCharacterChange(
 		}
 	}
 	return { transformedCharacter, transformedCharacterStats };
+}
+
+export function getSkillIfApplicable(stats: CharacterStats, action: Action): string | undefined {
+	const skill = action.related_skill;
+	if (!skill) return undefined;
+	const existingSkill = Object.keys(stats.skills).some(
+		(s) => s.toLowerCase() === skill.toLowerCase()
+	);
+	const isAttribute = Object.keys(stats.attributes).some(
+		(a) => a.toLowerCase() === skill.toLowerCase()
+	);
+	if (!existingSkill && !isAttribute) {
+		console.log('Adding skill', skill);
+		return skill;
+	}
+	return undefined;
 }
