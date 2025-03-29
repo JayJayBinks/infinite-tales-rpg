@@ -10,7 +10,6 @@
 		type Item,
 		type PlayerCharactersGameState
 	} from '$lib/ai/agents/gameAgent';
-	import { DifficultyAgent } from '$lib/ai/agents/difficultyAgent';
 	import { onMount, tick } from 'svelte';
 	import { getTextForActionButton, handleError, stringifyPretty } from '$lib/util.svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
@@ -86,7 +85,6 @@
 	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
 	let didAIProcessActionState = useLocalStorage<boolean>('didAIProcessActionState', true);
 	let gameAgent: GameAgent,
-		difficultyAgent: DifficultyAgent,
 		summaryAgent: SummaryAgent,
 		characterAgent: CharacterAgent,
 		characterStatsAgent: CharacterStatsAgent,
@@ -172,7 +170,6 @@
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);
 		combatAgent = new CombatAgent(llm);
-		difficultyAgent = new DifficultyAgent(llm);
 		summaryAgent = new SummaryAgent(llm);
 		campaignAgent = new CampaignAgent(llm);
 		actionAgent = new ActionAgent(llm);
@@ -811,6 +808,7 @@
 		if (targets?.length > 0 && !targets.some((t) => t === undefined)) {
 			targetAddition = targets?.length === 0 ? '' : gameLogic.getTargetPromptAddition(targets);
 		}
+		action.text += targetAddition;
 		relatedActionHistoryState.value = await getRelatedHistory(
 			summaryAgent,
 			action,
@@ -818,18 +816,26 @@
 			$state.snapshot(relatedStoryHistoryState.value),
 			$state.snapshot(customMemoriesState.value)
 		);
-		const difficultyResponse = await difficultyAgent.generateDifficulty(
-			action.text + targetAddition,
-			customSystemInstruction.value,
+		const difficultyResponse = await actionAgent.generateSingleAction(
+			action,
+			currentGameActionState,
 			getLatestStoryMessages(),
+			storyState.value,
 			characterState.value,
 			characterStatsState.value,
+			inventoryState.value,
+			customSystemInstruction.value,
 			relatedActionHistoryState.value
 		);
 		if (difficultyResponse) {
-			action = { ...action, ...difficultyResponse };
+			for (const key in difficultyResponse) {
+				if (action[key] === undefined) {
+					action[key] = difficultyResponse[key];
+				}
+			}
 		}
-		console.log('difficultyResponse', stringifyPretty(difficultyResponse));
+		action.is_custom_action = true;
+		console.log('difficultyResponse', stringifyPretty(action));
 		chosenActionState.value = action;
 		const abilityAddition =
 			'\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended.' +

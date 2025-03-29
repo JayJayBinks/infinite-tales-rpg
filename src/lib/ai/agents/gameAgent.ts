@@ -25,8 +25,8 @@ export type Item = { description: string; effect: string };
 export type Action = {
 	characterName: string;
 	text: string;
-	related_attribute: string;
-	related_skill: string;
+	related_attribute?: string;
+	related_skill?: string;
 	action_difficulty?: ActionDifficulty;
 	is_custom_action?: boolean;
 	is_possible?: boolean;
