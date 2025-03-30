@@ -24,14 +24,25 @@ export class ActionAgent {
 		this.llm = llm;
 	}
 
-	private readonly jsonFormatAndRules = (attributes: string[], skills: string[]): string => `{
+	private readonly jsonFormatAndRules = (
+		attributes: string[],
+		skills: string[],
+		newSkillsAllowed: boolean
+	): string => {
+		let newSkillRule = '';
+		if (newSkillsAllowed) {
+			newSkillRule = `Choose or create a skill that is more specific than the related_attribute but broad enough for multiple actions (e.g. 'Melee Combat' instead of 'Strength'). Use an EXISTING SKILL if applicable; otherwise, add a fitting new one.`;
+		} else {
+			newSkillRule = `Choose a skill from EXISTING SKILLS or null if none fits; Never create a new skill;`;
+		}
+		return `
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
 					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation|Travel",
 					"related_attribute": "the attribute the dice is rolled for, must be an attribute from this list: ${attributes.join(', ')}; never create new Attributes!",
 					"existing_related_skill_explanation": "Explanation if an existing skill is used instead of creating a new one",
-					"related_skill": "skill the dice is rolled for; Choose or create a skill that is more specific than the related_attribute but broad enough for multiple actions (e.g. 'Melee Combat' instead of 'Strength'). Use an EXISTING SKILL if applicable; otherwise, add a fitting new one. EXISTING SKILLS:  ${skills.join(', ')}",
+					"related_skill": "skill the dice is rolled for; ${newSkillRule} EXISTING SKILLS: ${skills.join(', ')}",
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
 					"is_possible": true|false,
@@ -41,10 +52,11 @@ export class ActionAgent {
 					},
 					"narration_details": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} how many details the narration for this action should include; LOW if it involves few steps or can be done quickly; MEDIUM|HIGH if it involves thorough planning or decisions,
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
-  				"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
+  					"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
 					"is_interruptible": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,
 					${diceRollPrompt}
 				}`;
+	};
 
 	async generateSingleAction(
 		action: Action,
@@ -55,7 +67,8 @@ export class ActionAgent {
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
 		customSystemInstruction?: string,
-		relatedHistory?: string[]
+		relatedHistory?: string[],
+		newSkillsAllowed: boolean = false
 	): Promise<Action> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -79,15 +92,9 @@ export class ActionAgent {
 				stringifyPretty(inventoryState),
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
-				stringifyPretty(characterStats.attributes),
-			'Consider following list of Attributes never for dice roll modifiers, but only to set as related_attribute!' +
-				'\n' +
-				stringifyPretty(Object.keys(characterStats.attributes)),
-			'Consider following list of skills never for dice roll modifiers, but only set as related_skill!' +
-				'\n' +
-				stringifyPretty(Object.keys(characterStats.skills)),
+				stringifyPretty(characterStats.resources),
 			`Most important instruction! You must always respond with following JSON format! 
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills))}`
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)}`
 		];
 		if (customSystemInstruction) {
 			agent.push(customSystemInstruction);
@@ -133,7 +140,8 @@ export class ActionAgent {
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
 		customSystemInstruction?: string,
-		relatedHistory?: string[]
+		relatedHistory?: string[],
+		newSkillsAllowed: boolean = false
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -155,12 +163,9 @@ export class ActionAgent {
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
 				stringifyPretty(characterStats.resources),
-			'Consider following list of skills never for dice roll modifiers, but only for the related skill!:' +
-				'\n' +
-				stringifyPretty(characterStats.skills),
 			`Most important instruction! You must always respond with following JSON format! 
       [
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills))},
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
 				...
   		]`
 		];
@@ -211,7 +216,8 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
-		customSystemInstruction?: string
+		customSystemInstruction?: string,
+		newSkillsAllowed: boolean = false
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -233,12 +239,9 @@ export class ActionAgent {
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
 				stringifyPretty(characterStats.resources),
-			'Consider following list of skills never for dice roll modifiers, but only for the related skill!:' +
-				'\n' +
-				stringifyPretty(characterStats.skills),
 			`Most important instruction! You must always respond with following JSON format! 
       [
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills))},
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
 				...
   		]`
 		];

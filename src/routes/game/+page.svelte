@@ -21,7 +21,8 @@
 		type CharacterStats,
 		CharacterStatsAgent,
 		initialCharacterStatsState,
-		type NPCState
+		type NPCState,
+		type SkillsProgression
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
@@ -72,7 +73,14 @@
 		initialCharacterTransformState
 	} from '$lib/ai/agents/eventAgent';
 	import CharacterChangedConfirmationModal from '$lib/components/interaction_modals/CharacterChangedConfirmationModal.svelte';
-	import { applyCharacterChange, getSkillIfApplicable } from './characterLogic';
+	import {
+		applyCharacterChange,
+		getRequiredSkillProgression,
+		getSkillIfApplicable,
+		getSkillProgressionForDiceRoll,
+		getSkillProgressionForDifficulty
+	} from './characterLogic';
+	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/diceRollLogic';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -105,6 +113,8 @@
 		'characterStatsState',
 		initialCharacterStatsState
 	);
+	const skillsProgressionState = useLocalStorage<SkillsProgression>('skillsProgressionState', {});
+	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
 	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
@@ -234,7 +244,8 @@
 					undefined,
 					relatedStoryHistoryState.value,
 					customMemoriesState.value
-				)
+				),
+				gameSettingsState.value?.aiIntroducesSkills
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -320,13 +331,49 @@
 		return { additionalStoryInput, determinedActionsAndStatsUpdate };
 	}
 
+	const advanceSkillIfApplicable = (skillName: string) => {
+		const requiredSkillProgression = getRequiredSkillProgression(
+			skillName,
+			characterStatsState.value
+		);
+		if (requiredSkillProgression) {
+			if (skillsProgressionState.value[skillName] >= requiredSkillProgression) {
+				characterStatsState.value.skills[skillName] += 1;
+				skillsProgressionState.value[skillName] = 0;
+				gameActionsState.value[gameActionsState.value.length].stats_update.push({
+					sourceId: characterState.value.name,
+					targetId: characterState.value.name,
+					value: { result: skillName },
+					type: 'skill_increased'
+				});
+			}
+		} else {
+			console.log('No required skill progression found for skill: ' + skillName);
+		}
+	};
+
+	const addSkillProgression = (skillName: string, skillProgression: number) => {
+		if (!skillsProgressionState.value[skillName]) {
+			skillsProgressionState.value[skillName] = 0;
+		}
+		console.log('Adding skill progression for ' + skillName + ': ' + skillProgression);
+		skillsProgressionState.value[skillName] += skillProgression;
+	};
+
 	function openDiceRollDialog(additionalStoryInput: string) {
 		//TODO showModal can not be used because it hides the dice roll
 		didAIProcessDiceRollActionState.value = false;
 		diceRollDialog.show();
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
-			additionalStoryInput = diceRollDialog.returnValue + '\n' + (additionalStoryInput || '');
+			const result = diceRollDialog.returnValue;
+			const skillName = chosenActionState.value.related_skill;
+			if (skillName) {
+				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
+			}
+
+			additionalStoryInput =
+				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInput || '');
 			sendAction(chosenActionState.value, false, additionalStoryInput);
 		});
 	}
@@ -441,6 +488,7 @@
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
 		relatedStoryHistoryState.reset();
+		skillsProgressionForCurrentActionState = undefined;
 		if (actionsDiv) actionsDiv.innerHTML = '';
 		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
@@ -613,6 +661,16 @@
 			console.log('new state', stringifyPretty(newState));
 			updateMessagesHistory(updatedHistoryMessages);
 			checkForNewNPCs(newState);
+			const skillName = action.related_skill;
+			if (skillName) {
+				//if no dice was rolled, use difficulty
+				if (skillsProgressionForCurrentActionState === undefined) {
+					const skillProgression = getSkillProgressionForDifficulty(action.action_difficulty);
+					addSkillProgression(skillName, skillProgression);
+				}
+				advanceSkillIfApplicable(skillName);
+			}
+
 			resetStatesAfterActionProcessed();
 
 			// Let the summary agent shorten the history, if needed.
@@ -638,8 +696,7 @@
 					}
 				});
 				// Generate the next set of actions.
-				actionAgent
-					.generateActions(
+				actionAgent.generateActions(
 						currentGameActionState,
 						historyMessagesState.value,
 						storyState.value,
@@ -647,7 +704,8 @@
 						characterStatsState.value,
 						inventoryState.value,
 						customSystemInstruction.value,
-						relatedHistory
+						relatedHistory,
+						gameSettingsState.value?.aiIntroducesSkills
 					)
 					.then((actions) => {
 						if (actions) {
@@ -655,15 +713,20 @@
 							characterActionsState.value = actions;
 							renderGameState(currentGameActionState, actions);
 							// Add all skills from action to characterStatsState
-							if (gameSettingsState.value.aiIntroducesSkills) {
+							if (gameSettingsState.value?.aiIntroducesSkills) {
 								actions.forEach((action: Action) => {
-									const skill = getSkillIfApplicable($state.snapshot(characterStatsState.value), action);
+									const skill = getSkillIfApplicable(
+										$state.snapshot(characterStatsState.value),
+										action
+									);
+									//TODO skill can be trait sometimes which we dont want?
 									if (skill) {
 										characterStatsState.value.skills[skill] = 0;
 									}
 								});
+							}
 						}
-					}});
+					});
 				checkForLevelUp();
 			}
 		}
@@ -825,7 +888,8 @@
 			characterStatsState.value,
 			inventoryState.value,
 			customSystemInstruction.value,
-			relatedActionHistoryState.value
+			relatedActionHistoryState.value,
+			gameSettingsState.value?.aiIntroducesSkills
 		);
 		if (difficultyResponse) {
 			for (const key in difficultyResponse) {
@@ -911,7 +975,8 @@
 			characterStatsState.value,
 			inventoryState.value,
 			customSystemInstruction.value,
-			relatedActionHistoryState.value
+			relatedActionHistoryState.value,
+			gameSettingsState.value?.aiIntroducesSkills
 		);
 		console.log('action', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };
@@ -1025,8 +1090,6 @@
 		characterTransformState.value.aiProcessingComplete = true;
 		isAiGeneratingState = false;
 	}
-
-
 </script>
 
 <div id="game-container" class="container mx-auto p-4">

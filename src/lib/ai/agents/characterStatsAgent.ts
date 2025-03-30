@@ -37,6 +37,10 @@ export type CharacterStats = {
 	skills: { [stat: string]: number };
 	spells_and_abilities: Array<Ability>;
 };
+
+export type SkillsProgression = {
+	[skill: string]: number;
+};
 //need to stringify ourselves because JSON stringify would double escape the string JSON
 const characterStatsStateForPrompt = `{
 	"level": Number; Level of the character according to Description of the story and character,
@@ -105,9 +109,9 @@ export class CharacterStatsAgent {
 	): Promise<CharacterStats> {
 		const agentInstruction = [
 			'You are RPG character stats agent, generating the starting stats for a character according to game system, adventure and character description.\n' +
-			'Attributes and skills should be determined based on character description.\n' +
-			'Scale the attributes, skills and abilities according to the level. A low level character has attributes and skills -1 to 1.\n' +
-			'If there is a HP resource or deviation, it must be greater than 20.\n'
+				'Attributes and skills should be determined based on character description.\n' +
+				'Scale the attributes, skills and abilities according to the level. A low level character has attributes and skills -1 to 1.\n' +
+				'If there is a HP resource or deviation, it must be greater than 20.\n'
 		];
 		if (transformInto) {
 			agentInstruction.push(
@@ -118,8 +122,7 @@ export class CharacterStatsAgent {
 		}
 		if (statsOverwrites) {
 			agentInstruction.push(
-				'You must set exactly the following stats as given:\n' +
-					stringifyPretty(statsOverwrites)
+				'You must set exactly the following stats as given:\n' + stringifyPretty(statsOverwrites)
 			);
 		}
 		agentInstruction.push('Always respond with following JSON!\n' + characterStatsStateForPrompt);

@@ -48,11 +48,20 @@ export function getKarmaModifier(
 	return 0;
 }
 
+export type DiceRollResult =
+	| 'critical_failure'
+	| 'critical_success'
+	| 'major_failure'
+	| 'regular_failure'
+	| 'partial_failure'
+	| 'major_success'
+	| 'regular_success';
+
 export function determineDiceRollResult(
 	required_value: number,
 	rolledValue,
 	modifier
-): string | undefined {
+): DiceRollResult | undefined {
 	if (!required_value || !rolledValue) {
 		return undefined;
 	}
@@ -62,27 +71,52 @@ export function determineDiceRollResult(
 		: Number.parseInt(rolledValue);
 	const evaluatedValue = evaluatedRolledValue + evaluatedModifier;
 	if (evaluatedRolledValue === 1) {
-		return 'The action is a critical failure!';
+		return 'critical_failure';
 	}
 	if (evaluatedRolledValue === 20) {
-		return 'The action is a critical success!';
+		return 'critical_success';
 	}
 	const diff = evaluatedValue - required_value;
 	if (diff <= -6) {
-		return 'The action is a major failure.';
+		return 'major_failure';
 	}
 	if (diff <= -3) {
-		return 'The action is a regular failure.';
+		return 'regular_failure';
 	}
 	if (diff <= -1) {
-		return 'The action is a partial failure.';
+		return 'partial_failure';
 	}
 	if (diff >= 6) {
-		return 'The action is a major success.';
+		return 'major_success';
 	}
 	if (diff >= 0) {
+		return 'regular_success';
+	}
+	return undefined;
+}
+
+export const getDiceRollPromptAddition = (result: DiceRollResult | undefined) => {
+	if (result === 'critical_failure') {
+		return 'The action is a critical failure!';
+	}
+	if (result === 'critical_success') {
+		return 'The action is a critical success!';
+	}
+	if (result === 'major_failure') {
+		return 'The action is a major failure.';
+	}
+	if (result === 'regular_failure') {
+		return 'The action is a regular failure.';
+	}
+	if (result === 'partial_failure') {
+		return 'The action is a partial failure.';
+	}
+	if (result === 'major_success') {
+		return 'The action is a major success.';
+	}
+	if (result === 'regular_success') {
 		return 'The action is a regular success.';
 	}
-	//Error fallback (e.g. '10 to 14')
-	return `Determine the action outcome with a rolled value of ${evaluatedValue} and required value of ${required_value}`;
-}
+
+	return '';
+};

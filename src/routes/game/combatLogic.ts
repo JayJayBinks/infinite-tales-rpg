@@ -25,7 +25,7 @@ function calculateMaxResource(i: number, level: number) {
 //TODO different modificator for level as it doesnt scale
 function getMaxHPFromRank(npc: NPCStats): number {
 	let i = npcRank.indexOf(npc.rank_enum_english);
-	if(npc.is_party_member && i < 4){
+	if (npc.is_party_member && i < 4) {
 		i = 4;
 	}
 	if (i === -1) i = 2; // Default to average if rank not found
@@ -35,9 +35,8 @@ function getMaxHPFromRank(npc: NPCStats): number {
 //TODO consider class?
 //TODO different modificator for level as it doesnt scale
 function getMaxMPFromRank(npc: NPCStats): number {
-	
 	let i = npcRank.indexOf(npc.rank_enum_english);
-	if(npc.is_party_member && i < 4){
+	if (npc.is_party_member && i < 4) {
 		i = 4;
 	}
 	//Average if not found

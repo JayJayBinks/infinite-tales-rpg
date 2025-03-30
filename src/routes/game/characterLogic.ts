@@ -3,6 +3,8 @@ import { CharacterAgent, type CharacterDescription } from '$lib/ai/agents/charac
 import type { CharacterStats, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { Action } from '$lib/ai/agents/gameAgent';
+import type { DiceRollResult } from '$lib/components/interaction_modals/diceRollLogic';
+import { ActionDifficulty } from './gameLogic';
 
 export async function applyCharacterChange(
 	gameEvent: CharacterChangedInto,
@@ -70,4 +72,59 @@ export function getSkillIfApplicable(stats: CharacterStats, action: Action): str
 		return skill;
 	}
 	return undefined;
+}
+
+//number of succesfull actions required to raise skill by one
+const requiredSkillProgression = {
+	0: 10,
+	1: 20,
+	2: 30,
+	3: 40,
+	4: 50,
+	5: 60,
+	7: 80,
+	8: 90,
+	9: 100,
+	10: undefined
+};
+
+export function getRequiredSkillProgression(
+	skill: string,
+	stats: CharacterStats
+): number | undefined {
+	const currentSkill = stats.skills[skill] || 0;
+	const lookUp = currentSkill < 0 ? currentSkill * -1 : currentSkill;
+	return requiredSkillProgression[lookUp] || undefined;
+}
+
+export function getSkillProgressionForDiceRoll(diceRollResult: DiceRollResult): number {
+	switch (diceRollResult) {
+		case 'critical_failure':
+			return -1;
+		case 'critical_success':
+			return 3;
+		case 'major_failure':
+			return 0;
+		case 'regular_failure':
+			return 0;
+		case 'partial_failure':
+			return 0;
+		case 'major_success':
+			return 2;
+		case 'regular_success':
+			return 1;
+	}
+	return 0;
+}
+
+export function getSkillProgressionForDifficulty(actionDifficulty: ActionDifficulty): number {
+	switch (actionDifficulty) {
+		case ActionDifficulty.medium:
+			return 1;
+		case ActionDifficulty.difficult:
+			return 2;
+		case ActionDifficulty.very_difficult:
+			return 3;
+	}
+	return 0;
 }

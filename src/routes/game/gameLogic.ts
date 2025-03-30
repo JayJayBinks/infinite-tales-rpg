@@ -96,6 +96,7 @@ function getColorForStatUpdate(mappedType: string, resources: ResourcesWithCurre
 	if (mappedType.includes('HP')) color = 'text-red-500';
 	if (mappedType.includes('MP')) color = 'text-blue-500';
 	if (mappedType.includes('LEVEL')) color = 'text-green-500';
+	if (mappedType.includes('SKILL')) color = 'text-green-500';
 	if (mappedType.includes('HP')) color = 'text-red-500';
 	if (mappedType.includes('MP')) color = 'text-blue-500';
 	if (!color) {
@@ -137,11 +138,12 @@ export function renderStatUpdates(
 					? 'gain'
 					: statsUpdate.type?.includes('_lost')
 						? 'loose'
-						: undefined;
+						: statsUpdate.type?.split('_')[1] || undefined;
 				const mappedType =
 					statsUpdate.type
 						?.replace('_gained', '')
 						.replace('_lost', '')
+						.replace('_increased', '')
 						.replaceAll('_', ' ')
 						.toUpperCase() || '';
 

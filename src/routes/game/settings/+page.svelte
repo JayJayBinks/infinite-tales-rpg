@@ -82,9 +82,7 @@
 			bind:checked={gameSettingsState.value.aiIntroducesSkills}
 			class="toggle m-auto mt-2 text-center"
 		/>
-		<small class="m-auto mb-3 mt-2"
-			>Allow the AI to introduce new skills during the game.</small
-		>
+		<small class="m-auto mb-3 mt-2">Allow the AI to introduce new skills during the game.</small>
 	</label>
 	<ImportExportSaveGame isSaveGame={true}>
 		{#snippet exportButton(onclick)}

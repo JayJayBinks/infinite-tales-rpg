@@ -45,22 +45,27 @@
 	);
 
 	const getModifier = () => {
-		const modifier = modifierState + karmaModifierState + generalAttributeModifier() + specificSkillModifier();
-		if(modifier > 10) {
+		const modifier =
+			modifierState + karmaModifierState + generalAttributeModifier() + specificSkillModifier();
+		if (modifier > 10) {
 			return 10;
 		}
-		if(modifier < -10) {
+		if (modifier < -10) {
 			return -10;
 		}
 		return modifier;
 	};
 
-	let diceRollResultState = $derived(
+	const diceRollResultState = $derived(
 		diceRollLogic.determineDiceRollResult(
 			diceRollRequiredValueState.value,
 			rolledValueState.value,
 			getModifier()
 		)
+	);
+
+	let diceRollPromptAddition = $derived(
+		diceRollLogic.getDiceRollPromptAddition(diceRollResultState)
 	);
 	let isMounted = $state(false);
 
@@ -165,7 +170,7 @@
 
 		<p>Result:</p>
 		<output id="dice-roll-result" class="mt-2">{getRollResult()}</output>
-		<output>{diceRollResultState}</output>
+		<output>{diceRollPromptAddition}</output>
 		<button
 			onclick={onClose}
 			id="dice-rolling-dialog-continue"
@@ -188,6 +193,8 @@
 			<output id="skill-modifier" class="mt-2"
 				>{action.related_skill}: {specificSkillModifier()}</output
 			>
+		{:else}
+			<output id="skill-modifier" class="mt-2">No related skill: 0</output>
 		{/if}
 		<output id="modifier" class="mt-2">Situational Modifier: {modifierState}</output>
 		<p>Reason:</p>

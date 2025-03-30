@@ -37,7 +37,10 @@
 	);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	const gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
+	const gameSettingsState = useLocalStorage<GameSettings>(
+		'gameSettingsState',
+		defaultGameSettings()
+	);
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
 
@@ -419,6 +422,7 @@
 	<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 		<summary class="collapse-title items-center text-center">Attributes</summary>
 		<div class="collapse-content">
+			<p class="m-auto mt-4">Attributes increase on level up.</p>
 			{#if characterStatsState.value.attributes}
 				{#each Object.entries(characterStatsState.value.attributes) as [statName]}
 					<div class="form-control m-auto flex w-full max-w-md">
@@ -444,6 +448,8 @@
 						</div>
 						<input
 							type="number"
+							min={-10}
+							max={10}
 							id={`attributes-${statName}`}
 							class="input input-bordered w-full"
 							bind:value={characterStatsState.value.attributes[statName]}
@@ -493,8 +499,7 @@
 					bind:checked={gameSettingsState.value.aiIntroducesSkills}
 					class="toggle m-auto mt-2 text-center"
 				/>
-				<small class="m-auto mb-1 mt-2"
-					>Allow the AI to introduce new skills during the game.</small
+				<small class="m-auto mb-1 mt-2">Allow the AI to introduce new skills during the game.</small
 				>
 			</label>
 			<p class="m-auto mt-4">Skills increase the more you use them.</p>
@@ -523,6 +528,8 @@
 						</div>
 						<input
 							type="number"
+							min={-10}
+							max={10}
 							id={`skills-${statName}`}
 							class="input input-bordered w-full"
 							bind:value={characterStatsState.value.skills[statName]}

@@ -48,6 +48,7 @@
 	const levelUpState = useLocalStorage('levelUpState');
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
+	const skillsProgressionState = useLocalStorage('skillsProgressionState', {});
 	const characterTransformState = useLocalStorage<CharacterChangedInto>(
 		'characterTransformState',
 		initialCharacterTransformState
@@ -115,6 +116,7 @@
 		customMemoriesState.reset();
 		customGMNotesState.reset();
 		characterTransformState.reset();
+		skillsProgressionState.reset();
 	}
 
 	async function onQuickstartNew(story: string | Story | undefined) {
