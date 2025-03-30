@@ -71,7 +71,7 @@
 		type CharacterChangedInto,
 		EventAgent,
 		type EventEvaluation,
-		initialEventEvaluationState
+		initialEventEvaluationState,
 	} from '$lib/ai/agents/eventAgent';
 	import CharacterChangedConfirmationModal from '$lib/components/interaction_modals/CharacterChangedConfirmationModal.svelte';
 	import {
@@ -82,6 +82,7 @@
 		getSkillProgressionForDifficulty
 	} from './characterLogic';
 	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/diceRollLogic';
+	import { tickCountdownEvents } from './eventLogic';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -144,7 +145,7 @@
 	});
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-			({} as GameActionState)
+		({} as GameActionState)
 	);
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
@@ -365,7 +366,7 @@
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			const result = diceRollDialog.returnValue;
-		
+
 			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
 			if (skillName) {
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
@@ -612,15 +613,36 @@
 	}
 
 	const applyGameEventEvaluation =  (evaluated: EventEvaluation) => {
-					const changeInto = evaluated?.character_changed?.changed_into;
-					if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
-						evaluated.character_changed.aiProcessingComplete = false;
-						eventEvaluationState.value = { ...eventEvaluationState.value, character_changed: evaluated.character_changed };
-					}
-				}
+		const changeInto = evaluated?.character_changed?.changed_into;
+		if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
+			evaluated.character_changed.aiProcessingComplete = false;
+			eventEvaluationState.value = { ...eventEvaluationState.value, character_changed: evaluated.character_changed };
+		}
+		const countdown_events = evaluated?.countdown_events;
+		if (countdown_events && countdown_events.length > 0) {
+			eventEvaluationState.value = { ...eventEvaluationState.value, countdown_events };
+		}
+		const duration_events = evaluated?.duration_events;
+		if (duration_events && duration_events.length > 0) {
+			duration_events.filter(e => !eventEvaluationState.value.duration_events.some(e2 => e2.unique_id === e.unique_id))
+				.forEach(event => customGMNotesState.value += '\n' + event.consequence);
+			eventEvaluationState.value = { ...eventEvaluationState.value, duration_events: [...eventEvaluationState.value.duration_events, ...duration_events] };
+		}
+		const cancel_events = evaluated?.cancel_events;
+		if (cancel_events && cancel_events.length > 0) {
+			const countdown_events = eventEvaluationState.value.countdown_events.filter(
+				(event) => !cancel_events.includes(event.unique_id)
+			);
+			const duration_events = eventEvaluationState.value.duration_events.filter(
+				(event) => !cancel_events.includes(event.unique_id)
+			);
+			eventEvaluationState.value = { ...eventEvaluationState.value, countdown_events, duration_events,
+				cancel_events: [...eventEvaluationState.value.cancel_events, ...cancel_events] };
+		}
+	}
 
 
-	
+
 
 	// Helper to process the AI story progression and update game state accordingly.
 	async function processStoryProgression(
@@ -693,21 +715,27 @@
 			await checkGameEnded();
 
 			if (!isGameEnded.value) {
+				const tickedEvents = tickCountdownEvents(eventEvaluationState.value.countdown_events);
+				if (tickedEvents.length > 0) {
+					additionalStoryInput += '\n' + tickedEvents.map(e => 'Following event activates now: ' + e.consequence).join('\n');
+					eventEvaluationState.value = { ...eventEvaluationState.value,
+						countdown_events: eventEvaluationState.value.countdown_events.filter(e => !tickedEvents.includes(e)) };
+				}
 				getRelatedHistoryForStory();
-				eventAgent.evaluateEvents(historyMessagesState.value.slice(-6).map(m => m.content))
-				.then(applyGameEventEvaluation);
+				eventAgent.evaluateEvents(historyMessagesState.value.slice(-6).map(m => m.content), eventEvaluationState.value)
+					.then(applyGameEventEvaluation);
 				// Generate the next set of actions.
 				actionAgent.generateActions(
-						currentGameActionState,
-						historyMessagesState.value,
-						storyState.value,
-						characterState.value,
-						characterStatsState.value,
-						inventoryState.value,
-						customSystemInstruction.value,
-						relatedHistory,
-						gameSettingsState.value?.aiIntroducesSkills
-					)
+					currentGameActionState,
+					historyMessagesState.value,
+					storyState.value,
+					characterState.value,
+					characterStatsState.value,
+					inventoryState.value,
+					customSystemInstruction.value,
+					relatedHistory,
+					gameSettingsState.value?.aiIntroducesSkills
+				)
 					.then((actions) => {
 						if (actions) {
 							console.log(stringifyPretty(actions));
@@ -1202,7 +1230,7 @@
 							text: 'Continue The Tale'
 						})}
 					class="text-md btn btn-neutral mb-3 w-full"
-					>Continue The Tale.
+				>Continue The Tale.
 				</button>
 
 				{#if levelUpState.value.buttonEnabled}
@@ -1211,7 +1239,7 @@
 							levelUpClicked(characterState.value.name);
 						}}
 						class="text-md btn btn-success mb-3 w-full"
-						>Level up!
+					>Level up!
 					</button>
 				{/if}
 
@@ -1221,7 +1249,7 @@
 							showEventConfirmationDialog = true;
 						}}
 						class="text-md btn btn-success mb-3 w-full"
-						>Transform into {eventEvaluationState.value.character_changed?.changed_into}
+					>Transform into {eventEvaluationState.value.character_changed?.changed_into}
 					</button>
 				{/if}
 				<button
@@ -1229,14 +1257,14 @@
 						useSpellsAbilitiesModal.showModal();
 					}}
 					class="text-md btn btn-primary w-full"
-					>Spells & Abilities
+				>Spells & Abilities
 				</button>
 				<button
 					onclick={() => {
 						useItemsModal.showModal();
 					}}
 					class="text-md btn btn-primary mt-3 w-full"
-					>Inventory
+				>Inventory
 				</button>
 			</div>
 		{/if}
@@ -1263,21 +1291,21 @@
 					onclick={onCustomActionSubmitted}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
-					>Submit
+				>Submit
 				</button>
 			</div>
 		</form>
 	{/if}
 
 	<style>
-		.btn {
-			height: fit-content;
-			padding: 1rem;
-		}
+      .btn {
+          height: fit-content;
+          padding: 1rem;
+      }
 
-		canvas {
-			height: 100%;
-			width: 100%;
-		}
+      canvas {
+          height: 100%;
+          width: 100%;
+      }
 	</style>
 </div>
