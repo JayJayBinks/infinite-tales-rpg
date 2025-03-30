@@ -113,25 +113,22 @@ export class CharacterStatsAgent {
 				'Scale the attributes, skills and abilities according to the level. A low level character has attributes and skills -1 to 1.\n' +
 				'If there is a HP resource or deviation, it must be greater than 20.\n'
 		];
-		if (transformInto) {
-			agentInstruction.push(
-				'Determine if following transformation completely changes or just adapts the character; ' +
-					'If complete transformation ignore the already existing stats and generate all new, else adapt the stats based on already existing;\nTransform into:\n' +
-					transformInto
-			);
-		}
 		if (statsOverwrites) {
-			agentInstruction.push(
-				'You must set exactly the following stats as given:\n' + stringifyPretty(statsOverwrites)
-			);
+			let statsPrompt = 'You must set exactly the following stats as given:';
+			if(transformInto) {
+				statsPrompt = 'Determine if following transformation completely changes or just adapts the character; ' +
+					'If complete transformation ignore the EXISTING STATS and generate all new, else just adapt the EXISTING STATS;\nTransform into:\n' +
+					transformInto;
+			}
+			statsPrompt += '\nEXISTING STATS:\n' + stringifyPretty(statsOverwrites);
+			agentInstruction.push(statsPrompt);
 		}
 		agentInstruction.push('Always respond with following JSON!\n' + characterStatsStateForPrompt);
 		if (!statsOverwrites?.level) {
 			statsOverwrites = { ...statsOverwrites, level: 1 };
 		}
 		const request: LLMRequest = {
-			userMessage:
-				'Create the character according to the descriptions and already existing stats.\nScale the stats and abilities according to the level.\n',
+			userMessage:'Create the character according to the descriptions.\nScale the stats and abilities according to the level.\n',
 			historyMessages: [
 				{
 					role: 'user',

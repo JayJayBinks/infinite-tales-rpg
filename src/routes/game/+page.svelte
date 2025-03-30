@@ -70,7 +70,8 @@
 	import {
 		type CharacterChangedInto,
 		EventAgent,
-		initialCharacterTransformState
+		type EventEvaluation,
+		initialEventEvaluationState
 	} from '$lib/ai/agents/eventAgent';
 	import CharacterChangedConfirmationModal from '$lib/components/interaction_modals/CharacterChangedConfirmationModal.svelte';
 	import {
@@ -129,7 +130,7 @@
 
 	const npcState = useLocalStorage<NPCState>('npcState', {});
 	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
-	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState');
+	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState', '');
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
 	let levelUpState = useLocalStorage<{
@@ -155,12 +156,9 @@
 		$state(undefined);
 
 	let gmQuestionState: string = $state('');
-	let characterTransformState = useLocalStorage<CharacterChangedInto>(
-		'characterTransformState',
-		initialCharacterTransformState
-	);
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
 	let showEventConfirmationDialog = $state(false);
+	const eventEvaluationState = useLocalStorage<EventEvaluation>('eventEvaluationState', initialEventEvaluationState);
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -250,7 +248,7 @@
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog(additionalStoryInputState.value);
+			openDiceRollDialog();
 		}
 		checkForLevelUp();
 	}
@@ -318,7 +316,7 @@
 		// Filter to find the alive NPCs.
 		const aliveNPCs = allNpcsDetailsAsList
 			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
-			.map((npc) => npc.technicalNameId);
+			.map((npc) => npc.technicalId);
 
 		// Generate additional story input based on the combat results.
 		const additionalStoryInput = CombatAgent.getAdditionalStoryInput(
@@ -360,27 +358,28 @@
 		skillsProgressionState.value[skillName] += skillProgression;
 	};
 
-	function openDiceRollDialog(additionalStoryInput: string) {
+	function openDiceRollDialog() {
 		//TODO showModal can not be used because it hides the dice roll
 		didAIProcessDiceRollActionState.value = false;
 		diceRollDialog.show();
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			const result = diceRollDialog.returnValue;
-			const skillName = chosenActionState.value.related_skill;
+		
+			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
 			if (skillName) {
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
 			}
 
-			additionalStoryInput =
-				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInput || '');
-			sendAction(chosenActionState.value, false, additionalStoryInput);
+			additionalStoryInputState.value =
+				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInputState.value || '');
+			sendAction(chosenActionState.value, false);
 		});
 	}
 
 	function handleAIError() {
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog(additionalStoryInputState.value);
+			openDiceRollDialog();
 		}
 	}
 
@@ -411,12 +410,8 @@
 				chosenActionState.value.resource_cost.cost = 0;
 				costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
 			}
-			if (additionalStoryInputState.value) {
-				additionalStoryInputState.value += costString;
-			} else {
-				additionalStoryInputState.value = costString;
-			}
-			await sendAction(chosenActionState.value, true, additionalStoryInputState.value);
+			additionalStoryInputState.value += costString;
+			await sendAction(chosenActionState.value, true);
 		}
 		customActionInput.value = '';
 		customActionImpossibleReasonState = undefined;
@@ -616,6 +611,17 @@
 		return { finalAdditionalStoryInput: additionalStoryInput, combatAndNPCState };
 	}
 
+	const applyGameEventEvaluation =  (evaluated: EventEvaluation) => {
+					const changeInto = evaluated?.character_changed?.changed_into;
+					if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
+						evaluated.character_changed.aiProcessingComplete = false;
+						eventEvaluationState.value = { ...eventEvaluationState.value, character_changed: evaluated.character_changed };
+					}
+				}
+
+
+	
+
 	// Helper to process the AI story progression and update game state accordingly.
 	async function processStoryProgression(
 		action: Action,
@@ -661,7 +667,7 @@
 			console.log('new state', stringifyPretty(newState));
 			updateMessagesHistory(updatedHistoryMessages);
 			checkForNewNPCs(newState);
-			const skillName = action.related_skill;
+			const skillName = getSkillIfApplicable(characterStatsState.value, action);
 			if (skillName) {
 				//if no dice was rolled, use difficulty
 				if (skillsProgressionForCurrentActionState === undefined) {
@@ -688,13 +694,8 @@
 
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
-				eventAgent.evaluateEvents(gameActionsState.value.slice(-3)).then((evaluated) => {
-					const changeInto = evaluated?.character_changed?.changed_into;
-					if (changeInto && changeInto !== characterTransformState.value.changed_into) {
-						evaluated.character_changed.aiProcessingComplete = false;
-						characterTransformState.value = evaluated.character_changed;
-					}
-				});
+				eventAgent.evaluateEvents(historyMessagesState.value.slice(-6).map(m => m.content))
+				.then(applyGameEventEvaluation);
 				// Generate the next set of actions.
 				actionAgent.generateActions(
 						currentGameActionState,
@@ -745,7 +746,7 @@
 	}
 
 	// Main sendAction function that orchestrates the action processing.
-	async function sendAction(action: Action, rollDice = false, additionalStoryInput = '') {
+	async function sendAction(action: Action, rollDice = false) {
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
@@ -759,14 +760,14 @@
 						relatedActionHistoryState.value = relatedHistory;
 					});
 				}
-				openDiceRollDialog(additionalStoryInput);
+				openDiceRollDialog();
 			} else {
 				isAiGeneratingState = true;
 
 				// Prepare the additional story input (including combat and chapter info)
 				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
 					action,
-					additionalStoryInput
+					additionalStoryInputState.value
 				);
 				if (relatedActionHistoryState.value.length === 0) {
 					relatedActionHistoryState.value = await getRelatedHistory(
@@ -842,8 +843,7 @@
 			chosenActionState.value = $state.snapshot(action);
 			sendAction(
 				chosenActionState.value,
-				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat),
-				additionalStoryInputState.value
+				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat)
 			);
 		});
 		actionsDiv.appendChild(button);
@@ -906,12 +906,10 @@
 			'\n Hostile NPCs stay hostile unless explicitly described otherwise by the actions effect.' +
 			'\n Friendly NPCs turn hostile if attacked.';
 
-		additionalStoryInputState.value =
-			targetAddition + abilityAddition + (additionalStoryInputState.value || '');
+		additionalStoryInputState.value = targetAddition + abilityAddition + (additionalStoryInputState.value || '');
 		await sendAction(
 			action,
-			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat),
-			additionalStoryInputState.value
+			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
 		);
 		isAiGeneratingState = false;
 	};
@@ -1016,10 +1014,11 @@
 			gmQuestionState = action.text;
 		}
 		if (customActionReceiver === 'Game Command') {
+			additionalStoryInputState.value += '\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
+				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
 			await sendAction(
 				action,
-				false,
-				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\nIf this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.'
+				false
 			);
 		}
 	};
@@ -1087,7 +1086,7 @@
 			gameActionsState.value = updatedGameActionsState;
 			playerCharactersGameState = updatedPlayerCharactersGameState;
 		}
-		characterTransformState.value.aiProcessingComplete = true;
+		eventEvaluationState.value.character_changed.aiProcessingComplete = true;
 		isAiGeneratingState = false;
 	}
 </script>
@@ -1109,10 +1108,10 @@
 			{playerCharactersGameState}
 		/>
 	{/if}
-	{#if showEventConfirmationDialog && !characterTransformState.value.aiProcessingComplete}
+	{#if showEventConfirmationDialog && !eventEvaluationState.value.character_changed?.aiProcessingComplete}
 		<CharacterChangedConfirmationModal
-			onclose={(confirmed) => confirmEvent(characterTransformState.value, confirmed)}
-			eventToConfirm={getEventToConfirm(characterTransformState.value)}
+			onclose={(confirmed) => confirmEvent(eventEvaluationState.value.character_changed, confirmed)}
+			eventToConfirm={getEventToConfirm(eventEvaluationState.value.character_changed)}
 		/>
 	{/if}
 	<UseSpellsAbilitiesModal
@@ -1216,13 +1215,13 @@
 					</button>
 				{/if}
 
-				{#if !characterTransformState.value.aiProcessingComplete}
+				{#if !eventEvaluationState.value.character_changed?.aiProcessingComplete}
 					<button
 						onclick={() => {
 							showEventConfirmationDialog = true;
 						}}
 						class="text-md btn btn-success mb-3 w-full"
-						>Transform into {characterTransformState.value.changed_into}
+						>Transform into {eventEvaluationState.value.character_changed?.changed_into}
 					</button>
 				{/if}
 				<button

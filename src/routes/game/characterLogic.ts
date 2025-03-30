@@ -60,7 +60,7 @@ export async function applyCharacterChange(
 
 export function getSkillIfApplicable(stats: CharacterStats, action: Action): string | undefined {
 	const skill = action.related_skill;
-	if (!skill) return undefined;
+	if (!skill || skill === 'N/A') return undefined;
 	const existingSkill = Object.keys(stats.skills).some(
 		(s) => s.toLowerCase() === skill.toLowerCase()
 	);
