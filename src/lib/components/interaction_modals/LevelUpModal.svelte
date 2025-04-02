@@ -12,7 +12,6 @@
 	import type { LLMMessage } from '$lib/ai/llm';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import { getLevelUpText } from '../../../routes/game/levelLogic';
 	import type { AIConfig } from '$lib';
 	import AbilityComponent from './AbilityComponent.svelte';
 
@@ -30,7 +29,6 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let aiLevelUp: AiLevelUp | undefined = $state();
-	let levelUpText: string | undefined = $state();
 
 	let isGeneratingState = $state(false);
 	let characterStatsAgent: CharacterStatsAgent;
@@ -46,23 +44,85 @@
 				aiConfigState.value?.useFallbackLlmState
 			)
 		);
-		await generateLevelUp();
+		aiLevelUp = await generateLevelUp();
 	});
 
-	const generateLevelUp = async () => {
-		isGeneratingState = true;
-		aiLevelUp = await characterStatsAgent.levelUpCharacter(
-			$state.snapshot(storyState.value),
-			$state.snapshot(historyMessagesState.value),
-			characterState.value,
-			characterStatsState.value
-		);
-		console.log(aiLevelUp);
-		if (aiLevelUp) {
-			levelUpText = getLevelUpText(aiLevelUp.attribute, characterStatsState.value);
-		}
-		isGeneratingState = false;
-	};
+	// Helper function to find the correct attribute key case-insensitively
+// Returns the valid key if found (respecting original case if possible), otherwise null
+const findAttributeKey = (attributes: Record<string, number>, suggestedKey: string) => {
+    if (!attributes || typeof suggestedKey !== 'string') {
+        return null;
+    }
+    if (attributes.hasOwnProperty(suggestedKey)) {
+        return suggestedKey;
+    }
+    const lowerKey = suggestedKey.toLowerCase();
+    if (attributes.hasOwnProperty(lowerKey)) {
+        return lowerKey;
+    }
+    const upperKey = suggestedKey.toUpperCase();
+    if (attributes.hasOwnProperty(upperKey)) {
+        return upperKey;
+    }
+    return null;
+};
+
+const generateLevelUp = async (maxRetries = 3) => {
+    isGeneratingState = true;
+    let attempt = 0;
+    let validSuggestion: AiLevelUp | undefined = undefined;
+
+    try {
+        while (attempt < maxRetries && !validSuggestion) {
+            attempt++;
+            console.log(`Attempt ${attempt}/${maxRetries} to generate level up suggestion...`);
+
+            const suggestion = await characterStatsAgent.levelUpCharacter(
+                $state.snapshot(storyState.value),
+                $state.snapshot(historyMessagesState.value),
+                characterState.value,
+                characterStatsState.value
+            );
+
+            // Basic validation of the AI response structure
+            if (!suggestion || typeof suggestion.attribute !== 'string' || !suggestion.attribute) {
+                console.warn(`Attempt ${attempt}: AI returned invalid suggestion structure:`, suggestion);
+                continue; // Try again if attempts remain
+            }
+
+            const attributes = characterStatsState.value.attributes;
+            const suggestedAttributeName = suggestion.attribute;
+
+            // Use helper to find the valid key, handling case variations
+            const validAttributeName = findAttributeKey(attributes, suggestedAttributeName);
+
+            if (validAttributeName) {
+                // If the found key has a different case, update the suggestion object
+                if (validAttributeName !== suggestedAttributeName) {
+                    console.log(`Corrected attribute case: ${suggestedAttributeName} -> ${validAttributeName}`);
+                    suggestion.attribute = validAttributeName;
+                }
+                validSuggestion = suggestion; // We found a valid suggestion
+                console.log("Valid level up suggestion received:", validSuggestion);
+            } else {
+                console.warn(`Attempt ${attempt}: Suggested attribute '${suggestedAttributeName}' (and case variations) not found in character attributes. Retrying...`);
+                // Loop continues if attempts remain
+            }
+        } 
+
+        if (!validSuggestion) {
+            console.error(`Failed to get a valid level up suggestion after ${maxRetries} attempts.`);
+            return undefined;
+        }
+        return validSuggestion;
+
+    } catch (error) {
+        console.error("Error during level up generation:", error);
+        return undefined;
+    } finally {
+        isGeneratingState = false;
+    }
+};
 	let acceptAILevelUp = () => {
 		if (onclose) {
 			onclose(aiLevelUp);
@@ -82,9 +142,12 @@
 			</form>
 			<p class="mt-2">{aiLevelUp.level_up_explanation}</p>
 			<p class="mt-4 font-bold">The AI has chosen following updates:</p>
-			<p class="m-1 font-bold">{levelUpText}</p>
+			<p class="m-1 font-bold capitalize">{aiLevelUp.attribute.replaceAll('_', ' ')}:</p>
+			<p>
+				{characterStatsState.value.attributes[aiLevelUp.attribute]} -> {characterStatsState.value.attributes[aiLevelUp.attribute] + 1}
+			</p>
 			{#each Object.keys(aiLevelUp.resources) as resourceKey}
-				<p class="m-1 font-bold">{resourceKey.replaceAll('_', ' ')}:</p>
+				<p class="m-1 font-bold capitalize">{resourceKey.replaceAll('_', ' ')}:</p>
 				<p>
 					{characterStatsState.value.resources[resourceKey].max_value} -> {aiLevelUp.resources[
 						resourceKey

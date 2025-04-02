@@ -30,6 +30,8 @@ export const npcIDForPrompt = `{"uniqueTechnicalNameId": "A fixed, unchanging id
 export type NpcID = { uniqueTechnicalNameId: string; displayName: string };
 export const currentlyPresentNPCSForPrompt = `{"hostile": array of ${npcIDForPrompt}, "friendly": array of ${npcIDForPrompt}, "neutral": array of ${npcIDForPrompt}}`;
 
+export const ATTRIBUTE_MAX_VALUE = 10;
+export const ATTRIBUTE_MIN_VALUE = -10;
 export type CharacterStats = {
 	level: number;
 	resources: Resources;
@@ -45,8 +47,8 @@ export type SkillsProgression = {
 const characterStatsStateForPrompt = `{
 	"level": Number; Level of the character according to Description of the story and character,
     "resources": "Starting resources, based on GAME System, ADVENTURE_AND_MAIN_EVENT, description and level of the character. 2 - 4 different resources, e.g. for a survival game HUNGER, WARMTH, ...; as a vampire BLOOD, etc...) Format: {"{resourceKey}": {"max_value": number, "start_value": number, "game_ends_when_zero": true if this is a critical resource; else false}, ...}",
-    "attributes": "Attributes that affect dice roll modifiers. Analyze character description to determine appropriate Attributes like Strength, Dexterity, etc. Stats can be positive (1 to 10), neutral (0), or negative (-10 to -1) based on character's strengths and weaknesses. Format: {"stat1": valueFromMinus10To10, "stat2": valueFromMinus10To10, ...}",
-    "skills": "Skills that affect dice roll modifiers. Analyze character description to determine appropriate skills like Swordfighting, Swimming, Thunder Magic, etc. Stats can be positive (1 to 10), neutral (0), or negative (-10 to -1) based on character's strengths and weaknesses. Format: {"stat1": valueFromMinus10To10, "stat2": valueFromMinus10To10, ...}",
+    "attributes": "Attributes that affect dice roll modifiers. Analyze character description to determine appropriate Attributes like Strength, Dexterity, etc. Stats can be positive (1 to ${ATTRIBUTE_MAX_VALUE}), neutral (0), or negative (${ATTRIBUTE_MIN_VALUE} to -1) based on character's strengths and weaknesses. Format: {"stat1": valueFrom${ATTRIBUTE_MIN_VALUE}To${ATTRIBUTE_MAX_VALUE}, "stat2": valueFrom${ATTRIBUTE_MIN_VALUE}To${ATTRIBUTE_MAX_VALUE}, ...}",
+    "skills": "Skills that affect dice roll modifiers. Analyze character description to determine appropriate skills like Swordfighting, Swimming, Thunder Magic, etc. Stats can be positive (1 to ${ATTRIBUTE_MAX_VALUE}), neutral (0), or negative (${ATTRIBUTE_MIN_VALUE} to -1) based on character's strengths and weaknesses. Format: {"stat1": valueFrom${ATTRIBUTE_MIN_VALUE}To${ATTRIBUTE_MAX_VALUE}, "stat2": valueFrom${ATTRIBUTE_MIN_VALUE}To${ATTRIBUTE_MAX_VALUE}, ...}",
 	"spells_and_abilities": "Array of spells and abilities according to game system and level. List 2-4 actively usable spells and abilities. They should have a cost of one resource type, although some can be without cost. At last include a 'Standard Attack' without cost. Format: [${abilityFormatForPrompt}]"
 }`;
 
@@ -176,6 +178,13 @@ export class CharacterStatsAgent {
 		// do not consider skills when leveling up
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['skills']: _, ...characterStatsMapped } = characterStats;
+		// filter out attributes that are already at 10
+		characterStatsMapped.attributes = Object.keys(characterStatsMapped.attributes)
+			.filter((a) => characterStatsMapped.attributes[a] < ATTRIBUTE_MAX_VALUE)
+			.reduce((acc, a) => {
+				acc[a] = characterStatsMapped.attributes[a];
+				return acc;
+			}, {} as { [stat: string]: number });
 
 		const agentInstruction = [
 			'You are RPG character stats agent, leveling up a character according to game system, adventure and character description.\n' +

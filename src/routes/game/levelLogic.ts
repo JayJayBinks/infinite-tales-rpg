@@ -25,12 +25,6 @@ export function mapXP(statsUpdate: StatsUpdate): StatsUpdate {
 	return statsUpdate;
 }
 
-export function getLevelUpText(stat: string, characterStats: CharacterStats): string {
-	const attributeValue = characterStats.attributes[stat] || 0;
-	const newValue = attributeValue + 1;
-	return stat + ' ' + attributeValue + ' -> ' + newValue;
-}
-
 export function applyLevelUp(
 	aiLevelUp: AiLevelUp | undefined,
 	characterStats: CharacterStats

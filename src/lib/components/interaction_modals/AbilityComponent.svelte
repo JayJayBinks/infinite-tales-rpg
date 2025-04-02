@@ -36,7 +36,7 @@
 			class="m-auto w-full sm:col-span-2"
 		>
 			{#if ability.resource_cost?.cost > 0}
-				<p class="badge badge-info h-fit">
+				<p class="badge badge-info h-fit capitalize">
 					{ability.resource_cost?.cost}
 					{(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}
 				</p>
