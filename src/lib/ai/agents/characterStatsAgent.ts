@@ -181,16 +181,18 @@ export class CharacterStatsAgent {
 		// filter out attributes that are already at 10
 		characterStatsMapped.attributes = Object.keys(characterStatsMapped.attributes)
 			.filter((a) => characterStatsMapped.attributes[a] < ATTRIBUTE_MAX_VALUE)
-			.reduce((acc, a) => {
-				acc[a] = characterStatsMapped.attributes[a];
-				return acc;
-			}, {} as { [stat: string]: number });
+			.reduce(
+				(acc, a) => {
+					acc[a] = characterStatsMapped.attributes[a];
+					return acc;
+				},
+				{} as { [stat: string]: number }
+			);
 
 		const agentInstruction = [
 			'You are RPG character stats agent, leveling up a character according to game system, adventure and character description.\n' +
-				'Name one existing stat to be increased. ' +
+				'Name one existing attribute to be increased, you must reuse the exact attribute name. ' +
 				'Also invent a new ability or increase one ability by one level granting an improved effect or more damage. Describe what improved from the last ability level.\n' +
-				'You can also introduce new stats or increase existing stats based on character actions and story progression.\n' +
 				'In addition, all resources are to be meaningfully increased according to GAME rules',
 			'Current character stats:\n' + stringifyPretty(characterStatsMapped),
 			'The level up must be based on the story progression, in which area the player acted well:\n' +
