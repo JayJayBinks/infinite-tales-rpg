@@ -753,19 +753,19 @@
 	<div class="card-actions m-auto mt-4 flex w-full flex-col sm:flex-row">
 		{#if !isLast}
 			<button
+				class="btn btn-accent m-auto w-3/4 sm:w-1/2"
+				onclick={onRandomize}
+				disabled={isGeneratingState}
+			>
+				Randomize All
+			</button>
+			<button
 				class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
 				onclick={() => {
 					characterStatsState.value = cloneDeep(initialCharacterStatsState);
 				}}
 			>
 				Clear All
-			</button>
-			<button
-				class="btn btn-accent m-auto w-3/4 sm:w-1/2"
-				onclick={onRandomize}
-				disabled={isGeneratingState}
-			>
-				Randomize All
 			</button>
 		{/if}
 		<button class="btn btn-primary m-auto w-3/4 sm:w-1/2" onclick={onContinue}>

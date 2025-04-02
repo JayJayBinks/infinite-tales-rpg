@@ -18,7 +18,10 @@
 	import QuickstartStoryGenerationModal from '$lib/components/interaction_modals/QuickstartStoryGenerationModal.svelte';
 	import type { LLM } from '$lib/ai/llm';
 	import isPlainObject from 'lodash.isplainobject';
-	import { initialCharacterTransformState, initialEventEvaluationState } from '$lib/ai/agents/eventAgent';
+	import {
+		initialCharacterTransformState,
+		initialEventEvaluationState
+	} from '$lib/ai/agents/eventAgent';
 	import type { CharacterChangedInto, EventEvaluation } from '$lib/ai/agents/eventAgent';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -59,7 +62,10 @@
 		{ relatedDetails: [] }
 	);
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
-	const eventEvaluationState = useLocalStorage<EventEvaluation>('eventEvaluationState', initialEventEvaluationState);
+	const eventEvaluationState = useLocalStorage<EventEvaluation>(
+		'eventEvaluationState',
+		initialEventEvaluationState
+	);
 
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	let ttsVoices: Voice[] = $state([]);
@@ -149,7 +155,8 @@
 								HP: { max_value: 0, game_ends_when_zero: true },
 								MP: { max_value: 0, game_ends_when_zero: false }
 							}
-						}
+						},
+						true
 					);
 					parseState(newCharacterStatsState);
 					if (newCharacterStatsState) {

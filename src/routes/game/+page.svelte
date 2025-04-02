@@ -17,6 +17,7 @@
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import {
+		type Ability,
 		type AiLevelUp,
 		type CharacterStats,
 		CharacterStatsAgent,
@@ -77,11 +78,13 @@
 	import {
 		applyCharacterChange,
 		getRequiredSkillProgression,
-		getSkillIfApplicable,
+		isNewSkill,
 		getSkillProgressionForDiceRoll,
-		getSkillProgressionForDifficulty
+		getSkillProgressionForDifficulty,
+		getSkillIfApplicable
 	} from './characterLogic';
 	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/diceRollLogic';
+	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/NewAbilitiesConfirmatonModal.svelte';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -157,8 +160,11 @@
 
 	let gmQuestionState: string = $state('');
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
-	let showEventConfirmationDialog = $state(false);
-	const eventEvaluationState = useLocalStorage<EventEvaluation>('eventEvaluationState', initialEventEvaluationState);
+	const eventEvaluationState = useLocalStorage<EventEvaluation>(
+		'eventEvaluationState',
+		initialEventEvaluationState
+	);
+	let learnedAbilitiesState = $state<Ability[]>([]);
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -336,6 +342,7 @@
 		);
 		if (requiredSkillProgression) {
 			if (skillsProgressionState.value[skillName] >= requiredSkillProgression) {
+				console.log('Advancing skill ' + skillName + ' by 1');
 				characterStatsState.value.skills[skillName] += 1;
 				skillsProgressionState.value[skillName] = 0;
 				gameActionsState.value[gameActionsState.value.length].stats_update.push({
@@ -351,11 +358,13 @@
 	};
 
 	const addSkillProgression = (skillName: string, skillProgression: number) => {
-		if (!skillsProgressionState.value[skillName]) {
-			skillsProgressionState.value[skillName] = 0;
+		if (skillProgression) {
+			if (!skillsProgressionState.value[skillName]) {
+				skillsProgressionState.value[skillName] = 0;
+			}
+			console.log('Adding skill progression for ' + skillName + ': ' + skillProgression);
+			skillsProgressionState.value[skillName] += skillProgression;
 		}
-		console.log('Adding skill progression for ' + skillName + ': ' + skillProgression);
-		skillsProgressionState.value[skillName] += skillProgression;
 	};
 
 	function openDiceRollDialog() {
@@ -365,7 +374,7 @@
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
 			const result = diceRollDialog.returnValue;
-		
+
 			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
 			if (skillName) {
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
@@ -611,16 +620,33 @@
 		return { finalAdditionalStoryInput: additionalStoryInput, combatAndNPCState };
 	}
 
-	const applyGameEventEvaluation =  (evaluated: EventEvaluation) => {
-					const changeInto = evaluated?.character_changed?.changed_into;
-					if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
-						evaluated.character_changed.aiProcessingComplete = false;
-						eventEvaluationState.value = { ...eventEvaluationState.value, character_changed: evaluated.character_changed };
-					}
-				}
-
-
-	
+	const applyGameEventEvaluation = (evaluated: EventEvaluation) => {
+		const changeInto = evaluated?.character_changed?.changed_into;
+		if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
+			evaluated.character_changed.aiProcessingComplete = false;
+			eventEvaluationState.value = {
+				...eventEvaluationState.value,
+				character_changed: evaluated.character_changed
+			};
+		}
+		const abilities = evaluated?.abilities_learned.abilities
+			.filter(
+				(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
+			)
+			.filter(
+				(newAbility) =>
+					!eventEvaluationState.value.abilities_learned.abilities.some(
+						(existing) => existing.uniqueTechnicalId === newAbility.uniqueTechnicalId
+					)
+			);
+		if (abilities && abilities.length > 0) {
+			evaluated.character_changed.aiProcessingComplete = false;
+			eventEvaluationState.value = {
+				...eventEvaluationState.value,
+				abilities_learned: { ...evaluated?.abilities_learned, abilities }
+			};
+		}
+	};
 
 	// Helper to process the AI story progression and update game state accordingly.
 	async function processStoryProgression(
@@ -671,9 +697,11 @@
 			if (skillName) {
 				//if no dice was rolled, use difficulty
 				if (skillsProgressionForCurrentActionState === undefined) {
-					const skillProgression = getSkillProgressionForDifficulty(action.action_difficulty);
-					addSkillProgression(skillName, skillProgression);
+					skillsProgressionForCurrentActionState = getSkillProgressionForDifficulty(
+						action.action_difficulty
+					);
 				}
+				addSkillProgression(skillName, skillsProgressionForCurrentActionState);
 				advanceSkillIfApplicable(skillName);
 			}
 
@@ -694,10 +722,12 @@
 
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
-				eventAgent.evaluateEvents(historyMessagesState.value.slice(-6).map(m => m.content))
-				.then(applyGameEventEvaluation);
+				eventAgent
+					.evaluateEvents(historyMessagesState.value.slice(-6).map((m) => m.content))
+					.then(applyGameEventEvaluation);
 				// Generate the next set of actions.
-				actionAgent.generateActions(
+				actionAgent
+					.generateActions(
 						currentGameActionState,
 						historyMessagesState.value,
 						storyState.value,
@@ -716,10 +746,7 @@
 							// Add all skills from action to characterStatsState
 							if (gameSettingsState.value?.aiIntroducesSkills) {
 								actions.forEach((action: Action) => {
-									const skill = getSkillIfApplicable(
-										$state.snapshot(characterStatsState.value),
-										action
-									);
+									const skill = isNewSkill($state.snapshot(characterStatsState.value), action);
 									//TODO skill can be trait sometimes which we dont want?
 									if (skill) {
 										characterStatsState.value.skills[skill] = 0;
@@ -906,7 +933,8 @@
 			'\n Hostile NPCs stay hostile unless explicitly described otherwise by the actions effect.' +
 			'\n Friendly NPCs turn hostile if attacked.';
 
-		additionalStoryInputState.value = targetAddition + abilityAddition + (additionalStoryInputState.value || '');
+		additionalStoryInputState.value =
+			targetAddition + abilityAddition + (additionalStoryInputState.value || '');
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
@@ -1014,12 +1042,10 @@
 			gmQuestionState = action.text;
 		}
 		if (customActionReceiver === 'Game Command') {
-			additionalStoryInputState.value += '\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
+			additionalStoryInputState.value +=
+				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
 				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
-			await sendAction(
-				action,
-				false
-			);
+			await sendAction(action, false);
 		}
 	};
 	const onGMQuestionClosed = (closedByPlayer: boolean) => {
@@ -1049,8 +1075,11 @@
 		};
 	}
 
-	async function confirmEvent(changedInto: CharacterChangedInto, confirmed: boolean) {
-		showEventConfirmationDialog = false;
+	async function confirmCharacterChangeEvent(
+		changedInto: CharacterChangedInto,
+		confirmed: boolean
+	) {
+		eventEvaluationState.value.character_changed.showEventConfirmationDialog = false;
 		if (confirmed === undefined) {
 			return;
 		}
@@ -1089,6 +1118,54 @@
 		eventEvaluationState.value.character_changed.aiProcessingComplete = true;
 		isAiGeneratingState = false;
 	}
+
+	const confirmAbilitiesLearned = (abilities: Ability[] | undefined) => {
+		eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = false;
+		if (!abilities) {
+			return;
+		}
+		eventEvaluationState.value.abilities_learned.aiProcessingComplete = true;
+		if (abilities.length === 0) {
+			return;
+		}
+		console.log('Added new abilities:', stringifyPretty(abilities));
+		characterStatsState.value = {
+			...characterStatsState.value,
+			spells_and_abilities: [...characterStatsState.value.spells_and_abilities, ...abilities]
+		};
+	};
+
+	async function onLearnNewSpellsAndAbilities() {
+		const overwrites = {
+			...characterStatsState.value,
+			spells_and_abilities: eventEvaluationState.value.abilities_learned.abilities as Ability[]
+		};
+		isAiGeneratingState = true;
+		const newstate = await characterStatsAgent.generateCharacterStats(
+			storyState.value,
+			characterState.value,
+			overwrites,
+			true
+		);
+		isAiGeneratingState = false;
+		if (newstate?.spells_and_abilities) {
+			learnedAbilitiesState = newstate.spells_and_abilities
+				.filter((a) =>
+					eventEvaluationState.value.abilities_learned.abilities.find((b) => b.name === a.name)
+				)
+				.map((ability) => {
+					if (characterStatsState.value.spells_and_abilities.find((b) => b.name === ability.name)) {
+						ability.name = `${ability.name} (2)`;
+					}
+					return ability;
+				});
+			eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = true;
+		} else {
+			const error =
+				'Failed to generate abilities: ' + stringifyPretty(overwrites.spells_and_abilities);
+			throw error;
+		}
+	}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -1108,10 +1185,17 @@
 			{playerCharactersGameState}
 		/>
 	{/if}
-	{#if showEventConfirmationDialog && !eventEvaluationState.value.character_changed?.aiProcessingComplete}
+	{#if eventEvaluationState.value.character_changed?.showEventConfirmationDialog && !eventEvaluationState.value.character_changed?.aiProcessingComplete}
 		<CharacterChangedConfirmationModal
-			onclose={(confirmed) => confirmEvent(eventEvaluationState.value.character_changed, confirmed)}
+			onclose={(confirmed) =>
+				confirmCharacterChangeEvent(eventEvaluationState.value.character_changed, confirmed)}
 			eventToConfirm={getEventToConfirm(eventEvaluationState.value.character_changed)}
+		/>
+	{/if}
+	{#if eventEvaluationState.value.abilities_learned?.showEventConfirmationDialog && !eventEvaluationState.value.abilities_learned?.aiProcessingComplete}
+		<NewAbilitiesConfirmatonModal
+			spells_abilities={learnedAbilitiesState}
+			onclose={(confirmedAbilities) => confirmAbilitiesLearned(confirmedAbilities)}
 		/>
 	{/if}
 	<UseSpellsAbilitiesModal
@@ -1218,10 +1302,15 @@
 				{#if !eventEvaluationState.value.character_changed?.aiProcessingComplete}
 					<button
 						onclick={() => {
-							showEventConfirmationDialog = true;
+							eventEvaluationState.value.character_changed.showEventConfirmationDialog = true;
 						}}
 						class="text-md btn btn-success mb-3 w-full"
 						>Transform into {eventEvaluationState.value.character_changed?.changed_into}
+					</button>
+				{/if}
+				{#if !eventEvaluationState.value.abilities_learned?.aiProcessingComplete}
+					<button onclick={onLearnNewSpellsAndAbilities} class="text-md btn btn-success mb-3 w-full"
+						>Learn new Spells & Abilities
 					</button>
 				{/if}
 				<button

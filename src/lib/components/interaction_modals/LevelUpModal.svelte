@@ -12,9 +12,9 @@
 	import type { LLMMessage } from '$lib/ai/llm';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { getLevelUpText } from '../../../routes/game/levelLogic';
 	import type { AIConfig } from '$lib';
+	import AbilityComponent from './AbilityComponent.svelte';
 
 	let {
 		onclose
@@ -96,42 +96,7 @@
 			{:else}
 				<p class="mt-2 font-bold">New ability gained:</p>
 			{/if}
-			<label class="form-control textarea-bordered mt-3 w-full border bg-base-200">
-				<div
-					class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
-					class="grid-cols mt-4 grid overflow-hidden overflow-ellipsis text-center"
-				>
-					<div class="m-auto sm:col-span-3">
-						{#if !aiConfigState.value?.disableImagesState}
-							<AIGeneratedImage
-								noLogo={true}
-								enhance={false}
-								imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-								imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-									aiLevelUp?.ability,
-									storyState?.value?.general_image_prompt
-								)}
-								showGenerateButton={false}
-							></AIGeneratedImage>
-						{/if}
-					</div>
-					<div
-						class:sm:col-span-3={aiConfigState.value?.disableImagesState}
-						class="m-auto w-full sm:col-span-2"
-					>
-						{#if aiLevelUp.ability.resource_cost?.cost > 0}
-							<p class="badge badge-info h-fit">
-								{aiLevelUp.ability.resource_cost?.cost}
-								{(aiLevelUp.ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}
-							</p>
-						{/if}
-						<p class="mt-2 overflow-hidden overflow-ellipsis">{aiLevelUp.ability.name}</p>
-					</div>
-				</div>
-				<p class="m-5 mt-2">
-					{aiLevelUp.ability.effect}
-				</p>
-			</label>
+			<AbilityComponent ability={aiLevelUp.ability} />
 			<button type="button" class="components btn btn-primary mt-2" onclick={acceptAILevelUp}>
 				Accept
 			</button>

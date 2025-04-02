@@ -105,6 +105,7 @@ export class CharacterStatsAgent {
 		storyState: Story,
 		characterState: CharacterDescription,
 		statsOverwrites: Partial<CharacterStats> | undefined = undefined,
+		isAdaptiveOverwrite: boolean = false,
 		transformInto?: string
 	): Promise<CharacterStats> {
 		const agentInstruction = [
@@ -114,9 +115,15 @@ export class CharacterStatsAgent {
 				'If there is a HP resource or deviation, it must be greater than 20.\n'
 		];
 		if (statsOverwrites) {
-			let statsPrompt = 'You must set exactly the following stats as given:';
-			if(transformInto) {
-				statsPrompt = 'Determine if following transformation completely changes or just adapts the character; ' +
+			let statsPrompt =
+				'You must reuse the EXISTING STATS exactly as given, e.g. EXISTING STAT of 150 must stay as 150; fill in other values if needed.';
+			if (isAdaptiveOverwrite) {
+				statsPrompt =
+					'Adapt and refine the EXISTING STATS, especially spells and abilities, based on the Character description.\n';
+			}
+			if (transformInto) {
+				statsPrompt =
+					'Determine if following transformation completely changes or just adapts the character; ' +
 					'If complete transformation ignore the EXISTING STATS and generate all new, else just adapt the EXISTING STATS;\nTransform into:\n' +
 					transformInto;
 			}
@@ -128,7 +135,8 @@ export class CharacterStatsAgent {
 			statsOverwrites = { ...statsOverwrites, level: 1 };
 		}
 		const request: LLMRequest = {
-			userMessage:'Create the character according to the descriptions.\nScale the stats and abilities according to the level.\n',
+			userMessage:
+				'Create the character according to the descriptions.\nScale the stats and abilities according to the level.\n',
 			historyMessages: [
 				{
 					role: 'user',
@@ -197,6 +205,7 @@ export class CharacterStatsAgent {
 		};
 		console.log(stringifyPretty(request));
 		const aiLevelUp = (await this.llm.generateContent(request)) as AiLevelUp;
+		aiLevelUp.ability = this.mapAbility(aiLevelUp.ability);
 		aiLevelUp.character_name = characterState.name;
 		return aiLevelUp;
 	}
@@ -237,7 +246,7 @@ export class CharacterStatsAgent {
 		storyState: Story,
 		characterState: CharacterDescription,
 		characterStats: CharacterStats,
-		ability: Ability
+		ability: Partial<Ability>
 	): Promise<Ability> {
 		const agentInstruction =
 			'You are RPG character stats agent, generating a single new ability for a character according to game system, adventure and character description.\n' +

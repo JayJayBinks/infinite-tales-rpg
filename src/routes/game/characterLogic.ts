@@ -29,6 +29,7 @@ export async function applyCharacterChange(
 			story,
 			transformedCharacter,
 			oldStats,
+			true,
 			changeIntoString
 		);
 		if (transformedCharacterStats) {
@@ -58,19 +59,66 @@ export async function applyCharacterChange(
 	return { transformedCharacter, transformedCharacterStats };
 }
 
-export function getSkillIfApplicable(stats: CharacterStats, action: Action): string | undefined {
+function hasCaseInsensitiveKey(obj: Record<string, any>, key: string): boolean {
+	// Ensure key is a non-empty string before proceeding
+	if (!key) return false;
+	const lowerKey = key.toLowerCase();
+	return Object.keys(obj).some((k) => k.toLowerCase() === lowerKey);
+}
+
+interface SkillCheckResult {
+	skill: string | undefined;
+	isAttribute: boolean;
+	isExistingSkill: boolean;
+}
+
+/**
+ * Helper function to validate the skill from an action and check its status.
+ */
+function checkSkillStatus(stats: CharacterStats, action: Action): SkillCheckResult {
 	const skill = action.related_skill;
-	if (!skill || skill === 'N/A') return undefined;
-	const existingSkill = Object.keys(stats.skills).some(
-		(s) => s.toLowerCase() === skill.toLowerCase()
-	);
-	const isAttribute = Object.keys(stats.attributes).some(
-		(a) => a.toLowerCase() === skill.toLowerCase()
-	);
-	if (!existingSkill && !isAttribute) {
+
+	// Initial validation
+	if (!skill || skill === 'N/A') {
+		return { skill: undefined, isAttribute: false, isExistingSkill: false };
+	}
+
+	// Check status
+	const isAttribute = hasCaseInsensitiveKey(stats.attributes, skill);
+	// Only check skills if it's not an attribute (optimization - avoids check if already determined not applicable)
+	// Or always check if isNewSkill needs it regardless. Let's always check for simplicity for now.
+	const isExistingSkill = hasCaseInsensitiveKey(stats.skills, skill);
+
+	return { skill, isAttribute, isExistingSkill };
+}
+
+/**
+ * Determines if the action's related skill is a new skill (not existing, not an attribute).
+ * Logs and returns the skill name if it's new.
+ */
+export function isNewSkill(stats: CharacterStats, action: Action): string | undefined {
+	const { skill, isAttribute, isExistingSkill } = checkSkillStatus(stats, action);
+
+	// A skill is new if it's valid, not an existing skill, and not an attribute.
+	if (skill && !isExistingSkill && !isAttribute) {
 		console.log('Adding skill', skill);
 		return skill;
 	}
+
+	return undefined;
+}
+
+/**
+ * Returns the action's related skill if it's valid and *not* an attribute.
+ */
+export function getSkillIfApplicable(stats: CharacterStats, action: Action): string | undefined {
+	const { skill, isAttribute } = checkSkillStatus(stats, action);
+
+	// A skill is applicable if it's valid and not an attribute.
+	if (skill && !isAttribute) {
+		return skill;
+	}
+
 	return undefined;
 }
 
@@ -117,7 +165,10 @@ export function getSkillProgressionForDiceRoll(diceRollResult: DiceRollResult): 
 	return 0;
 }
 
-export function getSkillProgressionForDifficulty(actionDifficulty: ActionDifficulty): number {
+export function getSkillProgressionForDifficulty(
+	actionDifficulty: ActionDifficulty | undefined
+): number {
+	if (!actionDifficulty) return 0;
 	switch (actionDifficulty) {
 		case ActionDifficulty.medium:
 			return 1;

@@ -4,7 +4,6 @@ import { type StatsUpdate, statsUpdatePromptObject } from '$lib/ai/agents/combat
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
-import type { DiceRollDifficulty } from '$lib/ai/agents/difficultyAgent';
 import { mapGameState } from '$lib/ai/agents/mappers';
 import {
 	currentlyPresentNPCSForPrompt,
@@ -22,6 +21,14 @@ export type InventoryUpdate = {
 export type InventoryState = { [item_id: string]: Item };
 export type ItemWithId = Item & { item_id: string };
 export type Item = { description: string; effect: string };
+export type DiceRollDifficulty = {
+	action_difficulty?: ActionDifficulty;
+	dice_roll?: {
+		modifier: 'none' | 'bonus' | 'malus';
+		modifier_value: number;
+		modifier_explanation: string;
+	};
+};
 export type Action = {
 	characterName: string;
 	text: string;
@@ -376,6 +383,7 @@ const jsonSystemInstructionForGameAgent = (
   ${statsUpdatePromptObject},
   "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
+		#This section is only for items and never spells or abilities
         #For each item addition or removal this object is added once, the whole inventory does not need to be tracked here
         #The starting items are also listed here as add_item
     {
