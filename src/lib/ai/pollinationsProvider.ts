@@ -157,7 +157,7 @@ export class PollinationsProvider extends LLM {
 
 	parseJSON(response: string, autoFix: boolean) {
 		try {
-			return JSON.parse(response.replaceAll('```json', '').replaceAll('```', ''));
+			return JSON.parse(response.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim());
 		} catch (firstError) {
 			//autofix if true or not set and llm allows it
 			if (autoFix) {

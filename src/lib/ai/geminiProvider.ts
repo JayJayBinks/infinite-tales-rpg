@@ -163,7 +163,7 @@ export class GeminiProvider extends LLM {
 				return undefined;
 			}
 			try {
-				return JSON.parse(json!.replace('```json', '').replace('```', ''));
+				return JSON.parse(json.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim());
 			} catch (firstError) {
 				try {
 					console.log('Error parsing JSON: ' + json, firstError);
@@ -173,7 +173,7 @@ export class GeminiProvider extends LLM {
 					) {
 						return JSON.parse(json.replaceAll('\\', ''));
 					}
-					return JSON.parse(json!.split('```json')[1].split('```')[0]);
+					return JSON.parse(json.split('```json')[1].split('```')[0].trim());
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				} catch (secondError) {
 					//autofix if true or not set and llm allows it
