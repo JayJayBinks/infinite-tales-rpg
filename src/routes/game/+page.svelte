@@ -1150,13 +1150,12 @@
 		);
 		isAiGeneratingState = false;
 		if (newstate && newstate.length > 0) {
-			learnedAbilitiesState = newstate
-				.map((ability) => {
-					if (characterStatsState.value.spells_and_abilities.find((b) => b.name === ability.name)) {
-						ability.name = `${ability.name} (2)`;
-					}
-					return ability;
-				});
+			learnedAbilitiesState = newstate.map((ability) => {
+				if (characterStatsState.value.spells_and_abilities.find((b) => b.name === ability.name)) {
+					ability.name = `${ability.name} (2)`;
+				}
+				return ability;
+			});
 			eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = true;
 		} else {
 			const error =

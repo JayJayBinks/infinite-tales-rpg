@@ -3,7 +3,6 @@ import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import { type Story, TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
 
-
 export type Ability = {
 	name: string;
 	effect: string;
@@ -260,13 +259,16 @@ export class CharacterStatsAgent {
 		characterStats: CharacterStats,
 		abilities: Partial<Ability>[]
 	): Promise<Ability[]> {
-		const usePartialAsBasePrompt = 'Important instruction! You must reuse the following description of abilities and fill in blank fields! ' + 
-		'Abilities that contradict a theme (e.g. ice spells for a fire mage) are explicitly allowed, a character can learn abilities from different fields. Do not modify them to fit! ' + stringifyPretty(abilities) + '\n';
+		const usePartialAsBasePrompt =
+			'Important instruction! You must reuse the following description of abilities and fill in blank fields! ' +
+			'Abilities that contradict a theme (e.g. ice spells for a fire mage) are explicitly allowed, a character can learn abilities from different fields. Do not modify them to fit! ' +
+			stringifyPretty(abilities) +
+			'\n';
 		const agentInstruction = [
 			'You are RPG character ability agent, generating new abilities without restrictions on thematic consistency. Generate them according to game system, adventure and character description.\n' +
-			'Scale the ability according to the level',
+				'Scale the ability according to the level',
 			usePartialAsBasePrompt,
-			`Always respond with following JSON!\n Array length ${abilities.filter(a => !!a).length} of type ${abilityFormatForPrompt}`
+			`Always respond with following JSON!\n Array length ${abilities.filter((a) => !!a).length} of type ${abilityFormatForPrompt}`
 		];
 
 		const request: LLMRequest = {
@@ -287,11 +289,11 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		let response = await this.llm.generateContent(request)  as Ability[];
+		let response = (await this.llm.generateContent(request)) as Ability[];
 		if (!response) {
 			return [];
 		}
-		if(!Array.isArray(response)) {
+		if (!Array.isArray(response)) {
 			response = [response];
 		}
 		return response.map(this.mapAbility) as Ability[];

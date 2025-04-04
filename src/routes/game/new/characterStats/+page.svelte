@@ -158,8 +158,10 @@
 		isGeneratingState = true;
 		// Prepare input with current state
 		const currentCharacterStats = $state.snapshot(characterStatsState.value);
-		let overwrittenAbility = removeEmptyValues($state.snapshot(characterStatsStateOverwrites.spells_and_abilities[abilityIndex]));
-		if(!overwrittenAbility){
+		let overwrittenAbility = removeEmptyValues(
+			$state.snapshot(characterStatsStateOverwrites.spells_and_abilities[abilityIndex])
+		);
+		if (!overwrittenAbility) {
 			overwrittenAbility = characterStatsState.value.spells_and_abilities[abilityIndex];
 		}
 		// Generate new ability

@@ -103,8 +103,8 @@
 
 	let onRoll = (evt) => {
 		//for easy testing
-		rolledValueState.value = getRandomInteger(1, 20);
-		return;
+		//rolledValueState.value = getRandomInteger(1, 20);
+		//return;
 		evt.currentTarget.disabled = true;
 		diceBox.roll('1d20').then((results) => {
 			rolledValueState.value = results[0].value;
