@@ -98,7 +98,7 @@
 						</div>
 					</summary>
 					<div class="collapse-content">
-						<p class="m-5 mt-2">
+						<p class="m-5 mt-2 text-center">
 							{ability.effect}
 						</p>
 					</div>

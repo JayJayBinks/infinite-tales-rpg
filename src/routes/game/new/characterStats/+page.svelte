@@ -156,29 +156,22 @@
 
 	const onRandomizeAbility = async (abilityIndex: number) => {
 		isGeneratingState = true;
-
-		// Get the current ability to use as a base for generation
-		const currentAbility = characterStatsState.value.spells_and_abilities[abilityIndex];
-		if (!currentAbility) {
-			isGeneratingState = false;
-			return;
-		}
-
 		// Prepare input with current state
 		const currentCharacterStats = $state.snapshot(characterStatsState.value);
-		const filteredOverwrites = removeEmptyValues($state.snapshot(characterStatsStateOverwrites));
-		const characterStatsInput = { ...currentCharacterStats, ...filteredOverwrites };
-
+		let overwrittenAbility = removeEmptyValues($state.snapshot(characterStatsStateOverwrites.spells_and_abilities[abilityIndex]));
+		if(!overwrittenAbility){
+			overwrittenAbility = characterStatsState.value.spells_and_abilities[abilityIndex];
+		}
 		// Generate new ability
-		const newAbility = await characterStatsAgent.generateSingleAbility(
+		const newAbility = await characterStatsAgent.generateAbilitiesFromPartial(
 			$state.snapshot(storyState.value),
 			$state.snapshot(characterState.value),
-			characterStatsInput,
-			currentAbility
+			currentCharacterStats,
+			[overwrittenAbility]
 		);
 
 		// Update the state with new ability
-		characterStatsState.value.spells_and_abilities[abilityIndex] = newAbility;
+		characterStatsState.value.spells_and_abilities[abilityIndex] = newAbility[0];
 
 		isGeneratingState = false;
 	};
@@ -614,7 +607,7 @@
 							</div>
 						</summary>
 						<div class="collapse-content">
-							<div class="form-control m-auto w-full max-w-md rounded-lg p-3">
+							<div class="form-control m-auto w-full max-w-md rounded-lg">
 								<div class="grid grid-cols-1 gap-2">
 									{#if characterStatsStateOverwrites.spells_and_abilities[index]}
 										<span class="badge badge-accent m-auto">overwritten</span>

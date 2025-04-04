@@ -640,7 +640,7 @@
 					)
 			);
 		if (abilities && abilities.length > 0) {
-			evaluated.character_changed.aiProcessingComplete = false;
+			evaluated.abilities_learned.aiProcessingComplete = false;
 			eventEvaluationState.value = {
 				...eventEvaluationState.value,
 				abilities_learned: { ...evaluated?.abilities_learned, abilities }
@@ -694,6 +694,7 @@
 			updateMessagesHistory(updatedHistoryMessages);
 			checkForNewNPCs(newState);
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
+			console.log('skillName to improve', skillName);
 			if (skillName) {
 				//if no dice was rolled, use difficulty
 				if (skillsProgressionForCurrentActionState === undefined) {
@@ -1138,21 +1139,18 @@
 	async function onLearnNewSpellsAndAbilities() {
 		const overwrites = {
 			...characterStatsState.value,
-			spells_and_abilities: eventEvaluationState.value.abilities_learned.abilities as Ability[]
+			spells_and_abilities: []
 		};
 		isAiGeneratingState = true;
-		const newstate = await characterStatsAgent.generateCharacterStats(
+		const newstate = await characterStatsAgent.generateAbilitiesFromPartial(
 			storyState.value,
 			characterState.value,
 			overwrites,
-			true
+			eventEvaluationState.value.abilities_learned.abilities as Ability[]
 		);
 		isAiGeneratingState = false;
-		if (newstate?.spells_and_abilities) {
-			learnedAbilitiesState = newstate.spells_and_abilities
-				.filter((a) =>
-					eventEvaluationState.value.abilities_learned.abilities.find((b) => b.name === a.name)
-				)
+		if (newstate && newstate.length > 0) {
+			learnedAbilitiesState = newstate
 				.map((ability) => {
 					if (characterStatsState.value.spells_and_abilities.find((b) => b.name === ability.name)) {
 						ability.name = `${ability.name} (2)`;
