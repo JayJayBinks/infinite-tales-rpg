@@ -35,8 +35,8 @@ export type EventEvaluation = {
 };
 
 const jsonFormat = `{
-	"reasoning": string,
-	"character_changed": {"changed_into": single word only what the character transformed into, "description": string}
+	"reasoning": Briefly explain how the character changed from the CURRENT CHARACTER DESCRIPTION and how abilities learned if any,
+	"character_changed": {"changed_into": single word only what the character transformed into, "description": string},
 	"abilities_learned": [{"uniqueTechnicalId": string, "name": string, "effect": string}, ...]
 	}`;
 
@@ -59,13 +59,15 @@ export class EventAgent {
 		);
 	};
 
-	async evaluateEvents(storyHistory: string[]): Promise<EventEvaluation> {
-		const agent =
-			'Scan the FULL STORY and evaluate if following events have occurred, they must be plausible in this moment and not just hypothetically:\n' +
-			'character_changed: Did the character SIGNIFICANTLY change? (E.g. granted the next profession rank, transformed into something else like vampire, possessed by a demon etc.) If yes describe the changes, else null.\n' +
-			'abilities_learned: Did the character learn new abilities or spells? (E.g. from a book, a teacher or other circumstances). Pay attention if the story clearly states that the character learned a new ability or spell. If yes describe the ability or spell, else null.\n' +
-			'Always respond with following JSON! ' +
-			jsonFormat;
+	async evaluateEvents(storyHistory: string[], currentAbilitiesNames: string[]): Promise<EventEvaluation> {
+		const agent = [
+			'Scan the FULL STORY and evaluate if following events have occurred, they must be plausible in this moment and not just hypothetically:\n',
+				'character_changed: Did the character SIGNIFICANTLY change? (E.g. granted the next profession rank, transformed into something else like vampire, possessed by a demon etc.) If yes describe the changes, else null.\n' + 
+				'abilities_learned: Did the character learn new abilities or spells? (E.g. from a book, a teacher or other circumstances). Pay attention if the story clearly states that the character learned a new ability or spell. If yes describe the ability or spell, else null.\n' +
+				'Do not suggest already known abilities: ' + currentAbilitiesNames.join(', '),
+			'Always respond with following JSON!\n' +
+			jsonFormat
+		];
 
 		const request: LLMRequest = {
 			userMessage: 'Evaluate the events for STORY PROGRESSION:\n' + storyHistory.join('\n'),

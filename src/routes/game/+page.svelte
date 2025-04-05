@@ -724,7 +724,7 @@
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
 				eventAgent
-					.evaluateEvents(historyMessagesState.value.slice(-6).map((m) => m.content))
+					.evaluateEvents(historyMessagesState.value.slice(-6).map((m) => m.content), characterStatsState.value.spells_and_abilities.map(a => a.name))
 					.then(applyGameEventEvaluation);
 				// Generate the next set of actions.
 				actionAgent

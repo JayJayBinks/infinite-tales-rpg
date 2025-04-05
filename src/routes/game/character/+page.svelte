@@ -19,7 +19,7 @@
 		class="menu-content flex min-h-screen items-center justify-center p-4 text-center"
 		id="stats"
 	>
-		<div class="character-profile w-full max-w-md rounded-lg p-6 text-white shadow-lg">
+		<div class="character-profile w-full max-w-md rounded-lg text-white shadow-lg">
 			<h1 id="name" class="class mb-4 border-b border-gray-600 text-center text-3xl font-bold">
 				{characterState.value.name}
 			</h1>

@@ -113,7 +113,7 @@ export class GeminiProvider extends LLM {
 
 		let result: GenerateContentResult;
 		try {
-			if (model.model.includes('thinking') && getIsGeminiThinkingOverloaded()) {
+			if (this.fallbackLLM && model.model.includes('thinking') && getIsGeminiThinkingOverloaded()) {
 				//fallback early to avoid waiting for the response
 				throw new Error(
 					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'

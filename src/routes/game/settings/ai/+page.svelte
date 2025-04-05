@@ -192,7 +192,7 @@
 	/>
 {/if}
 {#if isGeneratingState}
-	<LoadingModal loadingText="Creating Your New Tale..." />
+	<LoadingModal loadingText="Creating Your New Tale, this may take a minute..." />
 {/if}
 <form class="m-6 flex flex-col items-center text-center">
 	<label class="form-control w-full sm:w-2/3">
