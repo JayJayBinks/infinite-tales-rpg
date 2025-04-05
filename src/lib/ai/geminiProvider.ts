@@ -163,7 +163,9 @@ export class GeminiProvider extends LLM {
 				return undefined;
 			}
 			try {
-				return JSON.parse(json.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim());
+				return JSON.parse(
+					json.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim()
+				);
 			} catch (firstError) {
 				try {
 					console.log('Error parsing JSON: ' + json, firstError);

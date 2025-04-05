@@ -195,7 +195,7 @@
 </script>
 
 {#if isGeneratingState}
-	<LoadingModal loadingText="Generating Campaign, this may take a while..."/>
+	<LoadingModal loadingText="Generating Campaign, this may take a while..." />
 {/if}
 <ul class="steps mt-3 w-full">
 	<li class="step step-primary">Campaign</li>

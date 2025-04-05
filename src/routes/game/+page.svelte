@@ -84,7 +84,7 @@
 		getSkillIfApplicable
 	} from './characterLogic';
 	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/diceRollLogic';
-	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/NewAbilitiesConfirmatonModal.svelte';
+	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -164,7 +164,6 @@
 		'eventEvaluationState',
 		initialEventEvaluationState
 	);
-	let learnedAbilitiesState = $state<Ability[]>([]);
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -636,7 +635,9 @@
 			.filter(
 				(newAbility) =>
 					!eventEvaluationState.value.abilities_learned.abilities.some(
-						(existing) => existing.uniqueTechnicalId === newAbility.uniqueTechnicalId
+						(existing) =>
+							existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
+							existing.name === newAbility.name
 					)
 			);
 		if (abilities && abilities.length > 0) {
@@ -724,7 +725,10 @@
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
 				eventAgent
-					.evaluateEvents(historyMessagesState.value.slice(-6).map((m) => m.content), characterStatsState.value.spells_and_abilities.map(a => a.name))
+					.evaluateEvents(
+						historyMessagesState.value.slice(-6).map((m) => m.content),
+						characterStatsState.value.spells_and_abilities.map((a) => a.name)
+					)
 					.then(applyGameEventEvaluation);
 				// Generate the next set of actions.
 				actionAgent
@@ -1120,7 +1124,7 @@
 		isAiGeneratingState = false;
 	}
 
-	const confirmAbilitiesLearned = (abilities: Ability[] | undefined) => {
+	const confirmAbilitiesLearned = (abilities?: Ability[]) => {
 		eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = false;
 		if (!abilities) {
 			return;
@@ -1135,34 +1139,6 @@
 			spells_and_abilities: [...characterStatsState.value.spells_and_abilities, ...abilities]
 		};
 	};
-
-	async function onLearnNewSpellsAndAbilities() {
-		const overwrites = {
-			...characterStatsState.value,
-			spells_and_abilities: []
-		};
-		isAiGeneratingState = true;
-		const newstate = await characterStatsAgent.generateAbilitiesFromPartial(
-			storyState.value,
-			characterState.value,
-			overwrites,
-			eventEvaluationState.value.abilities_learned.abilities as Ability[]
-		);
-		isAiGeneratingState = false;
-		if (newstate && newstate.length > 0) {
-			learnedAbilitiesState = newstate.map((ability) => {
-				if (characterStatsState.value.spells_and_abilities.find((b) => b.name === ability.name)) {
-					ability.name = `${ability.name} (2)`;
-				}
-				return ability;
-			});
-			eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = true;
-		} else {
-			const error =
-				'Failed to generate abilities: ' + stringifyPretty(overwrites.spells_and_abilities);
-			throw error;
-		}
-	}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -1191,8 +1167,8 @@
 	{/if}
 	{#if eventEvaluationState.value.abilities_learned?.showEventConfirmationDialog && !eventEvaluationState.value.abilities_learned?.aiProcessingComplete}
 		<NewAbilitiesConfirmatonModal
-			spells_abilities={learnedAbilitiesState}
-			onclose={(confirmedAbilities) => confirmAbilitiesLearned(confirmedAbilities)}
+			spells_abilities={eventEvaluationState.value.abilities_learned.abilities}
+			onclose={(confirmedAbilities?: Ability[]) => confirmAbilitiesLearned(confirmedAbilities)}
 		/>
 	{/if}
 	<UseSpellsAbilitiesModal
@@ -1306,7 +1282,10 @@
 					</button>
 				{/if}
 				{#if !eventEvaluationState.value.abilities_learned?.aiProcessingComplete}
-					<button onclick={onLearnNewSpellsAndAbilities} class="text-md btn btn-success mb-3 w-full"
+					<button
+						onclick={() =>
+							(eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = true)}
+						class="text-md btn btn-success mb-3 w-full"
 						>Learn new Spells & Abilities
 					</button>
 				{/if}

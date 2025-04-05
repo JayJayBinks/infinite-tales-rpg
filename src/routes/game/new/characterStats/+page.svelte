@@ -17,9 +17,9 @@
 	import cloneDeep from 'lodash/cloneDeep';
 	import isEqual from 'lodash/isEqual';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { defaultGameSettings, type GameSettings } from '$lib/ai/agents/gameAgent';
 	import type { AIConfig } from '$lib';
+	import AbilityEditor from '$lib/components/interaction_modals/character/AbilityEditor.svelte';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -563,148 +563,24 @@
 		</div>
 	</details>
 
-	<!-- Show spells and abilities count -->
 	<details class="collapse collapse-arrow border border-base-300 bg-base-200">
 		<summary class="collapse-title items-center text-center">Spells & Abilities</summary>
 		<div class="collapse-content">
 			<!-- Basic editor for spells and abilities -->
 			{#if characterStatsState.value.spells_and_abilities}
 				{#each characterStatsState.value.spells_and_abilities as ability, index}
-					<details class="collapse collapse-arrow textarea-bordered mb-4 border bg-base-200">
-						<summary class="collapse-title capitalize">
-							<div
-								class:sm:grid-cols-6={!aiConfigState.value?.disableImagesState}
-								class="grid overflow-hidden overflow-ellipsis text-center"
-							>
-								{#if !aiConfigState.value?.disableImagesState}
-									<div class="m-auto mb-3 sm:col-span-3">
-										<AIGeneratedImage
-											noLogo={true}
-											enhance={false}
-											imageClassesString="w-[90px] sm:w-[100px] h-[90px] sm:h-[100px] m-auto"
-											imagePrompt={CharacterStatsAgent.getSpellImagePrompt(
-												ability,
-												storyState.value.general_image_prompt
-											)}
-											buttonClassesString="btn-xs no-animation"
-										/>
-									</div>
-								{/if}
-								<div class="m-auto w-full sm:col-span-2">
-									<p class="content-center overflow-hidden overflow-ellipsis">
-										{ability.name || 'Unnamed Ability'}
-									</p>
-									<button
-										class="components btn btn-error no-animation btn-sm m-auto mt-2"
-										aria-label="Delete spell/ability"
-										onclick={(evt) => {
-											evt.preventDefault();
-											characterStatsStateOverwrites.spells_and_abilities.splice(index, 1);
-											characterStatsState.value.spells_and_abilities.splice(index, 1);
-										}}
-									>
-										Delete
-									</button>
-								</div>
-							</div>
-						</summary>
-						<div class="collapse-content">
-							<div class="form-control m-auto w-full max-w-md rounded-lg">
-								<div class="grid grid-cols-1 gap-2">
-									{#if characterStatsStateOverwrites.spells_and_abilities[index]}
-										<span class="badge badge-accent m-auto">overwritten</span>
-									{/if}
-									<div>
-										<label for={`ability-${index}-name`} class="label">
-											<span class="m-auto m-auto">Name</span>
-										</label>
-										<input
-											type="text"
-											id={`ability-${index}-name`}
-											class="input input-bordered w-full"
-											bind:value={ability.name}
-											oninput={(e) => addSpellOverwrite(index, { name: e.target.value })}
-										/>
-									</div>
-
-									<div>
-										<label for={`ability-${index}-effect`} class="label">
-											<span class="m-auto">Effect</span>
-										</label>
-										<textarea
-											id={`ability-${index}-effect`}
-											class="textarea textarea-bordered w-full"
-											bind:value={ability.effect}
-											rows={4}
-											oninput={(e) => addSpellOverwrite(index, { effect: e.target.value })}
-										></textarea>
-									</div>
-								</div>
-
-								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-									<div>
-										<label for={`ability-${index}-resource-cost`} class="label">
-											<span class="m-auto">Cost</span>
-										</label>
-										<input
-											type="number"
-											id={`ability-${index}-resource-cost`}
-											class="input input-bordered w-full"
-											bind:value={ability.resource_cost.cost}
-											oninput={(e) =>
-												addSpellOverwrite(index, {
-													resource_cost: {
-														...ability.resource_cost,
-														cost: parseInt(e.target.value)
-													}
-												})}
-										/>
-									</div>
-
-									<div>
-										<label for={`ability-${index}-resource-key`} class="label">
-											<span class="m-auto">Resource</span>
-										</label>
-										<select
-											id={`ability-${index}-resource-key`}
-											class="select select-bordered w-full"
-											bind:value={ability.resource_cost.resource_key}
-											onchange={(e) =>
-												addSpellOverwrite(index, {
-													resource_cost: { ...ability.resource_cost, resource_key: e.target.value }
-												})}
-										>
-											<option value={undefined}>No Cost</option>
-											{#each Object.keys(characterStatsState.value.resources) as resourceName}
-												<option value={resourceName}>{resourceName.replace(/_/g, ' ')}</option>
-											{/each}
-										</select>
-									</div>
-								</div>
-								<label class="label mt-2 cursor-pointer" for={`ability-${index}-image-prompt`}
-									><span class="m-auto">Image Prompt</span></label
-								>
-
-								<input
-									type="text"
-									class="input input-bordered w-full"
-									bind:value={ability.image_prompt}
-									oninput={(e) => addSpellOverwrite(index, { image_prompt: e.target.value })}
-								/>
-
-								<button
-									class="btn btn-accent btn-sm mt-2 w-full"
-									onclick={(e) => {
-										e.preventDefault();
-										onRandomizeAbility(index);
-									}}
-									disabled={isGeneratingState}
-								>
-									Randomize Ability
-								</button>
-							</div>
-						</div>
-					</details>
+					<AbilityEditor
+						{ability}
+						{index}
+						availableResources={characterStatsState.value.resources}
+						isGenerating={isGeneratingState}
+						onRandomize={onRandomizeAbility}
+						onDelete={() => {
+							characterStatsStateOverwrites.spells_and_abilities.splice(index, 1);
+							characterStatsState.value.spells_and_abilities.splice(index, 1);
+						}}
+						onUpdate={addSpellOverwrite}
+					></AbilityEditor>
 				{/each}
 			{/if}
 
@@ -744,7 +620,7 @@
 
 	{@render navigation(true)}
 </form>
-{#snippet navigation(isLast: boolean)}
+{#snippet navigation(isLast?: boolean)}
 	<div class="card-actions m-auto mt-4 flex w-full flex-col sm:flex-row">
 		{#if !isLast}
 			<button
