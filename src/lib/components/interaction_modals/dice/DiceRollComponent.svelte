@@ -94,7 +94,7 @@
 			assetPath: '/assets/dice-box/' // required
 		});
 		diceBox.init();
-		diceBox.onRollComplete = (rollResult) => console.log('roll results', rollResult)
+		diceBox.onRollComplete = (rollResult) => console.log('roll results', rollResult);
 		isMounted = true;
 	});
 

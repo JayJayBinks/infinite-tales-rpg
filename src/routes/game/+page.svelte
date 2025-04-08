@@ -630,9 +630,11 @@
 				character_changed: evaluated.character_changed
 			};
 		}
-		const abilities = evaluated?.abilities_learned?.abilities?.filter(
+		const abilities = evaluated?.abilities_learned?.abilities
+			?.filter(
 				(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
-			).filter(
+			)
+			.filter(
 				(newAbility) =>
 					!eventEvaluationState.value.abilities_learned?.abilities?.some(
 						(existing) =>
@@ -1214,10 +1216,7 @@
 		></DiceRollComponent>
 	{/if}
 	{#if customDiceRollNotation}
-		<SimpleDiceRoller
-			onClose={onCustomDiceRollClosed}
-			notation={customDiceRollNotation}
-		/>
+		<SimpleDiceRoller onClose={onCustomDiceRollClosed} notation={customDiceRollNotation} />
 	{/if}
 	<ResourcesComponent
 		resources={playerCharactersGameState[characterState.value.name]}
@@ -1334,12 +1333,12 @@
 					class="input input-bordered w-full"
 					id="user-input"
 					placeholder={customActionReceiver === 'Character Action'
-					? 'What do you want to do?'
-					: customActionReceiver === 'GM Question'
-						? 'Message to the Game Master'
-						: customActionReceiver === 'Dice Roll'
-							? 'notation like 1d20, 2d6+3'
-							: 'Command without restrictions'}
+						? 'What do you want to do?'
+						: customActionReceiver === 'GM Question'
+							? 'Message to the Game Master'
+							: customActionReceiver === 'Dice Roll'
+								? 'notation like 1d20, 2d6+3'
+								: 'Command without restrictions'}
 				/>
 				<button
 					type="submit"

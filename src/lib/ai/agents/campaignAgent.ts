@@ -33,7 +33,7 @@ export type Campaign = {
 	tonality: string;
 };
 
-export const getNewChapterObject = (chapterId: number) : CampaignChapter => {
+export const getNewChapterObject = (chapterId: number): CampaignChapter => {
 	return {
 		chapterId: chapterId,
 		title: '',
@@ -43,7 +43,7 @@ export const getNewChapterObject = (chapterId: number) : CampaignChapter => {
 	};
 };
 
-export const getNewPlotPointObject = (plotId: number) : CampaignChapterPlotPoint => {
+export const getNewPlotPointObject = (plotId: number): CampaignChapterPlotPoint => {
 	return {
 		plotId: plotId,
 		location: '',

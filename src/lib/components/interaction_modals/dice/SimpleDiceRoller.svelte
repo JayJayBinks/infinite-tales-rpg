@@ -1,49 +1,38 @@
 <script lang="ts">
-  	import DiceBox from '@3d-dice/dice-box';
-  import { onMount } from 'svelte';
+	import DiceBox from '@3d-dice/dice-box';
+	import { onMount } from 'svelte';
 
-  // Define props using Svelte 5 runes
-  const { notation, onClose }: { notation: string; onClose: (number) => void } = $props();
+	// Define props using Svelte 5 runes
+	const { notation, onClose }: { notation: string; onClose: (number) => void } = $props();
 
-  // Calculate the dice roll result reactively using $derived
-  let rollResult = $state<number>(NaN);
+	// Calculate the dice roll result reactively using $derived
+	let rollResult = $state<number>(NaN);
 
-  let onRoll = () => {
+	let onRoll = () => {
 		diceBox.roll(notation);
 	};
 
-  let diceBox;
-  onMount(async () => {
-    diceBox = new DiceBox('#dice-box', {
-      assetPath: '/assets/dice-box/' // required
-    });
-    await diceBox.init();
-	diceBox.onRollComplete = (result) => rollResult = result[0].value;
-  });
+	let diceBox;
+	onMount(async () => {
+		diceBox = new DiceBox('#dice-box', {
+			assetPath: '/assets/dice-box/' // required
+		});
+		await diceBox.init();
+		diceBox.onRollComplete = (result) => (rollResult = result[0].value);
+	});
 
-  const _onClose = (result: number) => {
-    diceBox.clear();
-    onClose(result);
-  };
+	const _onClose = (result: number) => {
+		diceBox.clear();
+		onClose(result);
+	};
 </script>
 
 <div id="dice-box" class="pointer-events-none fixed inset-0 z-30"></div>
-<dialog
-	open
-	id="dice-rolling-dialog"
-	class="modal z-20"
-	style="background: rgba(0, 0, 0, 0.3);"
->
+<dialog open id="dice-rolling-dialog" class="modal z-20" style="background: rgba(0, 0, 0, 0.3);">
 	<div class="modal-box flex flex-col items-center text-center">
 		<p class="mt-3 text-xl">Rolling:</p>
-		<output class="text-xl font-semibold"
-			>{notation}</output
-		>
-		<button
-			id="roll-dice-button"
-			class="btn btn-ghost m-3"
-			onclick={onRoll}
-		>
+		<output class="text-xl font-semibold">{notation}</output>
+		<button id="roll-dice-button" class="btn btn-ghost m-3" onclick={onRoll}>
 			<div class="flex flex-col items-center justify-center">
 				<svg
 					fill="black"

@@ -30,8 +30,8 @@ export type CharacterChangedInto = {
 };
 
 export type EventEvaluation = {
-	character_changed: CharacterChangedInto;
-	abilities_learned: AbilitiesLearned;
+	character_changed?: CharacterChangedInto;
+	abilities_learned?: AbilitiesLearned;
 	action_restricting_state?: { state: string; description: string };
 };
 
