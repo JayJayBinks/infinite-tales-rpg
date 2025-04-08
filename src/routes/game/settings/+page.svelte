@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { difficultyDiceRollModifier } from '$lib/components/interaction_modals/diceRollLogic';
+	import { difficultyDiceRollModifier } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import { navigate } from '$lib/util.svelte';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';

@@ -38,10 +38,10 @@
 	);
 
 	let generalAttributeModifier = $derived(
-		() => characterStatsState.value.attributes[action.related_attribute] ?? 0
+		() => characterStatsState.value.attributes[action?.related_attribute ?? ''] ?? 0
 	);
 	let specificSkillModifier = $derived(
-		() => characterStatsState.value.skills[action.related_skill] ?? 0
+		() => characterStatsState.value.skills[action?.related_skill ?? ''] ?? 0
 	);
 
 	const getModifier = () => {
@@ -94,6 +94,7 @@
 			assetPath: '/assets/dice-box/' // required
 		});
 		diceBox.init();
+		diceBox.onRollComplete = (rollResult) => console.log('roll results', rollResult)
 		isMounted = true;
 	});
 
@@ -136,7 +137,7 @@
 		{#if action.is_custom_action}
 			<output>{action.plausibility}</output>
 			<output>{action.difficulty_explanation}</output>
-			{#if action.resource_cost}
+			{#if action.resource_cost?.cost}
 				<output class="font-semibold"
 					>This action will cost <p class="text-blue-500">
 						{action.resource_cost?.cost}
@@ -188,6 +189,8 @@
 			<output id="attribute-modifier" class="mt-2"
 				>{action.related_attribute}: {generalAttributeModifier()}</output
 			>
+		{:else}
+			<output id="attribute-modifier" class="mt-2">No related attribute: 0</output>
 		{/if}
 		{#if action.related_skill}
 			<output id="skill-modifier" class="mt-2"

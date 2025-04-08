@@ -11,7 +11,6 @@ export type CampaignChapterPlotPoint = {
 	location: string;
 	description: string;
 	important_NPCs: Array<string>;
-	steps: Array<string>;
 	game_master_notes: Array<string>;
 };
 
@@ -19,6 +18,7 @@ export type CampaignChapter = {
 	chapterId: number;
 	title: string;
 	description: string;
+	objective: string;
 	plot_points: Array<CampaignChapterPlotPoint>;
 };
 export type Campaign = {
@@ -33,7 +33,7 @@ export type Campaign = {
 	tonality: string;
 };
 
-export const getNewChapterObject = (chapterId: number) => {
+export const getNewChapterObject = (chapterId: number) : CampaignChapter => {
 	return {
 		chapterId: chapterId,
 		title: '',
@@ -43,14 +43,14 @@ export const getNewChapterObject = (chapterId: number) => {
 	};
 };
 
-export const getNewPlotPointObject = (plotId) => {
+export const getNewPlotPointObject = (plotId: number) : CampaignChapterPlotPoint => {
 	return {
 		plotId: plotId,
 		location: '',
 		description: '',
 		objective: '',
-		important_NPCs: '',
-		steps: ''
+		important_NPCs: [],
+		game_master_notes: []
 	};
 };
 

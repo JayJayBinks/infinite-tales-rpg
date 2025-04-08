@@ -46,7 +46,7 @@
 		type CharacterDescription,
 		initialCharacterState
 	} from '$lib/ai/agents/characterAgent';
-	import DiceRollComponent from '$lib/components/interaction_modals/DiceRollComponent.svelte';
+	import DiceRollComponent from '$lib/components/interaction_modals/dice/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
 	import { type Campaign, CampaignAgent, type CampaignChapter } from '$lib/ai/agents/campaignAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
@@ -83,8 +83,9 @@
 		getSkillProgressionForDifficulty,
 		getSkillIfApplicable
 	} from './characterLogic';
-	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/diceRollLogic';
+	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
+	import SimpleDiceRoller from '$lib/components/interaction_modals/dice/SimpleDiceRoller.svelte';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -153,12 +154,13 @@
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
-	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' =
+	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' | 'Dice Roll' =
 		$state('Character Action');
 	let customActionImpossibleReasonState: 'not_enough_resource' | 'not_plausible' | undefined =
 		$state(undefined);
 
 	let gmQuestionState: string = $state('');
+	let customDiceRollNotation: string = $state('');
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
 	const eventEvaluationState = useLocalStorage<EventEvaluation>(
 		'eventEvaluationState',
@@ -628,13 +630,11 @@
 				character_changed: evaluated.character_changed
 			};
 		}
-		const abilities = evaluated?.abilities_learned.abilities
-			.filter(
+		const abilities = evaluated?.abilities_learned?.abilities?.filter(
 				(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
-			)
-			.filter(
+			).filter(
 				(newAbility) =>
-					!eventEvaluationState.value.abilities_learned.abilities.some(
+					!eventEvaluationState.value.abilities_learned?.abilities?.some(
 						(existing) =>
 							existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
 							existing.name === newAbility.name
@@ -946,6 +946,10 @@
 		);
 		isAiGeneratingState = false;
 	};
+	const onCustomDiceRollClosed = (result: number) => {
+		customDiceRollNotation = '';
+		customActionInput.value = '';
+	};
 	const onLevelUpModalClosed = (aiLevelUp: AiLevelUp) => {
 		if (aiLevelUp) {
 			characterStatsState.value = applyLevelUp(aiLevelUp, characterStatsState.value);
@@ -1045,6 +1049,9 @@
 		}
 		if (customActionReceiver === 'GM Question') {
 			gmQuestionState = action.text;
+		}
+		if (customActionReceiver === 'Dice Roll') {
+			customDiceRollNotation = action.text;
 		}
 		if (customActionReceiver === 'Game Command') {
 			additionalStoryInputState.value +=
@@ -1167,7 +1174,7 @@
 	{/if}
 	{#if eventEvaluationState.value.abilities_learned?.showEventConfirmationDialog && !eventEvaluationState.value.abilities_learned?.aiProcessingComplete}
 		<NewAbilitiesConfirmatonModal
-			spells_abilities={eventEvaluationState.value.abilities_learned.abilities}
+			spells_abilities={eventEvaluationState.value.abilities_learned?.abilities || []}
 			onclose={(confirmedAbilities?: Ability[]) => confirmAbilitiesLearned(confirmedAbilities)}
 		/>
 	{/if}
@@ -1199,11 +1206,19 @@
 	{#if levelUpState.value?.dialogOpened}
 		<LevelUpModal onclose={onLevelUpModalClosed} />
 	{/if}
-	<DiceRollComponent
-		bind:diceRollDialog
-		action={chosenActionState.value}
-		resetState={didAIProcessDiceRollActionState.value}
-	></DiceRollComponent>
+	{#if !didAIProcessDiceRollActionState.value}
+		<DiceRollComponent
+			bind:diceRollDialog
+			action={chosenActionState.value}
+			resetState={didAIProcessDiceRollActionState.value}
+		></DiceRollComponent>
+	{/if}
+	{#if customDiceRollNotation}
+		<SimpleDiceRoller
+			onClose={onCustomDiceRollClosed}
+			notation={customDiceRollNotation}
+		/>
+	{/if}
 	<ResourcesComponent
 		resources={playerCharactersGameState[characterState.value.name]}
 		currentLevel={characterStatsState.value?.level}
@@ -1311,6 +1326,7 @@
 					<option selected>Character Action</option>
 					<option>Game Command</option>
 					<option>GM Question</option>
+					<option>Dice Roll</option>
 				</select>
 				<input
 					type="text"
@@ -1318,9 +1334,11 @@
 					class="input input-bordered w-full"
 					id="user-input"
 					placeholder={customActionReceiver === 'Character Action'
-						? 'What do you want to do?'
-						: customActionReceiver === 'GM Question'
-							? 'Message to the Game Master'
+					? 'What do you want to do?'
+					: customActionReceiver === 'GM Question'
+						? 'Message to the Game Master'
+						: customActionReceiver === 'Dice Roll'
+							? 'notation like 1d20, 2d6+3'
 							: 'Command without restrictions'}
 				/>
 				<button
