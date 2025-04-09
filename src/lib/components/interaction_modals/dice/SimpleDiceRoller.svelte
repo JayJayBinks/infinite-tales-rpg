@@ -14,7 +14,7 @@
 
 	let diceBox;
 	onMount(async () => {
-		diceBox = new DiceBox('#dice-box', {
+		diceBox = new DiceBox('#simple-dice-box', {
 			assetPath: '/assets/dice-box/' // required
 		});
 		await diceBox.init();
@@ -27,7 +27,7 @@
 	};
 </script>
 
-<div id="dice-box" class="pointer-events-none fixed inset-0 z-30"></div>
+<div id="simple-dice-box" class="pointer-events-none fixed inset-0 z-40"></div>
 <dialog open id="dice-rolling-dialog" class="modal z-20" style="background: rgba(0, 0, 0, 0.3);">
 	<div class="modal-box flex flex-col items-center text-center">
 		<p class="mt-3 text-xl">Rolling:</p>

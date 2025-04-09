@@ -624,7 +624,7 @@
 	const applyGameEventEvaluation = (evaluated: EventEvaluation) => {
 		const changeInto = evaluated?.character_changed?.changed_into;
 		if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
-			evaluated.character_changed.aiProcessingComplete = false;
+			evaluated.character_changed!.aiProcessingComplete = false;
 			eventEvaluationState.value = {
 				...eventEvaluationState.value,
 				character_changed: evaluated.character_changed
@@ -643,7 +643,7 @@
 					)
 			);
 		if (abilities && abilities.length > 0) {
-			evaluated.abilities_learned.aiProcessingComplete = false;
+			evaluated.abilities_learned!.aiProcessingComplete = false;
 			eventEvaluationState.value = {
 				...eventEvaluationState.value,
 				abilities_learned: { ...evaluated?.abilities_learned, abilities }
@@ -948,7 +948,7 @@
 		);
 		isAiGeneratingState = false;
 	};
-	const onCustomDiceRollClosed = (result: number) => {
+	const onCustomDiceRollClosed = () => {
 		customDiceRollNotation = '';
 		customActionInput.value = '';
 	};
@@ -1093,7 +1093,7 @@
 		changedInto: CharacterChangedInto,
 		confirmed: boolean
 	) {
-		eventEvaluationState.value.character_changed.showEventConfirmationDialog = false;
+		eventEvaluationState.value.character_changed!.showEventConfirmationDialog = false;
 		if (confirmed === undefined) {
 			return;
 		}
@@ -1129,16 +1129,16 @@
 			gameActionsState.value = updatedGameActionsState;
 			playerCharactersGameState = updatedPlayerCharactersGameState;
 		}
-		eventEvaluationState.value.character_changed.aiProcessingComplete = true;
+		eventEvaluationState.value.character_changed!.aiProcessingComplete = true;
 		isAiGeneratingState = false;
 	}
 
 	const confirmAbilitiesLearned = (abilities?: Ability[]) => {
-		eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = false;
+		eventEvaluationState.value.abilities_learned!.showEventConfirmationDialog = false;
 		if (!abilities) {
 			return;
 		}
-		eventEvaluationState.value.abilities_learned.aiProcessingComplete = true;
+		eventEvaluationState.value.abilities_learned!.aiProcessingComplete = true;
 		if (abilities.length === 0) {
 			return;
 		}
@@ -1170,7 +1170,7 @@
 	{#if eventEvaluationState.value.character_changed?.showEventConfirmationDialog && !eventEvaluationState.value.character_changed?.aiProcessingComplete}
 		<CharacterChangedConfirmationModal
 			onclose={(confirmed) =>
-				confirmCharacterChangeEvent(eventEvaluationState.value.character_changed, confirmed)}
+				confirmCharacterChangeEvent(eventEvaluationState.value.character_changed!, confirmed)}
 			eventToConfirm={getEventToConfirm(eventEvaluationState.value.character_changed)}
 		/>
 	{/if}
@@ -1208,13 +1208,11 @@
 	{#if levelUpState.value?.dialogOpened}
 		<LevelUpModal onclose={onLevelUpModalClosed} />
 	{/if}
-	{#if !didAIProcessDiceRollActionState.value}
-		<DiceRollComponent
-			bind:diceRollDialog
-			action={chosenActionState.value}
-			resetState={didAIProcessDiceRollActionState.value}
-		></DiceRollComponent>
-	{/if}
+	<DiceRollComponent
+		bind:diceRollDialog
+		action={chosenActionState.value}
+		resetState={didAIProcessDiceRollActionState.value}
+	></DiceRollComponent>
 	{#if customDiceRollNotation}
 		<SimpleDiceRoller onClose={onCustomDiceRollClosed} notation={customDiceRollNotation} />
 	{/if}
@@ -1289,7 +1287,7 @@
 				{#if !eventEvaluationState.value.character_changed?.aiProcessingComplete}
 					<button
 						onclick={() => {
-							eventEvaluationState.value.character_changed.showEventConfirmationDialog = true;
+							eventEvaluationState.value.character_changed!.showEventConfirmationDialog = true;
 						}}
 						class="text-md btn btn-success mb-3 w-full"
 						>Transform into {eventEvaluationState.value.character_changed?.changed_into}
@@ -1298,7 +1296,7 @@
 				{#if !eventEvaluationState.value.abilities_learned?.aiProcessingComplete}
 					<button
 						onclick={() =>
-							(eventEvaluationState.value.abilities_learned.showEventConfirmationDialog = true)}
+							(eventEvaluationState.value.abilities_learned!.showEventConfirmationDialog = true)}
 						class="text-md btn btn-success mb-3 w-full"
 						>Learn new Spells & Abilities
 					</button>
