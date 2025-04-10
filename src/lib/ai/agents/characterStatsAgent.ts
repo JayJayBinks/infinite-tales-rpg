@@ -299,10 +299,10 @@ export class CharacterStatsAgent {
 		return response.map(this.mapAbility) as Ability[];
 	}
 
-	static getSpellImagePrompt(ability: Ability, storyImagePrompt: string): string {
+	static getSpellImagePrompt(ability?: Ability, storyImagePrompt?: string): string {
 		if (!ability) {
 			return '';
 		}
-		return storyImagePrompt + ' RPG game icon ' + (ability.image_prompt || ability.name);
+		return storyImagePrompt || '' + ' RPG game icon ' + (ability.image_prompt || ability.name);
 	}
 }

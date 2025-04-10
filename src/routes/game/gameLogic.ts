@@ -138,7 +138,8 @@ export function renderStatUpdates(
 					? 'gain'
 					: statsUpdate.type?.includes('_lost')
 						? 'loose'
-						: statsUpdate.type?.split('_')[1] || undefined;
+						: undefined;
+
 				const mappedType =
 					statsUpdate.type
 						?.replace('_gained', '')
