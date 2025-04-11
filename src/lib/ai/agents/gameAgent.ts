@@ -54,6 +54,12 @@ export type ResourcesWithCurrentValue = {
 	[resourceKey: string]: { max_value: number; current_value: number; game_ends_when_zero: boolean };
 };
 
+//TODO remove history of stats updates and make this use local storage
+/* [playerCharacterTechnicalId: string]: {
+	//Any name the AI could use in stats update, espiecially If player changes name / character has nicknames
+	known_names: string[];
+	resources: ResourcesWithCurrentValue;
+}; */
 export type PlayerCharactersGameState = {
 	[playerCharacterName: string]: ResourcesWithCurrentValue;
 };
