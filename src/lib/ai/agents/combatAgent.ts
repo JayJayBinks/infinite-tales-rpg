@@ -17,7 +17,12 @@ export type DiceRoll = {
 	modifier?: number;
 	rolls?: number[];
 };
-export type StatsUpdate = { sourceId?: string; targetId: string; value: DiceRoll; type: string };
+export type StatsUpdate = {
+	sourceName?: string;
+	targetName: string;
+	value: DiceRoll;
+	type: string;
+};
 export const statsUpdatePromptObject = `
     "stats_update": [
         # You must include one object for each action
@@ -25,14 +30,14 @@ export const statsUpdatePromptObject = `
         # Also include one object per turn effect like poisoned or bleeding
         {
         		"explanation": "Short explanation for the reason of this change",
-        		# if targetId is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources
+        		# if targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources
         		"type": "{resourceKey}_lost|{resourceKey}_gained",
-            "sourceId": "NPC id or player CHARACTER name, who is the initiator of this action",
-            "targetId": "NPC id or player CHARACTER name, whose stats must be updated.",
+            "sourceName": "NPC name or player CHARACTER name, who is the initiator of this action",
+            "targetName": "NPC name or player CHARACTER name, whose stats must be updated.",
             "value": "must be dice roll notation in format 1d6+3 or 3d4 etc."
         },
         {
-        	 "targetId": "Player CHARACTER name who gains XP.",
+        	 "targetName": "Player CHARACTER name who gains XP.",
         	 "explanation": "Short explanation for the reason of this change",
            "type": "xp_gained",
            "value": "SMALL|MEDIUM|HIGH"

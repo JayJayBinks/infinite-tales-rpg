@@ -2,7 +2,7 @@ import type { CharacterChangedInto } from '$lib/ai/agents/eventAgent';
 import { CharacterAgent, type CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { CharacterStats, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
-import type { Action } from '$lib/ai/agents/gameAgent';
+import type { Action, PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
 import type { DiceRollResult } from '$lib/components/interaction_modals/diceRollLogic';
 import { ActionDifficulty } from './gameLogic';
 
@@ -178,4 +178,50 @@ export function getSkillProgressionForDifficulty(
 			return 3;
 	}
 	return 0;
+}
+
+export function getCharacterTechnicalId(
+	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
+	characterName: string
+): string | undefined {
+	const characterId = Object.keys(playerCharactersIdToNamesMapState).find((key) =>
+		playerCharactersIdToNamesMapState[key].includes(characterName)
+	);
+	return characterId;
+}
+
+export function getCharacterTechnicalIdOrThrow(
+	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
+	characterName: string
+): string {
+	const characterId = getCharacterTechnicalId(playerCharactersIdToNamesMapState, characterName);
+	if (!characterId) {
+		throw new Error('Character not found ' + characterName);
+	}
+	return characterId;
+}
+
+export function getFreeCharacterTechnicalId(
+	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap
+): string {
+	let id = 1;
+	let freeId = `player_character_${id}`;
+	while (playerCharactersIdToNamesMapState[freeId]) {
+		id++;
+		freeId = `player_character_${id}`;
+	}
+	return freeId;
+}
+
+export function addCharacterToPlayerCharactersIdToNamesMap(
+	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
+	characterId: string,
+	characterName: string
+) {
+	if (!playerCharactersIdToNamesMapState[characterId]) {
+		playerCharactersIdToNamesMapState[characterId] = [];
+	}
+	if (!playerCharactersIdToNamesMapState[characterId].includes(characterName)) {
+		playerCharactersIdToNamesMapState[characterId].push(characterName);
+	}
 }

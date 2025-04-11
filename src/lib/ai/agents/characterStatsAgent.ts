@@ -303,6 +303,6 @@ export class CharacterStatsAgent {
 		if (!ability) {
 			return '';
 		}
-		return storyImagePrompt || '' + ' RPG game icon ' + (ability.image_prompt || ability.name);
+		return (storyImagePrompt || '') + ' RPG game icon ' + (ability.image_prompt || ability.name);
 	}
 }
