@@ -23,6 +23,7 @@
 		initialEventEvaluationState
 	} from '$lib/ai/agents/eventAgent';
 	import type { CharacterChangedInto, EventEvaluation } from '$lib/ai/agents/eventAgent';
+	import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1);
@@ -65,6 +66,10 @@
 	const eventEvaluationState = useLocalStorage<EventEvaluation>(
 		'eventEvaluationState',
 		initialEventEvaluationState
+	);
+	const playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
+		'playerCharactersIdToNamesMapState',
+		{}
 	);
 
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
@@ -125,6 +130,7 @@
 		characterTransformState.reset();
 		skillsProgressionState.reset();
 		eventEvaluationState.reset();
+		playerCharactersIdToNamesMapState.reset();
 	}
 
 	async function onQuickstartNew(story: string | Story | undefined) {

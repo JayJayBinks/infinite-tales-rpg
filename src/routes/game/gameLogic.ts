@@ -4,6 +4,7 @@ import {
 	type InventoryState,
 	type InventoryUpdate,
 	type PlayerCharactersGameState,
+	type PlayerCharactersIdToNamesMap,
 	type ResourcesWithCurrentValue,
 	SLOW_STORY_PROMPT,
 	type Targets
@@ -13,6 +14,7 @@ import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
 import { getNPCTechnicalID } from '$lib/util.svelte';
+import { getCharacterTechnicalId } from './characterLogic';
 
 export enum ActionDifficulty {
 	simple = 'simple',
@@ -116,11 +118,11 @@ function getColorForStatUpdate(mappedType: string, resources: ResourcesWithCurre
 export function renderStatUpdates(
 	statsUpdates: Array<StatsUpdate>,
 	resources: ResourcesWithCurrentValue,
-	playerName: string
+	playerNames: Array<string>
 ): (undefined | RenderedGameUpdate)[] {
 	if (statsUpdates) {
 		return statsUpdates
-			.toSorted((a, b) => (a.targetId < b.targetId ? -1 : 1))
+			.toSorted((a, b) => (a.targetName < b.targetName ? -1 : 1))
 			.map(mapStatsUpdateToGameLogic)
 			.map((statsUpdate) => {
 				if (
@@ -150,7 +152,7 @@ export function renderStatUpdates(
 
 				const color = getColorForStatUpdate(mappedType, resources);
 
-				if (statsUpdate.targetId === playerName) {
+				if (playerNames.includes(statsUpdate.targetName)) {
 					responseText = 'You ';
 					if (!changeText) {
 						//probably unhandled status effect
@@ -164,11 +166,11 @@ export function renderStatUpdates(
 							(getTakeLessDamageForManyHits(
 								statsUpdates,
 								Number.parseInt(statsUpdate.value.result),
-								playerName
+								playerNames
 							) || resourceText);
 					}
 				} else {
-					responseText = statsUpdate.targetId.replaceAll('_', ' ').replaceAll('id', '') + ' ';
+					responseText = statsUpdate.targetName.replaceAll('_', ' ').replaceAll('id', '') + ' ';
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'is';
@@ -218,13 +220,13 @@ export function renderInventoryUpdate(
 function getTakeLessDamageForManyHits(
 	stats_update: Array<StatsUpdate>,
 	damage: number,
-	playerName: string
+	playerNames: Array<string>
 ) {
 	if (damage <= 2) {
 		return damage;
 	}
 	const allPlayerHits = stats_update
-		.filter((update) => update.targetId === playerName)
+		.filter((update) => playerNames.includes(update.targetName))
 		.filter((update) => update.type === 'hp_lost');
 
 	return Math.max(1, Math.round(damage / Math.min(3, allPlayerHits?.length || 1)));
@@ -232,6 +234,7 @@ function getTakeLessDamageForManyHits(
 
 export function applyGameActionState(
 	playerCharactersGameState: PlayerCharactersGameState,
+	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
 	npcState: NPCState,
 	inventoryState: InventoryState,
 	state: GameActionState,
@@ -246,22 +249,21 @@ export function applyGameActionState(
 	}
 
 	for (const statUpdate of state?.stats_update?.map(mapStatsUpdateToGameLogic) || []) {
-		if (playerCharactersGameState[statUpdate.targetId]) {
+		const characterId =
+			getCharacterTechnicalId(playerCharactersIdToNamesMapState, statUpdate.targetName) || '';
+		if (playerCharactersGameState[characterId]) {
 			if (statUpdate.type.includes('now_level')) {
-				playerCharactersGameState[statUpdate.targetId].XP.current_value -=
+				playerCharactersGameState[characterId].XP.current_value -=
 					Number.parseInt(statUpdate.value.result) || 0;
 				continue;
 			}
 			if (statUpdate.type === 'xp_gained') {
-				playerCharactersGameState[statUpdate.targetId].XP.current_value +=
+				playerCharactersGameState[characterId].XP.current_value +=
 					Number.parseInt(statUpdate.value.result) || 0;
 			} else {
 				if (statUpdate.type.includes('_gained')) {
 					const resource: string = statUpdate.type.replace('_gained', '');
-					const res = getResourceIfPresent(
-						playerCharactersGameState[statUpdate.targetId],
-						resource
-					);
+					const res = getResourceIfPresent(playerCharactersGameState[characterId], resource);
 					if (!res) continue;
 					let gained = Number.parseInt(statUpdate.value.result) || 0;
 					gained = gained > 0 ? gained : 0;
@@ -274,7 +276,7 @@ export function applyGameActionState(
 			}
 			if (statUpdate.type.includes('_lost')) {
 				const resource: string = statUpdate.type.replace('_lost', '');
-				const res = getResourceIfPresent(playerCharactersGameState[statUpdate.targetId], resource);
+				const res = getResourceIfPresent(playerCharactersGameState[characterId], resource);
 				if (!res) continue;
 				let lost = Number.parseInt(statUpdate.value.result) || 0;
 				lost = lost > 0 ? lost : 0;
@@ -282,7 +284,7 @@ export function applyGameActionState(
 			}
 		} else {
 			if (!prohibitNPCChange) {
-				const npc: NPCStats = npcState[statUpdate.targetId];
+				const npc: NPCStats = npcState[statUpdate.targetName];
 				if (npc && npc.resources) {
 					const result = Number.parseInt(statUpdate.value.result);
 					switch (statUpdate.type) {
@@ -333,13 +335,21 @@ export function removeDeadNPCs(npcState: NPCState): string[] {
 
 export function applyGameActionStates(
 	playerCharactersGameState: PlayerCharactersGameState,
+	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
 	npcState: NPCState,
 	inventoryState,
 	states: Array<GameActionState>
 ) {
 	for (const state of states) {
 		//TODO because of prohibitNPCChange we can not revert actions anymore, introduce derived aswell?
-		applyGameActionState(playerCharactersGameState, npcState, inventoryState, state, true);
+		applyGameActionState(
+			playerCharactersGameState,
+			playerCharactersIdToNamesMapState,
+			npcState,
+			inventoryState,
+			state,
+			true
+		);
 	}
 }
 

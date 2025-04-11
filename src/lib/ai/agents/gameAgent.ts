@@ -54,14 +54,12 @@ export type ResourcesWithCurrentValue = {
 	[resourceKey: string]: { max_value: number; current_value: number; game_ends_when_zero: boolean };
 };
 
-//TODO remove history of stats updates and make this use local storage
-/* [playerCharacterTechnicalId: string]: {
-	//Any name the AI could use in stats update, espiecially If player changes name / character has nicknames
-	known_names: string[];
-	resources: ResourcesWithCurrentValue;
-}; */
+export type PlayerCharactersIdToNamesMap = {
+	[playerCharacterId: string]: Array<string>;
+};
+
 export type PlayerCharactersGameState = {
-	[playerCharacterName: string]: ResourcesWithCurrentValue;
+	[playerCharacterId: string]: ResourcesWithCurrentValue;
 };
 
 export type GameSettings = {
@@ -275,7 +273,7 @@ export class GameAgent {
 	static getRefillResourcesUpdateObject(
 		maxResources: Resources,
 		currentResources: ResourcesWithCurrentValue,
-		playerName: string
+		playerCharacterName: string
 	): Pick<GameActionState, 'stats_update'> {
 		const returnObject: Pick<GameActionState, 'stats_update'> = { stats_update: [] };
 		Object.entries(maxResources)
@@ -286,8 +284,8 @@ export class GameAgent {
 					return;
 				}
 				returnObject.stats_update.push({
-					sourceId: playerName,
-					targetId: playerName,
+					sourceName: playerCharacterName,
+					targetName: playerCharacterName,
 					type: resourceKey + '_gained',
 					value: { result: refillValue - (currentResources[resourceKey].current_value || 0) || 0 }
 				});
@@ -297,8 +295,8 @@ export class GameAgent {
 
 	static getLevelUpCostObject(xpCost: number, playerName: string, level: number): StatsUpdate {
 		return {
-			sourceId: playerName,
-			targetId: playerName,
+			sourceName: playerName,
+			targetName: playerName,
 			type: 'now_level_' + (level + 1),
 			value: { result: xpCost }
 		};

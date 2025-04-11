@@ -7,7 +7,8 @@ import {
 
 export function refillResourcesFully(
 	maxResources: Resources,
-	playerName: string,
+	playerId: string,
+	playerCharacterName: string,
 	gameActionsState: GameActionState[],
 	playerCharactersGameState: PlayerCharactersGameState
 ): {
@@ -15,13 +16,13 @@ export function refillResourcesFully(
 	updatedPlayerCharactersGameState: PlayerCharactersGameState;
 } {
 	// Get the current state for the given player
-	const currentPlayerResources = playerCharactersGameState[playerName];
+	const currentPlayerResources = playerCharactersGameState[playerId];
 
 	// First: compute the update log via GameAgent using the provided values
 	const statsUpdate = GameAgent.getRefillResourcesUpdateObject(
 		maxResources,
 		currentPlayerResources,
-		playerName
+		playerCharacterName
 	);
 
 	// Copy the game actions state and update the last action's stats_update log
@@ -36,7 +37,7 @@ export function refillResourcesFully(
 	const newResources = {};
 	for (const key in maxResources) {
 		const refillValue = GameAgent.getRefillValue(maxResources[key]);
-		const currentValue = playerCharactersGameState[playerName][key]?.current_value || 0;
+		const currentValue = playerCharactersGameState[playerId][key]?.current_value || 0;
 		newResources[key] = {
 			...maxResources[key],
 			current_value: refillValue >= currentValue ? refillValue : currentValue
@@ -52,7 +53,7 @@ export function refillResourcesFully(
 	// Prepare the new playerCharactersGameState with the updated value for playerName.
 	const updatedPlayerCharactersGameState = {
 		...playerCharactersGameState,
-		[playerName]: updatedPlayerResources
+		[playerId]: updatedPlayerResources
 	};
 
 	return {
@@ -63,7 +64,8 @@ export function refillResourcesFully(
 
 export function initializeMissingResources(
 	resources: Resources,
-	playerName: string,
+	playerId: string,
+	playerCharacterName: string,
 	gameActionsState: GameActionState[],
 	playerCharactersGameState: PlayerCharactersGameState
 ) {
@@ -71,13 +73,14 @@ export function initializeMissingResources(
 	const missingResources: Resources = Object.entries(resources)
 		.filter(
 			([resourceKey]) =>
-				playerCharactersGameState[playerName][resourceKey]?.current_value === undefined
+				playerCharactersGameState[playerId][resourceKey]?.current_value === undefined
 		)
 		.reduce((acc, [resourceKey, resource]) => ({ ...acc, [resourceKey]: resource }), {});
 	if (Object.keys(missingResources).length > 0) {
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
 			missingResources,
-			playerName,
+			playerId,
+			playerCharacterName,
 			gameActionsState,
 			playerCharactersGameState
 		);

@@ -8,7 +8,8 @@
 		type GameSettings,
 		type InventoryState,
 		type Item,
-		type PlayerCharactersGameState
+		type PlayerCharactersGameState,
+		type PlayerCharactersIdToNamesMap
 	} from '$lib/ai/agents/gameAgent';
 	import { onMount, tick } from 'svelte';
 	import { getTextForActionButton, handleError, stringifyPretty } from '$lib/util.svelte';
@@ -81,7 +82,10 @@
 		isNewSkill,
 		getSkillProgressionForDiceRoll,
 		getSkillProgressionForDifficulty,
-		getSkillIfApplicable
+		getSkillIfApplicable,
+		getFreeCharacterTechnicalId,
+		getCharacterTechnicalId,
+		addCharacterToPlayerCharactersIdToNamesMap
 	} from './characterLogic';
 	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
@@ -117,6 +121,7 @@
 		'characterStatsState',
 		initialCharacterStatsState
 	);
+
 	const skillsProgressionState = useLocalStorage<SkillsProgression>('skillsProgressionState', {});
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
@@ -135,7 +140,18 @@
 	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
 	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState', '');
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
+	let playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
+		'playerCharactersIdToNamesMapState',
+		{}
+	);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
+	const getCurrentCharacterGameState = () => {
+		return playerCharactersGameState[
+			getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
+				''
+		];
+	};
+
 	let levelUpState = useLocalStorage<{
 		buttonEnabled: boolean;
 		dialogOpened: boolean;
@@ -163,6 +179,10 @@
 	const eventEvaluationState = useLocalStorage<EventEvaluation>(
 		'eventEvaluationState',
 		initialEventEvaluationState
+	);
+	const playerCharacterIdState = $derived(
+		getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
+			''
 	);
 
 	//feature toggles
@@ -195,9 +215,20 @@
 		);
 
 		const currentCharacterName = characterState.value.name;
-
+		let characterId = getCharacterTechnicalId(
+			playerCharactersIdToNamesMapState.value,
+			currentCharacterName
+		);
+		if (!characterId) {
+			characterId = getFreeCharacterTechnicalId(playerCharactersIdToNamesMapState.value);
+			addCharacterToPlayerCharactersIdToNamesMap(
+				playerCharactersIdToNamesMapState.value,
+				characterId,
+				currentCharacterName
+			);
+		}
 		// Initialize the player's resource state if it doesn't exist.
-		playerCharactersGameState[currentCharacterName] = {
+		playerCharactersGameState[characterId] = {
 			...$state.snapshot(characterStatsState.value.resources),
 			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
 		};
@@ -218,6 +249,7 @@
 		//TODO what happens when character transformed, if stat existed before damage/heal will be applied
 		gameLogic.applyGameActionStates(
 			playerCharactersGameState,
+			playerCharactersIdToNamesMapState.value,
 			npcState.value,
 			inventoryState.value,
 			$state.snapshot(gameActionsState.value)
@@ -225,7 +257,8 @@
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } =
 			initializeMissingResources(
 				$state.snapshot(characterStatsState.value.resources),
-				$state.snapshot(characterState.value.name),
+				playerCharacterIdState,
+				characterState.value.name,
 				$state.snapshot(gameActionsState.value),
 				$state.snapshot(playerCharactersGameState)
 			);
@@ -265,9 +298,11 @@
 		});
 		if (gameActionsState.value.length === 0) return;
 		// Initialize all resources when the game is first started.
+
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
 			$state.snapshot(characterStatsState.value.resources),
-			$state.snapshot(characterState.value.name),
+			playerCharacterIdState,
+			characterState.value.name,
 			$state.snapshot(gameActionsState.value),
 			$state.snapshot(playerCharactersGameState)
 		);
@@ -285,6 +320,7 @@
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
+		playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
 		combatAgent: CombatAgent
 	): Promise<{
 		additionalStoryInput: string;
@@ -301,7 +337,7 @@
 		// Compute the determined combat actions and stats update.
 		const determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(
 			playerAction,
-			playerCharactersGameState[characterState.value.name],
+			playerCharactersGameState[playerCharacterIdState],
 			inventoryState,
 			allNpcsDetailsAsList,
 			customSystemInstruction,
@@ -313,6 +349,7 @@
 		// by passing a snapshot of the determined update.
 		gameLogic.applyGameActionState(
 			playerCharactersGameState,
+			playerCharactersIdToNamesMapState,
 			npcState,
 			inventoryState,
 			$state.snapshot(determinedActionsAndStatsUpdate)
@@ -345,8 +382,8 @@
 				characterStatsState.value.skills[skillName] += 1;
 				skillsProgressionState.value[skillName] = 0;
 				gameActionsState.value[gameActionsState.value.length].stats_update.push({
-					sourceId: characterState.value.name,
-					targetId: characterState.value.name,
+					sourceName: characterState.value.name,
+					targetName: characterState.value.name,
 					value: { result: skillName },
 					type: 'skill_increased'
 				});
@@ -436,6 +473,7 @@
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
+		playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
 		combatAgent: CombatAgent,
 		useDynamicCombat: boolean
 	): Promise<{
@@ -459,6 +497,7 @@
 					latestStoryMessages,
 					storyState,
 					playerCharactersGameState,
+					playerCharactersIdToNamesMapState,
 					combatAgent
 				);
 				//dynamic combat already handled the getNPCsHealthStatePrompt
@@ -474,7 +513,7 @@
 	//TODO sendAction should not be handled here so it can be externally called
 	async function checkGameEnded() {
 		const emptyResourceKeys = getEmptyCriticalResourceKeys(
-			playerCharactersGameState[characterState.value.name]
+			playerCharactersGameState[playerCharacterIdState]
 		);
 		if (!isGameEnded.value && emptyResourceKeys.length > 0) {
 			isGameEnded.value = true;
@@ -520,9 +559,10 @@
 
 	function checkForLevelUp() {
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
+
 		if (
 			neededXP &&
-			playerCharactersGameState[characterState.value.name]?.XP.current_value >= neededXP
+			playerCharactersGameState[playerCharacterIdState]?.XP.current_value >= neededXP
 		) {
 			levelUpState.value.buttonEnabled = true;
 		}
@@ -590,6 +630,7 @@
 			getLatestStoryMessages(),
 			storyState.value,
 			playerCharactersGameState,
+			playerCharactersIdToNamesMapState.value,
 			combatAgent,
 			useDynamicCombat.value
 		);
@@ -686,6 +727,7 @@
 				// Otherwise, apply the new state to the game state.
 				gameLogic.applyGameActionState(
 					playerCharactersGameState,
+					playerCharactersIdToNamesMapState.value,
 					npcState.value,
 					inventoryState.value,
 					$state.snapshot(newState)
@@ -862,10 +904,11 @@
 			button.className += ' ' + addClass;
 		}
 		button.textContent = getTextForActionButton(action);
+
 		if (
 			!isEnoughResource(
 				action,
-				playerCharactersGameState[characterState.value.name],
+				playerCharactersGameState[playerCharacterIdState],
 				inventoryState.value
 			)
 		) {
@@ -956,9 +999,11 @@
 			};
 		}
 		levelUpState.reset();
+
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
 			$state.snapshot(characterStatsState.value.resources),
-			$state.snapshot(characterState.value.name),
+			playerCharacterIdState,
+			characterState.value.name,
 			$state.snapshot(gameActionsState.value),
 			$state.snapshot(playerCharactersGameState)
 		);
@@ -1018,7 +1063,7 @@
 			if (
 				!isEnoughResource(
 					action,
-					playerCharactersGameState[characterState.value.name],
+					playerCharactersGameState[playerCharacterIdState],
 					inventoryState.value
 				)
 			) {
@@ -1099,21 +1144,27 @@
 				characterStatsAgent
 			);
 
-			const oldName = $state.snapshot(characterState.value.name);
 			if (transformedCharacter) {
+				addCharacterToPlayerCharactersIdToNamesMap(
+					playerCharactersIdToNamesMapState.value,
+					playerCharacterIdState,
+					transformedCharacter.name
+				);
 				characterState.value = transformedCharacter;
 			}
 			if (transformedCharacterStats) {
 				characterStatsState.value = transformedCharacterStats;
 			}
+
 			//apply new resources
-			playerCharactersGameState[characterState.value.name] = {
+			playerCharactersGameState[playerCharacterIdState] = {
 				...$state.snapshot(characterStatsState.value.resources),
-				XP: playerCharactersGameState[oldName].XP
+				XP: playerCharactersGameState[playerCharacterIdState].XP
 			};
 			const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
 				$state.snapshot(characterStatsState.value.resources),
-				$state.snapshot(characterState.value.name),
+				playerCharacterIdState,
+				characterState.value.name,
 				$state.snapshot(gameActionsState.value),
 				$state.snapshot(playerCharactersGameState)
 			);
@@ -1174,7 +1225,7 @@
 	<UseSpellsAbilitiesModal
 		bind:dialogRef={useSpellsAbilitiesModal}
 		playerName={characterState.value.name}
-		resources={playerCharactersGameState[characterState.value.name]}
+		resources={playerCharactersGameState[playerCharacterIdState]}
 		abilities={characterStatsState.value?.spells_and_abilities}
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
@@ -1191,7 +1242,7 @@
 	{#if itemForSuggestActionsState}
 		<SuggestedActionsModal
 			onclose={onSuggestItemActionClosed}
-			resources={playerCharactersGameState[characterState.value.name]}
+			resources={getCurrentCharacterGameState()}
 			{itemForSuggestActionsState}
 			{currentGameActionState}
 		/>
@@ -1205,7 +1256,7 @@
 		resetState={didAIProcessDiceRollActionState.value}
 	></DiceRollComponent>
 	<ResourcesComponent
-		resources={playerCharactersGameState[characterState.value.name]}
+		resources={getCurrentCharacterGameState()}
 		currentLevel={characterStatsState.value?.level}
 	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
@@ -1217,8 +1268,8 @@
 				gameUpdates={gameLogic
 					.renderStatUpdates(
 						$state.snapshot(gameActionState.stats_update),
-						playerCharactersGameState[characterState.value.name],
-						characterState.value.name
+						getCurrentCharacterGameState(),
+						playerCharactersIdToNamesMapState.value[playerCharacterIdState]
 					)
 					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
 			/>

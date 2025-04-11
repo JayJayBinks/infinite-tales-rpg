@@ -10,11 +10,16 @@
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
 	import type { AIConfig } from '$lib';
+	import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
+	import {
+		addCharacterToPlayerCharactersIdToNamesMap,
+		getCharacterTechnicalId
+	} from '../../characterLogic';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -30,7 +35,10 @@
 	let characterStateOverwrites: Partial<CharacterDescription> = $state({});
 	let resetImageState = $state(false);
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-
+	const playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
+		'playerCharactersIdToNamesMapState',
+		{}
+	);
 	let characterAgent: CharacterAgent;
 	onMount(() => {
 		characterAgent = new CharacterAgent(
@@ -43,6 +51,21 @@
 				aiConfigState.value?.useFallbackLlmState
 			)
 		);
+		let playerCharacterId = getCharacterTechnicalId(
+			playerCharactersIdToNamesMapState.value,
+			characterState.value.name
+		);
+		beforeNavigate(() => {
+			if (playerCharacterId) {
+				addCharacterToPlayerCharactersIdToNamesMap(
+					playerCharactersIdToNamesMapState.value,
+					playerCharacterId,
+					characterState.value.name
+				);
+			} else {
+				console.error('Player character id not found to add new name');
+			}
+		});
 	});
 
 	const onRandomize = async () => {
