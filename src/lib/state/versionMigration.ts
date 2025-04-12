@@ -1,9 +1,31 @@
+import type { GameActionState } from '$lib/ai/agents/gameAgent';
+
 export const migrateIfApplicable = (key: string, state: unknown) => {
 	if (!state) return state;
 	let migrated = migrate051to06(key, state);
 	migrated = migrate062to07(key, migrated);
+	migrated = migrate09to10(key, migrated);
 	return migrated;
 };
+
+function migrate09to10(key, state) {
+	if (key === 'gameActionsState') {
+		(state as GameActionState[]).forEach((action) => {
+			if (action.stats_update) {
+				action.stats_update.forEach((stat) => {
+					if (stat.targetName) {
+						return;
+					}
+					// @ts-expect-error no error here
+					stat.targetName = stat.targetId;
+					// @ts-expect-error no error here
+					stat.sourceName = stat.sourceId;
+				});
+			}
+		});
+	}
+	return state;
+}
 
 function migrate051to06(key, state) {
 	if (key === 'characterStatsState') {
