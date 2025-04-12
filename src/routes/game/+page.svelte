@@ -213,6 +213,10 @@
 			'characterStatsState',
 			$state.snapshot(characterStatsState.value)
 		);
+		gameActionsState.value = migrateIfApplicable(
+			'gameActionsState',
+			$state.snapshot(gameActionsState.value)
+		);
 
 		const currentCharacterName = characterState.value.name;
 		let characterId = getCharacterTechnicalId(
