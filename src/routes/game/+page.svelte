@@ -794,22 +794,25 @@
 							console.log(stringifyPretty(actions));
 							characterActionsState.value = actions;
 							renderGameState(currentGameActionState, actions);
-							// Add all skills from action to characterStatsState
-							if (gameSettingsState.value?.aiIntroducesSkills) {
-								actions.forEach((action: Action) => {
-									const skill = isNewSkill($state.snapshot(characterStatsState.value), action);
-									//TODO skill can be trait sometimes which we dont want?
-									if (skill) {
-										characterStatsState.value.skills[skill] = 0;
-									}
-								});
-							}
+							addSkillsIfApplicable(actions);
 						}
 					});
 				checkForLevelUp();
 			}
 		}
 	}
+
+	const addSkillsIfApplicable = (actions: Action[]) => {
+		if (gameSettingsState.value?.aiIntroducesSkills) {
+			actions.forEach((action: Action) => {
+				const skill = isNewSkill($state.snapshot(characterStatsState.value), action);
+				//TODO skill can be trait sometimes which we dont want?
+				if (skill) {
+					characterStatsState.value.skills[skill] = 0;
+				}
+			});
+		}
+	};
 
 	function getRelatedHistoryForStory() {
 		summaryAgent
@@ -958,7 +961,7 @@
 			$state.snapshot(relatedStoryHistoryState.value),
 			$state.snapshot(customMemoriesState.value)
 		);
-		const difficultyResponse = await actionAgent.generateSingleAction(
+		const generatedAction = await actionAgent.generateSingleAction(
 			action,
 			currentGameActionState,
 			getLatestStoryMessages(),
@@ -970,16 +973,17 @@
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills
 		);
-		if (difficultyResponse) {
-			for (const key in difficultyResponse) {
+		if (generatedAction) {
+			for (const key in generatedAction) {
 				if (action[key] === undefined) {
-					action[key] = difficultyResponse[key];
+					action[key] = generatedAction[key];
 				}
 			}
 		}
 		action.is_custom_action = true;
-		console.log('difficultyResponse', stringifyPretty(action));
+		console.log('generatedAction', stringifyPretty(action));
 		chosenActionState.value = action;
+		addSkillsIfApplicable([action]);
 		const abilityAddition =
 			'\n If this is a friendly action used on an enemy, play out the effect as described, even though the result may be unintended.' +
 			'\n Hostile NPCs stay hostile unless explicitly described otherwise by the actions effect.' +
@@ -1022,6 +1026,7 @@
 				generateActionFromCustomInput(action);
 			} else {
 				chosenActionState.value = $state.snapshot(action);
+				addSkillsIfApplicable([action]);
 				sendAction(action, mustRollDice(action, currentGameActionState.is_character_in_combat));
 			}
 		}
@@ -1058,9 +1063,10 @@
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills
 		);
-		console.log('action', stringifyPretty(generatedAction));
+		console.log('generatedAction', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };
 		chosenActionState.value = action;
+		addSkillsIfApplicable([action]);
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
