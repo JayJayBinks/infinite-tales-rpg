@@ -114,6 +114,7 @@ export class GameAgent {
 	 * @param playerCharactersGameState
 	 */
 	async generateStoryProgression(
+		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void,
 		action: Action,
 		additionalStoryInput: string,
 		customSystemInstruction: string,
@@ -154,7 +155,12 @@ export class GameAgent {
 			systemInstruction: gameAgent,
 			returnFallbackProperty: true
 		};
-		const newState = (await this.llm.generateContent(request)) as GameActionState;
+		const time = new Date().toLocaleTimeString();
+		console.log('Starting game agent:', time);
+		const newState = (await this.llm.generateContentStream(
+			request,
+			storyUpdateCallback
+		)) as GameActionState;
 		const { userMessage, modelMessage } = this.buildHistoryMessages(
 			playerActionTextForHistory,
 			newState

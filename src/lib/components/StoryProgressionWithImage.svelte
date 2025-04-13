@@ -15,16 +15,19 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
-	let rendered = (marked(story) as string)
-		.replaceAll('\\n', '<br>')
-		.replaceAll(' n ', '<br>')
-		.replaceAll('\\&quot;', '&quot;')
-		.replaceAll('```html', '')
-		.replaceAll('```', '')
-		.replaceAll('<html>', '')
-		.replaceAll('</html>', '')
-		.replaceAll('html', '')
-		.replaceAll('_', ' ');
+	let rendered = (toRender: string) => {
+		if (!toRender) return '';
+		return (marked(toRender) as string)
+			.replaceAll('\\n', '<br>')
+			.replaceAll(' n ', '<br>')
+			.replaceAll('\\&quot;', '&quot;')
+			.replaceAll('```html', '')
+			.replaceAll('```', '')
+			.replaceAll('<html>', '')
+			.replaceAll('</html>', '')
+			.replaceAll('html', '')
+			.replaceAll('_', ' ');
+	};
 </script>
 
 {#if !aiConfigState.value?.disableAudioState}
@@ -35,7 +38,7 @@
 <article class="prose prose-neutral m-auto mb-2 mt-2" style="color: unset">
 	<div id="story">
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		{@html rendered}
+		{@html rendered(story)}
 	</div>
 	<div id="gameUpdates mt-2">
 		{#each gameUpdates as gameUpdate}

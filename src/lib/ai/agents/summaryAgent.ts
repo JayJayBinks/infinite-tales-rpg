@@ -62,8 +62,10 @@ export class SummaryAgent {
 		if ((!additionalHistory || additionalHistory?.length === 0) && gameStates.length <= 20) {
 			return { relatedDetails: [] };
 		}
-		const jsonPrompt = 	'Always respond with following JSON! {"relatedDetails": [{"storyReference": string, "relevanceScore": decimal number; 0-1}] array length ' +
-			maxRelatedDetails + '}';
+		const jsonPrompt =
+			'Always respond with following JSON! {"relatedDetails": [{"storyReference": string, "relevanceScore": decimal number; 0-1}] array length ' +
+			maxRelatedDetails +
+			'}';
 		const agent =
 			'Scan the FULL STORY HISTORY and identify any SPECIFIC STORY REFERENCES from past events that are HIGHLY RELEVANT to the current STORY PROGRESSION. Focus on details that will help maintain consistency and plausibility.\n' +
 			'The RELEVANT REFERENCES must be only relevant to the current STORY PROGRESSION and not the whole story.\n' +
@@ -96,7 +98,7 @@ export class SummaryAgent {
 		};
 		const response = (await this.llm.generateContent(request)) as RelatedStoryHistory;
 		console.log(storyProgression, 'Related history returned ', stringifyPretty(response));
-		if(!response.relatedDetails) {
+		if (!response.relatedDetails) {
 			return { relatedDetails: [] };
 		}
 		return response;

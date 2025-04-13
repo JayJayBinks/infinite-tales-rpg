@@ -15,6 +15,7 @@ export interface LLMRequest {
 	tryAutoFixJSONError?: boolean;
 	model?: string;
 	returnFallbackProperty?: boolean;
+	stream?: boolean;
 }
 
 export interface LLMconfig {
@@ -40,6 +41,11 @@ export abstract class LLM {
 	}
 
 	abstract generateContent(request: LLMRequest): Promise<object | undefined>;
+
+	abstract generateContentStream(
+		request: LLMRequest,
+		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
+	): Promise<object | undefined>;
 
 	abstract getDefaultTemperature(): number;
 

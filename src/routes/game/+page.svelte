@@ -122,6 +122,7 @@
 		'characterStatsState',
 		initialCharacterStatsState
 	);
+	let storyChunkState = $state<string>('');
 
 	const skillsProgressionState = useLocalStorage<SkillsProgression>('skillsProgressionState', {});
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
@@ -710,6 +711,7 @@
 	) {
 		didAIProcessActionState.value = false;
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
+			onStoryStreamUpdate,
 			action,
 			additionalStoryInput,
 			customSystemInstruction.value,
@@ -768,6 +770,9 @@
 					id: gameActionsState.value.length
 				}
 			];
+			storyChunkState = '';
+			const time = new Date().toLocaleTimeString();
+			console.log('Complete parsing:', time);
 			await checkGameEnded();
 
 			if (!isGameEnded.value) {
@@ -1209,6 +1214,15 @@
 			spells_and_abilities: [...characterStatsState.value.spells_and_abilities, ...abilities]
 		};
 	};
+
+	function onStoryStreamUpdate(storyChunk: string, isComplete: boolean): void {
+		if (!storyChunkState) {
+			const time = new Date().toLocaleTimeString();
+			console.log('First story chunk received at:', time);
+		}
+		storyChunkState = storyChunk;
+		isAiGeneratingState = false;
+	}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -1299,6 +1313,9 @@
 				<small class="text-sm text-red-500"> For this action the fallback LLM was used.</small>
 			{/if}
 		{/each}
+		{#if storyChunkState}
+			<StoryProgressionWithImage story={storyChunkState} />
+		{/if}
 		{#if isGameEnded.value}
 			<StoryProgressionWithImage story={gameLogic.getGameEndedMessage()} />
 		{/if}

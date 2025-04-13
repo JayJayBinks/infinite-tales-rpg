@@ -25,7 +25,7 @@
 			onclick={() => {
 				dialog.close();
 				errorState.clear();
-				goto('/game/settings/ai')
+				goto('/game/settings/ai');
 			}}
 		>
 			Go To Settings

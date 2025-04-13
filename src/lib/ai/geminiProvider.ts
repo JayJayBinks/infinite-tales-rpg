@@ -23,6 +23,7 @@ import {
 	setIsGeminiFlashExpOverloaded,
 	setIsGeminiThinkingOverloaded
 } from '$lib/state/errorState.svelte';
+import { requestLLMJsonStream } from './jsonStreamHelper';
 
 const safetySettings: Array<SafetySetting> = [
 	{
@@ -74,6 +75,26 @@ export class GeminiProvider extends LLM {
 		return 2;
 	}
 
+	/**
+	 * Fetches a JSON stream, parses it, calls a callback for progressive
+	 * updates of the "story" field, and returns the full parsed JSON object.
+	 *
+	 * @param {LLMRequest} request The LLM request object.
+	 * @param {function(storyChunk: string, isComplete: boolean): void} storyUpdateCallback
+	 *   A function to be called with updates to the "story" field.
+	 *   - storyChunk: The story text parsed so far (or the complete text).
+	 *   - isComplete: True if this is the final update for the story, false otherwise.
+	 * @returns {Promise<object|null>} A promise that resolves with the fully parsed JSON object,
+	 *   or null if parsing fails or the stream is empty/invalid. Rejects on fetch errors.
+	 */
+	async generateContentStream(
+		request: LLMRequest,
+		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
+	): Promise<object | undefined> {
+		request.stream = true;
+		return requestLLMJsonStream(request, this, storyUpdateCallback);
+	}
+
 	async generateContent(request: LLMRequest): Promise<object | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
@@ -119,7 +140,11 @@ export class GeminiProvider extends LLM {
 					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
 				);
 			}
-			result = await model.generateContent({ contents, systemInstruction });
+			if (request.stream) {
+				return model.generateContentStream({ contents, systemInstruction });
+			} else {
+				result = await model.generateContent({ contents, systemInstruction });
+			}
 		} catch (e) {
 			if (e instanceof Error) {
 				if (e.message.includes('API key not valid')) {
