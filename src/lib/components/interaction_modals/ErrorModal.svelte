@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { errorState } from '$lib/state/errorState.svelte';
 	let dialog;
 	let { onclose } = $props();
@@ -19,6 +20,16 @@
 				Please retry the action or reload the page. If the error persists report it in the Discord.
 			</span>
 		{/if}
+		<button
+			class="btn btn-info mt-3"
+			onclick={() => {
+				dialog.close();
+				errorState.clear();
+				goto('/game/settings/ai')
+			}}
+		>
+			Go To Settings
+		</button>
 		<button
 			class="btn btn-info mt-3"
 			onclick={() => {
