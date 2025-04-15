@@ -930,7 +930,7 @@
 			return;
 		}
 		const buyLevelUpObject = GameAgent.getLevelUpCostObject(xpNeededForLevel, playerName, level);
-		playerCharactersGameState[playerName].XP.current_value -= xpNeededForLevel;
+		playerCharactersGameState[playerCharacterIdState].XP.current_value -= xpNeededForLevel;
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update.push(buyLevelUpObject);
 		levelUpState.value.dialogOpened = true;
 	}

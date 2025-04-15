@@ -31,18 +31,18 @@ export class ActionAgent {
 	): string => {
 		let newSkillRule = '';
 		if (newSkillsAllowed) {
-			newSkillRule = `Choose or create a skill that is more specific than the related_attribute but broad enough for multiple actions (e.g. 'Melee Combat' instead of 'Strength'). Use an exact same spelled EXISTING SKILL if applicable; otherwise, add a fitting new one.`;
+			newSkillRule = `Choose or create a single skill that is more specific than the related_attribute but broad enough for multiple actions (e.g. 'Melee Combat' instead of 'Strength'). Use an exact same spelled EXISTING SKILL if applicable; otherwise, add a fitting new one.`;
 		} else {
-			newSkillRule = `Choose a exact same spelled skill from EXISTING SKILLS or null if none fits; Never create a new skill;`;
+			newSkillRule = `Choose an exact same spelled single skill from EXISTING SKILLS or null if none fits; Never create a new skill;`;
 		}
 		return `
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
 					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation|Travel",
-					"related_attribute": "the attribute the dice is rolled for, must be an exact same spelled attribute from this list: ${attributes.join(', ')}; never create new Attributes!",
+					"related_attribute": "a single attribute the dice is rolled for, must be an exact same spelled attribute from this list: ${attributes.join(', ')}; never create new Attributes!",
 					"existing_related_skill_explanation": "Explanation if an existing skill is used instead of creating a new one",
-					"related_skill": "skill the dice is rolled for; ${newSkillRule} EXISTING SKILLS: ${skills.join(', ')}",
+					"related_skill": "a single skill the dice is rolled for; ${newSkillRule} EXISTING SKILLS: ${skills.join(', ')}",
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
 					"action_difficulty": "${Object.keys(ActionDifficulty)}",
 					"is_possible": true|false,
