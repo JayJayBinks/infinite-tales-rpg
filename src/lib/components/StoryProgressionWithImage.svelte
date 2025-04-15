@@ -6,12 +6,20 @@
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import type { AIConfig } from '$lib';
 
-	type Props = {
+	export type StoryProgressionWithImageProps = {
+		storyTextRef?;
 		story: string;
 		gameUpdates?: Array<RenderedGameUpdate | undefined>;
 		imagePrompt?: string;
+		stream_finished?: boolean;
 	};
-	let { story, gameUpdates = [], imagePrompt = '' }: Props = $props();
+	let {
+		storyTextRef = $bindable(),
+		story,
+		gameUpdates = [],
+		imagePrompt = '',
+		stream_finished = true
+	}: StoryProgressionWithImageProps = $props();
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
@@ -32,10 +40,17 @@
 
 {#if !aiConfigState.value?.disableAudioState}
 	<div class="mt-4 flex">
-		<TTSComponent text={story.replaceAll('_', ' ')} voice={ttsVoiceState.value}></TTSComponent>
+		<TTSComponent
+			text={stream_finished ? story?.replaceAll('_', ' ') : ''}
+			voice={ttsVoiceState.value}
+		></TTSComponent>
 	</div>
 {/if}
-<article class="prose prose-neutral m-auto mb-2 mt-2" style="color: unset">
+<article
+	bind:this={storyTextRef}
+	class="prose prose-neutral m-auto mb-2 mt-2 scroll-mt-24"
+	style="color: unset"
+>
 	<div id="story">
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 		{@html rendered(story)}
@@ -48,6 +63,6 @@
 		{/each}
 	</div>
 </article>
-{#if imagePrompt && !aiConfigState.value?.disableImagesState}
+{#if imagePrompt?.trim() && !aiConfigState.value?.disableImagesState}
 	<AIGeneratedImage showLoadingSpinner={false} {imagePrompt} showGenerateButton={false} />
 {/if}

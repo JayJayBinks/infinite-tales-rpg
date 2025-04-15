@@ -18,7 +18,7 @@
 	} = $props();
 
 	const initialImageState = {
-		prompt: imagePrompt,
+		prompt: imagePrompt?.trim(),
 		isGenerating: false,
 		link: {
 			title:
@@ -32,7 +32,7 @@
 	};
 	let imageState = $state({ value: { ...initialImageState } });
 	if (storageKey) {
-		imageState = useLocalStorage(storageKey, { ...initialImageState, prompt: imagePrompt });
+		imageState = useLocalStorage(storageKey, { ...initialImageState, prompt: imagePrompt?.trim() });
 	}
 
 	$effect(() => {
@@ -46,7 +46,7 @@
 	});
 
 	function replaceWithAiGenerated() {
-		if (imageState.value.prompt) {
+		if (imageState.value.prompt?.trim()) {
 			imageState.value.isGenerating = true;
 			const aiGeneratedImage = new Image();
 			//wait till ai has generated image

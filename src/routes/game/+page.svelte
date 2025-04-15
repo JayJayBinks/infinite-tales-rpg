@@ -14,7 +14,6 @@
 	import { onMount, tick } from 'svelte';
 	import { getTextForActionButton, handleError, stringifyPretty } from '$lib/util.svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import StoryProgressionWithImage from '$lib/components/StoryProgressionWithImage.svelte';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import {
@@ -90,6 +89,9 @@
 	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
 	import SimpleDiceRoller from '$lib/components/interaction_modals/dice/SimpleDiceRoller.svelte';
+	import StoryProgressionWithImage, {
+		type StoryProgressionWithImageProps
+	} from '$lib/components/StoryProgressionWithImage.svelte';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
 
@@ -167,6 +169,34 @@
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
 			({} as GameActionState)
 	);
+
+	const playerCharacterIdState = $derived(
+		getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
+			''
+	);
+	const getRenderedGameUpdates = (gameState: GameActionState, playerId: string) =>
+		gameState &&
+		gameLogic
+			.renderStatUpdates(
+				$state.snapshot(gameState.stats_update),
+				getCurrentCharacterGameState(),
+				playerCharactersIdToNamesMapState.value[playerId]
+			)
+			.concat(gameLogic.renderInventoryUpdate($state.snapshot(gameState.inventory_update)));
+
+	let showXLastStoryPrgressions = $state<number>(0);
+	const latestStoryProgressionState = $derived<StoryProgressionWithImageProps>({
+		story: storyChunkState || currentGameActionState.story,
+		gameUpdates: storyChunkState
+			? []
+			: getRenderedGameUpdates(currentGameActionState, playerCharacterIdState),
+		imagePrompt: storyChunkState
+			? ''
+			: [currentGameActionState.image_prompt, storyState.value.general_image_prompt].join(' '),
+		stream_finished: !storyChunkState
+	});
+	let latestStoryProgressionTextComponent;
+
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
@@ -182,10 +212,6 @@
 	const eventEvaluationState = useLocalStorage<EventEvaluation>(
 		'eventEvaluationState',
 		initialEventEvaluationState
-	);
-	const playerCharacterIdState = $derived(
-		getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
-			''
 	);
 
 	//feature toggles
@@ -770,9 +796,9 @@
 					id: gameActionsState.value.length
 				}
 			];
-			storyChunkState = '';
 			const time = new Date().toLocaleTimeString();
 			console.log('Complete parsing:', time);
+			storyChunkState = '';
 			await checkGameEnded();
 
 			if (!isGameEnded.value) {
@@ -850,6 +876,7 @@
 				}
 				openDiceRollDialog();
 			} else {
+				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
 
 				// Prepare the additional story input (including combat and chapter info)
@@ -1216,7 +1243,8 @@
 	};
 
 	function onStoryStreamUpdate(storyChunk: string, isComplete: boolean): void {
-		if (!storyChunkState) {
+		if (!storyChunkState && !isComplete) {
+			latestStoryProgressionTextComponent.scrollIntoView();
 			const time = new Date().toLocaleTimeString();
 			console.log('First story chunk received at:', time);
 		}
@@ -1296,25 +1324,29 @@
 		currentLevel={characterStatsState.value?.level}
 	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
+		<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
+			>Show Previous Story
+		</button>
 		<!-- For proper updating, need to use gameActionsState.id as each block id -->
-		{#each gameActionsState.value.slice(-3) as gameActionState (gameActionState.id)}
+		{#each !latestStoryProgressionState.stream_finished ? [currentGameActionState] : gameActionsState.value.slice(-2 + showXLastStoryPrgressions * -1, -1) as gameActionState (gameActionState.id)}
 			<StoryProgressionWithImage
 				story={gameActionState.story}
 				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
-				gameUpdates={gameLogic
-					.renderStatUpdates(
-						$state.snapshot(gameActionState.stats_update),
-						getCurrentCharacterGameState(),
-						playerCharactersIdToNamesMapState.value[playerCharacterIdState]
-					)
-					.concat(gameLogic.renderInventoryUpdate(gameActionState.inventory_update))}
+				gameUpdates={getRenderedGameUpdates(gameActionState, playerCharacterIdState)}
 			/>
 			{#if gameActionState['fallbackUsed']}
 				<small class="text-sm text-red-500"> For this action the fallback LLM was used.</small>
 			{/if}
 		{/each}
-		{#if storyChunkState}
-			<StoryProgressionWithImage story={storyChunkState} />
+		<StoryProgressionWithImage
+			bind:storyTextRef={latestStoryProgressionTextComponent}
+			story={latestStoryProgressionState.story}
+			imagePrompt={latestStoryProgressionState.imagePrompt}
+			gameUpdates={latestStoryProgressionState.gameUpdates}
+			stream_finished={latestStoryProgressionState.stream_finished}
+		/>
+		{#if latestStoryProgressionState.stream_finished && currentGameActionState['fallbackUsed']}
+			<small class="text-sm text-red-500"> For this action the fallback LLM was used.</small>
 		{/if}
 		{#if isGameEnded.value}
 			<StoryProgressionWithImage story={gameLogic.getGameEndedMessage()} />
