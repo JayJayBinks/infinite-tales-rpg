@@ -1,5 +1,4 @@
 import { handleError } from '../util.svelte';
-import { type GenerationConfig } from '@google/generative-ai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
 import {
 	LLM,
@@ -9,8 +8,9 @@ import {
 	LANGUAGE_PROMPT
 } from '$lib/ai/llm';
 import isPlainObject from 'lodash.isplainobject';
+import type { GenerateContentConfig } from '@google/genai';
 
-export const defaultGPT4JsonConfig: GenerationConfig = {
+export const defaultGPT4JsonConfig: GenerateContentConfig = {
 	temperature: 1.1,
 	topP: 0.95,
 	topK: 40,
@@ -19,6 +19,7 @@ export const defaultGPT4JsonConfig: GenerationConfig = {
 };
 
 export class PollinationsProvider extends LLM {
+
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
 	model: string;
 	fallbackLLM?: LLM;
@@ -35,6 +36,10 @@ export class PollinationsProvider extends LLM {
 
 	getMaxTemperature(): number {
 		return 2;
+	}
+
+	generateContentStream(request: LLMRequest, storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void): Promise<object | undefined> {
+		throw new Error('Method not implemented.');
 	}
 
 	async generateContent(request: LLMRequest): Promise<object | undefined> {
@@ -74,9 +79,9 @@ export class PollinationsProvider extends LLM {
 				throw new Error(await response.text());
 			}
 			result = response;
-		} catch (e) {
+		} catch (e: any) {
 			const fallbackMessage = `Fallback Pollinations Gemini Thinking failed... You can go to the settings and enable GPT-4o-mini as fallback.`;
-			e.message = fallbackMessage + ' ' + e.message;
+			e.message = fallbackMessage + ' ' + (e as Error).message;
 			if (this.fallbackLLM) {
 				console.log('Pollinations Fallback LLM for error: ', this.model, e.message);
 				const fallbackResult = await this.fallbackLLM.generateContent(request);

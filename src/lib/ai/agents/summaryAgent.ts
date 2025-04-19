@@ -1,6 +1,7 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { GameActionState } from './gameAgent';
+import { GEMINI_MODELS } from '../geminiProvider';
 
 export type RelatedStoryHistory = {
 	relatedDetails: { storyReference: string; relevanceScore: number }[];
@@ -38,7 +39,8 @@ export class SummaryAgent {
 		const request: LLMRequest = {
 			userMessage: 'Summarize the following story: \n' + stringifyPretty(toSummarize),
 			systemInstruction: agent,
-			temperature: 1
+			temperature: 1,
+			model: GEMINI_MODELS.FLASH_THINKING_2_0
 		};
 		const response = (await this.llm.generateContent(request)) as {
 			story: string;
@@ -93,7 +95,7 @@ export class SummaryAgent {
 			userMessage: 'STORY PROGRESSION:\n' + storyProgression + '\n\n' + jsonPrompt,
 			systemInstruction: agent,
 			historyMessages: consideredHistory,
-			model: 'gemini-2.0-flash',
+			model: GEMINI_MODELS.FLASH_2_0,
 			temperature: 0.1
 		};
 		const response = (await this.llm.generateContent(request)) as RelatedStoryHistory;

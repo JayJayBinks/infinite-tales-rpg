@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { beforeNavigate } from '$app/navigation';
 	import {
 		type Action,
 		defaultGameSettings,
@@ -221,6 +222,13 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
+		beforeNavigate(({ cancel }) => {
+			if(!didAIProcessActionState.value) {
+				if(!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
+					cancel();
+				}
+			}
+		});
 		const llm = LLMProvider.provideLLM(
 			{
 				temperature: temperatureState.value,
@@ -735,7 +743,6 @@
 			>;
 		}
 	) {
-		didAIProcessActionState.value = false;
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 			onStoryStreamUpdate,
 			action,
@@ -749,7 +756,6 @@
 			relatedHistory,
 			gameSettingsState.value
 		);
-		didAIProcessActionState.value = true;
 
 		if (newState?.story) {
 			// If combat provided a specific stat update, use it.
@@ -894,13 +900,14 @@
 					);
 				}
 				// Process the AI story progression and update game state
+				didAIProcessActionState.value = false;
 				await processStoryProgression(
 					action,
 					finalAdditionalStoryInput,
 					relatedActionHistoryState.value,
 					combatAndNPCState
 				);
-
+				didAIProcessActionState.value = true;
 				isAiGeneratingState = false;
 			}
 		} catch (e) {
@@ -1324,10 +1331,10 @@
 		currentLevel={characterStatsState.value?.level}
 	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
+		{#if currentGameActionState}
 		<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
 			>Show Previous Story
 		</button>
-		<!-- For proper updating, need to use gameActionsState.id as each block id -->
 		{#each !latestStoryProgressionState.stream_finished ? [currentGameActionState] : gameActionsState.value.slice(-2 + showXLastStoryPrgressions * -1, -1) as gameActionState (gameActionState.id)}
 			<StoryProgressionWithImage
 				story={gameActionState.story}
@@ -1338,6 +1345,7 @@
 				<small class="text-sm text-red-500"> For this action the fallback LLM was used.</small>
 			{/if}
 		{/each}
+		{/if}
 		<StoryProgressionWithImage
 			bind:storyTextRef={latestStoryProgressionTextComponent}
 			story={latestStoryProgressionState.story}

@@ -1,4 +1,4 @@
-import type { GenerationConfig, SafetySetting } from '@google/generative-ai';
+import type { GenerateContentConfig, SafetySetting } from '@google/genai';
 
 export interface LLMMessage {
 	role: 'user' | 'model';
@@ -10,7 +10,7 @@ export interface LLMRequest {
 	historyMessages?: Array<LLMMessage>;
 	systemInstruction?: Array<string> | string;
 	temperature?: number;
-	generationConfig?: GenerationConfig;
+	config?: GenerateContentConfig;
 	safetySettings?: Array<SafetySetting>;
 	tryAutoFixJSONError?: boolean;
 	model?: string;
@@ -21,7 +21,7 @@ export interface LLMRequest {
 export interface LLMconfig {
 	provider?: 'gemini' | 'pollinations';
 	temperature?: number;
-	generationConfig?: GenerationConfig;
+	config?: GenerateContentConfig;
 	language?: string;
 	systemInstruction?: string[] | string;
 	tryAutoFixJSONError?: boolean;

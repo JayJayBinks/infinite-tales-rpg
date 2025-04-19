@@ -1,14 +1,14 @@
 import { handleError } from '../util.svelte';
 import {
 	type Content,
-	type GenerateContentResult,
+	type GenerateContentResponse,
 	type GenerationConfig,
-	GoogleGenerativeAI,
+	GoogleGenAI,
 	HarmBlockThreshold,
 	HarmCategory,
 	type Part,
 	type SafetySetting
-} from '@google/generative-ai';
+} from '@google/genai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
 import {
 	LLM,
@@ -25,7 +25,17 @@ import {
 } from '$lib/state/errorState.svelte';
 import { requestLLMJsonStream } from './jsonStreamHelper';
 
+export const GEMINI_MODELS = {
+	FLASH_THINKING_2_5: 'gemini-2.5-flash-preview-04-17',
+	FLASH_THINKING_2_0: 'gemini-2.0-flash-thinking-exp-01-21',
+	FLASH_2_0: 'gemini-2.0-flash'
+};
+
 const safetySettings: Array<SafetySetting> = [
+	{
+		category: HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+		threshold: HarmBlockThreshold.BLOCK_NONE
+	},
 	{
 		category: HarmCategory.HARM_CATEGORY_HARASSMENT,
 		threshold: HarmBlockThreshold.BLOCK_NONE
@@ -53,7 +63,7 @@ export const defaultGeminiJsonConfig: GenerationConfig = {
 };
 
 export class GeminiProvider extends LLM {
-	genAI: GoogleGenerativeAI;
+	genAI: GoogleGenAI;
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
 	fallbackLLM?: LLM;
 
@@ -62,7 +72,7 @@ export class GeminiProvider extends LLM {
 		if (!llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
 		}
-		this.genAI = new GoogleGenerativeAI(this.llmConfig.apiKey || '');
+		this.genAI = new GoogleGenAI({ apiKey: this.llmConfig.apiKey || '' });
 		this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
 		this.fallbackLLM = fallbackLLM;
 	}
@@ -118,32 +128,34 @@ export class GeminiProvider extends LLM {
 			);
 		}
 
-		const model = this.genAI.getGenerativeModel({
-			model: request.model || this.llmConfig.model || 'gemini-2.0-flash-thinking-exp',
-			generationConfig: {
-				...this.llmConfig.generationConfig,
-				...request.generationConfig,
-				temperature
-			},
-			safetySettings
-		});
+		const modelToUse =  request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_THINKING_2_5;
 		if (this.llmConfig.language) {
 			const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
-			systemInstruction.parts.push({ text: languageInstruction });
+			systemInstruction?.parts?.push({ text: languageInstruction });
 		}
-
-		let result: GenerateContentResult;
+		let result: GenerateContentResponse;
 		try {
-			if (this.fallbackLLM && model.model.includes('thinking') && getIsGeminiThinkingOverloaded()) {
+			if (this.fallbackLLM && modelToUse.includes('thinking') && getIsGeminiThinkingOverloaded()) {
 				//fallback early to avoid waiting for the response
 				throw new Error(
 					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
 				);
 			}
+			const genAIRequest = {
+				model: modelToUse,
+				config: {
+					...this.llmConfig.config,
+					...request.config,
+					safetySettings,
+					systemInstruction,
+					temperature
+				},
+				contents: contents
+			}
 			if (request.stream) {
-				return model.generateContentStream({ contents, systemInstruction });
+				return this.genAI.models.generateContentStream(genAIRequest);
 			} else {
-				result = await model.generateContent({ contents, systemInstruction });
+				result = await this.genAI.models.generateContent(genAIRequest);
 			}
 		} catch (e) {
 			if (e instanceof Error) {
@@ -152,7 +164,7 @@ export class GeminiProvider extends LLM {
 					return undefined;
 				}
 				if (e.message.includes('503') || e.message.includes('500')) {
-					if (model.model?.includes('thinking')) {
+					if (modelToUse.includes('thinking')) {
 						setIsGeminiThinkingOverloaded(true);
 					} else {
 						setIsGeminiFlashExpOverloaded(true);
@@ -181,8 +193,8 @@ export class GeminiProvider extends LLM {
 		}
 		try {
 			let json: string;
-			if (result.response?.candidates) {
-				json = result.response.candidates[0].content.parts[0].text as string;
+			if (result.text) {
+				json = result.text;
 			} else {
 				handleError('Gemini did not send a response...');
 				return undefined;
