@@ -56,9 +56,6 @@ const safetySettings: Array<SafetySetting> = [
 
 export const defaultGeminiJsonConfig: GenerationConfig = {
 	temperature: 1,
-	topP: 0.95,
-	topK: 40,
-	maxOutputTokens: 8192,
 	responseMimeType: 'text/plain'
 };
 
@@ -105,6 +102,10 @@ export class GeminiProvider extends LLM {
 		return requestLLMJsonStream(request, this, storyUpdateCallback);
 	}
 
+	isThinkingModel(model: string): boolean {
+		return model.includes('thinking') || model === GEMINI_MODELS.FLASH_THINKING_2_5;
+	}
+
 	async generateContent(request: LLMRequest): Promise<object | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
@@ -135,7 +136,7 @@ export class GeminiProvider extends LLM {
 		}
 		let result: GenerateContentResponse;
 		try {
-			if (this.fallbackLLM && modelToUse.includes('thinking') && getIsGeminiThinkingOverloaded()) {
+			if (this.fallbackLLM && this.isThinkingModel(modelToUse) && getIsGeminiThinkingOverloaded()) {
 				//fallback early to avoid waiting for the response
 				throw new Error(
 					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
@@ -164,7 +165,7 @@ export class GeminiProvider extends LLM {
 					return undefined;
 				}
 				if (e.message.includes('503') || e.message.includes('500')) {
-					if (modelToUse.includes('thinking')) {
+					if (this.isThinkingModel(modelToUse)) {
 						setIsGeminiThinkingOverloaded(true);
 					} else {
 						setIsGeminiFlashExpOverloaded(true);
