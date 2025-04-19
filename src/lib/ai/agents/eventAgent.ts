@@ -1,6 +1,7 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 import type { Ability } from './characterStatsAgent';
+import { GEMINI_MODELS } from '../geminiProvider';
 
 export const initialCharacterTransformState: CharacterChangedInto = {
 	changed_into: '',
@@ -83,7 +84,7 @@ export class EventAgent {
 		const request: LLMRequest = {
 			userMessage: 'Evaluate the events for STORY PROGRESSION:\n' + storyHistory.join('\n'),
 			systemInstruction: agent,
-			model: 'gemini-2.0-flash',
+			model: GEMINI_MODELS.FLASH_2_0,
 			temperature: 0.1
 		};
 		const response = await this.llm.generateContent(request);

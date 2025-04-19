@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { beforeNavigate } from '$app/navigation';
 	import {
 		type Action,
 		defaultGameSettings,
@@ -221,6 +222,13 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
+		beforeNavigate(({ cancel }) => {
+			if(!didAIProcessActionState.value) {
+				if(!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
+					cancel();
+				}
+			}
+		});
 		const llm = LLMProvider.provideLLM(
 			{
 				temperature: temperatureState.value,
@@ -735,7 +743,6 @@
 			>;
 		}
 	) {
-		didAIProcessActionState.value = false;
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 			onStoryStreamUpdate,
 			action,
@@ -749,7 +756,6 @@
 			relatedHistory,
 			gameSettingsState.value
 		);
-		didAIProcessActionState.value = true;
 
 		if (newState?.story) {
 			// If combat provided a specific stat update, use it.
@@ -894,13 +900,14 @@
 					);
 				}
 				// Process the AI story progression and update game state
+				didAIProcessActionState.value = false;
 				await processStoryProgression(
 					action,
 					finalAdditionalStoryInput,
 					relatedActionHistoryState.value,
 					combatAndNPCState
 				);
-
+				didAIProcessActionState.value = true;
 				isAiGeneratingState = false;
 			}
 		} catch (e) {
