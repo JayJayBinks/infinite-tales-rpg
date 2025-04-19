@@ -241,7 +241,7 @@ export class GameAgent {
 				'\n' +
 				stringifyPretty(characterState),
 			"The following are the character's CURRENT resources, consider it in your response\n" +
-				stringifyPretty(playerCharactersGameState),
+				stringifyPretty(Object.values(playerCharactersGameState)),
 			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
 				stringifyPretty(inventoryState)
 		];
