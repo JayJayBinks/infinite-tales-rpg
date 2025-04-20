@@ -64,11 +64,10 @@ export async function requestLLMJsonStream(
 		};
 	});
 
-	const geminiStreamResult = (await llm.generateContent(request)) as AsyncGenerator<GenerateContentResponse>;
-	if (
-		!geminiStreamResult ||
-		typeof geminiStreamResult[Symbol.asyncIterator] !== 'function'
-	) {
+	const geminiStreamResult = (await llm.generateContent(
+		request
+	)) as AsyncGenerator<GenerateContentResponse>;
+	if (!geminiStreamResult || typeof geminiStreamResult[Symbol.asyncIterator] !== 'function') {
 		console.error('Failed to get a valid stream from generateContent.');
 		throw new Error('Invalid stream response from LLM.');
 	}
@@ -82,9 +81,7 @@ export async function requestLLMJsonStream(
 			accumulatedRawText += chunkText;
 			if (chunkText.length === 0) continue; // Skip empty chunks
 
-			let textToProcess = chunkText; // The current chunk's text
-			let consumedLength = 0; // How much of textToProcess is consumed in this iteration
-
+			const textToProcess = chunkText; // The current chunk's text
 			if (!jsonStarted) {
 				// Combine pending prefix with current chunk for searching
 				const effectiveSearchText = pendingPrefixCheck + textToProcess;
@@ -119,7 +116,6 @@ export async function requestLLMJsonStream(
 						0,
 						jsonContentStartIndexInEffective - pendingPrefixCheck.length
 					);
-					consumedLength = jsonContentStartIndexInOriginal; // We consumed text up to the start of JSON
 					pendingPrefixCheck = ''; // Clear the pending buffer
 					console.log('--> JSON started via ```json marker.');
 				} else {
@@ -134,7 +130,6 @@ export async function requestLLMJsonStream(
 							0,
 							jsonContentStartIndexInEffective - pendingPrefixCheck.length
 						);
-						consumedLength = jsonContentStartIndexInOriginal; // Consumed text up to the brace
 						pendingPrefixCheck = ''; // Clear the pending buffer
 						console.log("--> JSON started via fallback '{' detection.");
 					} else {
@@ -153,12 +148,22 @@ export async function requestLLMJsonStream(
 								break;
 							}
 						}
-						if (pendingPrefixCheck.length > 0 && !validPrefix && !pendingPrefixCheck.includes('{')) {
+						if (
+							pendingPrefixCheck.length > 0 &&
+							!validPrefix &&
+							!pendingPrefixCheck.includes('{')
+						) {
 							// If the end doesn't contain { and isn't a prefix of ```json, reset it
 							// Keep the last char in case it's the start of {
-							pendingPrefixCheck = pendingPrefixCheck.slice(-1).includes('{') ? pendingPrefixCheck.slice(-1) : '';
+							pendingPrefixCheck = pendingPrefixCheck.slice(-1).includes('{')
+								? pendingPrefixCheck.slice(-1)
+								: '';
 						} else {
-							pendingPrefixCheck = validPrefix || (pendingPrefixCheck.includes('{') ? pendingPrefixCheck.substring(pendingPrefixCheck.indexOf('{')) : '');
+							pendingPrefixCheck =
+								validPrefix ||
+								(pendingPrefixCheck.includes('{')
+									? pendingPrefixCheck.substring(pendingPrefixCheck.indexOf('{'))
+									: '');
 						}
 
 						// console.log("Marker/Brace not found, pending prefix:", pendingPrefixCheck); // Debugging
@@ -225,13 +230,16 @@ export async function requestLLMJsonStream(
 					// This is risky, might cut valid JSON if ``` appeared legitimately earlier
 					// cleanedJsonText = cleanedJsonText.substring(0, cleanedJsonText.lastIndexOf(endMarker)).trimEnd();
 				} else {
-					console.warn("Trailing '```' marker was expected (due to ```json start) but not found at the end.");
+					console.warn(
+						"Trailing '```' marker was expected (due to ```json start) but not found at the end."
+					);
 				}
 			}
 		} else {
-            console.log("--> Skipping trailing '```' removal because initial '```json' marker was not found.");
-        }
-
+			console.log(
+				"--> Skipping trailing '```' removal because initial '```json' marker was not found."
+			);
+		}
 
 		// 2. Final trim
 		cleanedJsonText = cleanedJsonText.trim();
@@ -239,18 +247,25 @@ export async function requestLLMJsonStream(
 		// 3. Basic validation & Final Parse
 		if (cleanedJsonText.length === 0) {
 			if (accumulatedRawText.trim().length > 0) {
-				console.warn("Cleaned JSON text is empty, but raw text was not. Check marker/brace detection and stripping logic.");
-				console.warn("Raw text sample:", accumulatedRawText.substring(0, 200) + (accumulatedRawText.length > 200 ? '...' : ''));
+				console.warn(
+					'Cleaned JSON text is empty, but raw text was not. Check marker/brace detection and stripping logic.'
+				);
+				console.warn(
+					'Raw text sample:',
+					accumulatedRawText.substring(0, 200) + (accumulatedRawText.length > 200 ? '...' : '')
+				);
 			} else {
-				console.warn("Cleaned JSON text is empty, and raw text was also empty or whitespace.");
+				console.warn('Cleaned JSON text is empty, and raw text was also empty or whitespace.');
 			}
 			storyUpdateCallback('', true); // Ensure final empty update
 			return undefined;
 		}
 
 		if (!cleanedJsonText.startsWith('{') || !cleanedJsonText.endsWith('}')) {
-            // This can happen with partial parses if emitPartialValues is on and stream cuts early
-			console.warn("Cleaned text doesn't start with '{' or end with '}'. Final parse might fail or represent incomplete JSON.");
+			// This can happen with partial parses if emitPartialValues is on and stream cuts early
+			console.warn(
+				"Cleaned text doesn't start with '{' or end with '}'. Final parse might fail or represent incomplete JSON."
+			);
 		}
 
 		try {
@@ -272,8 +287,8 @@ export async function requestLLMJsonStream(
 			console.error(
 				'Cleaned JSON Text (first/last 100 chars):\n',
 				cleanedJsonText.substring(0, 100) +
-				(cleanedJsonText.length > 200 ? '\n...\n' : '\n') +
-				cleanedJsonText.substring(Math.max(100, cleanedJsonText.length - 100))
+					(cleanedJsonText.length > 200 ? '\n...\n' : '\n') +
+					cleanedJsonText.substring(Math.max(100, cleanedJsonText.length - 100))
 			);
 			// Log more context if it's small
 			if (cleanedJsonText.length <= 500) {
@@ -289,8 +304,10 @@ export async function requestLLMJsonStream(
 
 			try {
 				// Try sending error message via callback, but use raw text if JSON is unusable
-				const errorStory = accumulatedJsonText.includes('"story"') ? (finalJsonObject?.story || '') : `<p>Error: Failed to parse the final JSON response. Raw output might contain partial story.</p><pre>${accumulatedRawText.substring(0,500)}...</pre>`;
-				storyUpdateCallback(errorStory , true);
+				const errorStory = accumulatedJsonText.includes('"story"')
+					? finalJsonObject?.story || ''
+					: `<p>Error: Failed to parse the final JSON response. Raw output might contain partial story.</p><pre>${accumulatedRawText.substring(0, 500)}...</pre>`;
+				storyUpdateCallback(errorStory, true);
 			} catch (cbError) {
 				console.error(
 					'Error calling storyUpdateCallback during final parse error handling:',

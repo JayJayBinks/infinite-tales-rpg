@@ -40,7 +40,11 @@
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
 	import { CombatAgent } from '$lib/ai/agents/combatAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import type { LLMMessage } from '$lib/ai/llm';
+	import {
+		initialSystemInstructionsState,
+		type LLMMessage,
+		type SystemInstructionsState
+	} from '$lib/ai/llm';
 	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
 	import {
 		CharacterAgent,
@@ -99,7 +103,10 @@
 	//ai state
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const temperatureState = useLocalStorage<number>('temperatureState');
-	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const systemInstructionsState = useLocalStorage<SystemInstructionsState>(
+		'systemInstructionsState',
+		initialSystemInstructionsState
+	);
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let isAiGeneratingState = $state(false);
 	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
@@ -196,7 +203,7 @@
 			: [currentGameActionState.image_prompt, storyState.value.general_image_prompt].join(' '),
 		stream_finished: !storyChunkState
 	});
-	let latestStoryProgressionTextComponent;
+	let latestStoryProgressionTextComponent = $state<HTMLElement | undefined>();
 
 	let actionsTextForTTS: string = $state('');
 	//TODO const lastCombatSinceXActions: number = $derived(
@@ -223,8 +230,8 @@
 
 	onMount(async () => {
 		beforeNavigate(({ cancel }) => {
-			if(!didAIProcessActionState.value) {
-				if(!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
+			if (!didAIProcessActionState.value) {
+				if (!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
 					cancel();
 				}
 			}
@@ -314,7 +321,8 @@
 				characterState.value,
 				characterStatsState.value,
 				inventoryState.value,
-				customSystemInstruction.value,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.actionAgentInstruction,
 				await getRelatedHistory(
 					summaryAgent,
 					undefined,
@@ -358,6 +366,7 @@
 		npcState: NPCState,
 		inventoryState: InventoryState,
 		customSystemInstruction: string,
+		customCombatAgentInstruction: string,
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
@@ -382,6 +391,7 @@
 			inventoryState,
 			allNpcsDetailsAsList,
 			customSystemInstruction,
+			customCombatAgentInstruction,
 			latestStoryMessages,
 			storyState
 		);
@@ -511,6 +521,7 @@
 		npcState: NPCState,
 		inventoryState: InventoryState,
 		customSystemInstruction: string,
+		customCombatAgentInstruction: string,
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
@@ -535,6 +546,7 @@
 					npcState,
 					inventoryState,
 					customSystemInstruction,
+					customCombatAgentInstruction,
 					latestStoryMessages,
 					storyState,
 					playerCharactersGameState,
@@ -586,7 +598,7 @@
 					getLatestStoryMessages(),
 					newNPCs,
 					characterStatsState.value,
-					customSystemInstruction.value
+					systemInstructionsState.value.generalSystemInstruction
 				)
 				.then((newState: NPCState) => {
 					if (newState) {
@@ -667,7 +679,8 @@
 			currentGameActionState,
 			npcState.value,
 			inventoryState.value,
-			customSystemInstruction.value,
+			systemInstructionsState.value.generalSystemInstruction,
+			systemInstructionsState.value.combatAgentInstruction,
 			getLatestStoryMessages(),
 			storyState.value,
 			playerCharactersGameState,
@@ -736,6 +749,7 @@
 		action: Action,
 		additionalStoryInput: string,
 		relatedHistory: string[],
+		isCharacterInCombat: boolean,
 		combatAndNPCState: {
 			additionalStoryInput: string;
 			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
@@ -747,7 +761,9 @@
 			onStoryStreamUpdate,
 			action,
 			additionalStoryInput,
-			customSystemInstruction.value,
+			systemInstructionsState.value.generalSystemInstruction,
+			systemInstructionsState.value.storyAgentInstruction,
+			isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
 			historyMessagesState.value,
 			storyState.value,
 			characterState.value,
@@ -824,7 +840,8 @@
 						characterState.value,
 						characterStatsState.value,
 						inventoryState.value,
-						customSystemInstruction.value,
+						systemInstructionsState.value.generalSystemInstruction,
+						systemInstructionsState.value.actionAgentInstruction,
 						relatedHistory,
 						gameSettingsState.value?.aiIntroducesSkills
 					)
@@ -905,6 +922,7 @@
 					action,
 					finalAdditionalStoryInput,
 					relatedActionHistoryState.value,
+					currentGameActionState.is_character_in_combat,
 					combatAndNPCState
 				);
 				didAIProcessActionState.value = true;
@@ -1010,7 +1028,8 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			customSystemInstruction.value,
+			systemInstructionsState.value.generalSystemInstruction,
+			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills
 		);
@@ -1104,7 +1123,8 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			customSystemInstruction.value,
+			systemInstructionsState.value.generalSystemInstruction,
+			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills
 		);
@@ -1251,7 +1271,7 @@
 
 	function onStoryStreamUpdate(storyChunk: string, isComplete: boolean): void {
 		if (!storyChunkState && !isComplete) {
-			latestStoryProgressionTextComponent.scrollIntoView();
+			latestStoryProgressionTextComponent?.scrollIntoView();
 			const time = new Date().toLocaleTimeString();
 			console.log('First story chunk received at:', time);
 		}
@@ -1332,19 +1352,19 @@
 	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		{#if currentGameActionState}
-		<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
-			>Show Previous Story
-		</button>
-		{#each !latestStoryProgressionState.stream_finished ? [currentGameActionState] : gameActionsState.value.slice(-2 + showXLastStoryPrgressions * -1, -1) as gameActionState (gameActionState.id)}
-			<StoryProgressionWithImage
-				story={gameActionState.story}
-				imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
-				gameUpdates={getRenderedGameUpdates(gameActionState, playerCharacterIdState)}
-			/>
-			{#if gameActionState['fallbackUsed']}
-				<small class="text-sm text-red-500"> For this action the fallback LLM was used.</small>
-			{/if}
-		{/each}
+			<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
+				>Show Previous Story
+			</button>
+			{#each !latestStoryProgressionState.stream_finished ? [currentGameActionState] : gameActionsState.value.slice(-2 + showXLastStoryPrgressions * -1, -1) as gameActionState (gameActionState.id)}
+				<StoryProgressionWithImage
+					story={gameActionState.story}
+					imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
+					gameUpdates={getRenderedGameUpdates(gameActionState, playerCharacterIdState)}
+				/>
+				{#if gameActionState['fallbackUsed']}
+					<small class="text-sm text-red-500"> For this action the fallback LLM was used.</small>
+				{/if}
+			{/each}
 		{/if}
 		<StoryProgressionWithImage
 			bind:storyTextRef={latestStoryProgressionTextComponent}

@@ -67,6 +67,7 @@ export class ActionAgent {
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
 		customSystemInstruction?: string,
+		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
 		newSkillsAllowed: boolean = false
 	): Promise<Action> {
@@ -97,7 +98,10 @@ export class ActionAgent {
 				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)}`
 		];
 		if (customSystemInstruction) {
-			agent.push(customSystemInstruction);
+			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
+		}
+		if (customActionAgentInstruction) {
+			agent.push('Following instructions overrule all others: ' + customActionAgentInstruction);
 		}
 
 		let userMessage =
@@ -140,6 +144,7 @@ export class ActionAgent {
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
 		customSystemInstruction?: string,
+		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
 		newSkillsAllowed: boolean = false
 	): Promise<Array<Action>> {
@@ -180,7 +185,10 @@ export class ActionAgent {
 			);
 		}
 		if (customSystemInstruction) {
-			agent.push(customSystemInstruction);
+			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
+		}
+		if (customActionAgentInstruction) {
+			agent.push('Following instructions overrule all others: ' + customActionAgentInstruction);
 		}
 		let userMessage =
 			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
@@ -217,6 +225,7 @@ export class ActionAgent {
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
 		customSystemInstruction?: string,
+		customActionAgentInstruction?: string,
 		newSkillsAllowed: boolean = false
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
@@ -246,7 +255,10 @@ export class ActionAgent {
   		]`
 		];
 		if (customSystemInstruction) {
-			agent.push(customSystemInstruction);
+			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
+		}
+		if (customActionAgentInstruction) {
+			agent.push('Following instructions overrule all others: ' + customActionAgentInstruction);
 		}
 		const userMessage =
 			'Suggest specific actions the CHARACTER can take with the item:\n' +

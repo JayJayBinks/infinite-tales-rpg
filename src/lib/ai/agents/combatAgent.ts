@@ -60,6 +60,7 @@ export class CombatAgent {
 		inventoryState: InventoryState,
 		npcsList: Array<object>,
 		customSystemInstruction: string,
+		customCombatAgentInstruction: string,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story
 	) {
@@ -92,7 +93,10 @@ export class CombatAgent {
                 }`
 		];
 		if (customSystemInstruction) {
-			agent.push(customSystemInstruction);
+			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
+		}
+		if (customCombatAgentInstruction) {
+			agent.push('Following instructions overrule all others: ' + customCombatAgentInstruction);
 		}
 		const actionToSend =
 			'player character named ' +

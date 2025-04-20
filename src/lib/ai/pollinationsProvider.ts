@@ -19,7 +19,6 @@ export const defaultGPT4JsonConfig: GenerateContentConfig = {
 };
 
 export class PollinationsProvider extends LLM {
-
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
 	model: string;
 	fallbackLLM?: LLM;
@@ -38,8 +37,11 @@ export class PollinationsProvider extends LLM {
 		return 2;
 	}
 
-	generateContentStream(request: LLMRequest, storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void): Promise<object | undefined> {
-		throw new Error('Method not implemented.');
+	generateContentStream(
+		request: LLMRequest,
+		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
+	): Promise<object | undefined> {
+		throw new Error('Method not implemented.' + request + storyUpdateCallback);
 	}
 
 	async generateContent(request: LLMRequest): Promise<object | undefined> {

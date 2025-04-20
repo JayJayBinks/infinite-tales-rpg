@@ -494,7 +494,8 @@
 					bind:checked={gameSettingsState.value.aiIntroducesSkills}
 					class="toggle m-auto mt-2 text-center"
 				/>
-				<small class="m-auto mb-1 mt-2">Allow the AI to introduce new skills during the game.</small
+				<small class="m-auto mb-1 mt-2"
+					>When no existing skill fits the action, the AI will create a new one.</small
 				>
 			</label>
 			<p class="m-auto mt-4">Skills increase the more you use them.</p>

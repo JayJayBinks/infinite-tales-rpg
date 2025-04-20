@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { handleError, navigate, parseState, playAudioFromStream } from '$lib/util.svelte';
+	import { handleError, navigate, parseState } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
@@ -11,7 +11,6 @@
 		initialCharacterStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
-	import type { Voice } from 'msedge-tts';
 	import { onMount } from 'svelte';
 	import type { AIConfig } from '$lib';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
@@ -24,9 +23,11 @@
 	} from '$lib/ai/agents/eventAgent';
 	import type { CharacterChangedInto, EventEvaluation } from '$lib/ai/agents/eventAgent';
 	import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
+	import AiGenerationSettings from '$lib/components/interaction_modals/settings/AiGenerationSettings.svelte';
+	import OutputFeaturesModal from '$lib/components/interaction_modals/settings/OutputFeaturesModal.svelte';
+	import SystemPromptsModal from '$lib/components/interaction_modals/settings/SystemPromptsModal.svelte';
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const temperatureState = useLocalStorage<number>('temperatureState', 1);
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
@@ -34,7 +35,9 @@
 		disableImagesState: false,
 		useFallbackLlmState: false
 	});
-	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	let showGenerationSettingsModal = $state<boolean>(false);
+	let showOutputFeaturesModal = $state<boolean>(false);
+	let showSystemPromptsModal = $state<boolean>(false);
 
 	const gameActionsState = useLocalStorage('gameActionsState', []);
 	const historyMessagesState = useLocalStorage('historyMessagesState', []);
@@ -72,10 +75,7 @@
 		{}
 	);
 
-	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
-	let ttsVoices: Voice[] = $state([]);
 	let isGeneratingState = $state(false);
-
 	let quickstartModalOpen = $state(false);
 	let llm: LLM;
 	let storyAgent: StoryAgent | undefined = $state();
@@ -84,9 +84,6 @@
 		if (apiKeyState.value) {
 			provideLLM();
 		}
-		ttsVoices = (await (await fetch('/api/edgeTTSStream/voices')).json()).sort((a, b) =>
-			a.Locale === b.Locale ? 0 : a.Locale.includes(navigator.language) ? -1 : 1
-		);
 	});
 
 	const provideLLM = () => {
@@ -243,88 +240,28 @@
 	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>
 	<div class="divider mt-7">Advanced Settings</div>
 
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		<div class="flex flex-col items-center gap-2">
-			<span>Use Gemini Flash as fallback</span>
-			<div class="flex items-center gap-2">
-				<input
-					type="checkbox"
-					class="toggle"
-					bind:checked={aiConfigState.value.useFallbackLlmState}
-				/>
-			</div>
-			<small class="m-auto mt-2"> When Gemini Thinking is overloaded, Flash will be used. </small>
-			<small class="m-auto mt-2">
-				Keep in mind that the game experience can be decreased with this option.
-			</small>
-		</div>
-	</label>
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		System Instruction
-		<textarea
-			bind:value={customSystemInstruction.value}
-			placeholder="For example: Make every action difficulty easy."
-			class="textarea textarea-bordered mt-2"
-		>
-		</textarea>
-		<small class="m-auto mt-2"
-			>You may have to start a new Tale after setting the instruction.</small
-		>
-	</label>
-	<label class="form-control mt-3 w-full sm:w-2/3">
-		AI Language
-		<input
-			bind:value={aiLanguage.value}
-			placeholder="AI will respond in this language, leave empty for English"
-			class="input input-bordered mt-2"
-		/>
-		<small class="m-auto mt-2">The Game UI will not be translated yet</small>
-	</label>
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		<div class="flex flex-col items-center gap-2">
-			<span>Disable Image Generation</span>
-			<input type="checkbox" class="toggle" bind:checked={aiConfigState.value.disableImagesState} />
-		</div>
-	</label>
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		<div class="flex flex-col items-center gap-2">
-			<span>Disable Text To Speech Generation</span>
-			<div class="flex items-center gap-2">
-				<input
-					type="checkbox"
-					class="toggle"
-					bind:checked={aiConfigState.value.disableAudioState}
-				/>
-			</div>
-		</div>
-	</label>
-	<label class="form-control mt-5 w-full sm:w-1/2">
-		<p>Voice For Text To Speech</p>
-		<button
-			onclick={() => {
-				playAudioFromStream("Let's embark on an epic adventure!", ttsVoiceState.value);
-			}}
-			>Test Voice
-		</button>
-		<select bind:value={ttsVoiceState.value} class="select select-bordered mt-2 text-center">
-			{#each ttsVoices as v}
-				<option value={v.ShortName}>{v.FriendlyName} - {v.Gender}</option>
-			{/each}
-		</select>
-	</label>
-	<label class="form-control mt-5 w-full sm:w-2/3">
-		Temperature: {temperatureState.value}
-		<input
-			type="range"
-			min="0"
-			max="2"
-			step="0.05"
-			id="temperature"
-			bind:value={temperatureState.value}
-			class="range mt-2"
-		/>
-		<small class="m-auto mt-2"
-			>Higher temperature makes the AI more creative, but also errors more likely</small
-		>
-	</label>
+	{#if showGenerationSettingsModal}
+		<AiGenerationSettings onclose={() => (showGenerationSettingsModal = false)} />
+	{/if}
+	<button
+		class="btn btn-neutral m-auto mt-5 w-1/2"
+		onclick={() => (showGenerationSettingsModal = true)}
+	>
+		Generation Settings
+	</button>
+	{#if showOutputFeaturesModal}
+		<OutputFeaturesModal onclose={() => (showOutputFeaturesModal = false)} />
+	{/if}
+	<button
+		class="btn btn-neutral m-auto mt-5 w-1/2"
+		onclick={() => (showOutputFeaturesModal = true)}
+	>
+		Output Features
+	</button>
+	{#if showSystemPromptsModal}
+		<SystemPromptsModal onclose={() => (showSystemPromptsModal = false)} />
+	{/if}
+	<button class="btn btn-neutral m-auto mt-5 w-1/2" onclick={() => (showSystemPromptsModal = true)}>
+		System Prompts
+	</button>
 </form>

@@ -13,7 +13,11 @@
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
-	import type { LLMMessage } from '$lib/ai/llm';
+	import {
+		initialSystemInstructionsState,
+		type LLMMessage,
+		type SystemInstructionsState
+	} from '$lib/ai/llm';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { stringifyPretty } from '$lib/util.svelte';
 	import type { AIConfig } from '$lib';
@@ -32,7 +36,10 @@
 	} = $props();
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const systemInstructionsState = useLocalStorage<SystemInstructionsState>(
+		'systemInstructionsState',
+		initialSystemInstructionsState
+	);
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const storyState = useLocalStorage<Story>('storyState');
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
@@ -79,7 +86,7 @@
 		}
 		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
-			customSystemInstruction.value,
+			systemInstructionsState.value,
 			historyMessagesState.value,
 			storyState.value,
 			characterState.value,

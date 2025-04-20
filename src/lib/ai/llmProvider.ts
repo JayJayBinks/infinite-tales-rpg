@@ -1,4 +1,4 @@
-import { defaultGeminiJsonConfig, GeminiProvider } from '$lib/ai/geminiProvider';
+import { defaultGeminiJsonConfig, GEMINI_MODELS, GeminiProvider } from '$lib/ai/geminiProvider';
 import { LLM, type LLMconfig } from '$lib/ai/llm';
 import { PollinationsProvider } from '$lib/ai/pollinationsProvider';
 
@@ -18,9 +18,12 @@ export class LLMProvider {
 			//fallback to flash-exp if thinking-exp fails
 			return new GeminiProvider(
 				configToUse,
-				!useFallback
-					? undefined
-					: new GeminiProvider({ ...configToUse, model: 'gemini-2.0-flash-exp' })
+				new GeminiProvider(
+					{ ...configToUse, model: GEMINI_MODELS.FLASH_THINKING_2_0 },
+					!useFallback
+						? undefined
+						: new GeminiProvider({ ...configToUse, model: GEMINI_MODELS.FLASH_2_0 })
+				)
 			);
 		}
 	}

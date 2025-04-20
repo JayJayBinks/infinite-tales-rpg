@@ -5,6 +5,19 @@ export interface LLMMessage {
 	content: string;
 }
 
+export type SystemInstructionsState = {
+	generalSystemInstruction: string;
+	storyAgentInstruction: string;
+	actionAgentInstruction: string;
+	combatAgentInstruction: string;
+};
+export const initialSystemInstructionsState: SystemInstructionsState = {
+	generalSystemInstruction: '',
+	storyAgentInstruction: '',
+	actionAgentInstruction: '',
+	combatAgentInstruction: ''
+};
+
 export interface LLMRequest {
 	userMessage: string;
 	historyMessages?: Array<LLMMessage>;

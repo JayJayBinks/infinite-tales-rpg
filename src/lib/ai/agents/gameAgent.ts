@@ -1,7 +1,7 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import { type StatsUpdate, statsUpdatePromptObject } from '$lib/ai/agents/combatAgent';
-import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
+import type { LLM, LLMMessage, LLMRequest, SystemInstructionsState } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { mapGameState } from '$lib/ai/agents/mappers';
@@ -118,6 +118,8 @@ export class GameAgent {
 		action: Action,
 		additionalStoryInput: string,
 		customSystemInstruction: string,
+		customStoryAgentInstruction: string,
+		customCombatAgentInstruction: string,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
 		characterState: CharacterDescription,
@@ -144,6 +146,8 @@ export class GameAgent {
 			playerCharactersGameState,
 			inventoryState,
 			customSystemInstruction,
+			customStoryAgentInstruction,
+			customCombatAgentInstruction,
 			gameSettings
 		);
 		gameAgent.push(jsonSystemInstructionForGameAgent(gameSettings));
@@ -172,7 +176,7 @@ export class GameAgent {
 
 	async generateAnswerForPlayerQuestion(
 		question: string,
-		customSystemInstruction: string,
+		customSystemInstruction: SystemInstructionsState,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
 		characterState: CharacterDescription,
@@ -215,7 +219,9 @@ export class GameAgent {
 				characterState,
 				playerCharactersGameState,
 				inventoryState,
-				customSystemInstruction,
+				customSystemInstruction.generalSystemInstruction,
+				customSystemInstruction.storyAgentInstruction,
+				customSystemInstruction.combatAgentInstruction,
 				gameSettings
 			).join('\n');
 		const request: LLMRequest = {
@@ -232,6 +238,8 @@ export class GameAgent {
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
 		customSystemInstruction: string,
+		customStoryAgentInstruction: string,
+		customCombatAgentInstruction: string,
 		gameSettings: GameSettings
 	) {
 		const gameAgent = [
@@ -246,7 +254,13 @@ export class GameAgent {
 				stringifyPretty(inventoryState)
 		];
 		if (customSystemInstruction) {
-			gameAgent.push(customSystemInstruction);
+			gameAgent.push('Following instructions overrule all others: ' + customSystemInstruction);
+		}
+		if (customStoryAgentInstruction) {
+			gameAgent.push('Following instructions overrule all others: ' + customStoryAgentInstruction);
+		}
+		if (customCombatAgentInstruction) {
+			gameAgent.push('Following instructions overrule all others: ' + customCombatAgentInstruction);
 		}
 		return gameAgent;
 	}

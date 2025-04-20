@@ -103,7 +103,7 @@ export class GeminiProvider extends LLM {
 	}
 
 	isThinkingModel(model: string): boolean {
-		return model.includes('thinking') || model === GEMINI_MODELS.FLASH_THINKING_2_5;
+		return model === GEMINI_MODELS.FLASH_THINKING_2_5;
 	}
 
 	async generateContent(request: LLMRequest): Promise<object | undefined> {
@@ -129,7 +129,7 @@ export class GeminiProvider extends LLM {
 			);
 		}
 
-		const modelToUse =  request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_THINKING_2_5;
+		const modelToUse = request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_THINKING_2_5;
 		if (this.llmConfig.language) {
 			const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
 			systemInstruction?.parts?.push({ text: languageInstruction });
@@ -152,7 +152,7 @@ export class GeminiProvider extends LLM {
 					temperature
 				},
 				contents: contents
-			}
+			};
 			if (request.stream) {
 				return this.genAI.models.generateContentStream(genAIRequest);
 			} else {

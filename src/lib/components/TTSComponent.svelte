@@ -2,7 +2,7 @@
 	import { getTTSUrl } from '$lib/util.svelte';
 
 	type Props = { text: string; voice: string; hidden?: boolean };
-	let { text, voice, hidden }: Props = $props();
+	let { text, voice }: Props = $props();
 	let storyTTSAudioElement: HTMLAudioElement;
 	$effect(() => {
 		if (!text) storyTTSAudioElement.src = '';

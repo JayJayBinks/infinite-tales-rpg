@@ -241,7 +241,7 @@ export class CharacterStatsAgent {
                             {"uniqueTechnicalNameId": ${npcStatsStateForPromptAsString}, ...}`
 		];
 		if (customSystemInstruction) {
-			agent.push(customSystemInstruction);
+			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
 		}
 		const action =
 			'Generate the following NPCs. You must exactly reuse the uniqueTechnicalNameId given: ' +

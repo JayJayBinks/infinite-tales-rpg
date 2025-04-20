@@ -7,7 +7,7 @@
 	import type { AIConfig } from '$lib';
 
 	export type StoryProgressionWithImageProps = {
-		storyTextRef?;
+		storyTextRef?: HTMLElement;
 		story: string;
 		gameUpdates?: Array<RenderedGameUpdate | undefined>;
 		imagePrompt?: string;
