@@ -25,9 +25,8 @@ export type StatsUpdate = {
 };
 export const statsUpdatePromptObject = `
     "stats_update": [
-        # You must include one object for each action
-        # Do not apply self damage to CHARACTER because of a failed action unless explicitly stated
-        # Also include one object per turn effect like poisoned or bleeding
+        # You must include one update for each action
+        # Also include one update per turn effect like poisoned or bleeding
         {
         		"explanation": "Short explanation for the reason of this change",
         		# if targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources

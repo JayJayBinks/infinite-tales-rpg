@@ -10,6 +10,7 @@ import {
 	type Item
 } from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
+import { THINKING_BUDGET } from '../geminiProvider';
 
 export const diceRollPrompt = `"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
@@ -17,7 +18,7 @@ export const diceRollPrompt = `"dice_roll": {
 						"modifier": "none|bonus|malus",
 						"modifier_value": negative number for malus, 0 if none, positive number for bonus
 					}`;
-export class ActionAgent {
+export class ActionAgent {	
 	llm: LLM;
 
 	constructor(llm: LLM) {
@@ -120,9 +121,15 @@ export class ActionAgent {
 		const request: LLMRequest = {
 			userMessage,
 			historyMessages,
-			systemInstruction: agent
+			systemInstruction: agent,
+			thinkingConfig: {
+				thinkingBudget: THINKING_BUDGET.FAST
+			}
 		};
-		return (await this.llm.generateContent(request)) as Action;
+		console.log('action generate start time: ', new Date());
+		const actionGenerated = (await this.llm.generateContent(request)) as Action
+		console.log('action generate end time: ', new Date());
+		return actionGenerated;
 	}
 
 	private readonly actionRules = `Action Rules:
@@ -270,7 +277,10 @@ export class ActionAgent {
 		const request: LLMRequest = {
 			userMessage,
 			historyMessages,
-			systemInstruction: agent
+			systemInstruction: agent,
+			thinkingConfig: {
+				thinkingBudget: THINKING_BUDGET.FAST
+			}
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 

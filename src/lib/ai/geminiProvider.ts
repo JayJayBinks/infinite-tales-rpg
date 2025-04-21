@@ -31,6 +31,11 @@ export const GEMINI_MODELS = {
 	FLASH_2_0: 'gemini-2.0-flash'
 };
 
+//Numbe of tokens
+export const THINKING_BUDGET = {
+	FAST: 256
+};
+
 const safetySettings: Array<SafetySetting> = [
 	{
 		category: HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
@@ -106,6 +111,10 @@ export class GeminiProvider extends LLM {
 		return model === GEMINI_MODELS.FLASH_THINKING_2_5;
 	}
 
+	supportsThinkingBudget(model: string): boolean {
+		return model === GEMINI_MODELS.FLASH_THINKING_2_5;
+	}
+
 	async generateContent(request: LLMRequest): Promise<object | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
@@ -142,15 +151,19 @@ export class GeminiProvider extends LLM {
 					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
 				);
 			}
+			const config = {
+				...this.llmConfig.config,
+				...request.config,
+				safetySettings,
+				systemInstruction,
+				temperature
+			};
+			if (this.supportsThinkingBudget(modelToUse)) {
+				config.thinkingConfig = request.thinkingConfig;
+			}
 			const genAIRequest = {
 				model: modelToUse,
-				config: {
-					...this.llmConfig.config,
-					...request.config,
-					safetySettings,
-					systemInstruction,
-					temperature
-				},
+				config,
 				contents: contents
 			};
 			if (request.stream) {

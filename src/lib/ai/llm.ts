@@ -1,4 +1,4 @@
-import type { GenerateContentConfig, SafetySetting } from '@google/genai';
+import type { GenerateContentConfig, SafetySetting, ThinkingConfig } from '@google/genai';
 
 export interface LLMMessage {
 	role: 'user' | 'model';
@@ -29,6 +29,7 @@ export interface LLMRequest {
 	model?: string;
 	returnFallbackProperty?: boolean;
 	stream?: boolean;
+	thinkingConfig?: ThinkingConfig;
 }
 
 export interface LLMconfig {

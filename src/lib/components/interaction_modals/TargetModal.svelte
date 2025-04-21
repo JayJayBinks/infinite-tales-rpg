@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
-	import { getNPCDisplayName, getNPCTechnicalID } from '$lib/util.svelte';
+	import { getNPCDisplayName } from '$lib/util.svelte';
 
 	let {
 		targets,
@@ -58,7 +58,7 @@
 			{#each targets?.hostile as target}
 				<div class="form-control">
 					<label class="label cursor-pointer">
-						<input type="checkbox" class="checkbox" value={getNPCTechnicalID(target)} />
+						<input type="checkbox" class="checkbox" value={getNPCDisplayName(target)} />
 						<span class="ml-2 capitalize"
 							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
 						>
@@ -72,7 +72,7 @@
 			{#each targets?.friendly as target}
 				<div class="form-control">
 					<label class="label cursor-pointer">
-						<input type="checkbox" class="checkbox" value={getNPCTechnicalID(target)} />
+						<input type="checkbox" class="checkbox" value={getNPCDisplayName(target)} />
 						<span class="ml-2 capitalize"
 							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
 						>
@@ -86,7 +86,7 @@
 			{#each targets?.neutral as target}
 				<div class="form-control">
 					<label class="label cursor-pointer">
-						<input type="checkbox" class="checkbox" value={getNPCTechnicalID(target)} />
+						<input type="checkbox" class="checkbox" value={getNPCDisplayName(target)} />
 						<span class="ml-2 capitalize"
 							>{getNPCDisplayName(target).replaceAll('_', ' ').replaceAll('id', '')}</span
 						>
