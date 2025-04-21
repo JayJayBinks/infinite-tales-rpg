@@ -29,6 +29,7 @@
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
 	import * as gameLogic from './gameLogic';
+	import * as npcLogic from './npcLogic';
 	import {
 		ActionDifficulty,
 		applyInventoryUpdate,
@@ -509,7 +510,7 @@
 				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
 			}
 		}
-		deadNPCs = gameLogic.removeDeadNPCs(npcState);
+		deadNPCs = npcLogic.removeDeadNPCs(npcState);
 		additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
 	}
@@ -541,19 +542,24 @@
 	}
 
 	function checkForNewNPCs(newState: GameActionState) {
-		const newNPCs = gameLogic.getNewNPCs(newState.currently_present_npcs, npcState.value);
-		if (newNPCs.length > 0) {
+		const newNPCsIds = gameLogic.getNewNPCs(newState.currently_present_npcs, npcState.value);
+		if (newNPCsIds.length > 0) {
 			characterStatsAgent
 				.generateNPCStats(
 					storyState.value,
 					getLatestStoryMessages(),
-					newNPCs,
+					newNPCsIds.map((id) => id.uniqueTechnicalNameId),
 					characterStatsState.value,
 					customSystemInstruction.value
 				)
 				.then((newState: NPCState) => {
 					if (newState) {
 						combatLogic.addResourceValues(newState);
+						newNPCsIds.forEach((id) => {
+							if (newState[id.uniqueTechnicalNameId]) {
+								newState[id.uniqueTechnicalNameId].known_names = [id.displayName];
+							}
+						});
 						npcState.value = { ...npcState.value, ...newState };
 						console.log(stringifyPretty(npcState.value));
 					}
@@ -722,6 +728,8 @@
 		didAIProcessActionState.value = true;
 
 		if (newState?.story) {
+			checkForNewNPCs(newState);
+			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
 			// If combat provided a specific stat update, use it.
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
@@ -739,7 +747,6 @@
 			}
 			console.log('new state', stringifyPretty(newState));
 			updateMessagesHistory(updatedHistoryMessages);
-			checkForNewNPCs(newState);
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
 			console.log('skillName to improve', skillName);
 			if (skillName) {
