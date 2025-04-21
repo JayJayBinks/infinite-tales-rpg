@@ -10,7 +10,7 @@ import {
 	type Targets
 } from '$lib/ai/agents/gameAgent';
 import type { StatsUpdate } from '$lib/ai/agents/combatAgent';
-import type { NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
+import type { NpcID, NPCState, NPCStats } from '$lib/ai/agents/characterStatsAgent';
 import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
 import { getNPCTechnicalID } from '$lib/util.svelte';
@@ -40,8 +40,17 @@ export function getAllTargetsAsList(targets: Targets): Array<string> {
 	];
 }
 
+export function getAllNpcsIds(targets: Targets): Array<NpcID> {
+	if (!targets || !targets.hostile) {
+		return [];
+	}
+	return [...targets.hostile, ...targets.neutral, ...targets.friendly];
+}
+
 export function getNewNPCs(targets: Targets, npcState: NPCState) {
-	return getAllTargetsAsList(targets).filter((newNPC) => !Object.keys(npcState).includes(newNPC));
+	return getAllNpcsIds(targets).filter(
+		(newNPC) => !Object.keys(npcState).includes(newNPC.uniqueTechnicalNameId)
+	);
 }
 
 //TODO implement parsing to enums directly from json
@@ -282,7 +291,9 @@ export function applyGameActionState(
 			}
 		} else {
 			if (!prohibitNPCChange) {
-				const npc: NPCStats = npcState[statUpdate.targetName];
+				const npc: NPCStats | undefined = Object.values(npcState).find((npc) =>
+					npc.known_names?.includes(statUpdate.targetName)
+				);
 				if (npc && npc.resources) {
 					const result = Number.parseInt(statUpdate.value.result);
 					switch (statUpdate.type) {
@@ -320,15 +331,6 @@ export function applyInventoryUpdate(inventoryState: InventoryState, state: Game
 			}
 		}
 	}
-}
-
-export function removeDeadNPCs(npcState: NPCState): string[] {
-	return Object.keys(npcState)
-		.filter((npc) => npcState[npc].resources && npcState[npc].resources.current_hp <= 0)
-		.map((deadNPC) => {
-			delete npcState[deadNPC];
-			return deadNPC;
-		});
 }
 
 export function applyGameActionStates(

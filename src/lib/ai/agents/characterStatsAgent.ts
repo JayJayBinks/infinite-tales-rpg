@@ -78,8 +78,9 @@ export const initialCharacterStatsState: CharacterStats = {
 
 export const npcRank = ['Very Weak', 'Weak', 'Average', 'Strong', 'Boss', 'Legendary'];
 
-export type NPCState = { [uniqueNpcName: string]: NPCStats };
+export type NPCState = { [uniqueTechnicalNameId: string]: NPCStats };
 export type NPCStats = {
+	known_names?: string[];
 	is_party_member: boolean;
 	resources?: NPCResources;
 	class: string;
