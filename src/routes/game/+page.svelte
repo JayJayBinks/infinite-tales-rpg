@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { startBackgroundFetch, cancelBackgroundFetch, backgroundFetchStatus } from '$lib/state/backGroundFetch';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import {
@@ -229,6 +230,11 @@
 	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
+	const isLoading = $derived($backgroundFetchStatus.isLoading);
+	const data = $derived($backgroundFetchStatus.data);
+	const error = $derived($backgroundFetchStatus.error);
+	const isComplete = $derived($backgroundFetchStatus.isComplete);
+
 	onMount(async () => {
 		beforeNavigate(({ cancel }) => {
 			if (!didAIProcessActionState.value) {
@@ -315,7 +321,7 @@
 		playerCharactersGameState = updatedPlayerCharactersGameState;
 		tick().then(() => customActionInput.scrollIntoView(false));
 		if (characterActionsState.value.length === 0) {
-			characterActionsState.value = await actionAgent.generateActions(
+			const promise = actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
 				storyState.value,
@@ -333,6 +339,7 @@
 				),
 				gameSettingsState.value?.aiIntroducesSkills
 			);
+			startBackgroundFetch(promise, 'characterActionsState', (data) => {characterActionsState.value = data; renderGameState(currentGameActionState, data as unknown as Action[]);});
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
 		if (!didAIProcessDiceRollActionState.value) {
@@ -852,18 +859,20 @@
 						relatedHistory,
 						gameSettingsState.value?.aiIntroducesSkills
 					)
-					.then((actions) => {
-						if (actions) {
-							console.log(stringifyPretty(actions));
-							characterActionsState.value = actions;
-							renderGameState(currentGameActionState, actions);
-							addSkillsIfApplicable(actions);
-						}
-					});
+					.then(onActionsGenerated);
 				checkForLevelUp();
 			}
 		}
 	}
+
+	const onActionsGenerated = (actions: Action[]) => {
+		console.log(stringifyPretty(actions));
+		if (actions) {
+			characterActionsState.value = actions;
+			renderGameState(currentGameActionState, actions);
+			addSkillsIfApplicable(actions);
+		}
+	};
 
 	const addSkillsIfApplicable = (actions: Action[]) => {
 		if (gameSettingsState.value?.aiIntroducesSkills) {
