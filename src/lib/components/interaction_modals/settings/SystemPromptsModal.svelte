@@ -35,7 +35,7 @@
 
 		<!-- Action Agent Instruction -->
 		<label class="form-control mt-5 w-full">
-			Action Agent Instruction (Non-Combat Actions)
+			Action Agent Instruction
 			<textarea
 				bind:value={systemInstructionsState.value.actionAgentInstruction}
 				placeholder="Focus on action resolution. E.g., 'Make skill checks easy. Always provide one funny, nonsensical action.'"
