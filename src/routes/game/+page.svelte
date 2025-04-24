@@ -1278,9 +1278,9 @@
 
 	function onStoryStreamUpdate(storyChunk: string, isComplete: boolean): void {
 		if (!storyChunkState && !isComplete) {
+			latestStoryProgressionTextComponent?.scrollIntoView();
 			const time = new Date().toLocaleTimeString();
 			console.log('First story chunk received at:', time);
-			tick().then(() => latestStoryProgressionTextComponent?.scrollIntoView());
 		}
 		storyChunkState = storyChunk;
 		isAiGeneratingState = false;
@@ -1358,7 +1358,7 @@
 		currentLevel={characterStatsState.value?.level}
 	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
-		{#if currentGameActionState?.story}
+		{#if currentGameActionState}
 			<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
 				>Show Previous Story
 			</button>
