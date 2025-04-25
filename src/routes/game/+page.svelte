@@ -708,11 +708,19 @@
 		}
 		additionalStoryInput += GameAgent.getPromptForGameMasterNotes(gmNotes);
 
+		if (action.type?.toLowerCase() === 'crafting') {
+			additionalStoryInput += GameAgent.getCraftingPrompt();
+		}
 		// Add any extra side effects that should modify the story input.
 		additionalStoryInput = gameLogic.addAdditionsFromActionSideeffects(
 			action,
 			additionalStoryInput
 		);
+		if (!additionalStoryInput.includes('sudo')) {
+			additionalStoryInput +=
+				'\n\n' +
+				'Before responding always review the system instructions and apply the given rules.';
+		}
 
 		// Update the store for additional story input.
 		additionalStoryInputState.value = additionalStoryInput;
@@ -1161,13 +1169,13 @@
 		isAiGeneratingState = false;
 	};
 
-	const onCustomActionSubmitted = async () => {
+	const onCustomActionSubmitted = async (text: string, mustGenerateCustomAction = false) => {
 		let action: Action = {
 			characterName: characterState.value.name,
-			text: customActionInput.value,
+			text,
 			is_custom_action: true
 		};
-		if (customActionReceiver === 'Character Action') {
+		if (customActionReceiver === 'Character Action' || mustGenerateCustomAction) {
 			await generateActionFromCustomInput(action);
 		}
 		if (customActionReceiver === 'GM Question') {
@@ -1332,6 +1340,11 @@
 		playerName={characterState.value.name}
 		inventoryState={inventoryState.value}
 		storyImagePrompt={storyState.value.general_image_prompt}
+		oncrafting={(craftingPrompt) => {
+			if (craftingPrompt) {
+				onCustomActionSubmitted(craftingPrompt, true);
+			}
+		}}
 		onclose={onItemUseChosen}
 	></UseItemsModal>
 	{#if itemForSuggestActionsState}
@@ -1485,7 +1498,7 @@
 				/>
 				<button
 					type="submit"
-					onclick={onCustomActionSubmitted}
+					onclick={() => onCustomActionSubmitted(customActionInput.value)}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
 					>Submit

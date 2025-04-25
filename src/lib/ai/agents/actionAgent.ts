@@ -18,7 +18,7 @@ export const diceRollPrompt = `"dice_roll": {
 						"modifier": "none|bonus|malus",
 						"modifier_value": negative number for malus, 0 if none, positive number for bonus
 					}`;
-export class ActionAgent {	
+export class ActionAgent {
 	llm: LLM;
 
 	constructor(llm: LLM) {
@@ -40,7 +40,7 @@ export class ActionAgent {
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
-					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation|Travel",
+					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation|Travel|Crafting",
 					"related_attribute": "a single attribute the dice is rolled for, must be an exact same spelled attribute from this list: ${attributes.join(', ')}; never create new Attributes!",
 					"existing_related_skill_explanation": "Explanation if an existing skill is used instead of creating a new one",
 					"related_skill": "a single skill the dice is rolled for; ${newSkillRule} EXISTING SKILLS: ${skills.join(', ')}",
@@ -127,7 +127,7 @@ export class ActionAgent {
 			}
 		};
 		console.log('action generate start time: ', new Date());
-		const actionGenerated = (await this.llm.generateContent(request)) as Action
+		const actionGenerated = (await this.llm.generateContent(request)) as Action;
 		console.log('action generate end time: ', new Date());
 		return actionGenerated;
 	}

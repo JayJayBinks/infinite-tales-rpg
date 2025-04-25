@@ -6,6 +6,7 @@ node_modules
 /.svelte-kit
 /.idea
 /build
+.vscode/
 
 # OS
 .DS_Store

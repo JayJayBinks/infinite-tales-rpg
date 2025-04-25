@@ -396,10 +396,5 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 	if (directly_interrupted || travel_interrupted) {
 		additionalStoryInput += `\naction is possibly interrupted: ${is_interruptible} probability.`;
 	}
-
-	if (!additionalStoryInput.includes('sudo')) {
-		additionalStoryInput +=
-			'\n\n' + 'Before responding always review the system instructions and apply the given rules.';
-	}
 	return additionalStoryInput;
 }

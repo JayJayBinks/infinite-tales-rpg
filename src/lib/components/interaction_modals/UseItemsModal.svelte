@@ -10,6 +10,7 @@
 	import { formatItemId } from '../../../routes/game/gameLogic';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { AIConfig } from '$lib';
+	import CraftingModal from '$lib/components/interaction_modals/CraftingModal.svelte';
 
 	let {
 		inventoryState,
@@ -17,6 +18,7 @@
 		playerName,
 		storyImagePrompt,
 		onclose,
+		oncrafting,
 		dialogRef = $bindable()
 	}: {
 		inventoryState: InventoryState;
@@ -24,10 +26,12 @@
 		playerName: string;
 		storyImagePrompt: string;
 		onclose;
+		oncrafting: (actionText: string | undefined) => void;
 		dialogRef;
 	} = $props();
 
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	let craftingDialogState = $state<boolean>(false);
 
 	function mapToAction(item_id: string, item: Item): ItemWithId & Action {
 		return {
@@ -38,14 +42,51 @@
 			text: playerName + ' uses ' + item_id + ': ' + item.effect
 		};
 	}
+
+	function mapToCraftingAction(
+		selectedItems: ItemWithId[],
+		craftDescription?: string
+	): string | undefined {
+		if (!selectedItems || selectedItems.length === 0) {
+			return undefined;
+		}
+		let prompt = `${playerName} attempts to craft, combining items:\n${selectedItems
+			.map((item) => item.item_id + ' - ' + item.description)
+			.join('\n')}.\n`;
+
+		if (craftDescription) {
+			prompt += `Crafting description: ${craftDescription}\n\n`;
+		}
+		return prompt;
+	}
 </script>
 
-<dialog bind:this={dialogRef} class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
+{#if craftingDialogState}
+	<CraftingModal
+		inventory={inventoryState}
+		onclose={(selectedItems, craftDescription) => {
+			craftingDialogState = false;
+			oncrafting(mapToCraftingAction(selectedItems, craftDescription));
+		}}
+	></CraftingModal>
+{/if}
+
+<dialog bind:this={dialogRef} class="z-99 modal" style="background: rgba(0, 0, 0, 0.3);">
 	<div class="modal-box flex flex-col items-center">
 		<form method="dialog">
 			<span class="m-auto">Inventory</span>
 			<button class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2">✕</button>
 		</form>
+		<button
+			class="components btn btn-neutral no-animation m-auto mt-2"
+			onclick={() => {
+				craftingDialogState = true;
+				dialogRef.close();
+				onclose();
+			}}
+		>
+			Crafting
+		</button>
 		{#each Object.entries(inventoryState || {}) as [item_id, item] (item_id)}
 			<label class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow textarea-bordered border bg-base-200">

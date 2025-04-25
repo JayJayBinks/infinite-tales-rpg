@@ -336,6 +336,15 @@ export class GameAgent {
 			'\n'
 		);
 	};
+
+	static getCraftingPrompt(): string {
+		return (
+			'\nCrafting:' +
+			'\nOn success, create a new item and remove the combined items.' +
+			'\nOn partial failure, do not create a new item but do not remove the combined items.' +
+			'\nOn failure, do not create a new item and remove the combined items.'
+		);
+	}
 }
 
 const storyWordLimit = 'must be between 100 and 160 words, do not exceed this range.';
