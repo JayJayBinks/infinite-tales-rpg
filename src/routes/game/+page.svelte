@@ -111,7 +111,7 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let isAiGeneratingState = $state(false);
 	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
-	let didAIProcessActionState = useLocalStorage<boolean>('didAIProcessActionState', true);
+	let didAIProcessActionState = $state<boolean>(true);
 	let gameAgent: GameAgent,
 		summaryAgent: SummaryAgent,
 		characterAgent: CharacterAgent,
@@ -231,8 +231,9 @@
 
 	onMount(async () => {
 		beforeNavigate(({ cancel }) => {
-			if (!didAIProcessActionState.value) {
+			if (!didAIProcessActionState) {
 				if (!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
+					didAIProcessActionState = true;
 					cancel();
 				}
 			}
@@ -638,7 +639,7 @@
 			const { newAdditionalStoryInput, newChapter } = await advanceChapterIfApplicable(
 				action,
 				additionalStoryInput,
-				didAIProcessActionState.value,
+				didAIProcessActionState,
 				campaignState.value,
 				currentChapterState.value,
 				currentGameActionState,
@@ -932,7 +933,7 @@
 					);
 				}
 				// Process the AI story progression and update game state
-				didAIProcessActionState.value = false;
+				didAIProcessActionState = false;
 				await processStoryProgression(
 					action,
 					finalAdditionalStoryInput,
@@ -940,7 +941,7 @@
 					currentGameActionState.is_character_in_combat,
 					combatAndNPCState
 				);
-				didAIProcessActionState.value = true;
+				didAIProcessActionState = true;
 				isAiGeneratingState = false;
 			}
 		} catch (e) {
