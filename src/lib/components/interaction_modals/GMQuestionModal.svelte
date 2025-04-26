@@ -58,6 +58,10 @@
 		campaignState.value?.chapters.find(
 			(chapter) => chapter.chapterId === currentChapterState.value
 		);
+	const currentGameActionState: GameActionState = $derived(
+		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
+			({} as GameActionState)
+	);
 
 	let gameAgent: GameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
@@ -96,7 +100,8 @@
 			relatedQuestionHistory,
 			gameSettingsState.value,
 			getCurrentCampaignChapter(),
-			customGMNotesState.value
+			customGMNotesState.value,
+			currentGameActionState.is_character_restrained_explanation
 		);
 		console.log(stringifyPretty(gmAnswerState));
 		isGeneratingState = false;

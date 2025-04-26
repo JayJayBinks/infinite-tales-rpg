@@ -81,6 +81,7 @@ export type GameActionState = {
 	inventory_update: Array<InventoryUpdate>;
 	stats_update: Array<StatsUpdate>;
 	is_character_in_combat: boolean;
+	is_character_restrained_explanation?: string;
 	currently_present_npcs: Targets;
 	story_memory_explanation: string;
 };
@@ -186,7 +187,8 @@ export class GameAgent {
 		relatedHistory: string[],
 		gameSettings: GameSettings,
 		campaignChapterState?: CampaignChapter,
-		customGmNotes?: string
+		customGmNotes?: string,
+		is_character_restrained_explanation?: string
 	): Promise<GameMasterAnswer> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
@@ -207,6 +209,11 @@ export class GameAgent {
 		}
 		if (relatedHistory.length > 0) {
 			gameAgent.push('History Rules:\n' + PAST_STORY_PLOT_RULE + relatedHistory.join('\n'));
+		}
+		if (is_character_restrained_explanation) {
+			gameAgent.push(
+				`Character is restrained: ${is_character_restrained_explanation}; consider the implications in your response.`
+			);
 		}
 		gameAgent.push(jsonSystemInstructionForPlayerQuestion);
 		const userMessage =
@@ -433,6 +440,7 @@ const jsonSystemInstructionForGameAgent = (
     }
   ],
   "is_character_in_combat": true if CHARACTER is in active combat else false,
+  "is_character_restrained_explanation": null | string; "If not restrained null, else Briefly explain how the character has entered a TEMPORARY state or condition that SIGNIFICANTLY RESTRICTS their available actions, changes how they act, or puts them under external control? (Examples: Put to sleep, paralyzed, charmed, blinded,  affected by an illusion, under a compulsion spell)",
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
   "currently_present_npcs": List of NPCs or party members that are present in the current situation. Format: ${currentlyPresentNPCSForPrompt}
 }`;

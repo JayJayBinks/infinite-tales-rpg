@@ -68,6 +68,7 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
+			currentGameActionState.is_character_restrained_explanation,
 			customSystemInstruction.value
 		);
 		console.log('suggestedActions', suggestedActions);

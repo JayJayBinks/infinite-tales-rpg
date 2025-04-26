@@ -332,7 +332,8 @@
 					relatedStoryHistoryState.value,
 					customMemoriesState.value
 				),
-				gameSettingsState.value?.aiIntroducesSkills
+				gameSettingsState.value?.aiIntroducesSkills,
+				currentGameActionState.is_character_restrained_explanation
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -859,7 +860,8 @@
 						systemInstructionsState.value.generalSystemInstruction,
 						systemInstructionsState.value.actionAgentInstruction,
 						relatedHistory,
-						gameSettingsState.value?.aiIntroducesSkills
+						gameSettingsState.value?.aiIntroducesSkills,
+						newState.is_character_restrained_explanation
 					)
 					.then((actions) => {
 						if (actions) {
@@ -1047,7 +1049,8 @@
 			systemInstructionsState.value.generalSystemInstruction,
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
-			gameSettingsState.value?.aiIntroducesSkills
+			gameSettingsState.value?.aiIntroducesSkills,
+			currentGameActionState.is_character_restrained_explanation
 		);
 		if (generatedAction) {
 			for (const key in generatedAction) {
@@ -1142,7 +1145,8 @@
 			systemInstructionsState.value.generalSystemInstruction,
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
-			gameSettingsState.value?.aiIntroducesSkills
+			gameSettingsState.value?.aiIntroducesSkills,
+			currentGameActionState.is_character_restrained_explanation
 		);
 		console.log('generatedAction', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };

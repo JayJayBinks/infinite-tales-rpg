@@ -59,6 +59,15 @@ export class ActionAgent {
 				}`;
 	};
 
+	getRestrainingStatePrompt = (restraining_state: string) =>
+		`The character is currently affected by a restraining state: ${restraining_state}. Only suggest actions that are possible while under this effect.`;
+
+	addRestrainingStateToAgent = (agent: string[], restrainingState?: string) => {
+		if (restrainingState) {
+			agent.push(this.getRestrainingStatePrompt(restrainingState));
+		}
+	};
+
 	async generateSingleAction(
 		action: Action,
 		currentGameState: GameActionState,
@@ -70,7 +79,8 @@ export class ActionAgent {
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
-		newSkillsAllowed: boolean = false
+		newSkillsAllowed: boolean = false,
+		restrainingState?: string
 	): Promise<Action> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -98,6 +108,7 @@ export class ActionAgent {
 			`Most important instruction! You must always respond with following JSON format! 
 				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)}`
 		];
+		this.addRestrainingStateToAgent(agent, restrainingState);
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
 		}
@@ -110,6 +121,10 @@ export class ActionAgent {
 			action.text +
 			'\nDetermine the difficulty and resource cost with considering their personality, skills, items, story summary and following game state\n' +
 			stringifyPretty(currentGameStateMapped);
+
+		if (restrainingState) {
+			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
+		}
 
 		if (relatedHistory && relatedHistory.length > 0) {
 			userMessage +=
@@ -153,7 +168,8 @@ export class ActionAgent {
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
-		newSkillsAllowed: boolean = false
+		newSkillsAllowed: boolean = false,
+		restrainingState?: string
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -182,6 +198,7 @@ export class ActionAgent {
   		]`
 		];
 
+		this.addRestrainingStateToAgent(agent, restrainingState);
 		if (relatedHistory && relatedHistory.length > 0) {
 			agent.push(
 				'The actions must be plausible with PAST STORY PLOT;\n' +
@@ -204,6 +221,9 @@ export class ActionAgent {
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a tense situation must be resolved.';
 		if (currentGameState.is_character_in_combat) {
 			userMessage += '\nOnly suggest combat actions given the situation';
+		}
+		if (restrainingState) {
+			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
 		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
@@ -231,6 +251,7 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
+		restrainingState?: string,
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
 		newSkillsAllowed: boolean = false
@@ -261,18 +282,23 @@ export class ActionAgent {
 				...
   		]`
 		];
+		this.addRestrainingStateToAgent(agent, restrainingState);
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
 		}
 		if (customActionAgentInstruction) {
 			agent.push('Following instructions overrule all others: ' + customActionAgentInstruction);
 		}
-		const userMessage =
+		let userMessage =
 			'Suggest specific actions the CHARACTER can take with the item:\n' +
 			stringifyPretty(item) +
 			'\nEach action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a combat or tense situation must be resolved.';
+
+		if (restrainingState) {
+			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
+		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,

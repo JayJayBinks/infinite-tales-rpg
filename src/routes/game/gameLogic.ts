@@ -388,7 +388,7 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 	const encounterString = JSON.stringify(action.enemyEncounterExplanation) || '';
 	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
 		additionalStoryInput +=
-			'\nenemyEncounter: ' + encounterString + '; Players take first turn, wait for their action.';
+			'\nenemyEncounter: ' + encounterString;
 	}
 	const is_interruptible = JSON.stringify(action.is_interruptible) || '';
 	const directly_interrupted = is_interruptible.includes('HIGH');
