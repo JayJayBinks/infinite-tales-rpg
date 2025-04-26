@@ -291,9 +291,12 @@ export function applyGameActionState(
 			}
 		} else {
 			if (!prohibitNPCChange) {
-				const npc: NPCStats | undefined = Object.values(npcState).find((npc) =>
+				let npc: NPCStats | undefined = Object.values(npcState).find((npc) =>
 					npc.known_names?.includes(statUpdate.targetName)
 				);
+				if(!npc){
+					npc = npcState[statUpdate.targetName]
+				}
 				if (npc && npc.resources) {
 					const result = Number.parseInt(statUpdate.value.result);
 					switch (statUpdate.type) {
