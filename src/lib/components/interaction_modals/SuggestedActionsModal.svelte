@@ -18,6 +18,7 @@
 	import { isEnoughResource } from '../../../routes/game/gameLogic';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 	import type { AIConfig } from '$lib';
+	import { initialRestrainingState, type CharacterRestrainedState } from '$lib/ai/agents/eventAgent';
 
 	let {
 		onclose,
@@ -41,6 +42,7 @@
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const temperatureState = useLocalStorage<number>('temperatureState');
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const characterRestrainedState = useLocalStorage<CharacterRestrainedState>('characterRestrainedState', initialRestrainingState);
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let suggestedActions: Array<Action> = $state([]);
 	let customActionInput: string = $state('');
@@ -68,6 +70,7 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
+			characterRestrainedState.value, 
 			customSystemInstruction.value
 		);
 		console.log('suggestedActions', suggestedActions);

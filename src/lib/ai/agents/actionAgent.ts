@@ -11,6 +11,7 @@ import {
 } from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { THINKING_BUDGET } from '../geminiProvider';
+import type { CharacterRestrainedState } from './eventAgent';
 
 export const diceRollPrompt = `"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
@@ -59,6 +60,14 @@ export class ActionAgent {
 				}`;
 	};
 
+	addRestrainingState = (agent: string[], restrainingState?: CharacterRestrainedState) => {
+		if (restrainingState?.state) {
+			agent.push(
+				`The character is currently affected by a restraining state: ${restrainingState.state}. Description: ${restrainingState.description}. Only suggest actions that are possible while under this effect. For example, if bound, actions requiring free hands are impossible.`
+			);
+		}
+	};
+
 	async generateSingleAction(
 		action: Action,
 		currentGameState: GameActionState,
@@ -70,7 +79,9 @@ export class ActionAgent {
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
-		newSkillsAllowed: boolean = false
+		newSkillsAllowed: boolean = false,
+		restrainingState?: CharacterRestrainedState
+
 	): Promise<Action> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -98,6 +109,7 @@ export class ActionAgent {
 			`Most important instruction! You must always respond with following JSON format! 
 				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)}`
 		];
+		this.addRestrainingState(agent, restrainingState);
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
 		}
@@ -153,7 +165,8 @@ export class ActionAgent {
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
-		newSkillsAllowed: boolean = false
+		newSkillsAllowed: boolean = false,
+		restrainingState?: CharacterRestrainedState
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -181,7 +194,7 @@ export class ActionAgent {
 				...
   		]`
 		];
-
+		this.addRestrainingState(agent, restrainingState);
 		if (relatedHistory && relatedHistory.length > 0) {
 			agent.push(
 				'The actions must be plausible with PAST STORY PLOT;\n' +
@@ -231,9 +244,10 @@ export class ActionAgent {
 		characterDescription: CharacterDescription,
 		characterStats: CharacterStats,
 		inventoryState: InventoryState,
+		restrainingState?: CharacterRestrainedState,
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
-		newSkillsAllowed: boolean = false
+		newSkillsAllowed: boolean = false,
 	): Promise<Array<Action>> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -261,6 +275,7 @@ export class ActionAgent {
 				...
   		]`
 		];
+		this.addRestrainingState(agent, restrainingState);
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
 		}

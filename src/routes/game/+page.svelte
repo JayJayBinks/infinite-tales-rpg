@@ -78,7 +78,13 @@
 		type CharacterChangedInto,
 		EventAgent,
 		type EventEvaluation,
-		initialEventEvaluationState
+		initialEventEvaluationState,
+
+		type CharacterRestrainedState,
+
+		initialRestrainingState
+
+
 	} from '$lib/ai/agents/eventAgent';
 	import CharacterChangedConfirmationModal from '$lib/components/interaction_modals/CharacterChangedConfirmationModal.svelte';
 	import {
@@ -222,6 +228,7 @@
 		'eventEvaluationState',
 		initialEventEvaluationState
 	);
+	let characterRestrainedState = useLocalStorage<CharacterRestrainedState>('characterRestrainedState', initialRestrainingState);
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -332,7 +339,8 @@
 					relatedStoryHistoryState.value,
 					customMemoriesState.value
 				),
-				gameSettingsState.value?.aiIntroducesSkills
+				gameSettingsState.value?.aiIntroducesSkills,
+				characterRestrainedState.value
 			);
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -757,6 +765,13 @@
 				abilities_learned: { ...evaluated?.abilities_learned, abilities }
 			};
 		}
+		if (evaluated?.action_restricting_state) {
+			if(evaluated?.action_restricting_state.type !== 'removed') {
+				characterRestrainedState.value = evaluated.action_restricting_state;
+			}else{
+				characterRestrainedState.reset();
+			}
+		}
 	};
 
 	// Helper to process the AI story progression and update game state accordingly.
@@ -847,7 +862,6 @@
 						characterStatsState.value.spells_and_abilities.map((a) => a.name)
 					)
 					.then(applyGameEventEvaluation);
-				// Generate the next set of actions.
 				actionAgent
 					.generateActions(
 						currentGameActionState,
@@ -859,7 +873,8 @@
 						systemInstructionsState.value.generalSystemInstruction,
 						systemInstructionsState.value.actionAgentInstruction,
 						relatedHistory,
-						gameSettingsState.value?.aiIntroducesSkills
+						gameSettingsState.value?.aiIntroducesSkills,
+						characterRestrainedState.value
 					)
 					.then((actions) => {
 						if (actions) {
@@ -1047,7 +1062,8 @@
 			systemInstructionsState.value.generalSystemInstruction,
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
-			gameSettingsState.value?.aiIntroducesSkills
+			gameSettingsState.value?.aiIntroducesSkills,
+			characterRestrainedState.value
 		);
 		if (generatedAction) {
 			for (const key in generatedAction) {
@@ -1142,7 +1158,8 @@
 			systemInstructionsState.value.generalSystemInstruction,
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
-			gameSettingsState.value?.aiIntroducesSkills
+			gameSettingsState.value?.aiIntroducesSkills,
+			characterRestrainedState.value
 		);
 		console.log('generatedAction', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };

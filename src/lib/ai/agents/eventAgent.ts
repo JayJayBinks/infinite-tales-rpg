@@ -30,17 +30,28 @@ export type CharacterChangedInto = {
 	showEventConfirmationDialog: boolean;
 };
 
+export type CharacterRestrainedState = {
+	type?: 'added' | 'removed';
+	state: string;
+	description: string;
+};
+export const initialRestrainingState: CharacterRestrainedState = {
+	type: undefined,
+	state: '',
+	description: ''
+};
+
 export type EventEvaluation = {
 	character_changed?: CharacterChangedInto;
 	abilities_learned?: AbilitiesLearned;
-	action_restricting_state?: { state: string; description: string };
+	action_restricting_state?: CharacterRestrainedState;
 };
 
 const jsonFormat = `{
 	"reasoning": "string; Briefly explain how the character changed from the CURRENT CHARACTER DESCRIPTION and how abilities learned if any",
 	"character_changed": null | {"changed_into": "string; single word only what the character transformed into", "description": string},
 	"abilities_learned": [{"uniqueTechnicalId": string, "name": string, "effect": string}, ...],
-	"action_restricting_state": null | {"state": string, "description": string}
+	"action_restricting_state": null | {"type": "added|removed", "state": string, "description": string}
 }`;
 
 export class EventAgent {
@@ -75,7 +86,7 @@ export class EventAgent {
     *   Do not list abilities already known: ${currentAbilitiesNames.join(', ')}
     *   If yes, describe the new ability/spell/skill.
     *   If no, empty array.`,
-			`3. **Action-Restricting State ('action_restricting_state'):** Has the character entered a TEMPORARY state or condition that SIGNIFICANTLY RESTRICTS their available actions, changes how they act, or puts them under external control impacting their actions? (Examples: Put to sleep, paralyzed, charmed, blinded, silenced, confused, trapped, bound, under extreme duress limiting choices, affected by an illusion impacting action choice, under a compulsion spell).
+			`3. **Action-Restricting State ('action_restricting_state'):** Has the character entered a TEMPORARY state or condition that SIGNIFICANTLY RESTRICTS their available actions, changes how they act, or puts them under external control impacting their actions? (Examples: Put to sleep, paralyzed, charmed, blinded, under extreme duress limiting choices, affected by an illusion impacting action choice, under a compulsion spell).
     *   If yes, describe the state and its primary effect on actions.
     *   If no, state null.`,
 			'Always respond with following JSON!\n' + jsonFormat
