@@ -2,6 +2,7 @@ import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import { type Story, TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
+import { GEMINI_MODELS } from '../geminiProvider';
 
 export type Ability = {
 	name: string;
@@ -249,7 +250,8 @@ export class CharacterStatsAgent {
 			stringifyPretty(npcsToGenerate);
 		const request: LLMRequest = {
 			userMessage: action,
-			systemInstruction: agent
+			systemInstruction: agent,
+			model: GEMINI_MODELS.FLASH_THINKING_2_0
 		};
 		return (await this.llm.generateContent(request)) as NPCState;
 	}
