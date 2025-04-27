@@ -79,7 +79,7 @@ function checkSkillStatus(stats: CharacterStats, action: Action): SkillCheckResu
 	const skill = action.related_skill;
 
 	// Initial validation
-	if (!skill || skill === 'N/A') {
+	if (!skill || skill.toLowerCase() === 'n/a' || skill.toLowerCase() === 'none') {
 		return { skill: undefined, isAttribute: false, isExistingSkill: false };
 	}
 
