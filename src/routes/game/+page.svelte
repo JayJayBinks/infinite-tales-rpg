@@ -1485,7 +1485,6 @@
 								: 'Command without restrictions'}
 				/>
 				<button
-					type="submit"
 					onclick={onCustomActionSubmitted}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
