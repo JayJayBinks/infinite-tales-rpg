@@ -10,7 +10,7 @@ import {
 	type Item
 } from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
-import { THINKING_BUDGET } from '../geminiProvider';
+import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
 
 export const diceRollPrompt = `"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
@@ -304,9 +304,7 @@ export class ActionAgent {
 			userMessage,
 			historyMessages,
 			systemInstruction: agent,
-			thinkingConfig: {
-				thinkingBudget: THINKING_BUDGET.FAST
-			}
+			model: GEMINI_MODELS.FLASH_THINKING_2_0
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 

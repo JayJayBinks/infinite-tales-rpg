@@ -40,9 +40,7 @@ export class SummaryAgent {
 			userMessage: 'Summarize the following story: \n' + stringifyPretty(toSummarize),
 			systemInstruction: agent,
 			temperature: 1,
-			thinkingConfig: {
-				thinkingBudget: THINKING_BUDGET.FAST
-			}
+			model: GEMINI_MODELS.FLASH_THINKING_2_0
 		};
 		const response = (await this.llm.generateContent(request)) as {
 			story: string;
