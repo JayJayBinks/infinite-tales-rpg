@@ -12,36 +12,36 @@ import { npcRank, type NPCState, type NPCStats } from '$lib/ai/agents/characterS
  * | 'Legendary'  | [13, 37] | [64, 87] | [127, 151]| [254, 277]|
  * | *Unknown*    |  [6, 14] | [26, 35] | [52, 60] | [104, 112]|
  */
-function calculateMaxResource(i: number, level: number) {
+function calculateMaxResource(i: number, level: number, is_party_member?: boolean) {
 	// Using logarithmic growth
 	//TODO boss fight too difficult, limit HP
-	if (i > 3) {
-		i = 3;
+	let adapted = i;
+	if (!is_party_member && i > 3) {
+		adapted = 3;
 	}
-	return Math.ceil(Math.log(i + 2) * (i + 1) * getRandomInteger(level, level + 2));
+	if (is_party_member && i < 4) {
+		adapted = 4;
+	}
+	const maxResource = Math.ceil(Math.log(adapted + 2) * (adapted + 1) * getRandomInteger(level, level + 2));
+	return maxResource;
 }
 
 //TODO consider class?
 //TODO different modificator for level as it doesnt scale
 function getMaxHPFromRank(npc: NPCStats): number {
 	let i = npcRank.indexOf(npc.rank_enum_english);
-	if (npc.is_party_member && i < 4) {
-		i = 4;
-	}
-	if (i === -1) i = 2; // Default to average if rank not found
-	return calculateMaxResource(i, npc.level);
+	// Default to average if rank not found
+	if (i === -1) i = 2; 
+	return calculateMaxResource(i, npc.level, npc.is_party_member);
 }
 
 //TODO consider class?
 //TODO different modificator for level as it doesnt scale
 function getMaxMPFromRank(npc: NPCStats): number {
 	let i = npcRank.indexOf(npc.rank_enum_english);
-	if (npc.is_party_member && i < 4) {
-		i = 4;
-	}
 	//Average if not found
 	if (i === -1) i = 2;
-	return calculateMaxResource(i, npc.level + 2);
+	return calculateMaxResource(i, npc.level + 2, npc.is_party_member);
 }
 
 export function addResourceValues(npcState: NPCState) {
