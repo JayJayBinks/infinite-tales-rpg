@@ -1252,6 +1252,11 @@
 			}
 			if (transformedCharacterStats) {
 				characterStatsState.value = transformedCharacterStats;
+				//generate new actions considering resources might have changed
+				regenerateActions();
+				additionalStoryInputState.value +=
+					'\n After transformation make sure that stats_update refer to the new resources from now on!\n' +
+					stringifyPretty(characterStatsState.value.resources);
 			}
 
 			//apply new resources
@@ -1297,6 +1302,32 @@
 		}
 		storyChunkState = storyChunk;
 		isAiGeneratingState = false;
+	}
+
+	async function regenerateActions() {
+		characterActionsState.reset();
+		if (actionsDiv) actionsDiv.innerHTML = '';
+
+		characterActionsState.value = await actionAgent.generateActions(
+			currentGameActionState,
+			historyMessagesState.value,
+			storyState.value,
+			characterState.value,
+			characterStatsState.value,
+			inventoryState.value,
+			systemInstructionsState.value.generalSystemInstruction,
+			systemInstructionsState.value.actionAgentInstruction,
+			await getRelatedHistory(
+				summaryAgent,
+				undefined,
+				undefined,
+				relatedStoryHistoryState.value,
+				customMemoriesState.value
+			),
+			gameSettingsState.value?.aiIntroducesSkills,
+			currentGameActionState.is_character_restrained_explanation
+		);
+		renderGameState(currentGameActionState, characterActionsState.value);
 	}
 </script>
 

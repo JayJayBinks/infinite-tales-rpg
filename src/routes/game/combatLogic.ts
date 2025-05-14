@@ -22,7 +22,9 @@ function calculateMaxResource(i: number, level: number, is_party_member?: boolea
 	if (is_party_member && i < 4) {
 		adapted = 4;
 	}
-	const maxResource = Math.ceil(Math.log(adapted + 2) * (adapted + 1) * getRandomInteger(level, level + 2));
+	const maxResource = Math.ceil(
+		Math.log(adapted + 2) * (adapted + 1) * getRandomInteger(level, level + 2)
+	);
 	return maxResource;
 }
 
@@ -31,7 +33,7 @@ function calculateMaxResource(i: number, level: number, is_party_member?: boolea
 function getMaxHPFromRank(npc: NPCStats): number {
 	let i = npcRank.indexOf(npc.rank_enum_english);
 	// Default to average if rank not found
-	if (i === -1) i = 2; 
+	if (i === -1) i = 2;
 	return calculateMaxResource(i, npc.level, npc.is_party_member);
 }
 

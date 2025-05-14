@@ -294,8 +294,8 @@ export function applyGameActionState(
 				let npc: NPCStats | undefined = Object.values(npcState).find((npc) =>
 					npc.known_names?.includes(statUpdate.targetName)
 				);
-				if(!npc){
-					npc = npcState[statUpdate.targetName]
+				if (!npc) {
+					npc = npcState[statUpdate.targetName];
 				}
 				if (npc && npc.resources) {
 					const result = Number.parseInt(statUpdate.value.result);
@@ -390,8 +390,7 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 	}
 	const encounterString = JSON.stringify(action.enemyEncounterExplanation) || '';
 	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
-		additionalStoryInput +=
-			'\nenemyEncounter: ' + encounterString;
+		additionalStoryInput += '\nenemyEncounter: ' + encounterString;
 	}
 	const is_interruptible = JSON.stringify(action.is_interruptible) || '';
 	const directly_interrupted = is_interruptible.includes('HIGH');

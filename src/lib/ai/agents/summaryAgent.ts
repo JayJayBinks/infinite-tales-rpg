@@ -1,7 +1,7 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { GameActionState } from './gameAgent';
-import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
+import { GEMINI_MODELS } from '../geminiProvider';
 
 export type RelatedStoryHistory = {
 	relatedDetails: { storyReference: string; relevanceScore: number }[];
