@@ -255,15 +255,7 @@
 		eventAgent = new EventAgent(llm);
 		characterAgent = new CharacterAgent(llm);
 
-		characterStatsState.value = migrateIfApplicable(
-			'characterStatsState',
-			$state.snapshot(characterStatsState.value)
-		);
-		gameActionsState.value = migrateIfApplicable(
-			'gameActionsState',
-			$state.snapshot(gameActionsState.value)
-		);
-
+		migrateStates();
 		const currentCharacterName = characterState.value.name;
 		let characterId = getCharacterTechnicalId(
 			playerCharactersIdToNamesMapState.value,
@@ -1328,6 +1320,21 @@
 			currentGameActionState.is_character_restrained_explanation
 		);
 		renderGameState(currentGameActionState, characterActionsState.value);
+	}
+
+	function migrateStates() {
+		characterStatsState.value = migrateIfApplicable(
+			'characterStatsState',
+			$state.snapshot(characterStatsState.value)
+		);
+		gameActionsState.value = migrateIfApplicable(
+			'gameActionsState',
+			$state.snapshot(gameActionsState.value)
+		);
+		gameSettingsState.value = migrateIfApplicable(
+			'gameSettingsState',
+			$state.snapshot(gameSettingsState.value)
+		);
 	}
 </script>
 

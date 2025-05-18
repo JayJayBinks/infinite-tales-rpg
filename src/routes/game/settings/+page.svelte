@@ -1,19 +1,18 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { difficultyDiceRollModifier } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import { navigate } from '$lib/util.svelte';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
-	import { defaultGameSettings, type GameSettings } from '$lib/ai/agents/gameAgent';
+	import GameSettingsModal from '$lib/components/interaction_modals/settings/GameSettingsModal.svelte';
+	import AiGameSettingsModal from '$lib/components/interaction_modals/settings/AiGameSettings.svelte';
 
-	const difficultyState = useLocalStorage<string>('difficultyState', 'Default');
-	let useKarmicDice = useLocalStorage<boolean>('useKarmicDice', true);
-	let useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
+	let showGameSettingsModal = $state<boolean>(false);
+	let showAiGameSettingsModal = $state<boolean>(false);
+
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	//TODO migrate all settings that can be changed during game here
-	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 
 	const taleSettingsClicked = () => {
 		if (campaignState.value?.chapters.length > 0) {
@@ -24,68 +23,26 @@
 	};
 </script>
 
+{#if showGameSettingsModal}
+	<GameSettingsModal onclose={() => (showGameSettingsModal = false)} />
+{/if}
+{#if showAiGameSettingsModal}
+	<AiGameSettingsModal onclose={() => (showAiGameSettingsModal = false)} />
+{/if}
 <form class="m-6 flex flex-col items-center text-center">
-	<label class="form-control w-full sm:w-1/2">
-		<p>Difficulty</p>
-		<select
-			id="difficultyState"
-			bind:value={difficultyState.value}
-			class="select select-bordered mt-2 text-center"
-		>
-			<option selected>Default</option>
-			<option>Easy</option>
-		</select>
-		<small class="m-auto mt-2"
-			>Easy will reduce required dice rolls by {difficultyDiceRollModifier.Easy}</small
-		>
-	</label>
-	<label class="form-control mt-2 w-full">
-		<p>Karmic Dice</p>
-		<input
-			type="checkbox"
-			id="useKarmicDice"
-			bind:checked={useKarmicDice.value}
-			class="toggle m-auto mt-2 text-center"
-		/>
-		<small class="m-auto mb-3 mt-2"
-			>If 3 consecutive dice rolls fail, you will get a bonus on the next roll</small
-		>
-	</label>
-	<label class="form-control mt-2 w-full">
-		<p>Dynamic Combat</p>
-		<input
-			type="checkbox"
-			id="useDynamicCombat"
-			bind:checked={useDynamicCombat.value}
-			class="toggle m-auto mt-2 text-center"
-		/>
-		<small class="m-auto mb-3 mt-2"
-			>Enable for reactions for every NPC during combat.<br />
-			Disable for faster, story-focused combat.</small
-		>
-	</label>
-	<label class="form-control mt-2 w-full">
-		<p>Detailed Narration Length</p>
-		<input
-			type="checkbox"
-			bind:checked={gameSettingsState.value.detailedNarrationLength}
-			class="toggle m-auto mt-2 text-center"
-		/>
-		<small class="m-auto mb-3 mt-2"
-			>Enabled longer detailed narration, disabled shorter concise length</small
-		>
-	</label>
-	<label class="form-control mt-2 w-full">
-		<p>AI creates new skills</p>
-		<input
-			type="checkbox"
-			bind:checked={gameSettingsState.value.aiIntroducesSkills}
-			class="toggle m-auto mt-2 text-center"
-		/>
-		<small class="m-auto mb-3 mt-2"
-			>When no existing skill fits the action, the AI will create a new one.</small
-		>
-	</label>
+	<button
+		class="btn btn-neutral mt-2 w-3/4 sm:w-1/2"
+		onclick={() => (showGameSettingsModal = true)}
+	>
+		Game Settings
+	</button>
+	<button
+		class="btn btn-neutral mt-2 w-3/4 sm:w-1/2"
+		onclick={() => (showAiGameSettingsModal = true)}
+	>
+		AI Settings
+	</button>
+
 	<ImportExportSaveGame isSaveGame={true}>
 		{#snippet exportButton(onclick)}
 			<button {onclick} class="btn btn-neutral m-auto mt-4 w-3/4 sm:w-1/2">

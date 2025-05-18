@@ -65,10 +65,12 @@ export type PlayerCharactersGameState = {
 export type GameSettings = {
 	detailedNarrationLength: boolean;
 	aiIntroducesSkills: boolean;
+	randomEventsHandling: 'none' | 'probability' | 'ai_decides';
 };
 export const defaultGameSettings = () => ({
 	detailedNarrationLength: true,
-	aiIntroducesSkills: false
+	aiIntroducesSkills: false,
+	randomEventsHandling: 'probability' as const
 });
 
 export type Targets = { hostile: Array<NpcID>; friendly: Array<NpcID>; neutral: Array<NpcID> };

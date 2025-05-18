@@ -1,12 +1,24 @@
-import type { GameActionState } from '$lib/ai/agents/gameAgent';
+import {
+	defaultGameSettings,
+	type GameActionState,
+	type GameSettings
+} from '$lib/ai/agents/gameAgent';
 
 export const migrateIfApplicable = (key: string, state: unknown) => {
 	if (!state) return state;
 	let migrated = migrate051to06(key, state);
 	migrated = migrate062to07(key, migrated);
 	migrated = migrate09to10(key, migrated);
+	migrated = migrate11to11_1(key, migrated);
 	return migrated;
 };
+
+function migrate11to11_1(key, state) {
+	if (key === 'gameSettingsState') {
+		(state as GameSettings).randomEventsHandling = defaultGameSettings().randomEventsHandling;
+	}
+	return state;
+}
 
 function migrate09to10(key, state) {
 	if (key === 'gameActionsState') {
