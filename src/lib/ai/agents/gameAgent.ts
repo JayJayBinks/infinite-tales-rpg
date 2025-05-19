@@ -29,6 +29,11 @@ export type DiceRollDifficulty = {
 		modifier_explanation: string;
 	};
 };
+
+export type ReasonedEnum = {
+	reasoning: string;
+	enum_english: string;
+};
 export type Action = {
 	characterName: string;
 	text: string;
@@ -43,7 +48,7 @@ export type Action = {
 	narration_details?: object;
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: object;
-	is_interruptible?: object;
+	is_interruptible?: ReasonedEnum;
 	resource_cost?: {
 		resource_key: string | undefined;
 		cost: number;
@@ -62,10 +67,12 @@ export type PlayerCharactersGameState = {
 	[playerCharacterId: string]: ResourcesWithCurrentValue;
 };
 
+export type RandomEventsHandling = 'none' | 'probability' | 'ai_decides';
+
 export type GameSettings = {
 	detailedNarrationLength: boolean;
 	aiIntroducesSkills: boolean;
-	randomEventsHandling: 'none' | 'probability' | 'ai_decides';
+	randomEventsHandling: RandomEventsHandling;
 };
 export const defaultGameSettings = () => ({
 	detailedNarrationLength: true,

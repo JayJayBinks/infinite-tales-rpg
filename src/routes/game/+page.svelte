@@ -708,7 +708,10 @@
 		// Add any extra side effects that should modify the story input.
 		additionalStoryInput = gameLogic.addAdditionsFromActionSideeffects(
 			action,
-			additionalStoryInput
+			additionalStoryInput,
+			gameSettingsState.value.randomEventsHandling,
+			currentGameActionState.is_character_in_combat,
+			diceRollDialog.returnValue //TODO better way to pass the result ?, its string here
 		);
 		if (!additionalStoryInput.includes('sudo')) {
 			additionalStoryInput +=

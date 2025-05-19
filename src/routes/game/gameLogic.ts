@@ -5,6 +5,7 @@ import {
 	type InventoryUpdate,
 	type PlayerCharactersGameState,
 	type PlayerCharactersIdToNamesMap,
+	type RandomEventsHandling,
 	type ResourcesWithCurrentValue,
 	SLOW_STORY_PROMPT,
 	type Targets
@@ -15,6 +16,8 @@ import isPlainObject from 'lodash.isplainobject';
 import { mapXP } from './levelLogic';
 import { getNPCTechnicalID } from '$lib/util.svelte';
 import { getCharacterTechnicalId } from './characterLogic';
+import { InterruptProbability } from '$lib/ai/agents/actionAgent';
+import type { DiceRollResult } from '$lib/components/interaction_modals/dice/diceRollLogic';
 
 export enum ActionDifficulty {
 	simple = 'simple',
@@ -382,7 +385,13 @@ export function isEnoughResource(
 	return resources[resourceKey || '']?.current_value >= cost;
 }
 
-export function addAdditionsFromActionSideeffects(action: Action, additionalStoryInput: string) {
+export function addAdditionsFromActionSideeffects(
+	action: Action,
+	additionalStoryInput: string,
+	randomEventsHandling: RandomEventsHandling,
+	is_character_in_combat: boolean,
+	diceRollResult: DiceRollResult
+) {
 	const is_travel = action.type?.toLowerCase().includes('travel');
 	const narration_details = JSON.stringify(action.narration_details) || '';
 	if (is_travel || narration_details.includes('HIGH') || narration_details.includes('MEDIUM')) {
@@ -392,11 +401,63 @@ export function addAdditionsFromActionSideeffects(action: Action, additionalStor
 	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
 		additionalStoryInput += '\nenemyEncounter: ' + encounterString;
 	}
-	const is_interruptible = JSON.stringify(action.is_interruptible) || '';
-	const directly_interrupted = is_interruptible.includes('HIGH');
-	const travel_interrupted = is_travel && is_interruptible.includes('MEDIUM');
-	if (directly_interrupted || travel_interrupted) {
-		additionalStoryInput += `\naction is possibly interrupted: ${is_interruptible} probability.`;
+
+	if (randomEventsHandling !== 'none' && diceRollResult !== 'critical_success') {
+		const is_interruptible = JSON.stringify(action.is_interruptible) || '';
+		const probabilityEnum = getProbabilityEnum(is_interruptible);
+		const directly_interrupted =
+			probabilityEnum === InterruptProbability.ALWAYS || InterruptProbability.HIGH;
+		const travel_interrupted = is_travel && probabilityEnum === InterruptProbability.MEDIUM;
+
+		if (randomEventsHandling === 'ai_decides') {
+			if (directly_interrupted || travel_interrupted) {
+				additionalStoryInput += `\naction is possibly interrupted: ${is_interruptible} probability.`;
+			}
+		}
+		if (randomEventsHandling === 'probability') {
+			//combat is already long enough, dont interrupt often
+			const modifier = is_character_in_combat ? 0.5 : 1;
+			const randomEventCreated = isRandomEventCreated(probabilityEnum, modifier);
+			console.log('randomEventCreated', randomEventCreated);
+			if (randomEventCreated) {
+				additionalStoryInput += `\naction definitely must be interrupted: ${action.is_interruptible?.reasoning}`;
+			}
+		}
 	}
 	return additionalStoryInput;
+}
+
+function getProbabilityEnum(probability: string) {
+	if (probability.includes('ALWAYS')) {
+		return InterruptProbability.ALWAYS;
+	}
+	if (probability.includes('LOW')) {
+		return InterruptProbability.LOW;
+	}
+	if (probability.includes('MEDIUM')) {
+		return InterruptProbability.MEDIUM;
+	}
+	if (probability.includes('HIGH')) {
+		return InterruptProbability.HIGH;
+	}
+	return InterruptProbability.NEVER;
+}
+
+export function isRandomEventCreated(probEnum: InterruptProbability, modifier = 1) {
+	const randomEventValue = Math.random();
+	console.log('randomEventValue', randomEventValue, probEnum, 'modifier', modifier);
+	switch (probEnum) {
+		case InterruptProbability.NEVER:
+			return false;
+		case InterruptProbability.LOW:
+			return randomEventValue < 0.05 * modifier;
+		case InterruptProbability.MEDIUM:
+			return randomEventValue < 0.2 * modifier;
+		case InterruptProbability.HIGH:
+			return randomEventValue < 0.35 * modifier;
+		case InterruptProbability.ALWAYS:
+			return true;
+		default:
+			return false;
+	}
 }

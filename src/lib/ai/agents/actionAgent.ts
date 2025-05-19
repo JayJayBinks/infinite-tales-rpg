@@ -18,6 +18,14 @@ export const diceRollPrompt = `"dice_roll": {
 						"modifier": "none|bonus|malus",
 						"modifier_value": negative number for malus, 0 if none, positive number for bonus
 					}`;
+
+export enum InterruptProbability {
+	NEVER = 'NEVER',
+	LOW = 'LOW',
+	MEDIUM = 'MEDIUM',
+	HIGH = 'HIGH',
+	ALWAYS = 'ALWAYS'
+}
 export class ActionAgent {
 	llm: LLM;
 
@@ -45,7 +53,7 @@ export class ActionAgent {
 					"existing_related_skill_explanation": "Explanation if an existing skill is used instead of creating a new one",
 					"related_skill": "a single skill the dice is rolled for; ${newSkillRule} EXISTING SKILLS: ${skills.join(', ')}",
 					"difficulty_explanation": "Keep the text short, max 20 words. Explain the reasoning for action_difficulty. Format: Chose {action_difficulty} because {reason}",
-					"action_difficulty": "${Object.keys(ActionDifficulty)}",
+					"action_difficulty": "${Object.keys(ActionDifficulty).join('|')}",
 					"is_possible": true|false,
 					"resource_cost": if no cost null else { 
 						"resource_key": "the resource to pay for this action; one of character_stats.resources",
@@ -54,7 +62,7 @@ export class ActionAgent {
 					"narration_details": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} how many details the narration for this action should include; LOW if it involves few steps or can be done quickly; MEDIUM|HIGH if it involves thorough planning or decisions,
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
   					"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
-					"is_interruptible": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,
+					"is_interruptible": Format {"reasoning": string, "enum_english": ${Object.keys(InterruptProbability).join('|')}}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,
 					${diceRollPrompt}
 				}`;
 	};
