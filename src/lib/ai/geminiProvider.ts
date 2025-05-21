@@ -26,7 +26,7 @@ import {
 import { requestLLMJsonStream } from './jsonStreamHelper';
 
 export const GEMINI_MODELS = {
-	FLASH_THINKING_2_5: 'gemini-2.5-flash-preview-04-17',
+	FLASH_THINKING_2_5: 'gemini-2.5-flash-preview-05-20',
 	FLASH_THINKING_2_0: 'gemini-2.0-flash-thinking-exp-01-21',
 	FLASH_2_0: 'gemini-2.0-flash'
 };
