@@ -1417,10 +1417,10 @@
 		currentLevel={characterStatsState.value?.level}
 	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
-		{#if currentGameActionState}
-			<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
-				>Show Previous Story
-			</button>
+		<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
+			>Show Previous Story
+		</button>
+		{#if currentGameActionState?.story}
 			{#each !latestStoryProgressionState.stream_finished ? [currentGameActionState] : gameActionsState.value.slice(-2 + showXLastStoryPrgressions * -1, -1) as gameActionState (gameActionState.id)}
 				<StoryProgressionWithImage
 					story={gameActionState.story}
@@ -1447,7 +1447,7 @@
 		{/if}
 	</div>
 
-	{#if !aiConfigState.value?.disableAudioState}
+	{#if !aiConfigState.value?.disableAudioState && actionsTextForTTS}
 		<div class="mt-4 flex">
 			<TTSComponent
 				text={actionsTextForTTS}
