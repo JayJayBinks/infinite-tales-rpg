@@ -22,8 +22,8 @@ export class SummaryAgent {
 	 */
 	async summarizeStoryIfTooLong(
 		historyMessages: Array<LLMMessage>,
-		startSummaryAtSize = 0,
-		numOfLastActions = 1
+		startSummaryAtSize = 12 * 2,
+		numOfLastActions = 3 * 2
 	): Promise<{ newHistory: Array<LLMMessage>; summary: string }> {
 		if (historyMessages.length < startSummaryAtSize) {
 			return { newHistory: historyMessages, summary: '' };
