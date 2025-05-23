@@ -1,10 +1,11 @@
-<script>
-	import { stringifyPretty } from '$lib/util.svelte';
+<script lang="ts">
+	import { initialThoughtsState, stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 
 	const gameActionsState = useLocalStorage('gameActionsState');
 	const npcState = useLocalStorage('npcState', {});
 	const characterActionsState = useLocalStorage('characterActionsState', {});
+	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);	
 </script>
 
 <details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">
@@ -31,3 +32,25 @@
 		)}</output
 	>
 </details>
+
+<details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">
+	<summary class="collapse-title text-lg font-bold capitalize">
+		<p class="text-center">Story Thoughts</p>
+	</summary>
+	<output style="white-space: pre-wrap">{thoughtsState.value.storyThoughts}</output>
+</details>
+
+<details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">
+	<summary class="collapse-title text-lg font-bold capitalize">
+		<p class="text-center">Action Thoughts</p>
+	</summary>
+	<output style="white-space: pre-wrap">{thoughtsState.value.actionsThoughts}</output>
+</details>
+
+<details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">
+	<summary class="collapse-title text-lg font-bold capitalize">
+		<p class="text-center">Character Change Thoughts</p>
+	</summary>
+	<output style="white-space: pre-wrap">{thoughtsState.value.eventThoughts}</output>
+</details>
+	

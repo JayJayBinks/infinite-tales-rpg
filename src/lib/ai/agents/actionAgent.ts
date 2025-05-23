@@ -150,7 +150,7 @@ export class ActionAgent {
 			}
 		};
 		console.log('action generate start time: ', new Date());
-		const actionGenerated = (await this.llm.generateContent(request)) as Action;
+		const actionGenerated = (await this.llm.generateContent(request))?.content as Action;
 		console.log('action generate end time: ', new Date());
 		return actionGenerated;
 	}
@@ -178,7 +178,7 @@ export class ActionAgent {
 		relatedHistory?: string[],
 		newSkillsAllowed: boolean = false,
 		restrainingState?: string
-	): Promise<Array<Action>> {
+	): Promise<{ thoughts: string; actions: Array<Action> }> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
@@ -243,12 +243,12 @@ export class ActionAgent {
 		console.log('actions response: ', response);
 		//can get not directly arrays but wrapped responses from ai sometimes...
 		if (response && response.actions) {
-			return response.actions as Array<Action>;
+			return { thoughts: response.thoughts, actions: response.actions };
 		}
 		if (response && response.jsonArray) {
-			return response.jsonArray as Array<Action>;
+			return { thoughts: response.thoughts, actions: response.jsonArray };
 		}
-		return response as Array<Action>;
+		return { thoughts: response?.thoughts, actions: response?.content };
 	}
 
 	async generateActionsForItem(
@@ -263,7 +263,7 @@ export class ActionAgent {
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
 		newSkillsAllowed: boolean = false
-	): Promise<Array<Action>> {
+	): Promise<{ thoughts: string; actions: Array<Action> }> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
@@ -318,12 +318,12 @@ export class ActionAgent {
 
 		//can get not directly arrays but wrapped responses from ai sometimes...
 		if (response && response.actions) {
-			return response.actions as Array<Action>;
+			return { thoughts: response.thoughts, actions: response.actions };
 		}
 		if (response && response.jsonArray) {
-			return response.jsonArray as Array<Action>;
+			return { thoughts: response.thoughts, actions: response.jsonArray };
 		}
-		return response as Array<Action>;
+		return { thoughts: response.thoughts, actions: response.content };
 	}
 
 	private getCurrentGameStateMapped(currentGameState: GameActionState) {

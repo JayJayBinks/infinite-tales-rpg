@@ -1,5 +1,10 @@
 import type { GenerateContentConfig, SafetySetting, ThinkingConfig } from '@google/genai';
 
+export interface ContentWithThoughts {
+	thoughts: string;
+	content: object;
+}
+
 export interface LLMMessage {
 	role: 'user' | 'model';
 	content: string;
@@ -54,11 +59,13 @@ export abstract class LLM {
 		this.llmConfig = llmConfig;
 	}
 
-	abstract generateContent(request: LLMRequest): Promise<object | undefined>;
+	abstract generateContent(request: LLMRequest): Promise<ContentWithThoughts | undefined>;
 
+	//does not return thoughts only parsed json object
 	abstract generateContentStream(
 		request: LLMRequest,
-		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
+		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void,
+		thoughtUpdateCallback?: (thoughtChunk: string, isComplete: boolean) => void
 	): Promise<object | undefined>;
 
 	abstract getDefaultTemperature(): number;

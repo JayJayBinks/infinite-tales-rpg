@@ -148,7 +148,7 @@ export class CampaignAgent {
 					stringifyPretty(characterDescription)
 			});
 		}
-		const campaign = (await this.llm.generateContent(request)) as Campaign;
+		const campaign = (await this.llm.generateContent(request))?.content as Campaign;
 		return campaign;
 	}
 
@@ -198,7 +198,7 @@ export class CampaignAgent {
 			],
 			systemInstruction: agent
 		};
-		return (await this.llm.generateContent(request)) as Campaign;
+		return (await this.llm.generateContent(request))?.content as Campaign;
 	}
 
 	async generateSingleChapter(
@@ -241,6 +241,6 @@ export class CampaignAgent {
 				content: 'Description of the character: ' + stringifyPretty(characterState)
 			});
 		}
-		return (await this.llm.generateContent(request)) as CampaignChapter;
+		return (await this.llm.generateContent(request))?.content as CampaignChapter;
 	}
 }

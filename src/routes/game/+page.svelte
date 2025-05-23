@@ -13,7 +13,7 @@
 		type PlayerCharactersIdToNamesMap
 	} from '$lib/ai/agents/gameAgent';
 	import { onMount, tick } from 'svelte';
-	import { getTextForActionButton, handleError, stringifyPretty } from '$lib/util.svelte';
+	import { getTextForActionButton, handleError, initialThoughtsState, stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
@@ -134,6 +134,7 @@
 		initialCharacterStatsState
 	);
 	let storyChunkState = $state<string>('');
+	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
 
 	const skillsProgressionState = useLocalStorage<SkillsProgression>('skillsProgressionState', {});
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
@@ -308,7 +309,7 @@
 		playerCharactersGameState = updatedPlayerCharactersGameState;
 		tick().then(() => customActionInput.scrollIntoView(false));
 		if (characterActionsState.value.length === 0) {
-			characterActionsState.value = await actionAgent.generateActions(
+			const { thoughts, actions } = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
 				storyState.value,
@@ -327,6 +328,8 @@
 				gameSettingsState.value?.aiIntroducesSkills,
 				currentGameActionState.is_character_restrained_explanation
 			);
+			characterActionsState.value = actions;
+			thoughtsState.value.actionsThoughts = thoughts;
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
 		if (!didAIProcessDiceRollActionState.value) {
@@ -726,6 +729,9 @@
 	}
 
 	const applyGameEventEvaluation = (evaluated: EventEvaluation) => {
+		if (!evaluated) {
+			return;
+		}
 		const changeInto = evaluated?.character_changed?.changed_into;
 		if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
 			evaluated.character_changed!.aiProcessingComplete = false;
@@ -768,8 +774,10 @@
 			>;
 		}
 	) {
+		thoughtsState.value.storyThoughts = '';
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
 			onStoryStreamUpdate,
+			onThoughtStreamUpdate,
 			action,
 			additionalStoryInput,
 			systemInstructionsState.value.generalSystemInstruction,
@@ -842,7 +850,10 @@
 						historyMessagesState.value.slice(-6).map((m) => m.content),
 						characterStatsState.value.spells_and_abilities.map((a) => a.name)
 					)
-					.then(applyGameEventEvaluation);
+					.then((evaluation) => {
+						applyGameEventEvaluation(evaluation.event_evaluation);
+						thoughtsState.value.eventThoughts = evaluation.thoughts;
+					});
 				// Generate the next set of actions.
 				actionAgent
 					.generateActions(
@@ -858,13 +869,14 @@
 						gameSettingsState.value?.aiIntroducesSkills,
 						newState.is_character_restrained_explanation
 					)
-					.then((actions) => {
+					.then(({ thoughts, actions }) => {
 						if (actions) {
 							console.log(stringifyPretty(actions));
 							characterActionsState.value = actions;
 							renderGameState(currentGameActionState, actions);
 							addSkillsIfApplicable(actions);
 						}
+						thoughtsState.value.actionsThoughts = thoughts;
 					});
 				checkForLevelUp();
 			}
@@ -1299,11 +1311,19 @@
 		isAiGeneratingState = false;
 	}
 
+	function onThoughtStreamUpdate(thoughtChunk: string, isComplete: boolean): void {
+		if (!thoughtsState.value.storyThoughts && !isComplete) {
+			const time = new Date().toLocaleTimeString();
+			console.log('First thought chunk received at:', time);
+		}
+		thoughtsState.value.storyThoughts += thoughtChunk;
+	}
+
 	async function regenerateActions() {
 		characterActionsState.reset();
 		if (actionsDiv) actionsDiv.innerHTML = '';
 
-		characterActionsState.value = await actionAgent.generateActions(
+		const { thoughts, actions } = await actionAgent.generateActions(
 			currentGameActionState,
 			historyMessagesState.value,
 			storyState.value,
@@ -1322,6 +1342,8 @@
 			gameSettingsState.value?.aiIntroducesSkills,
 			currentGameActionState.is_character_restrained_explanation
 		);
+		characterActionsState.value = actions;
+		thoughtsState.value.actionsThoughts = thoughts;
 		renderGameState(currentGameActionState, characterActionsState.value);
 	}
 

@@ -1,4 +1,4 @@
-import { stringifyPretty } from '$lib/util.svelte';
+import { stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
 import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import { type StatsUpdate, statsUpdatePromptObject } from '$lib/ai/agents/combatAgent';
 import type { LLM, LLMMessage, LLMRequest, SystemInstructionsState } from '$lib/ai/llm';
@@ -125,6 +125,7 @@ export class GameAgent {
 	 */
 	async generateStoryProgression(
 		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void,
+		thoughtUpdateCallback: (thoughtChunk: string, isComplete: boolean) => void,
 		action: Action,
 		additionalStoryInput: string,
 		customSystemInstruction: string,
@@ -173,7 +174,8 @@ export class GameAgent {
 		console.log('Starting game agent:', time);
 		const newState = (await this.llm.generateContentStream(
 			request,
-			storyUpdateCallback
+			storyUpdateCallback,
+			thoughtUpdateCallback
 		)) as GameActionState;
 		const { userMessage, modelMessage } = this.buildHistoryMessages(
 			playerActionTextForHistory,
@@ -186,6 +188,7 @@ export class GameAgent {
 
 	async generateAnswerForPlayerQuestion(
 		question: string,
+		thoughtsState: ThoughtsState,
 		customSystemInstruction: SystemInstructionsState,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
@@ -198,7 +201,7 @@ export class GameAgent {
 		campaignChapterState?: CampaignChapter,
 		customGmNotes?: string,
 		is_character_restrained_explanation?: string
-	): Promise<GameMasterAnswer> {
+	): Promise<{ thoughts?: string; answer: GameMasterAnswer }> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
 				'You can refer to the internal state, rules and previous messages that the Game Master has considered',
@@ -214,6 +217,11 @@ export class GameAgent {
 		if (customGmNotes) {
 			gameAgent.push(
 				'The following are custom gm notes considered to be rules.' + '\n' + customGmNotes
+			);
+		}
+		if (thoughtsState.storyThoughts) {
+			gameAgent.push(
+				'The following are thoughts of the Game Master regarding how to progress the story.' + '\n' + JSON.stringify(thoughtsState)
 			);
 		}
 		if (relatedHistory.length > 0) {
@@ -245,7 +253,11 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent
 		};
-		return (await this.llm.generateContent(request)) as GameMasterAnswer;
+		const response = await this.llm.generateContent(request);
+		return {
+			thoughts: response?.thoughts,
+			answer: response?.content as GameMasterAnswer
+		};
 	}
 
 	private getGameAgentSystemInstructionsFromStates(

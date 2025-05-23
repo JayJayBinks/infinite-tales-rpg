@@ -153,7 +153,7 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		const stats = this.mapStats((await this.llm.generateContent(request)) as CharacterStats);
+		const stats = this.mapStats((await this.llm.generateContent(request))?.content as CharacterStats);
 		console.log(stats);
 		return stats;
 	}
@@ -217,7 +217,7 @@ export class CharacterStatsAgent {
 			systemInstruction: agentInstruction
 		};
 		console.log(stringifyPretty(request));
-		const aiLevelUp = (await this.llm.generateContent(request)) as AiLevelUp;
+		const aiLevelUp = (await this.llm.generateContent(request))?.content as AiLevelUp;
 		aiLevelUp.ability = this.mapAbility(aiLevelUp.ability);
 		aiLevelUp.character_name = characterState.name;
 		return aiLevelUp;
@@ -253,7 +253,7 @@ export class CharacterStatsAgent {
 			systemInstruction: agent,
 			model: GEMINI_MODELS.FLASH_THINKING_2_0
 		};
-		return (await this.llm.generateContent(request)) as NPCState;
+		return (await this.llm.generateContent(request))?.content as NPCState;
 	}
 
 	async generateAbilitiesFromPartial(
@@ -292,7 +292,7 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		let response = (await this.llm.generateContent(request)) as Ability[];
+		let response = (await this.llm.generateContent(request))?.content as Ability[];
 		if (!response) {
 			return [];
 		}

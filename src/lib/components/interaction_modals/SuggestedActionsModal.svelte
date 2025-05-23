@@ -42,6 +42,7 @@
 	const temperatureState = useLocalStorage<number>('temperatureState');
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	let thoughtsState = $state('');
 	let suggestedActions: Array<Action> = $state([]);
 	let customActionInput: string = $state('');
 
@@ -60,7 +61,7 @@
 		actionAgent = new ActionAgent(llm);
 
 		isGeneratingState = true;
-		suggestedActions = await actionAgent.generateActionsForItem(
+		const { thoughts, actions } = await actionAgent.generateActionsForItem(
 			itemForSuggestActionsState,
 			currentGameActionState,
 			historyMessagesState.value,
@@ -71,7 +72,9 @@
 			currentGameActionState.is_character_restrained_explanation,
 			customSystemInstruction.value
 		);
-		console.log('suggestedActions', suggestedActions);
+		console.log('suggestedActions', actions);
+		thoughtsState = thoughts;
+		suggestedActions = actions;
 		isGeneratingState = false;
 	});
 </script>
@@ -90,18 +93,26 @@
 				</div>
 			</div>
 		{:else}
+		<details
+				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
+			>
+				<summary class="collapse-title capitalize">
+					<p>Thoughts</p>
+				</summary>
+				<p>{thoughtsState}</p>
+			</details>
 			{#each suggestedActions as action}
 				<button
 					type="button"
 					disabled={!isEnoughResource(action, resources, inventoryState.value)}
-					class="components btn btn-neutral no-animation mt-2"
+					class="components btn btn-neutral no-animation mt-2 w-full"
 					onclick={() => onclose(action)}
 				>
 					{getTextForActionButton(action)}
 				</button>
 			{/each}
 		{/if}
-		<div class="mt-2 w-full lg:join">
+		<div class="mt-4 w-full lg:join">
 			<input
 				type="text"
 				bind:value={customActionInput}

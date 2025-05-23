@@ -1,6 +1,7 @@
 import JSONParser from '@streamparser/json/jsonparser.js';
 import type { LLM, LLMRequest } from './llm';
 import type { GenerateContentResponse } from '@google/genai';
+import { getThoughtsFromResponse } from './geminiProvider';
 
 /**
  * Fetches a JSON stream, parses it, calls a callback for progressive
@@ -19,7 +20,8 @@ import type { GenerateContentResponse } from '@google/genai';
 export async function requestLLMJsonStream(
 	request: LLMRequest,
 	llm: LLM,
-	storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
+	storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void,
+	thoughtUpdateCallback?: (thoughtChunk: string, isComplete: boolean) => void
 ): Promise<object | undefined> {
 	let finalJsonObject: any = null;
 	let jsonStarted = false;
@@ -66,7 +68,7 @@ export async function requestLLMJsonStream(
 
 	const geminiStreamResult = (await llm.generateContent(
 		request
-	)) as AsyncGenerator<GenerateContentResponse>;
+	)) as unknown as AsyncGenerator<GenerateContentResponse>;
 	if (!geminiStreamResult || typeof geminiStreamResult[Symbol.asyncIterator] !== 'function') {
 		console.error('Failed to get a valid stream from generateContent.');
 		throw new Error('Invalid stream response from LLM.');
@@ -75,9 +77,12 @@ export async function requestLLMJsonStream(
 	try {
 		console.log('--- Starting processing Gemini stream ---');
 		for await (const chunk of geminiStreamResult) {
+			const thoughts = getThoughtsFromResponse(chunk as GenerateContentResponse);
+			if (thoughts && thoughtUpdateCallback) {
+				thoughtUpdateCallback(thoughts, false);
+			}
 			const chunkText = chunk?.text;
 			if (typeof chunkText !== 'string') continue; // Skip invalid chunks more robustly
-
 			accumulatedRawText += chunkText;
 			if (chunkText.length === 0) continue; // Skip empty chunks
 
@@ -87,6 +92,7 @@ export async function requestLLMJsonStream(
 				const effectiveSearchText = pendingPrefixCheck + textToProcess;
 				let jsonContentStartIndexInOriginal = -1; // Index in the original textToProcess
 
+				
 				// --- Strategy 1: Look for ```json marker ---
 				const markerWithNewline = '```json\n';
 				const markerWithoutNewline = '```json';

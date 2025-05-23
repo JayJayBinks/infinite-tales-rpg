@@ -86,6 +86,6 @@ export class StoryAgent {
 					stringifyPretty(characterDescription)
 			});
 		}
-		return (await this.llm.generateContent(request)) as Story;
+		return (await this.llm.generateContent(request))?.content as Story;
 	}
 }

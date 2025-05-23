@@ -22,8 +22,8 @@ export class SummaryAgent {
 	 */
 	async summarizeStoryIfTooLong(
 		historyMessages: Array<LLMMessage>,
-		startSummaryAtSize = 12 * 2,
-		numOfLastActions = 3 * 2
+		startSummaryAtSize = 0,
+		numOfLastActions = 1
 	): Promise<{ newHistory: Array<LLMMessage>; summary: string }> {
 		if (historyMessages.length < startSummaryAtSize) {
 			return { newHistory: historyMessages, summary: '' };
@@ -42,7 +42,7 @@ export class SummaryAgent {
 			temperature: 1,
 			model: GEMINI_MODELS.FLASH_THINKING_2_0
 		};
-		const response = (await this.llm.generateContent(request)) as {
+		const response = (await this.llm.generateContent(request))?.content as {
 			story: string;
 		};
 		console.log('Summary returned ' + stringifyPretty(response));
@@ -98,7 +98,7 @@ export class SummaryAgent {
 			model: GEMINI_MODELS.FLASH_2_0,
 			temperature: 0.1
 		};
-		const response = (await this.llm.generateContent(request)) as RelatedStoryHistory;
+		const response = (await this.llm.generateContent(request))?.content as RelatedStoryHistory;
 		console.log(storyProgression, 'Related history returned ', stringifyPretty(response));
 		if (!response.relatedDetails) {
 			return { relatedDetails: [] };

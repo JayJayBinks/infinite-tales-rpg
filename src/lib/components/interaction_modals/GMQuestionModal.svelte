@@ -19,7 +19,7 @@
 		type SystemInstructionsState
 	} from '$lib/ai/llm';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import { stringifyPretty } from '$lib/util.svelte';
+	import { initialThoughtsState, stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
 	import type { AIConfig } from '$lib';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import type { NPCState } from '$lib/ai/agents/characterStatsAgent';
@@ -50,8 +50,8 @@
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const npcState = useLocalStorage<NPCState>('npcState', {});
-	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
-
+	const gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
+	const thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);	
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const getCurrentCampaignChapter = (): CampaignChapter | undefined =>
@@ -65,6 +65,7 @@
 
 	let gameAgent: GameAgent;
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
+	let gmThoughtsState: string | undefined = $state();
 	let isGeneratingState: boolean = $state(false);
 
 	onMount(async () => {
@@ -88,8 +89,9 @@
 		if (customMemoriesState.value) {
 			relatedQuestionHistory.push(customMemoriesState.value);
 		}
-		gmAnswerState = await gameAgent.generateAnswerForPlayerQuestion(
+		const { thoughts, answer } = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
+			thoughtsState.value,
 			systemInstructionsState.value,
 			historyMessagesState.value,
 			storyState.value,
@@ -103,7 +105,8 @@
 			customGMNotesState.value,
 			currentGameActionState.is_character_restrained_explanation
 		);
-		console.log(stringifyPretty(gmAnswerState));
+		gmAnswerState = answer;
+		gmThoughtsState = thoughts;
 		isGeneratingState = false;
 		if (!gmAnswerState) {
 			onclose(false);
@@ -118,6 +121,16 @@
 		<div class="modal-box flex flex-col items-center text-center">
 			<span class="m-auto font-bold">Game Master Answer</span>
 			<p class="mt-4 max-h-48 overflow-y-scroll">{gmAnswerState?.answerToPlayer}</p>
+			{#if gmThoughtsState}
+				<details
+					class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
+				>
+					<summary class="collapse-title capitalize">
+						<p>Thoughts</p>
+					</summary>
+					<p>{gmThoughtsState}</p>
+				</details>
+			{/if}
 			<details
 				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
 			>

@@ -64,6 +64,18 @@ export const defaultGeminiJsonConfig: GenerationConfig = {
 	responseMimeType: 'text/plain'
 };
 
+export const getThoughtsFromResponse = (response: GenerateContentResponse): string => {
+	let thoughts = '';
+	let responsePart;
+	if(response.candidates && response.candidates[0]){
+		responsePart = response.candidates[0].content!.parts![0];
+	};
+	if (responsePart?.thought) {
+		thoughts = responsePart?.text || '';
+	}
+	return thoughts;
+};
+
 export class GeminiProvider extends LLM {
 	genAI: GoogleGenAI;
 	jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
@@ -101,10 +113,11 @@ export class GeminiProvider extends LLM {
 	 */
 	async generateContentStream(
 		request: LLMRequest,
-		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
+		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void,
+		thoughtUpdateCallback?: (thoughtChunk: string, isComplete: boolean) => void
 	): Promise<object | undefined> {
 		request.stream = true;
-		return requestLLMJsonStream(request, this, storyUpdateCallback);
+		return requestLLMJsonStream(request, this, storyUpdateCallback, thoughtUpdateCallback);
 	}
 
 	isThinkingModel(model: string): boolean {
@@ -115,7 +128,12 @@ export class GeminiProvider extends LLM {
 		return model === GEMINI_MODELS.FLASH_THINKING_2_5;
 	}
 
-	async generateContent(request: LLMRequest): Promise<object | undefined> {
+	supportsReturnThoughts(model: string): boolean {
+		return model === GEMINI_MODELS.FLASH_THINKING_2_5 || model === GEMINI_MODELS.FLASH_THINKING_2_0;
+	}
+
+
+	async generateContent(request: LLMRequest): Promise<{ thoughts: string; content: object; } | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
 			return;
@@ -161,13 +179,19 @@ export class GeminiProvider extends LLM {
 			if (this.supportsThinkingBudget(modelToUse)) {
 				config.thinkingConfig = request.thinkingConfig;
 			}
+			if (this.supportsReturnThoughts(modelToUse)) {
+				if (!config.thinkingConfig) {
+					config.thinkingConfig = {};
+				}	
+				config.thinkingConfig.includeThoughts = true;
+			}
 			const genAIRequest = {
 				model: modelToUse,
 				config,
 				contents: contents
 			};
 			if (request.stream) {
-				return this.genAI.models.generateContentStream(genAIRequest);
+				return this.genAI.models.generateContentStream(genAIRequest) as any;
 			} else {
 				result = await this.genAI.models.generateContent(genAIRequest);
 			}
@@ -193,7 +217,7 @@ export class GeminiProvider extends LLM {
 						handleError(e as unknown as string);
 					} else {
 						if (this.llmConfig.returnFallbackProperty || request.returnFallbackProperty) {
-							fallbackResult['fallbackUsed'] = true;
+							fallbackResult.content['fallbackUsed'] = true;
 						}
 						return fallbackResult;
 					}
@@ -207,6 +231,7 @@ export class GeminiProvider extends LLM {
 		}
 		try {
 			let json: string;
+			const thoughts = getThoughtsFromResponse(result);
 			if (result.text) {
 				json = result.text;
 			} else {
@@ -214,9 +239,9 @@ export class GeminiProvider extends LLM {
 				return undefined;
 			}
 			try {
-				return JSON.parse(
+				return { thoughts, content: JSON.parse(
 					json.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim()
-				);
+				) };
 			} catch (firstError) {
 				try {
 					console.log('Error parsing JSON: ' + json, firstError);
@@ -224,9 +249,9 @@ export class GeminiProvider extends LLM {
 					if (
 						(firstError as SyntaxError).message.includes('Bad control character in string literal')
 					) {
-						return JSON.parse(json.replaceAll('\\', ''));
+						return { thoughts, content: JSON.parse(json.replaceAll('\\', '')) };
 					}
-					return JSON.parse(json.split('```json')[1].split('```')[0].trim());
+					return { thoughts, content: JSON.parse(json.split('```json')[1].split('```')[0].trim())};
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				} catch (secondError) {
 					//autofix if true or not set and llm allows it
@@ -235,10 +260,10 @@ export class GeminiProvider extends LLM {
 						this.llmConfig.tryAutoFixJSONError
 					) {
 						console.log('Try json fix with llm agent');
-						return this.jsonFixingInterceptorAgent.fixJSON(
+						return { thoughts: '', content: this.jsonFixingInterceptorAgent.fixJSON(
 							json,
 							(firstError as SyntaxError).message
-						);
+						) };
 					}
 					handleError(firstError as string);
 					return undefined;

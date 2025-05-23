@@ -113,7 +113,7 @@ export class CombatAgent {
 			systemInstruction: agent
 		};
 
-		const state = (await this.llm.generateContent(request)) as any;
+		const state = (await this.llm.generateContent(request))?.content as any;
 		mapStatsUpdates(state);
 		return state;
 	}

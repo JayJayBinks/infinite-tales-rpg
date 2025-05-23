@@ -6,6 +6,18 @@ import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import type { Action } from '$lib/ai/agents/gameAgent';
 import type { NpcID } from '$lib/ai/agents/characterStatsAgent';
 
+export type ThoughtsState = {
+	storyThoughts: string;
+	actionsThoughts: string;
+	eventThoughts: string;
+};
+
+export const initialThoughtsState: ThoughtsState = {
+	storyThoughts: '',
+	actionsThoughts: '',
+	eventThoughts: ''
+};
+
 export function stringifyPretty(object: unknown) {
 	return JSON.stringify(object, null, 2);
 }
