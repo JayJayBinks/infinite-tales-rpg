@@ -37,7 +37,7 @@
 
 	$effect(() => {
 		if (imagePrompt?.trim()) {
-			imageState.value.prompt = imagePrompt;
+			imageState.value.prompt = imagePrompt?.trim();
 		}
 		if (resetImageState) {
 			imageState.value = { ...initialImageState };
@@ -75,9 +75,10 @@
 	}
 
 	onMount(() => {
+		const imageStateSnapshot = $state.snapshot(imageState.value);
 		if (
 			imageState.value.isGenerating ||
-			(!showGenerateButton && isEqual(initialImageState, imageState.value))
+			(!showGenerateButton && isEqual(initialImageState, imageStateSnapshot))
 		) {
 			replaceWithAiGenerated();
 		}
