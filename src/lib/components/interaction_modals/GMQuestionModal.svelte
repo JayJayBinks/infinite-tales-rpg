@@ -121,16 +121,6 @@
 		<div class="modal-box flex flex-col items-center text-center">
 			<span class="m-auto font-bold">Game Master Answer</span>
 			<p class="mt-4 max-h-48 overflow-y-scroll">{gmAnswerState?.answerToPlayer}</p>
-			{#if gmThoughtsState}
-				<details
-					class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
-				>
-					<summary class="collapse-title capitalize">
-						<p>Thoughts</p>
-					</summary>
-					<p>{gmThoughtsState}</p>
-				</details>
-			{/if}
 			<details
 				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
 			>
@@ -153,7 +143,21 @@
 					{/each}
 				</ul>
 			</details>
-			<button class="btn btn-info mt-3" onclick={() => onclose(true)}>Close</button>
+			{#if gmThoughtsState}
+				<details
+					class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
+				>
+					<summary class="collapse-title capitalize">
+						<p>Thoughts</p>
+					</summary>
+					<p>{gmThoughtsState}</p>
+				</details>
+			{/if}
+			<div class="flex flex-row gap-2 mt-3 w-full">
+				
+			<button class="btn btn-info flex-1" onclick={() => onclose(true, {question, ...gmAnswerState})}>Add to context</button>
+				<button class="btn btn-info flex-1" onclick={() => onclose(true)}>Close</button>
+			</div>
 		</div>
 	</dialog>
 {/if}

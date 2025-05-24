@@ -6,6 +6,7 @@
 		defaultGameSettings,
 		type GameActionState,
 		GameAgent,
+		type GameMasterAnswer,
 		type GameSettings,
 		type InventoryState,
 		type Item,
@@ -1203,9 +1204,18 @@
 			await sendAction(action, false);
 		}
 	};
-	const onGMQuestionClosed = (closedByPlayer: boolean) => {
+	const onGMQuestionClosed = (closedByPlayer: boolean, gmAnswerStateAsContext?:  GameMasterAnswer) => {
 		if (closedByPlayer) {
 			customActionInput.value = '';
+		}
+		if(gmAnswerStateAsContext) {
+			additionalStoryInputState.value +=
+				'\nGM Context:\n' +
+				stringifyPretty(gmAnswerStateAsContext);
+			historyMessagesState.value.push({
+				role: 'user',
+				content: stringifyPretty(gmAnswerStateAsContext)
+			});
 		}
 		gmQuestionState = '';
 	};
