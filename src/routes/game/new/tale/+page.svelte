@@ -139,7 +139,7 @@
 		onclick={onUploadClicked}
 		disabled={isGeneratingState}
 	>
-		Generate Story from PDF
+		Generate Tale from PDF
 	</button>
 	<button
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
