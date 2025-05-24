@@ -92,7 +92,6 @@ export async function requestLLMJsonStream(
 				const effectiveSearchText = pendingPrefixCheck + textToProcess;
 				let jsonContentStartIndexInOriginal = -1; // Index in the original textToProcess
 
-				
 				// --- Strategy 1: Look for ```json marker ---
 				const markerWithNewline = '```json\n';
 				const markerWithoutNewline = '```json';

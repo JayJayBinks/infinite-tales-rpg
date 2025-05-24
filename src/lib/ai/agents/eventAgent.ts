@@ -63,7 +63,7 @@ export class EventAgent {
 	async evaluateEvents(
 		storyHistory: string[],
 		currentAbilitiesNames: string[]
-	): Promise<{thoughts: string; event_evaluation: EventEvaluation}> {
+	): Promise<{ thoughts: string; event_evaluation: EventEvaluation }> {
 		const agent = [
 			'Scan the FULL STORY provided and evaluate if the following events have occurred recently or are currently active. These events must be explicitly described or strongly implied by the narrative, not just hypothetical possibilities:',
 			`1. **Significant Character Change ('character_changed'):** Has the character undergone a MAJOR and likely PERMANENT transformation or alteration? (Examples: Gained a new profession rank, transformed into a vampire/werewolf, became possessed by a permanent entity, received new powers from a crystal).

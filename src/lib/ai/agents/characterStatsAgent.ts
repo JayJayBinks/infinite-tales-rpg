@@ -153,7 +153,9 @@ export class CharacterStatsAgent {
 			],
 			systemInstruction: agentInstruction
 		};
-		const stats = this.mapStats((await this.llm.generateContent(request))?.content as CharacterStats);
+		const stats = this.mapStats(
+			(await this.llm.generateContent(request))?.content as CharacterStats
+		);
 		console.log(stats);
 		return stats;
 	}
