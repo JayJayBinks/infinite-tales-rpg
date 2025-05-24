@@ -9,7 +9,7 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
+	import { getRowsForTextarea, navigate, loadPDF } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import { goto } from '$app/navigation';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
@@ -79,6 +79,48 @@
 	function handleInput(evt, stateValue) {
 		storyStateOverwrites[stateValue] = evt.target.value;
 	}
+
+	const onUploadClicked = async () => {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'application/pdf'; // Ensure only PDF files are accepted
+		input.onchange = async (e) => {
+			const target = e.target as HTMLInputElement;
+			const file = target?.files?.[0];
+			if (!file) {
+				return;
+			}
+			isGeneratingState = true;
+			try {
+				const text = await loadPDF(file);
+				const pdfOverwrites = { adventure_and_main_event: text };
+				// For now, we assume the PDF primarily drives the main content.
+				// Existing storyStateOverwrites could be merged if needed,
+				// but for this feature, let's prioritize PDF content for adventure_and_main_event.
+				// Other fields in storyStateOverwrites will still be passed if they were set by the user.
+				const combinedOverwrites = { ...storyStateOverwrites, ...pdfOverwrites };
+
+				const newState = await storyAgent.generateRandomStorySettings(
+					combinedOverwrites,
+					getCharacterDescription()
+				);
+				if (newState) {
+					storyState.value = newState;
+					// Clear the specific PDF overwrite after generation, so it doesn't stick if user randomizes again
+					// or we can decide to keep it, for this iteration, let's clear it.
+					// delete storyStateOverwrites['adventure_and_main_event'];
+					// Or, if we want to clear all overwrites after PDF processing:
+					// storyStateOverwrites = {}; 
+				}
+			} catch (error) {
+				console.error('Error processing PDF or generating story:', error);
+				// Optionally, show an error message to the user
+			} finally {
+				isGeneratingState = false;
+			}
+		};
+		input.click();
+	};
 </script>
 
 {#if isGeneratingState}
@@ -112,6 +154,14 @@
 		onclick={onRandomize}
 	>
 		Randomize All
+	</button>
+	<button
+		type="button"
+		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
+		on:click={onUploadClicked}
+		disabled={isGeneratingState}
+	>
+		Generate Story from PDF
 	</button>
 	<button
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
