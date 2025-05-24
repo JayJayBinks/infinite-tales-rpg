@@ -93,7 +93,7 @@
 				</div>
 			</div>
 		{:else}
-		<details
+			<details
 				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
 			>
 				<summary class="collapse-title capitalize">

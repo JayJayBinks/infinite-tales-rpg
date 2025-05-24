@@ -110,7 +110,7 @@
 					// or we can decide to keep it, for this iteration, let's clear it.
 					// delete storyStateOverwrites['adventure_and_main_event'];
 					// Or, if we want to clear all overwrites after PDF processing:
-					// storyStateOverwrites = {}; 
+					// storyStateOverwrites = {};
 				}
 			} catch (error) {
 				console.error('Error processing PDF or generating story:', error);
@@ -158,7 +158,7 @@
 	<button
 		type="button"
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
-		on:click={onUploadClicked}
+		onclick={onUploadClicked}
 		disabled={isGeneratingState}
 	>
 		Generate Story from PDF

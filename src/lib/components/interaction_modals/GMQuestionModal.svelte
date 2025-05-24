@@ -19,7 +19,7 @@
 		type SystemInstructionsState
 	} from '$lib/ai/llm';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import { initialThoughtsState, stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
+	import { initialThoughtsState, type ThoughtsState } from '$lib/util.svelte';
 	import type { AIConfig } from '$lib';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 	import type { NPCState } from '$lib/ai/agents/characterStatsAgent';
@@ -50,8 +50,11 @@
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const npcState = useLocalStorage<NPCState>('npcState', {});
-	const gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
-	const thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);	
+	const gameSettingsState = useLocalStorage<GameSettings>(
+		'gameSettingsState',
+		defaultGameSettings()
+	);
+	const thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const getCurrentCampaignChapter = (): CampaignChapter | undefined =>

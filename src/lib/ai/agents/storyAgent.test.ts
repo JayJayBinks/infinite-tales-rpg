@@ -98,8 +98,8 @@ describe('StoryAgent', () => {
 			const sampleCharacter: CharacterDescription = {
 				...initialCharacterState,
 				name: 'Elara',
-				description: 'A cunning rogue from the city slums.',
-				character_class: 'Rogue'
+				appearance: 'A cunning rogue from the city slums.',
+				class: 'Rogue'
 			};
 			const storyWithChar: Story = {
 				...sampleStory,
@@ -125,14 +125,13 @@ describe('StoryAgent', () => {
 			const sampleCharacter: CharacterDescription = {
 				...initialCharacterState,
 				name: 'Gorok',
-				description: 'A stoic warrior seeking redemption.',
-				character_class: 'Warrior'
+				appearance: 'A stoic warrior seeking redemption.',
+				class: 'Warrior'
 			};
 			const storyCombined: Story = {
 				...sampleStory,
 				adventure_and_main_event: sampleText,
-				character_simple_description:
-					'Gorok, the warrior, joins a group to stop the cataclysm.'
+				character_simple_description: 'Gorok, the warrior, joins a group to stop the cataclysm.'
 			};
 			mockLLMInstance.generateContent.mockResolvedValue({ content: storyCombined });
 
@@ -170,7 +169,7 @@ describe('StoryAgent', () => {
 		it('should return undefined if LLM generateContent throws an error', async () => {
 			mockLLMInstance.generateContent.mockRejectedValue(new Error('LLM API Error'));
 
-			const result = await storyAgent.generateRandomStorySettings();
+			await storyAgent.generateRandomStorySettings();
 
 			expect(mockLLMInstance.generateContent).toHaveBeenCalledOnce();
 			// The current implementation of StoryAgent's generateRandomStorySettings
@@ -185,26 +184,26 @@ describe('StoryAgent', () => {
 			// The mockResolvedValue({ content: undefined }) covers the latter.
 			// For a thrown error:
 			await expect(storyAgent.generateRandomStorySettings()).rejects.toThrow('LLM API Error');
-            // To make it return undefined on error, StoryAgent would need:
-            // try { return (await this.llm.generateContent(request))?.content as Story; } catch { return undefined; }
+			// To make it return undefined on error, StoryAgent would need:
+			// try { return (await this.llm.generateContent(request))?.content as Story; } catch { return undefined; }
 		});
 
-        it('should use all fields from storyStateForPrompt in the LLM request if no overwrites', async () => {
-            mockLLMInstance.generateContent.mockResolvedValue({ content: sampleStory });
-            await storyAgent.generateRandomStorySettings();
-            const request = mockLLMInstance.generateContent.mock.calls[0][0] as LLMRequest;
-            const presetInRequest = JSON.parse(
-                request.userMessage.replace(
-                    'Create a new randomized story considering the following settings: ',
-                    ''
-                )
-            );
-            // Check if all keys from storyStateForPrompt (excluding game which is handled by random selection) are in preset.
-            for (const key of Object.keys(storyStateForPrompt)) {
-                if (key === 'game') continue; // game is specifically set randomly if no overwrites
-                expect(presetInRequest).toHaveProperty(key);
-                expect(presetInRequest[key]).toEqual(storyStateForPrompt[key]);
-            }
-        });
+		it('should use all fields from storyStateForPrompt in the LLM request if no overwrites', async () => {
+			mockLLMInstance.generateContent.mockResolvedValue({ content: sampleStory });
+			await storyAgent.generateRandomStorySettings();
+			const request = mockLLMInstance.generateContent.mock.calls[0][0] as LLMRequest;
+			const presetInRequest = JSON.parse(
+				request.userMessage.replace(
+					'Create a new randomized story considering the following settings: ',
+					''
+				)
+			);
+			// Check if all keys from storyStateForPrompt (excluding game which is handled by random selection) are in preset.
+			for (const key of Object.keys(storyStateForPrompt)) {
+				if (key === 'game') continue; // game is specifically set randomly if no overwrites
+				expect(presetInRequest).toHaveProperty(key);
+				expect(presetInRequest[key]).toEqual(storyStateForPrompt[key]);
+			}
+		});
 	});
 });
