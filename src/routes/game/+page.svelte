@@ -14,7 +14,13 @@
 		type PlayerCharactersIdToNamesMap
 	} from '$lib/ai/agents/gameAgent';
 	import { onMount, tick } from 'svelte';
-	import { getTextForActionButton, handleError, initialThoughtsState, stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
+	import {
+		getTextForActionButton,
+		handleError,
+		initialThoughtsState,
+		stringifyPretty,
+		type ThoughtsState
+	} from '$lib/util.svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';

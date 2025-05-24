@@ -5,7 +5,7 @@
 	const gameActionsState = useLocalStorage('gameActionsState');
 	const npcState = useLocalStorage('npcState', {});
 	const characterActionsState = useLocalStorage('characterActionsState', {});
-	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);	
+	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
 </script>
 
 <details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">
@@ -53,4 +53,3 @@
 	</summary>
 	<output style="white-space: pre-wrap">{thoughtsState.value.eventThoughts}</output>
 </details>
-	

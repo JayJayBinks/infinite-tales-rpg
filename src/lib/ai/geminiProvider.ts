@@ -67,9 +67,9 @@ export const defaultGeminiJsonConfig: GenerationConfig = {
 export const getThoughtsFromResponse = (response: GenerateContentResponse): string => {
 	let thoughts = '';
 	let responsePart;
-	if(response.candidates && response.candidates[0]){
+	if (response.candidates && response.candidates[0]) {
 		responsePart = response.candidates[0].content!.parts![0];
-	};
+	}
 	if (responsePart?.thought) {
 		thoughts = responsePart?.text || '';
 	}
@@ -132,8 +132,9 @@ export class GeminiProvider extends LLM {
 		return model === GEMINI_MODELS.FLASH_THINKING_2_5 || model === GEMINI_MODELS.FLASH_THINKING_2_0;
 	}
 
-
-	async generateContent(request: LLMRequest): Promise<{ thoughts: string; content: object; } | undefined> {
+	async generateContent(
+		request: LLMRequest
+	): Promise<{ thoughts: string; content: object } | undefined> {
 		if (!this.llmConfig.apiKey) {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
 			return;
@@ -182,7 +183,7 @@ export class GeminiProvider extends LLM {
 			if (this.supportsReturnThoughts(modelToUse)) {
 				if (!config.thinkingConfig) {
 					config.thinkingConfig = {};
-				}	
+				}
 				config.thinkingConfig.includeThoughts = true;
 			}
 			const genAIRequest = {
@@ -239,9 +240,12 @@ export class GeminiProvider extends LLM {
 				return undefined;
 			}
 			try {
-				return { thoughts, content: JSON.parse(
-					json.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim()
-				) };
+				return {
+					thoughts,
+					content: JSON.parse(
+						json.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim()
+					)
+				};
 			} catch (firstError) {
 				try {
 					console.log('Error parsing JSON: ' + json, firstError);
@@ -251,7 +255,7 @@ export class GeminiProvider extends LLM {
 					) {
 						return { thoughts, content: JSON.parse(json.replaceAll('\\', '')) };
 					}
-					return { thoughts, content: JSON.parse(json.split('```json')[1].split('```')[0].trim())};
+					return { thoughts, content: JSON.parse(json.split('```json')[1].split('```')[0].trim()) };
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				} catch (secondError) {
 					//autofix if true or not set and llm allows it
@@ -260,10 +264,13 @@ export class GeminiProvider extends LLM {
 						this.llmConfig.tryAutoFixJSONError
 					) {
 						console.log('Try json fix with llm agent');
-						return { thoughts: '', content: this.jsonFixingInterceptorAgent.fixJSON(
-							json,
-							(firstError as SyntaxError).message
-						) };
+						return {
+							thoughts: '',
+							content: this.jsonFixingInterceptorAgent.fixJSON(
+								json,
+								(firstError as SyntaxError).message
+							)
+						};
 					}
 					handleError(firstError as string);
 					return undefined;

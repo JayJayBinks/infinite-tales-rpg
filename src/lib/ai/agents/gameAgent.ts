@@ -221,7 +221,9 @@ export class GameAgent {
 		}
 		if (thoughtsState.storyThoughts) {
 			gameAgent.push(
-				'The following are thoughts of the Game Master regarding how to progress the story.' + '\n' + JSON.stringify(thoughtsState)
+				'The following are thoughts of the Game Master regarding how to progress the story.' +
+					'\n' +
+					JSON.stringify(thoughtsState)
 			);
 		}
 		if (relatedHistory.length > 0) {

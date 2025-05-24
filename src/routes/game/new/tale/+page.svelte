@@ -9,7 +9,7 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
+	import { getRowsForTextarea, navigate, loadPDF } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import { goto } from '$app/navigation';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
@@ -79,6 +79,26 @@
 	function handleInput(evt, stateValue) {
 		storyStateOverwrites[stateValue] = evt.target.value;
 	}
+
+	function onUploadClicked() {
+		const fileInput = document.createElement('input');
+		fileInput.type = 'file';
+		fileInput.accept = 'application/pdf';
+		fileInput.click();
+		fileInput.addEventListener('change', function (event) {
+			// @ts-expect-error can never be null
+			const file = event.target.files[0];
+			if (file) {
+				const reader = new FileReader();
+				reader.onload = async () => {
+					const text = await loadPDF(file);
+					storyStateOverwrites = { ...storyStateOverwrites, gameBook: text };
+					await onRandomize();
+				};
+				reader.readAsArrayBuffer(file);
+			}
+		});
+	}
 </script>
 
 {#if isGeneratingState}
@@ -112,6 +132,14 @@
 		onclick={onRandomize}
 	>
 		Randomize All
+	</button>
+	<button
+		type="button"
+		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
+		onclick={onUploadClicked}
+		disabled={isGeneratingState}
+	>
+		Generate Tale from PDF
 	</button>
 	<button
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
