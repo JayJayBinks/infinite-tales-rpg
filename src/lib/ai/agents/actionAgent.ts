@@ -11,6 +11,7 @@ import {
 } from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
+import { CombatAgent } from './combatAgent';
 
 export const diceRollPrompt = `"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
@@ -228,7 +229,7 @@ export class ActionAgent {
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a tense situation must be resolved.';
 		if (currentGameState.is_character_in_combat) {
-			userMessage += '\nOnly suggest combat actions given the situation';
+			userMessage += CombatAgent.getCombatPromptAddition();
 		}
 		if (restrainingState) {
 			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';

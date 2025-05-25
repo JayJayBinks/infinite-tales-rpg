@@ -543,7 +543,6 @@
 		let additionalStoryInput = '';
 		let allCombatDeterminedActionsAndStatsUpdate;
 		if (!isGameEnded && currentGameActionState.is_character_in_combat) {
-			additionalStoryInput += CombatAgent.getCombatPromptAddition();
 			if (useDynamicCombat) {
 				const combatObject = await getActionPromptForCombat(
 					action,

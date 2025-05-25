@@ -168,17 +168,17 @@ export class CombatAgent {
 	}
 
 	static getCombatPromptAddition() {
-		//TODO rather do this programatically? Keep an eye on if influence future actions, it is not used in the history
-		// but very_difficult may not be used anymore even when fight has finished
+		//TODO rather do this programatically?
 		const combatDifficulties = [
 			ActionDifficulty.simple,
 			ActionDifficulty.medium,
 			ActionDifficulty.difficult
 		];
 		return (
-			'\nFor now only use following difficulties: ' +
+			'\nOnly suggest combat actions given the situation' +
+			'\nOnly use following difficulties: ' +
 			combatDifficulties.join('|') +
-			'\nFor now only apply bonus to dice_roll'
+			'\nOnly apply bonus to dice_roll'
 		);
 	}
 }
