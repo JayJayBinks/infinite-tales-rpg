@@ -67,7 +67,7 @@
 				<br />
 				Probability: E.g. 75% ambush in dangerous area
 				<br />
-				AI decides: if travel is ambushed
+				AI decides: based on context
 			</small>
 		</label>
 
