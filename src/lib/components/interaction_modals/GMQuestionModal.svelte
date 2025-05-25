@@ -156,9 +156,11 @@
 					<p>{gmThoughtsState}</p>
 				</details>
 			{/if}
-			<div class="flex flex-row gap-2 mt-3 w-full">
-				
-			<button class="btn btn-info flex-1" onclick={() => onclose(true, {question, ...gmAnswerState})}>Add to context</button>
+			<div class="mt-3 flex w-full flex-row gap-2">
+				<button
+					class="btn btn-info flex-1"
+					onclick={() => onclose(true, { question, ...gmAnswerState })}>Add to context</button
+				>
 				<button class="btn btn-info flex-1" onclick={() => onclose(true)}>Close</button>
 			</div>
 		</div>

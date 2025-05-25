@@ -1210,14 +1210,16 @@
 			await sendAction(action, false);
 		}
 	};
-	const onGMQuestionClosed = (closedByPlayer: boolean, gmAnswerStateAsContext?:  GameMasterAnswer) => {
+	const onGMQuestionClosed = (
+		closedByPlayer: boolean,
+		gmAnswerStateAsContext?: GameMasterAnswer
+	) => {
 		if (closedByPlayer) {
 			customActionInput.value = '';
 		}
-		if(gmAnswerStateAsContext) {
+		if (gmAnswerStateAsContext) {
 			additionalStoryInputState.value +=
-				'\nGM Context:\n' +
-				stringifyPretty(gmAnswerStateAsContext);
+				'\nGM Context:\n' + stringifyPretty(gmAnswerStateAsContext);
 			historyMessagesState.value.push({
 				role: 'user',
 				content: stringifyPretty(gmAnswerStateAsContext)
