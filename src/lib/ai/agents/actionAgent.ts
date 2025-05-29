@@ -158,6 +158,7 @@ export class ActionAgent {
 
 	private readonly actionRules = `Action Rules:
 		- Always provide at least 3 potential actions the CHARACTER can take, fitting the THEME.
+		- Actions must be branching choices for the character, not a sequence.
 		- Keep the actions text short, max 20 words.
 		- as action text never mention meta elements like stats or difficulty, only use an in-game story driven description
 		- Review the character's spells_and_abilities and inventory for passive attributes that could alter the dice_roll
@@ -186,7 +187,7 @@ export class ActionAgent {
 
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 		const agent = [
-			'You are RPG action agent, you are given a RPG story and then suggest the next action the player character can take, considering the story, currently_present_npcs and character stats.',
+			'You are RPG action agent, you are given a RPG story and then suggest actions the player character can take, considering the story, currently_present_npcs and character stats.',
 			this.actionRules,
 			'The suggested actions must fit to the setting of the story:' +
 				'\n' +
