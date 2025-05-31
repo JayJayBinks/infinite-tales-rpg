@@ -79,7 +79,7 @@
 		if (isMounted && action && !diceRollRequiredValueState.value && !resetState) {
 			if (action.is_possible === false) {
 				rollDifferenceHistoryState.reset();
-				diceRollRequiredValueState.value = 20;
+				diceRollRequiredValueState.value = 99;
 			} else {
 				diceRollRequiredValueState.value = diceRollLogic.getRequiredValue(
 					action?.action_difficulty,
