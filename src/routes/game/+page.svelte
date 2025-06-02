@@ -499,9 +499,9 @@
 							chosenActionState.value.dice_roll!.modifier_explanation! +
 							` -3 for trying without enough ${chosenActionState.value.resource_cost?.resource_key?.replaceAll('_', ' ')}`,
 						modifier_value:
-							Number.parseInt(
+							(Number.parseInt(
 								chosenActionState.value.dice_roll?.modifier_value as unknown as string
-							) || 0 - 3
+							) || 0) -3
 					}
 				};
 			}
