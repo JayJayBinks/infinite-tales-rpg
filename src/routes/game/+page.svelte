@@ -1593,7 +1593,7 @@
 
 	<style>
 		.btn {
-			height: fit-content;
+			height: auto;
 			padding: 1rem;
 		}
 
