@@ -620,6 +620,7 @@
 	}
 
 	function checkForLevelUp() {
+		levelUpState.value.buttonEnabled = false;
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
 
 		if (
@@ -989,6 +990,7 @@
 		playerCharactersGameState[playerCharacterIdState].XP.current_value -= xpNeededForLevel;
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update.push(buyLevelUpObject);
 		levelUpState.value.dialogOpened = true;
+		checkForLevelUp();
 	}
 
 	function addActionButton(action: Action, is_character_in_combat?: boolean, addClass?: string) {

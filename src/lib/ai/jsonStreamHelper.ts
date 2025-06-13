@@ -290,10 +290,8 @@ export async function requestLLMJsonStream(
 			console.error('Error:', (parseError as Error).message);
 			console.error('Marker found initially:', markerFound);
 			console.error(
-				'Cleaned JSON Text (first/last 100 chars):\n',
-				cleanedJsonText.substring(0, 100) +
-					(cleanedJsonText.length > 200 ? '\n...\n' : '\n') +
-					cleanedJsonText.substring(Math.max(100, cleanedJsonText.length - 100))
+				'Cleaned JSON Text:\n',
+				cleanedJsonText
 			);
 			// Log more context if it's small
 			if (cleanedJsonText.length <= 500) {

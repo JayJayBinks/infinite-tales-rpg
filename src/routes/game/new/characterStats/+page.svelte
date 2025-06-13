@@ -261,6 +261,10 @@
 			...characterStatsStateOverwrites.spells_and_abilities[index],
 			...spellData
 		};
+		characterStatsState.value.spells_and_abilities[index] = {
+			...characterStatsState.value.spells_and_abilities[index],
+			...spellData
+		};
 	}
 </script>
 

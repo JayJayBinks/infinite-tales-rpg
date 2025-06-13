@@ -85,7 +85,7 @@
 									class="components btn btn-neutral no-animation mt-2"
 									disabled={ability.resource_cost?.cost > 0 &&
 										ability.resource_cost?.cost >
-											resources[ability.resource_cost?.resource_key || '']?.current_value}
+											(resources[ability.resource_cost?.resource_key || '']?.current_value || 0)}
 									onclick={() => {
 										mapAbilityToAction(ability);
 										dialogRef.close();
