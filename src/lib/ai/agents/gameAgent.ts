@@ -337,7 +337,7 @@ export class GameAgent {
 					sourceName: playerCharacterName,
 					targetName: playerCharacterName,
 					type: resourceKey + '_gained',
-					value: { result: refillValue - (currentResources[resourceKey].current_value || 0) || 0 }
+					value: { result: refillValue - (currentResources[resourceKey]?.current_value || 0) || 0 }
 				});
 			});
 		return returnObject;

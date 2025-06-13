@@ -1384,7 +1384,7 @@
 	{#if isAiGeneratingState}
 		<LoadingModal></LoadingModal>
 	{/if}
-	{#if errorState.userMessage}
+	{#if errorState.userMessage && errorState.code != 'memory_retrieval'}
 		<ErrorDialog onclose={handleAIError} />
 	{/if}
 	{#if customActionImpossibleReasonState}

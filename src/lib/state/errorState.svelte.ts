@@ -1,10 +1,12 @@
 class ErrorState {
 	userMessage = $state();
+	code = $state();
 	exception = $state();
 	retryable = $state();
 
 	clear = () => {
 		this.userMessage = undefined;
+		this.code = undefined;
 		this.exception = undefined;
 		this.retryable = undefined;
 	};
