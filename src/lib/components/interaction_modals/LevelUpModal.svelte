@@ -106,15 +106,14 @@
 			<p class="mt-4 font-bold">The AI has chosen following updates:</p>
 			<p class="m-1 font-bold capitalize">{aiLevelUp.attribute.replaceAll('_', ' ')}:</p>
 			<p>
-				{characterStatsState.value.attributes[aiLevelUp.attribute] || 'New attribute'} -> {characterStatsState.value
-					.attributes[aiLevelUp.attribute] + 1}
+				{characterStatsState.value.attributes[aiLevelUp.attribute] || 'New attribute'} -> {characterStatsState
+					.value.attributes[aiLevelUp.attribute] + 1}
 			</p>
 			{#each Object.keys(aiLevelUp.resources) as resourceKey}
 				<p class="m-1 font-bold capitalize">{resourceKey.replaceAll('_', ' ')}:</p>
 				<p>
-					{characterStatsState.value.resources[resourceKey]?.max_value || 'New resource'} -> {aiLevelUp.resources[
-						resourceKey
-					]}
+					{characterStatsState.value.resources[resourceKey]?.max_value || 'New resource'} -> {aiLevelUp
+						.resources[resourceKey]}
 				</p>
 			{/each}
 			{#if aiLevelUp.formerAbilityName}

@@ -78,8 +78,12 @@ export async function requestLLMJsonStream(
 		console.log('--- Starting processing Gemini stream ---');
 		for await (const chunk of geminiStreamResult) {
 			const thoughts = getThoughtsFromResponse(chunk as GenerateContentResponse);
-			if (thoughts && thoughtUpdateCallback) {
-				thoughtUpdateCallback(thoughts, false);
+			if (thoughts) {
+				if (thoughtUpdateCallback && typeof thoughtUpdateCallback === 'function') {
+					// Call the thought update callback with the current thoughts
+					thoughtUpdateCallback(thoughts, false);
+				}
+				continue; // Skip to the next chunk if this is a thought update
 			}
 			const chunkText = chunk?.text;
 			if (typeof chunkText !== 'string') continue; // Skip invalid chunks more robustly
@@ -274,6 +278,7 @@ export async function requestLLMJsonStream(
 		}
 
 		try {
+			cleanedJsonText = cleanedJsonText.replaceAll('```', '').trim(); // Remove any stray ``` markers
 			finalJsonObject = JSON.parse(cleanedJsonText);
 			console.log('--> Final JSON object successfully parsed after cleaning.');
 
@@ -289,14 +294,7 @@ export async function requestLLMJsonStream(
 			console.error('--- FINAL JSON PARSE FAILED ---');
 			console.error('Error:', (parseError as Error).message);
 			console.error('Marker found initially:', markerFound);
-			console.error(
-				'Cleaned JSON Text:\n',
-				cleanedJsonText
-			);
-			// Log more context if it's small
-			if (cleanedJsonText.length <= 500) {
-				console.error('Full Cleaned JSON Text:\n', cleanedJsonText);
-			}
+			console.error('Cleaned JSON Text:\n', cleanedJsonText);
 			// Log raw text only if significantly different or for more context
 			// if (cleanedJsonText !== accumulatedRawText) {
 			// 	console.error(

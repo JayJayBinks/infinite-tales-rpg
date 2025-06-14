@@ -501,7 +501,7 @@
 						modifier_value:
 							(Number.parseInt(
 								chosenActionState.value.dice_roll?.modifier_value as unknown as string
-							) || 0) -3
+							) || 0) - 3
 					}
 				};
 			}

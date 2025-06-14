@@ -67,8 +67,8 @@ export const defaultGeminiJsonConfig: GenerationConfig = {
 export const getThoughtsFromResponse = (response: GenerateContentResponse): string => {
 	let thoughts = '';
 	let responsePart;
-	if (response.candidates && response.candidates[0]) {
-		responsePart = response.candidates[0].content!.parts![0];
+	if (response?.candidates?.[0]?.content?.parts?.length || 0 > 0) {
+		responsePart = response!.candidates![0].content!.parts![0];
 	}
 	if (responsePart?.thought) {
 		thoughts = responsePart?.text || '';
@@ -184,7 +184,9 @@ export class GeminiProvider extends LLM {
 				if (!config.thinkingConfig) {
 					config.thinkingConfig = {};
 				}
-				config.thinkingConfig.includeThoughts = true;
+				if (config.thinkingConfig.includeThoughts === undefined) {
+					config.thinkingConfig.includeThoughts = true;
+				}
 			}
 			const genAIRequest = {
 				model: modelToUse,
