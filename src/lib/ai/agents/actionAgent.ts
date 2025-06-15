@@ -1,4 +1,4 @@
-import { stringifyPretty } from '$lib/util.svelte';
+import { shuffleArray, stringifyPretty } from '$lib/util.svelte';
 import { ActionDifficulty } from '../../../routes/game/gameLogic';
 import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
@@ -257,13 +257,10 @@ export class ActionAgent {
 		const response = (await this.llm.generateContent(request)) as any;
 		console.log('actions response: ', response);
 		//can get not directly arrays but wrapped responses from ai sometimes...
-		if (response && response.actions) {
-			return { thoughts: response.thoughts, actions: response.actions };
-		}
-		if (response && response.jsonArray) {
-			return { thoughts: response.thoughts, actions: response.jsonArray };
-		}
-		return { thoughts: response?.thoughts, actions: response?.content };
+		const actions = response?.content.actions || response?.content.jsonArray || response.content;
+		// if actions were adjusted via custom prompt, make sure that they do not have an order
+		shuffleArray(actions);
+		return { thoughts: response?.thoughts, actions };
 	}
 
 	async generateActionsForItem(
@@ -335,13 +332,10 @@ export class ActionAgent {
 		const response = (await this.llm.generateContent(request)) as any;
 
 		//can get not directly arrays but wrapped responses from ai sometimes...
-		if (response && response.actions) {
-			return { thoughts: response.thoughts, actions: response.actions };
-		}
-		if (response && response.jsonArray) {
-			return { thoughts: response.thoughts, actions: response.jsonArray };
-		}
-		return { thoughts: response.thoughts, actions: response.content };
+		const actions = response?.content.actions || response?.content.jsonArray || response.content;
+		// if actions were adjusted via custom prompt, make sure that they do not have an order
+		shuffleArray(actions);
+		return { thoughts: response?.thoughts, actions };
 	}
 
 	private getCurrentGameStateMapped(currentGameState: GameActionState) {
