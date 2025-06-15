@@ -160,6 +160,7 @@
 	const npcState = useLocalStorage<NPCState>('npcState', {});
 	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
 	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState', '');
+	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState', '');
 	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
 	let playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
 		'playerCharactersIdToNamesMapState',
@@ -333,7 +334,8 @@
 					customMemoriesState.value
 				),
 				gameSettingsState.value?.aiIntroducesSkills,
-				currentGameActionState.is_character_restrained_explanation
+				currentGameActionState.is_character_restrained_explanation,
+				additionalActionInputState.value
 			);
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
@@ -584,6 +586,7 @@
 	function resetStatesAfterActionProcessed() {
 		chosenActionState.reset();
 		additionalStoryInputState.reset();
+		additionalActionInputState.reset();
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
 		relatedStoryHistoryState.reset();
@@ -874,7 +877,8 @@
 						systemInstructionsState.value.actionAgentInstruction,
 						relatedHistory,
 						gameSettingsState.value?.aiIntroducesSkills,
-						newState.is_character_restrained_explanation
+						newState.is_character_restrained_explanation,
+						additionalActionInputState.value
 					)
 					.then(({ thoughts, actions }) => {
 						if (actions) {
@@ -1065,7 +1069,8 @@
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation
+			currentGameActionState.is_character_restrained_explanation,
+			additionalActionInputState.value
 		);
 		if (generatedAction) {
 			for (const key in generatedAction) {
@@ -1161,7 +1166,8 @@
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation
+			currentGameActionState.is_character_restrained_explanation,
+			additionalActionInputState.value
 		);
 		console.log('generatedAction', stringifyPretty(generatedAction));
 		action = { ...generatedAction, ...action };
@@ -1219,8 +1225,9 @@
 			customActionInput.value = '';
 		}
 		if (gmAnswerStateAsContext) {
-			additionalStoryInputState.value +=
-				'\nGM Context:\n' + stringifyPretty(gmAnswerStateAsContext);
+			const context = '\nGM Context:\n' + stringifyPretty(gmAnswerStateAsContext);
+			additionalStoryInputState.value += context;
+			additionalActionInputState.value += context;
 			historyMessagesState.value.push({
 				role: 'user',
 				content: stringifyPretty(gmAnswerStateAsContext)
@@ -1359,7 +1366,8 @@
 				customMemoriesState.value
 			),
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation
+			currentGameActionState.is_character_restrained_explanation,
+			additionalActionInputState.value
 		);
 		characterActionsState.value = actions;
 		thoughtsState.value.actionsThoughts = thoughts;

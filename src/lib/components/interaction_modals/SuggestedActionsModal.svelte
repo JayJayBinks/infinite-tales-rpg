@@ -36,11 +36,13 @@
 	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
+	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState', '');
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	const temperatureState = useLocalStorage<number>('temperatureState');
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
+	const customActionAgentInstruction = useLocalStorage<string>('customActionAgentInstruction');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	let thoughtsState = $state('');
 	let suggestedActions: Array<Action> = $state([]);
@@ -70,7 +72,10 @@
 			characterStatsState.value,
 			inventoryState.value,
 			currentGameActionState.is_character_restrained_explanation,
-			customSystemInstruction.value
+			customSystemInstruction.value,
+			customActionAgentInstruction.value,
+			true,
+			additionalActionInputState.value
 		);
 		console.log('suggestedActions', actions);
 		thoughtsState = thoughts;

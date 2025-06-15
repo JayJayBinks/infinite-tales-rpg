@@ -77,6 +77,13 @@ export class ActionAgent {
 		}
 	};
 
+	addAdditionalActionInputToUserMessage = (userMessage: string, additionalActionInputState?: string) => {
+		if (additionalActionInputState) {
+			userMessage += '\n' + additionalActionInputState;
+		}
+		return userMessage;
+	};
+
 	async generateSingleAction(
 		action: Action,
 		currentGameState: GameActionState,
@@ -89,7 +96,8 @@ export class ActionAgent {
 		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
 		newSkillsAllowed: boolean = false,
-		restrainingState?: string
+		restrainingState?: string,
+		additionalActionInputState?: string
 	): Promise<Action> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -135,6 +143,8 @@ export class ActionAgent {
 			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
 		}
 
+		userMessage = this.addAdditionalActionInputToUserMessage(userMessage, additionalActionInputState);
+
 		if (relatedHistory && relatedHistory.length > 0) {
 			userMessage +=
 				'\n\nFollowing is related past story plot, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically;\n' +
@@ -179,7 +189,8 @@ export class ActionAgent {
 		customActionAgentInstruction?: string,
 		relatedHistory?: string[],
 		newSkillsAllowed: boolean = false,
-		restrainingState?: string
+		restrainingState?: string,
+		additionalActionInputState?: string
 	): Promise<{ thoughts: string; actions: Array<Action> }> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -235,6 +246,8 @@ export class ActionAgent {
 		if (restrainingState) {
 			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
 		}
+		userMessage = this.addAdditionalActionInputToUserMessage(userMessage, additionalActionInputState);
+
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
@@ -264,7 +277,8 @@ export class ActionAgent {
 		restrainingState?: string,
 		customSystemInstruction?: string,
 		customActionAgentInstruction?: string,
-		newSkillsAllowed: boolean = false
+		newSkillsAllowed: boolean = false,
+		additionalActionInputState?: string
 	): Promise<{ thoughts: string; actions: Array<Action> }> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -309,6 +323,8 @@ export class ActionAgent {
 		if (restrainingState) {
 			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
 		}
+		userMessage = this.addAdditionalActionInputToUserMessage(userMessage, additionalActionInputState);
+		
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
