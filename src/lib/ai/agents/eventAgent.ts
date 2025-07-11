@@ -87,7 +87,7 @@ export class EventAgent {
 
 		return {
 			thoughts: response?.thoughts || '',
-			event_evaluation: this.mapResponse(response)
+			event_evaluation: this.mapResponse(response?.content || {})
 		};
 	}
 }
