@@ -1332,6 +1332,13 @@
 			latestStoryProgressionTextComponent?.scrollIntoView();
 			const time = new Date().toLocaleTimeString();
 			console.log('First story chunk received at:', time);
+			if(gameActionsState.value.length === 1) {
+				//TODO workaround because of the scrollIntoView not working properly for second story
+				setTimeout(() => {
+					console.log('For second story chunk, scroll again');
+					latestStoryProgressionTextComponent?.scrollIntoView();
+				}, 50);
+			}
 		}
 		storyChunkState = storyChunk;
 		isAiGeneratingState = false;
