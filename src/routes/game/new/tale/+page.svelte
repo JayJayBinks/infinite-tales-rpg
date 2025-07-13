@@ -9,12 +9,13 @@
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { getRowsForTextarea, navigate, loadPDF } from '$lib/util.svelte';
+	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import { goto } from '$app/navigation';
 	import ImportExportSaveGame from '$lib/components/ImportExportSaveGame.svelte';
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import type { AIConfig } from '$lib';
+	import { errorState } from '$lib/state/errorState.svelte';
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
@@ -49,26 +50,29 @@
 		return characterDescription;
 	}
 
-	const onRandomize = async () => {
+	const onRandomize = async (uploadedFile: File | null = null) => {
 		isGeneratingState = true;
 
 		const newState = await storyAgent.generateRandomStorySettings(
 			storyStateOverwrites,
-			getCharacterDescription()
+			getCharacterDescription(),
+			uploadedFile // Pass the file to the agent method
 		);
 		if (newState) {
 			storyState.value = newState;
 		}
 		isGeneratingState = false;
 	};
-	const onRandomizeSingle = async (stateValue) => {
+
+	const onRandomizeSingle = async (stateValue: string, uploadedFile: File | null = null) => {
 		isGeneratingState = true;
 		const currentStory = { ...storyState.value };
 		currentStory[stateValue] = undefined;
 		const agentInput = { ...currentStory, ...storyStateOverwrites };
 		const newState = await storyAgent.generateRandomStorySettings(
 			agentInput,
-			getCharacterDescription()
+			getCharacterDescription(),
+			uploadedFile
 		);
 		if (newState) {
 			storyState.value[stateValue] = newState[stateValue];
@@ -83,19 +87,16 @@
 	function onUploadClicked() {
 		const fileInput = document.createElement('input');
 		fileInput.type = 'file';
-		fileInput.accept = 'application/pdf';
+		// fileInput.accept = 'application/pdf'; // Allow all file types in dialog
 		fileInput.click();
-		fileInput.addEventListener('change', function (event) {
-			// @ts-expect-error can never be null
-			const file = event.target.files[0];
-			if (file) {
-				const reader = new FileReader();
-				reader.onload = async () => {
-					const text = await loadPDF(file);
-					storyStateOverwrites = { ...storyStateOverwrites, gameBook: text };
-					await onRandomize();
-				};
-				reader.readAsArrayBuffer(file);
+		fileInput.addEventListener('change', async function (event) {
+			const target = event.target as HTMLInputElement;
+			if (target.files && target.files[0]) {
+				const file = target.files[0];
+				// The file object itself will be passed to the agent.
+				// storyStateOverwrites.gameBook is no longer set with PDF text, so no need to clear it.
+				// PDF type validation removed to allow all file types.
+				await onRandomize(file); // Pass the file to onRandomize
 			}
 		});
 	}

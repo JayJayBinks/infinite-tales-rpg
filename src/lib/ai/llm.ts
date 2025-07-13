@@ -35,6 +35,11 @@ export interface LLMRequest {
 	returnFallbackProperty?: boolean;
 	stream?: boolean;
 	thinkingConfig?: ThinkingConfig;
+	fileToUpload?: {
+		file: File | globalThis.Blob; // File or Blob object from client-side
+		mimeType: string;
+		displayName?: string;
+	};
 }
 
 export interface LLMconfig {

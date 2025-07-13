@@ -56,28 +56,52 @@ export class StoryAgent {
 
 	async generateRandomStorySettings(
 		overwrites = {},
-		characterDescription: CharacterDescription | undefined = undefined
+		characterDescription: CharacterDescription | undefined = undefined,
+		uploadedFile: File | null = null
 	): Promise<Story> {
 		const storyAgent =
 			'You are RPG story agent, crafting captivating, limitless GAME experiences using BOOKS, THEME, TONALITY for CHARACTER.\n' +
 			TROPES_CLICHE_PROMPT +
+			'If a document is attached, its content should be prioritized for generating the story settings, especially for "game", "world_details", and "adventure_and_main_event".\n' +
 			'Always respond with following JSON!\n' +
 			stringifyPretty(storyStateForPrompt);
 
-		const preset = {
-			...storyStateForPrompt,
+		const preset: Partial<Story> = { // Use Partial<Story> for preset
 			...overwrites
 		};
-		if (isEqual(overwrites, {}) && characterDescription === undefined) {
+
+		// Only pick a random game if no overwrites, no character, AND no file is provided
+		if (isEqual(overwrites, {}) && characterDescription === undefined && !uploadedFile) {
 			preset.game = exampleGameSystems[getRandomInteger(0, exampleGameSystems.length - 1)];
 		}
+
+		let userMessage = 'Create a new randomized story';
+		if (uploadedFile) {
+			userMessage += ' based on the attached document';
+		}
+		// Add preset info if it's not empty
+		if (Object.keys(preset).length > 0) {
+			userMessage += ' and considering the following settings: ' + stringifyPretty(preset);
+		} else if (!uploadedFile) {
+			// If no preset and no file, ensure the message ends correctly.
+			userMessage += '.';
+		}
+
 		const request: LLMRequest = {
-			userMessage:
-				'Create a new randomized story considering the following settings: ' +
-				stringifyPretty(preset),
+			userMessage: userMessage,
 			historyMessages: [],
 			systemInstruction: storyAgent
 		};
+
+		if (uploadedFile) {
+			request.fileToUpload = {
+				// path: uploadedFile, // This was the old field name
+				file: uploadedFile, // Correct field name
+				mimeType: uploadedFile.type || 'application/pdf', // Use file's type or default
+				displayName: uploadedFile.name
+			};
+		}
+
 		if (characterDescription) {
 			request.historyMessages?.push({
 				role: 'user',

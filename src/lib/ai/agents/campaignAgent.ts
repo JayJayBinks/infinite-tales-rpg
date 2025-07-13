@@ -117,7 +117,8 @@ export class CampaignAgent {
 
 	async generateCampaign(
 		overwrites = {},
-		characterDescription: CharacterDescription | undefined = undefined
+		characterDescription: CharacterDescription | undefined = undefined,
+		uploadedFile: File | null = null
 	): Promise<Campaign> {
 		const agent =
 			mainAgent +
@@ -129,17 +130,37 @@ export class CampaignAgent {
 		const preset: Partial<Campaign> = {
 			...overwrites
 		};
-		if (isEqual(overwrites, {})) {
+		if (isEqual(overwrites, {}) && !uploadedFile) {
+			// Only pick a random game if no overwrites AND no file is provided
 			preset.game = exampleGameSystems[getRandomInteger(0, exampleGameSystems.length - 1)];
 		}
+
+		let userMessage = 'Create a new randomized campaign';
+		if (uploadedFile) {
+			userMessage += ' based on the attached document';
+		}
+		if (Object.keys(preset).length > 0) {
+			userMessage += ' and considering the following settings: ' + stringifyPretty(preset);
+		} else {
+			userMessage += '.';
+		}
+
 		const request: LLMRequest = {
-			userMessage:
-				'Create a new randomized campaign considering the following settings: ' +
-				stringifyPretty(preset),
+			userMessage: userMessage,
 			historyMessages: [],
 			systemInstruction: agent,
 			temperature: 2
 		};
+
+		if (uploadedFile) {
+			request.fileToUpload = {
+				// path: uploadedFile, // Old field name
+				file: uploadedFile, // Correct field name
+				mimeType: uploadedFile.type || 'application/pdf', // Use file's type or default
+				displayName: uploadedFile.name
+			};
+		}
+
 		if (characterDescription?.name) {
 			request.historyMessages?.push({
 				role: 'user',

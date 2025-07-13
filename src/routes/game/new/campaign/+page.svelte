@@ -5,7 +5,6 @@
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import {
 		getRowsForTextarea,
-		loadPDF,
 		navigate,
 		removeEmptyValues,
 		stringifyPretty
@@ -24,6 +23,7 @@
 	import { type Story } from '$lib/ai/agents/storyAgent';
 	import { beforeNavigate } from '$app/navigation';
 	import type { AIConfig } from '$lib';
+	import { errorState } from '$lib/state/errorState.svelte';
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
@@ -57,19 +57,16 @@
 	function onUploadClicked() {
 		const fileInput = document.createElement('input');
 		fileInput.type = 'file';
-		fileInput.accept = 'application/pdf';
+		// fileInput.accept = 'application/pdf'; // Allow all file types in dialog
 		fileInput.click();
-		fileInput.addEventListener('change', function (event) {
-			// @ts-expect-error can never be null
-			const file = event.target.files[0];
-			if (file) {
-				const reader = new FileReader();
-				reader.onload = async () => {
-					const text = await loadPDF(file);
-					campaignStateOverwrites = { ...campaignStateOverwrites, gameBook: text };
-					await onRandomize();
-				};
-				reader.readAsArrayBuffer(file);
+		fileInput.addEventListener('change', async function (event) {
+			const target = event.target as HTMLInputElement;
+			if (target.files && target.files[0]) {
+				const file = target.files[0];
+				// The file object itself will be passed to the agent.
+				// campaignStateOverwrites.gameBook is no longer set with PDF text, so no need to clear it.
+				// PDF type validation removed to allow all file types.
+				await onRandomize(file); // Pass the file to onRandomize
 			}
 		});
 	}
@@ -82,12 +79,14 @@
 		return characterDescription;
 	}
 
-	const onRandomize = async () => {
+	const onRandomize = async (uploadedFile: File | null = null) => {
 		isGeneratingState = true;
-
+		// campaignStateOverwrites might still contain other user edits, so we pass it.
+		// The agent will be responsible for constructing the LLMRequest with the file.
 		const newState = await campaignAgent.generateCampaign(
 			$state.snapshot(campaignStateOverwrites),
-			getCharacterDescription()
+			getCharacterDescription(),
+			uploadedFile // Pass the file to the agent method
 		);
 		if (newState) {
 			console.log(stringifyPretty(newState));

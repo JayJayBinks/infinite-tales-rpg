@@ -7,7 +7,8 @@ import {
 	HarmBlockThreshold,
 	HarmCategory,
 	type Part,
-	type SafetySetting
+	type SafetySetting,
+	createPartFromUri
 } from '@google/genai';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
 import {
@@ -139,9 +140,30 @@ export class GeminiProvider extends LLM {
 			errorState.userMessage = 'Please enter your Google Gemini API Key first in the settings.';
 			return;
 		}
+		// We need to await the file upload before building the contents
+		let uploadedFilePart: Part | undefined = undefined;
+		if (request.fileToUpload) {
+			try {
+				// IMPORTANT: The client-side File object cannot be directly used here.
+				// The SDK's upload method likely expects a file path or a stream/buffer.
+				// The `request.fileToUpload.file` is expected to be a File or Blob object
+				// which the SDK should handle.
+				const uploadedFile = await this.genAI.files.upload({
+					file: request.fileToUpload.file,
+					mimeType: request.fileToUpload.mimeType,
+					displayName: request.fileToUpload.displayName
+				});
+				uploadedFilePart = createPartFromUri(uploadedFile.uri, uploadedFile.mimeType);
+			} catch (e) {
+				handleError(e as string);
+				return undefined;
+			}
+		}
+
 		const contents = this.buildGeminiContentsFormat(
 			request.userMessage,
-			request.historyMessages || []
+			request.historyMessages || [],
+			uploadedFilePart
 		);
 		const systemInstruction = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
@@ -295,7 +317,11 @@ export class GeminiProvider extends LLM {
 		return instruction;
 	}
 
-	buildGeminiContentsFormat(actionText: string, historyMessages: Array<LLMMessage>): Content[] {
+	buildGeminiContentsFormat(
+		actionText: string,
+		historyMessages: Array<LLMMessage>,
+		uploadedFilePart?: Part
+	): Content[] {
 		const contents: Content[] = [];
 		if (historyMessages) {
 			historyMessages.forEach((message) => {
@@ -308,11 +334,19 @@ export class GeminiProvider extends LLM {
 				}
 			});
 		}
+
+		const userParts: Part[] = [];
 		if (actionText) {
-			const message = { role: 'user', content: actionText };
+			userParts.push({ text: actionText });
+		}
+		if (uploadedFilePart) {
+			userParts.push(uploadedFilePart);
+		}
+
+		if (userParts.length > 0) {
 			contents.push({
-				role: message.role,
-				parts: [{ text: message.content || '' }]
+				role: 'user',
+				parts: userParts
 			});
 		}
 		return contents;
