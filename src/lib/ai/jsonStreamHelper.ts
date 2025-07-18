@@ -60,7 +60,8 @@ export async function requestLLMJsonStream(
 		};
 		liveParser.onError = (err) => {
 			// Let errors propagate
-			if(err.message?.includes('Tokenizer ended in the middle of a token (state: ENDED)')) {
+			if (liveParser.isEnded || err.message?.includes('state ENDED')) {
+				console.log('--> Ignoring Live parser ended processing input with error:', err.message);
 				return;
 			}
 			throw err;
