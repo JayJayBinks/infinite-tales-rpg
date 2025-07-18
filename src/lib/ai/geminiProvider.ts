@@ -99,6 +99,54 @@ export class GeminiProvider extends LLM {
 		return 2;
 	}
 
+	private shouldEarlyFallback(modelToUse: string): boolean {
+		return this.fallbackLLM !== undefined && this.isThinkingModel(modelToUse) && getIsGeminiThinkingOverloaded();
+	}
+
+	private async handleGeminiError(
+		e: unknown,
+		request: LLMRequest,
+		modelToUse: string,
+		fallbackMethod: (request: LLMRequest) => Promise<any>
+	): Promise<any> {
+		if (e instanceof Error) {
+			if (e.message.includes('API key not valid')) {
+				handleError(e as unknown as string);
+				return undefined;
+			}
+			if (e.message.includes('503') || e.message.includes('500')) {
+				if (this.isThinkingModel(modelToUse)) {
+					setIsGeminiThinkingOverloaded(true);
+				} else {
+					setIsGeminiFlashExpOverloaded(true);
+				}
+				e.message =
+					'The Gemini AI is currently overloaded! You can go to the settings and enable the fallback. If you already enabled it and see this, the fallback is also overloaded :(';
+			}
+			if (this.fallbackLLM) {
+				console.log('Fallback LLM for error: ', e.message);
+				const fallbackResult = await fallbackMethod(request);
+				if (!fallbackResult) {
+					handleError(e as unknown as string);
+				} else {
+					if (this.llmConfig.returnFallbackProperty || request.returnFallbackProperty) {
+						if (fallbackResult.content) {
+							fallbackResult.content['fallbackUsed'] = true;
+						} else {
+							fallbackResult['fallbackUsed'] = true;
+						}
+					}
+					return fallbackResult;
+				}
+			} else {
+				handleError(e as unknown as string);
+				return undefined;
+			}
+		}
+		handleError(e as string);
+		return undefined;
+	}
+
 	/**
 	 * Fetches a JSON stream, parses it, calls a callback for progressive
 	 * updates of the "story" field, and returns the full parsed JSON object.
@@ -117,7 +165,23 @@ export class GeminiProvider extends LLM {
 		thoughtUpdateCallback?: (thoughtChunk: string, isComplete: boolean) => void
 	): Promise<object | undefined> {
 		request.stream = true;
-		return requestLLMJsonStream(request, this, storyUpdateCallback, thoughtUpdateCallback);
+		const modelToUse = request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_THINKING_2_5;
+		try {
+			if (this.shouldEarlyFallback(modelToUse)) {
+				throw new Error(
+					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
+				);
+			}
+			return await requestLLMJsonStream(request, this, storyUpdateCallback, thoughtUpdateCallback);
+		} catch (e) {
+			return await this.handleGeminiError(
+				e,
+				request,
+				modelToUse,
+				async (req) =>
+					await this.fallbackLLM!.generateContentStream(req, storyUpdateCallback, thoughtUpdateCallback)
+			);
+		}
 	}
 
 	isThinkingModel(model: string): boolean {
@@ -164,8 +228,7 @@ export class GeminiProvider extends LLM {
 		}
 		let result: GenerateContentResponse;
 		try {
-			if (this.fallbackLLM && this.isThinkingModel(modelToUse) && getIsGeminiThinkingOverloaded()) {
-				//fallback early to avoid waiting for the response
+			if (this.shouldEarlyFallback(modelToUse)) {
 				throw new Error(
 					'Gemini Thinking is overloaded! Fallback early to avoid waiting for the response.'
 				);
@@ -199,38 +262,12 @@ export class GeminiProvider extends LLM {
 				result = await this.genAI.models.generateContent(genAIRequest);
 			}
 		} catch (e) {
-			if (e instanceof Error) {
-				if (e.message.includes('API key not valid')) {
-					handleError(e as unknown as string);
-					return undefined;
-				}
-				if (e.message.includes('503') || e.message.includes('500')) {
-					if (this.isThinkingModel(modelToUse)) {
-						setIsGeminiThinkingOverloaded(true);
-					} else {
-						setIsGeminiFlashExpOverloaded(true);
-					}
-					e.message =
-						'The Gemini AI is overloaded! You can try again or wait some time. Alternatively, you can go to the settings and enable the fallback.';
-				}
-				if (this.fallbackLLM) {
-					console.log('Fallback LLM for error: ', e.message);
-					const fallbackResult = await this.fallbackLLM.generateContent(request);
-					if (!fallbackResult) {
-						handleError(e as unknown as string);
-					} else {
-						if (this.llmConfig.returnFallbackProperty || request.returnFallbackProperty) {
-							fallbackResult.content['fallbackUsed'] = true;
-						}
-						return fallbackResult;
-					}
-				} else {
-					handleError(e as unknown as string);
-					return undefined;
-				}
-			}
-			handleError(e as string);
-			return undefined;
+			return await this.handleGeminiError(
+				e,
+				request,
+				modelToUse,
+				async (req) => await this.fallbackLLM!.generateContent(req)
+			);
 		}
 		try {
 			let json: string;
@@ -258,9 +295,7 @@ export class GeminiProvider extends LLM {
 						return { thoughts, content: JSON.parse(json.replaceAll('\\', '')) };
 					}
 					return { thoughts, content: JSON.parse(json.split('```json')[1].split('```')[0].trim()) };
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				} catch (secondError) {
-					//autofix if true or not set and llm allows it
 					if (
 						(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
 						this.llmConfig.tryAutoFixJSONError

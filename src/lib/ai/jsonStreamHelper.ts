@@ -1,7 +1,7 @@
 import JSONParser from '@streamparser/json/jsonparser.js';
 import type { LLM, LLMRequest } from './llm';
 import type { GenerateContentResponse } from '@google/genai';
-import { getThoughtsFromResponse } from './geminiProvider';
+import { GEMINI_MODELS, getThoughtsFromResponse } from './geminiProvider';
 
 /**
  * Fetches a JSON stream, parses it, calls a callback for progressive
@@ -23,17 +23,19 @@ export async function requestLLMJsonStream(
 	storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void,
 	thoughtUpdateCallback?: (thoughtChunk: string, isComplete: boolean) => void
 ): Promise<object | undefined> {
+	// for error testing
+	//if (!request.model && !llm.llmConfig.model) {
+		//throw new Error('requestLLMJsonStream is not supported for model.500');
+	// if (!request.model && !llm.llmConfig.model) {}
 	let finalJsonObject: any = null;
 	let jsonStarted = false;
 	let markerFound = false; // Track if ```json marker was explicitly found
 	let accumulatedRawText = '';
 	let accumulatedJsonText = '';
-	// Buffer to hold potential start-of-marker/brace chars from the *end* of the previous chunk
 	let pendingPrefixCheck = '';
 	const MAX_MARKER_PREFIX_LEN = 8; // Length of "```json\n"
 
 	if (typeof storyUpdateCallback !== 'function') {
-		console.error('Error: storyUpdateCallback must be a function.');
 		throw new Error('storyUpdateCallback must be a function.');
 	}
 
@@ -52,13 +54,16 @@ export async function requestLLMJsonStream(
 				// Note: This might store incomplete objects if the stream stops early
 				// finalJsonObject = value; // Re-enabled final parsing later for robustness
 			} catch (callbackError) {
-				console.error('Error inside storyUpdateCallback:', callbackError);
+				// Let errors propagate
+				throw callbackError;
 			}
 		};
 		liveParser.onError = (err) => {
-			// Don't reject the promise here, just log. Final parsing will catch errors.
-			console.warn('Live JSON Parser Error:', err.message);
-			// No resolve() here - let onEnd handle it
+			// Let errors propagate
+			if(err.message?.includes('Tokenizer ended in the middle of a token (state: ENDED)')) {
+				return;
+			}
+			throw err;
 		};
 		liveParser.onEnd = () => {
 			console.log('--> Live parser finished processing input.');
@@ -70,290 +75,220 @@ export async function requestLLMJsonStream(
 		request
 	)) as unknown as AsyncGenerator<GenerateContentResponse>;
 	if (!geminiStreamResult || typeof geminiStreamResult[Symbol.asyncIterator] !== 'function') {
-		console.error('Failed to get a valid stream from generateContent.');
 		throw new Error('Invalid stream response from LLM.');
 	}
 
-	try {
-		console.log('--- Starting processing Gemini stream ---');
-		for await (const chunk of geminiStreamResult) {
-			const thoughts = getThoughtsFromResponse(chunk as GenerateContentResponse);
-			if (thoughts) {
-				if (thoughtUpdateCallback && typeof thoughtUpdateCallback === 'function') {
-					// Call the thought update callback with the current thoughts
-					thoughtUpdateCallback(thoughts, false);
-				}
-				continue; // Skip to the next chunk if this is a thought update
+	// Remove try/catch: let all errors propagate
+	console.log('--- Starting processing Gemini stream ---');
+	for await (const chunk of geminiStreamResult) {
+		const thoughts = getThoughtsFromResponse(chunk as GenerateContentResponse);
+		if (thoughts) {
+			if (thoughtUpdateCallback && typeof thoughtUpdateCallback === 'function') {
+				// Call the thought update callback with the current thoughts
+				thoughtUpdateCallback(thoughts, false);
 			}
-			const chunkText = chunk?.text;
-			if (typeof chunkText !== 'string') continue; // Skip invalid chunks more robustly
-			accumulatedRawText += chunkText;
-			if (chunkText.length === 0) continue; // Skip empty chunks
+			continue; // Skip to the next chunk if this is a thought update
+		}
+		const chunkText = chunk?.text;
+		if (typeof chunkText !== 'string') continue; // Skip invalid chunks more robustly
+		accumulatedRawText += chunkText;
+		if (chunkText.length === 0) continue; // Skip empty chunks
 
-			const textToProcess = chunkText; // The current chunk's text
-			if (!jsonStarted) {
-				// Combine pending prefix with current chunk for searching
-				const effectiveSearchText = pendingPrefixCheck + textToProcess;
-				let jsonContentStartIndexInOriginal = -1; // Index in the original textToProcess
+		const textToProcess = chunkText; // The current chunk's text
+		if (!jsonStarted) {
+			// Combine pending prefix with current chunk for searching
+			const effectiveSearchText = pendingPrefixCheck + textToProcess;
+			let jsonContentStartIndexInOriginal = -1; // Index in the original textToProcess
 
-				// --- Strategy 1: Look for ```json marker ---
-				const markerWithNewline = '```json\n';
-				const markerWithoutNewline = '```json';
-				let markerIndex = -1;
-				let markerLength = 0;
+			// --- Strategy 1: Look for ```json marker ---
+			const markerWithNewline = '```json\n';
+			const markerWithoutNewline = '```json';
+			let markerIndex = -1;
+			let markerLength = 0;
 
-				// Prioritize finding the marker with newline
-				markerIndex = effectiveSearchText.indexOf(markerWithNewline);
+			// Prioritize finding the marker with newline
+			markerIndex = effectiveSearchText.indexOf(markerWithNewline);
+			if (markerIndex !== -1) {
+				markerLength = markerWithNewline.length;
+				console.log("--> Found '```json\\n' marker sequence.");
+			} else {
+				// If not found, check for the marker without newline
+				markerIndex = effectiveSearchText.indexOf(markerWithoutNewline);
 				if (markerIndex !== -1) {
-					markerLength = markerWithNewline.length;
-					console.log("--> Found '```json\\n' marker sequence.");
-				} else {
-					// If not found, check for the marker without newline
-					markerIndex = effectiveSearchText.indexOf(markerWithoutNewline);
-					if (markerIndex !== -1) {
-						markerLength = markerWithoutNewline.length;
-						console.log("--> Found '```json' marker sequence.");
-					}
+					markerLength = markerWithoutNewline.length;
+					console.log("--> Found '```json' marker sequence.");
 				}
+			}
 
-				if (markerIndex !== -1) {
-					// Marker FOUND
-					markerFound = true; // Mark that we found the explicit marker
+			if (markerIndex !== -1) {
+				// Marker FOUND
+				markerFound = true; // Mark that we found the explicit marker
+				jsonStarted = true;
+				const jsonContentStartIndexInEffective = markerIndex + markerLength;
+				jsonContentStartIndexInOriginal = Math.max(
+					0,
+					jsonContentStartIndexInEffective - pendingPrefixCheck.length
+				);
+				pendingPrefixCheck = ''; // Clear the pending buffer
+				console.log('--> JSON started via ```json marker.');
+			} else {
+				// --- Strategy 2: Look for the first '{' as fallback ---
+				const braceIndex = effectiveSearchText.indexOf('{');
+				if (braceIndex !== -1) {
+					// Found '{' before finding ```json
+					markerFound = false; // Explicitly note marker wasn't used
 					jsonStarted = true;
-					const jsonContentStartIndexInEffective = markerIndex + markerLength;
+					const jsonContentStartIndexInEffective = braceIndex;
 					jsonContentStartIndexInOriginal = Math.max(
 						0,
 						jsonContentStartIndexInEffective - pendingPrefixCheck.length
 					);
 					pendingPrefixCheck = ''; // Clear the pending buffer
-					console.log('--> JSON started via ```json marker.');
+					console.log("--> JSON started via fallback '{' detection.");
 				} else {
-					// --- Strategy 2: Look for the first '{' as fallback ---
-					const braceIndex = effectiveSearchText.indexOf('{');
-					if (braceIndex !== -1) {
-						// Found '{' before finding ```json
-						markerFound = false; // Explicitly note marker wasn't used
-						jsonStarted = true;
-						const jsonContentStartIndexInEffective = braceIndex;
-						jsonContentStartIndexInOriginal = Math.max(
-							0,
-							jsonContentStartIndexInEffective - pendingPrefixCheck.length
-						);
-						pendingPrefixCheck = ''; // Clear the pending buffer
-						console.log("--> JSON started via fallback '{' detection.");
+					// --- Neither marker nor '{' found yet ---
+					// Update pendingPrefixCheck for the next iteration.
+					// Store the tail end that could be a prefix of ```json\n or contain {
+					pendingPrefixCheck = effectiveSearchText.substring(
+						Math.max(0, effectiveSearchText.length - MAX_MARKER_PREFIX_LEN)
+					);
+					// Optimization: Trim pending check if it definitely can't start ```json or {
+					let validPrefix = '';
+					for (let i = Math.min(pendingPrefixCheck.length, MAX_MARKER_PREFIX_LEN); i > 0; i--) {
+						const prefix = pendingPrefixCheck.substring(pendingPrefixCheck.length - i);
+						if (markerWithNewline.startsWith(prefix) || prefix.includes('{')) {
+							validPrefix = prefix;
+							break;
+						}
+					}
+					if (
+						pendingPrefixCheck.length > 0 &&
+						!validPrefix &&
+						!pendingPrefixCheck.includes('{')
+					) {
+						// If the end doesn't contain { and isn't a prefix of ```json, reset it
+						// Keep the last char in case it's the start of {
+						pendingPrefixCheck = pendingPrefixCheck.slice(-1).includes('{')
+							? pendingPrefixCheck.slice(-1)
+							: '';
 					} else {
-						// --- Neither marker nor '{' found yet ---
-						// Update pendingPrefixCheck for the next iteration.
-						// Store the tail end that could be a prefix of ```json\n or contain {
-						pendingPrefixCheck = effectiveSearchText.substring(
-							Math.max(0, effectiveSearchText.length - MAX_MARKER_PREFIX_LEN)
-						);
-						// Optimization: Trim pending check if it definitely can't start ```json or {
-						let validPrefix = '';
-						for (let i = Math.min(pendingPrefixCheck.length, MAX_MARKER_PREFIX_LEN); i > 0; i--) {
-							const prefix = pendingPrefixCheck.substring(pendingPrefixCheck.length - i);
-							if (markerWithNewline.startsWith(prefix) || prefix.includes('{')) {
-								validPrefix = prefix;
-								break;
-							}
-						}
-						if (
-							pendingPrefixCheck.length > 0 &&
-							!validPrefix &&
-							!pendingPrefixCheck.includes('{')
-						) {
-							// If the end doesn't contain { and isn't a prefix of ```json, reset it
-							// Keep the last char in case it's the start of {
-							pendingPrefixCheck = pendingPrefixCheck.slice(-1).includes('{')
-								? pendingPrefixCheck.slice(-1)
-								: '';
-						} else {
-							pendingPrefixCheck =
-								validPrefix ||
-								(pendingPrefixCheck.includes('{')
-									? pendingPrefixCheck.substring(pendingPrefixCheck.indexOf('{'))
-									: '');
-						}
+						pendingPrefixCheck =
+							validPrefix ||
+							(pendingPrefixCheck.includes('{')
+								? pendingPrefixCheck.substring(pendingPrefixCheck.indexOf('{'))
+								: '');
+					}
 
-						// console.log("Marker/Brace not found, pending prefix:", pendingPrefixCheck); // Debugging
-						continue; // Skip to the next chunk, nothing to parse yet
-					}
-				}
-
-				// --- Process JSON part found in *this* chunk (if any) ---
-				if (jsonStarted && jsonContentStartIndexInOriginal !== -1) {
-					const jsonPartInCurrentChunk = textToProcess.substring(jsonContentStartIndexInOriginal);
-					if (jsonPartInCurrentChunk.length > 0) {
-						accumulatedJsonText += jsonPartInCurrentChunk;
-						try {
-							// console.log(`Writing to parser (initial): "${jsonPartInCurrentChunk}"`); // Debug
-							liveParser.write(jsonPartInCurrentChunk);
-						} catch (liveParserWriteError) {
-							console.warn(
-								'Live JSON Parser Write Error (Initial):',
-								(liveParserWriteError as Error).message
-							);
-						}
-					}
-				}
-			} else {
-				// --- JSON already started in a previous chunk, process the whole current chunk ---
-				if (textToProcess.length > 0) {
-					accumulatedJsonText += textToProcess;
-					try {
-						// console.log(`Writing to parser (subsequent): "${textToProcess}"`); // Debug
-						liveParser.write(textToProcess);
-					} catch (liveParserWriteError) {
-						console.warn(
-							'Live JSON Parser Write Error (Subsequent):',
-							(liveParserWriteError as Error).message
-						);
-					}
+					// console.log("Marker/Brace not found, pending prefix:", pendingPrefixCheck); // Debugging
+					continue; // Skip to the next chunk, nothing to parse yet
 				}
 			}
-		} // End of stream loop
 
-		console.log('--- Gemini stream ended ---');
-		liveParser.end(); // Signal end of input to the parser
-		await liveParserPromise; // Wait for the parser to finish processing buffered data
-
-		// --- Final Cleaning and Parsing ---
-		console.log('--- Performing final cleaning and parsing ---');
-		let cleanedJsonText = accumulatedJsonText;
-
-		// 1. Remove trailing ``` marker ONLY if the ```json marker was found initially
-		const endMarker = '```';
-		if (markerFound) {
-			// Check if it ends with ``` possibly followed by whitespace
-			const trimmedEnd = cleanedJsonText.trimEnd();
-			if (trimmedEnd.endsWith(endMarker)) {
-				cleanedJsonText = trimmedEnd.substring(0, trimmedEnd.length - endMarker.length).trimEnd();
-				console.log("--> Removed trailing '```' marker.");
-			} else {
-				// Check if the raw text ended with it, even if not in accumulated
-				if (accumulatedRawText.trimEnd().endsWith(endMarker)) {
-					console.warn(
-						"Trailing '```' marker found in raw text but not cleanly at the end of accumulated JSON (potentially truncated stream or parse error?). Final JSON might be incomplete."
-					);
-					// Attempt cleanup based on raw text end (less reliable)
-					// This is risky, might cut valid JSON if ``` appeared legitimately earlier
-					// cleanedJsonText = cleanedJsonText.substring(0, cleanedJsonText.lastIndexOf(endMarker)).trimEnd();
-				} else {
-					console.warn(
-						"Trailing '```' marker was expected (due to ```json start) but not found at the end."
-					);
+			// --- Process JSON part found in *this* chunk (if any) ---
+			if (jsonStarted && jsonContentStartIndexInOriginal !== -1) {
+				const jsonPartInCurrentChunk = textToProcess.substring(jsonContentStartIndexInOriginal);
+				if (jsonPartInCurrentChunk.length > 0) {
+					accumulatedJsonText += jsonPartInCurrentChunk;
+					liveParser.write(jsonPartInCurrentChunk);
 				}
 			}
 		} else {
-			console.log(
-				"--> Skipping trailing '```' removal because initial '```json' marker was not found."
-			);
+			// --- JSON already started in a previous chunk, process the whole current chunk ---
+			if (textToProcess.length > 0) {
+				accumulatedJsonText += textToProcess;
+				liveParser.write(textToProcess);
+			}
 		}
+	} // End of stream loop
 
-		// 2. Final trim
-		cleanedJsonText = cleanedJsonText.trim();
+	console.log('--- Gemini stream ended ---');
+	liveParser.end(); // Signal end of input to the parser
+	await liveParserPromise; // Wait for the parser to finish processing buffered data
 
-		// 3. Basic validation & Final Parse
-		if (cleanedJsonText.length === 0) {
-			if (accumulatedRawText.trim().length > 0) {
+	// --- Final Cleaning and Parsing ---
+	console.log('--- Performing final cleaning and parsing ---');
+	let cleanedJsonText = accumulatedJsonText;
+
+	// 1. Remove trailing ``` marker ONLY if the ```json marker was found initially
+	const endMarker = '```';
+	if (markerFound) {
+		// Check if it ends with ``` possibly followed by whitespace
+		const trimmedEnd = cleanedJsonText.trimEnd();
+		if (trimmedEnd.endsWith(endMarker)) {
+			cleanedJsonText = trimmedEnd.substring(0, trimmedEnd.length - endMarker.length).trimEnd();
+			console.log("--> Removed trailing '```' marker.");
+		} else {
+			// Check if the raw text ended with it, even if not in accumulated
+			if (accumulatedRawText.trimEnd().endsWith(endMarker)) {
 				console.warn(
-					'Cleaned JSON text is empty, but raw text was not. Check marker/brace detection and stripping logic.'
+					"Trailing '```' marker found in raw text but not cleanly at the end of accumulated JSON (potentially truncated stream or parse error?). Final JSON might be incomplete."
 				);
-				console.warn(
-					'Raw text sample:',
-					accumulatedRawText.substring(0, 200) + (accumulatedRawText.length > 200 ? '...' : '')
-				);
+				// Attempt cleanup based on raw text end (less reliable)
+				// This is risky, might cut valid JSON if ``` appeared legitimately earlier
+				// cleanedJsonText = cleanedJsonText.substring(0, cleanedJsonText.lastIndexOf(endMarker)).trimEnd();
 			} else {
-				console.warn('Cleaned JSON text is empty, and raw text was also empty or whitespace.');
-			}
-			storyUpdateCallback('', true); // Ensure final empty update
-			return undefined;
-		}
-
-		if (!cleanedJsonText.startsWith('{') || !cleanedJsonText.endsWith('}')) {
-			// This can happen with partial parses if emitPartialValues is on and stream cuts early
-			console.warn(
-				"Cleaned text doesn't start with '{' or end with '}'. Attempting to repair."
-			);
-			//TODO repair issue with missing opening brace
-			
-			// Attempt to fix the end of the string by removing text after the last '}'
-			const lastBraceIndex = cleanedJsonText.lastIndexOf('}');
-			if (lastBraceIndex !== -1) {
-				// If a '}' is found, check if there's actually text after it to remove.
-				if (lastBraceIndex < cleanedJsonText.length - 1) {
-					const removedText = cleanedJsonText.substring(lastBraceIndex + 1);
-					console.warn(
-						`Repairing JSON: Removing text after the last '}'. Removed: "${removedText.substring(0, 30)}${removedText.length > 30 ? '...' : ''}"`
-					);
-					cleanedJsonText = cleanedJsonText.substring(0, lastBraceIndex + 1);
-				}
-				// If lastBraceIndex is already the last character of the string,
-				// it means cleanedJsonText.endsWith('}') is true.
-				// In this case, no modification is needed for the end of the string,
-				// even if the outer 'if' condition was met due to !cleanedJsonText.startsWith('{').
-			} else {
-				// No '}' was found in the string.
-				// This implies the string is likely not a valid JSON object if one was expected.
-				// The subsequent JSON.parse will probably fail, which is handled later.
 				console.warn(
-					"Repair attempt: No '}' found in the string. Cannot remove text after the last '}' as none exists."
+					"Trailing '```' marker was expected (due to ```json start) but not found at the end."
 				);
 			}
 		}
-
-		try {
-			cleanedJsonText = cleanedJsonText.replaceAll('```', '').trim(); // Remove any stray ``` markers
-			finalJsonObject = JSON.parse(cleanedJsonText);
-			console.log('--> Final JSON object successfully parsed after cleaning.');
-
-			// Ensure the final story state is sent via callback
-			const finalStory = typeof finalJsonObject?.story === 'string' ? finalJsonObject.story : '';
-			// Check if the callback already received the final chunk via partial updates
-			// This is tricky; maybe always send the final update for certainty.
-			// Let's always send the final update from the fully parsed object.
-			storyUpdateCallback(finalStory, true);
-
-			return finalJsonObject;
-		} catch (parseError) {
-			console.error('--- FINAL JSON PARSE FAILED ---');
-			console.error('Error:', (parseError as Error).message);
-			console.error('Marker found initially:', markerFound);
-			console.error('Cleaned JSON Text:\n', cleanedJsonText);
-			// Log raw text only if significantly different or for more context
-			// if (cleanedJsonText !== accumulatedRawText) {
-			// 	console.error(
-			// 		'Full Raw Text (first 500 chars):\n',
-			// 		accumulatedRawText.substring(0, 500) + (accumulatedRawText.length > 500 ? '...' : '')
-			// 	);
-			// }
-
-			try {
-				// Try sending error message via callback, but use raw text if JSON is unusable
-				const errorStory = accumulatedJsonText.includes('"story"')
-					? finalJsonObject?.story || ''
-					: `<p>Error: Failed to parse the final JSON response. Raw output might contain partial story.</p><pre>${accumulatedRawText.substring(0, 500)}...</pre>`;
-				storyUpdateCallback(errorStory, true);
-			} catch (cbError) {
-				console.error(
-					'Error calling storyUpdateCallback during final parse error handling:',
-					cbError
-				);
-			}
-			// Re-throw the error so the caller knows parsing failed
-			throw new Error(`Failed to parse final JSON: ${(parseError as Error).message}`);
-		}
-	} catch (streamError) {
-		console.error('Error processing Gemini stream:', streamError);
-		try {
-			// Send error via callback
-			storyUpdateCallback(
-				`<p>Error reading response stream: ${(streamError as Error).message}</p>`,
-				true
-			);
-		} catch (cbError) {
-			console.error('Error calling storyUpdateCallback during stream error handling:', cbError);
-		}
-		throw streamError; // Re-throw
+	} else {
+		console.log(
+			"--> Skipping trailing '```' removal because initial '```json' marker was not found."
+		);
 	}
+
+	// 2. Final trim
+	cleanedJsonText = cleanedJsonText.trim();
+
+	// 3. Basic validation & Final Parse
+	if (cleanedJsonText.length === 0) {
+		storyUpdateCallback('', true); // Ensure final empty update
+		return undefined;
+	}
+
+	if (!cleanedJsonText.startsWith('{') || !cleanedJsonText.endsWith('}')) {
+		// This can happen with partial parses if emitPartialValues is on and stream cuts early
+		console.warn(
+			"Cleaned text doesn't start with '{' or end with '}'. Attempting to repair."
+		);
+		//TODO repair issue with missing opening brace
+		
+		// Attempt to fix the end of the string by removing text after the last '}'
+		const lastBraceIndex = cleanedJsonText.lastIndexOf('}');
+		if (lastBraceIndex !== -1) {
+			// If a '}' is found, check if there's actually text after it to remove.
+			if (lastBraceIndex < cleanedJsonText.length - 1) {
+				const removedText = cleanedJsonText.substring(lastBraceIndex + 1);
+				console.warn(
+					`Repairing JSON: Removing text after the last '}'. Removed: "${removedText.substring(0, 30)}${removedText.length > 30 ? '...' : ''}"`
+				);
+				cleanedJsonText = cleanedJsonText.substring(0, lastBraceIndex + 1);
+			}
+			// If lastBraceIndex is already the last character of the string,
+			// it means cleanedJsonText.endsWith('}') is true.
+			// In this case, no modification is needed for the end of the string,
+			// even if the outer 'if' condition was met due to !cleanedJsonText.startsWith('{').
+		} else {
+			// No '}' was found in the string.
+			// This implies the string is likely not a valid JSON object if one was expected.
+			// The subsequent JSON.parse will probably fail, which is handled later.
+			console.warn(
+				"Repair attempt: No '}' found in the string. Cannot remove text after the last '}' as none exists."
+			);
+		}
+	}
+
+	cleanedJsonText = cleanedJsonText.replaceAll('```', '').trim();
+	finalJsonObject = JSON.parse(cleanedJsonText);
+	console.log('--> Final JSON object successfully parsed after cleaning.');
+
+	// Ensure the final story state is sent via callback
+	const finalStory = typeof finalJsonObject?.story === 'string' ? finalJsonObject.story : '';
+	// Check if the callback already received the final chunk via partial updates
+	// This is tricky; maybe always send the final update for certainty.
+	// Let's always send the final update from the fully parsed object.
+	storyUpdateCallback(finalStory, true);
+
+	return finalJsonObject;
 }
