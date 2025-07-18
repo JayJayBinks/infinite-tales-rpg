@@ -24,9 +24,9 @@ export async function requestLLMJsonStream(
 	thoughtUpdateCallback?: (thoughtChunk: string, isComplete: boolean) => void
 ): Promise<object | undefined> {
 	// for error testing
-	//if (!request.model && !llm.llmConfig.model) {
-		//throw new Error('requestLLMJsonStream is not supported for model.500');
-	// if (!request.model && !llm.llmConfig.model) {}
+	//if (1 === 1) {
+	//	throw new Error('requestLLMJsonStream is not supported for model.429');
+	// }
 	let finalJsonObject: any = null;
 	let jsonStarted = false;
 	let markerFound = false; // Track if ```json marker was explicitly found

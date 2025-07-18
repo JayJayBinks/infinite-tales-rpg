@@ -123,6 +123,10 @@ export class GeminiProvider extends LLM {
 				e.message =
 					'The Gemini AI is currently overloaded! You can go to the settings and enable the fallback. If you already enabled it and see this, the fallback is also overloaded :(';
 			}
+			if (e.message.includes('429')) {
+				e.message =
+					'You have reached the rate limit for the Gemini AI. Please try again in some minutes. If this still appears, the whole daily quota is used up :(';
+			}
 			if (this.fallbackLLM) {
 				console.log('Fallback LLM for error: ', e.message);
 				const fallbackResult = await fallbackMethod(request);
