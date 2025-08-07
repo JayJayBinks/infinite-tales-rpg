@@ -105,8 +105,14 @@
 	import StoryProgressionWithImage, {
 		type StoryProgressionWithImageProps
 	} from '$lib/components/StoryProgressionWithImage.svelte';
+	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
 	// eslint-disable-next-line svelte/valid-compile
-	let diceRollDialog, useSpellsAbilitiesModal, useItemsModal, actionsDiv, customActionInput;
+	let diceRollDialog,
+		useSpellsAbilitiesModal,
+		useItemsModal,
+		utilityModal,
+		actionsDiv,
+		customActionInput;
 
 	//ai state
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -1236,6 +1242,42 @@
 		gmQuestionState = '';
 	};
 
+	const utilityActions = [
+		{
+			label: 'Short Rest',
+			value: 'short-rest'
+		},
+		{
+			label: 'Long Rest',
+			value: 'long-rest'
+		}
+	];
+
+	function handleUtilityAction(actionValue: string) {
+		let text = '';
+		if (actionValue === 'short-rest') {
+			text =
+				'Player character is doing a short rest, handle the resources regeneration according GAME rules and describe the scene';
+		} else if (actionValue === 'long-rest') {
+			text =
+				'Player character is doing a long rest, handle the resources regeneration according GAME rules and describe the scene';
+		}
+
+		if (text) {
+			additionalStoryInputState.value +=
+				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
+				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
+			sendAction(
+				{
+					characterName: characterState.value.name,
+					text,
+					is_custom_action: true
+				},
+				false
+			);
+		}
+	}
+
 	function onDeleteItem(item_id: string): void {
 		delete inventoryState.value[item_id];
 		if (gameActionsState.value[gameActionsState.value.length - 1].inventory_update) {
@@ -1460,6 +1502,14 @@
 	{#if levelUpState.value?.dialogOpened}
 		<LevelUpModal onclose={onLevelUpModalClosed} />
 	{/if}
+	<UtilityModal
+		bind:dialogRef={utilityModal}
+		is_character_in_combat={currentGameActionState.is_character_in_combat}
+		actions={utilityActions}
+		on:close={(e) => {
+			handleUtilityAction(e.detail);
+		}}
+	/>
 	<DiceRollComponent
 		bind:diceRollDialog
 		action={chosenActionState.value}
@@ -1574,6 +1624,13 @@
 					}}
 					class="text-md btn btn-primary mt-3 w-full"
 					>Inventory
+				</button>
+				<button
+					onclick={() => {
+						utilityModal.showModal();
+					}}
+					class="text-md btn btn-primary mt-3 w-full"
+					>Utility
 				</button>
 			</div>
 		{/if}
