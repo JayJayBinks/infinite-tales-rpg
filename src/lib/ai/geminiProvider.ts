@@ -100,7 +100,11 @@ export class GeminiProvider extends LLM {
 	}
 
 	private shouldEarlyFallback(modelToUse: string): boolean {
-		return this.fallbackLLM !== undefined && this.isThinkingModel(modelToUse) && getIsGeminiThinkingOverloaded();
+		return (
+			this.fallbackLLM !== undefined &&
+			this.isThinkingModel(modelToUse) &&
+			getIsGeminiThinkingOverloaded()
+		);
 	}
 
 	private async handleGeminiError(
@@ -183,7 +187,11 @@ export class GeminiProvider extends LLM {
 				request,
 				modelToUse,
 				async (req) =>
-					await this.fallbackLLM!.generateContentStream(req, storyUpdateCallback, thoughtUpdateCallback)
+					await this.fallbackLLM!.generateContentStream(
+						req,
+						storyUpdateCallback,
+						thoughtUpdateCallback
+					)
 			);
 		}
 	}

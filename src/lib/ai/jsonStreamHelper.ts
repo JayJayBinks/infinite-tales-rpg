@@ -162,11 +162,7 @@ export async function requestLLMJsonStream(
 							break;
 						}
 					}
-					if (
-						pendingPrefixCheck.length > 0 &&
-						!validPrefix &&
-						!pendingPrefixCheck.includes('{')
-					) {
+					if (pendingPrefixCheck.length > 0 && !validPrefix && !pendingPrefixCheck.includes('{')) {
 						// If the end doesn't contain { and isn't a prefix of ```json, reset it
 						// Keep the last char in case it's the start of {
 						pendingPrefixCheck = pendingPrefixCheck.slice(-1).includes('{')
@@ -250,11 +246,9 @@ export async function requestLLMJsonStream(
 
 	if (!cleanedJsonText.startsWith('{') || !cleanedJsonText.endsWith('}')) {
 		// This can happen with partial parses if emitPartialValues is on and stream cuts early
-		console.warn(
-			"Cleaned text doesn't start with '{' or end with '}'. Attempting to repair."
-		);
+		console.warn("Cleaned text doesn't start with '{' or end with '}'. Attempting to repair.");
 		//TODO repair issue with missing opening brace
-		
+
 		// Attempt to fix the end of the string by removing text after the last '}'
 		const lastBraceIndex = cleanedJsonText.lastIndexOf('}');
 		if (lastBraceIndex !== -1) {

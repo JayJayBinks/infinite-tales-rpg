@@ -42,7 +42,8 @@
 		applyInventoryUpdate,
 		getEmptyCriticalResourceKeys,
 		isEnoughResource,
-		mustRollDice
+		mustRollDice,
+		utilityPlayerActions
 	} from './gameLogic';
 	import * as combatLogic from './combatLogic';
 	import UseSpellsAbilitiesModal from '$lib/components/interaction_modals/UseSpellsAbilitiesModal.svelte';
@@ -1242,36 +1243,24 @@
 		gmQuestionState = '';
 	};
 
-	const utilityActions = [
-		{
-			label: 'Short Rest',
-			value: 'short-rest'
-		},
-		{
-			label: 'Long Rest',
-			value: 'long-rest'
-		}
-	];
-
 	function handleUtilityAction(actionValue: string) {
+		if(!actionValue) {
+			return;
+		}
 		let text = '';
 		if (actionValue === 'short-rest') {
 			text =
-				'Player character is doing a short rest, handle the resources regeneration according GAME rules and describe the scene';
+				'Player character is doing a short rest, handle the resources regeneration according GAME rules and describe the scene. If there are no specific GAME rules, increase all resources by 50% of the maximum.';
 		} else if (actionValue === 'long-rest') {
 			text =
-				'Player character is doing a long rest, handle the resources regeneration according GAME rules and describe the scene';
+				'Player character is doing a long rest, handle the resources regeneration according GAME rules and describe the scene. If there are no specific GAME rules, increase all resources by 100% of the maximum.';
 		}
-
 		if (text) {
-			additionalStoryInputState.value +=
-				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
-				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
 			sendAction(
 				{
 					characterName: characterState.value.name,
 					text,
-					is_custom_action: true
+					is_custom_action: false
 				},
 				false
 			);
@@ -1374,7 +1363,7 @@
 			latestStoryProgressionTextComponent?.scrollIntoView();
 			const time = new Date().toLocaleTimeString();
 			console.log('First story chunk received at:', time);
-			if(gameActionsState.value.length === 1) {
+			if (gameActionsState.value.length === 1) {
 				//TODO workaround because of the scrollIntoView not working properly for second story
 				setTimeout(() => {
 					console.log('For second story chunk, scroll again');
@@ -1505,9 +1494,9 @@
 	<UtilityModal
 		bind:dialogRef={utilityModal}
 		is_character_in_combat={currentGameActionState.is_character_in_combat}
-		actions={utilityActions}
-		on:close={(e) => {
-			handleUtilityAction(e.detail);
+		actions={utilityPlayerActions}
+		onclose={(action) => {
+			handleUtilityAction(action);
 		}}
 	/>
 	<DiceRollComponent

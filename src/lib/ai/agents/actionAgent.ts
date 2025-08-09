@@ -77,7 +77,10 @@ export class ActionAgent {
 		}
 	};
 
-	addAdditionalActionInputToUserMessage = (userMessage: string, additionalActionInputState?: string) => {
+	addAdditionalActionInputToUserMessage = (
+		userMessage: string,
+		additionalActionInputState?: string
+	) => {
 		if (additionalActionInputState) {
 			userMessage += '\n' + additionalActionInputState;
 		}
@@ -143,7 +146,10 @@ export class ActionAgent {
 			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
 		}
 
-		userMessage = this.addAdditionalActionInputToUserMessage(userMessage, additionalActionInputState);
+		userMessage = this.addAdditionalActionInputToUserMessage(
+			userMessage,
+			additionalActionInputState
+		);
 
 		if (relatedHistory && relatedHistory.length > 0) {
 			userMessage +=
@@ -246,7 +252,10 @@ export class ActionAgent {
 		if (restrainingState) {
 			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
 		}
-		userMessage = this.addAdditionalActionInputToUserMessage(userMessage, additionalActionInputState);
+		userMessage = this.addAdditionalActionInputToUserMessage(
+			userMessage,
+			additionalActionInputState
+		);
 
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
@@ -320,8 +329,11 @@ export class ActionAgent {
 		if (restrainingState) {
 			userMessage += '\n' + this.getRestrainingStatePrompt(restrainingState) + '\n';
 		}
-		userMessage = this.addAdditionalActionInputToUserMessage(userMessage, additionalActionInputState);
-		
+		userMessage = this.addAdditionalActionInputToUserMessage(
+			userMessage,
+			additionalActionInputState
+		);
+
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,

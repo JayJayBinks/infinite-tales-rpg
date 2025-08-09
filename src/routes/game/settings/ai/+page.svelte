@@ -154,6 +154,7 @@
 						storyState.value,
 						characterState.value,
 						{
+							level: 1,
 							resources: {
 								HP: { max_value: 0, game_ends_when_zero: true },
 								MP: { max_value: 0, game_ends_when_zero: false }

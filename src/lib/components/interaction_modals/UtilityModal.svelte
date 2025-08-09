@@ -1,39 +1,41 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
-
-	export let dialogRef: HTMLDialogElement;
-	export let is_character_in_combat: boolean;
-	export let actions: { label: string; value: string }[];
-
-	const dispatch = createEventDispatcher();
+	let {
+		is_character_in_combat,
+		actions,
+		onclose,
+		dialogRef = $bindable()
+	}: {
+		is_character_in_combat: boolean;
+		actions: { label: string; value: string }[];
+		onclose: (action) => void;
+		dialogRef: HTMLDialogElement;
+	} = $props();
 
 	function close(value?: string) {
-		if (value) {
-			dispatch('close', value);
-		}
+		onclose(value);
 		dialogRef.close();
 	}
 </script>
 
 <dialog bind:this={dialogRef} class="modal">
-	<div class="modal-box">
-		<h3 class="font-bold text-lg">Utility</h3>
+	<div class="modal-box flex flex-col items-center">
+		<form method="dialog">
+			<span class="m-auto">Utility</span>
+			<button class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2">✕</button>
+		</form>
 		<div class="py-4">
 			{#each actions as action}
 				<button
-					class="btn btn-primary w-full mb-2"
+					class="btn btn-primary mb-2 w-full"
 					disabled={is_character_in_combat}
-					on:click={() => close(action.value)}
+					onclick={() => close(action.value)}
 				>
 					{action.label}
 				</button>
 			{/each}
 			{#if is_character_in_combat}
-				<p class="text-error text-center mt-2">Cannot perform utility actions while in combat.</p>
+				<p class="mt-2 text-center text-error">Cannot perform utility actions while in combat.</p>
 			{/if}
-		</div>
-		<div class="modal-action">
-			<button class="btn" on:click={() => close()}>Close</button>
 		</div>
 	</div>
 </dialog>

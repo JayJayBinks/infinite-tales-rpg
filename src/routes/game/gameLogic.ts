@@ -461,3 +461,14 @@ export function isRandomEventCreated(probEnum: InterruptProbability, modifier = 
 			return false;
 	}
 }
+
+export const utilityPlayerActions = [
+	{
+		label: 'Short Rest',
+		value: 'short-rest'
+	},
+	{
+		label: 'Long Rest',
+		value: 'long-rest'
+	}
+];
