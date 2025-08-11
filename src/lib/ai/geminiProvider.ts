@@ -313,12 +313,13 @@ export class GeminiProvider extends LLM {
 						this.llmConfig.tryAutoFixJSONError
 					) {
 						console.log('Try json fix with llm agent');
-						return {
+						const fixedJson = await this.jsonFixingInterceptorAgent.fixJSON(
+							json,
+							(firstError as SyntaxError).message
+						);
+						return fixedJson && {
 							thoughts: '',
-							content: this.jsonFixingInterceptorAgent.fixJSON(
-								json,
-								(firstError as SyntaxError).message
-							)
+							content: fixedJson
 						};
 					}
 					handleError(firstError as string);
