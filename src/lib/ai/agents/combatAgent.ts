@@ -9,6 +9,7 @@ import type {
 import { ActionDifficulty, getEmptyCriticalResourceKeys } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { mapStatsUpdates } from '$lib/ai/agents/mappers';
+import { jsonRule } from './agentUtils';
 
 export type DiceRoll = {
 	result;
@@ -76,7 +77,7 @@ export class CombatAgent {
 			'The following is a description of the story setting to keep the actions consistent on.' +
 				'\n' +
 				stringifyPretty(storyState),
-			`Most important instruction! You must always respond with following JSON format! 
+			`${jsonRule}
                  {
                   "actions": [
                     # You must include one object for each npc and one for the player character

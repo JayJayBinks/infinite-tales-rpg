@@ -12,6 +12,7 @@ import {
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
 import { CombatAgent } from './combatAgent';
+import { jsonRule } from './agentUtils';
 
 export const diceRollPrompt = `"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
@@ -45,7 +46,7 @@ export class ActionAgent {
 		} else {
 			newSkillRule = `Choose an exact same spelled single skill from EXISTING SKILLS or null if none fits; Never create a new skill;`;
 		}
-		return `
+		return `{
 					"characterName": "Player character name who performs this action",
 					"plausibility": "Brief explanation why this action is plausible in the current situation",
 					"text": "Keep the text short, max 20 words. Description of the action to display to the player, do not include modifier or difficulty here.",
@@ -125,8 +126,7 @@ export class ActionAgent {
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
 				stringifyPretty(characterStats.resources),
-			`Most important instruction! You must always respond with following JSON format! 
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)}`
+			`${jsonRule} ${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)}`
 		];
 		this.addRestrainingStateToAgent(agent, restrainingState);
 		if (customSystemInstruction) {
@@ -218,7 +218,7 @@ export class ActionAgent {
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
 				stringifyPretty(characterStats.resources),
-			`Most important instruction! You must always respond with following JSON format! 
+			`${jsonRule}
       [
 				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
 				...
@@ -306,7 +306,7 @@ export class ActionAgent {
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
 				stringifyPretty(characterStats.resources),
-			`Most important instruction! You must always respond with following JSON format! 
+			`${jsonRule}
       [
 				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
 				...

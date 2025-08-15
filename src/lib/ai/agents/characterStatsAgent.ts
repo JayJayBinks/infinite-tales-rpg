@@ -3,6 +3,7 @@ import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import { type Story, TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
 import { GEMINI_MODELS } from '../geminiProvider';
+import { jsonRule } from './agentUtils';
 
 export type Ability = {
 	name: string;
@@ -134,7 +135,7 @@ export class CharacterStatsAgent {
 			statsPrompt += '\nEXISTING STATS:\n' + stringifyPretty(statsOverwrites);
 			agentInstruction.push(statsPrompt);
 		}
-		agentInstruction.push('Always respond with following JSON!\n' + characterStatsStateForPrompt);
+		agentInstruction.push(`${jsonRule}\n` + characterStatsStateForPrompt);
 		if (!statsOverwrites?.level) {
 			statsOverwrites = { ...statsOverwrites, level: 1 };
 		}
@@ -201,7 +202,7 @@ export class CharacterStatsAgent {
 			'Current character stats:\n' + stringifyPretty(characterStatsMapped),
 			'The level up must be based on the story progression, in which area the player acted well:\n' +
 				latestHistoryTextOnly,
-			'Always respond with following JSON!\n' + levelUpPrompt
+			`${jsonRule}\n` + levelUpPrompt
 		];
 
 		const request: LLMRequest = {
@@ -241,8 +242,7 @@ export class CharacterStatsAgent {
 				characterStats.level +
 				'\n',
 			TROPES_CLICHE_PROMPT,
-			`Most important instruction! You must always respond with following JSON format! 
-                            {"uniqueTechnicalNameId": ${npcStatsStateForPromptAsString}, ...}`
+			`${jsonRule} {"uniqueTechnicalNameId": ${npcStatsStateForPromptAsString}, ...}`
 		];
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
@@ -273,7 +273,7 @@ export class CharacterStatsAgent {
 			'You are RPG character ability agent, generating new abilities without restrictions on thematic consistency. Generate them according to game system, adventure and character description.\n' +
 				'Scale the ability according to the level',
 			usePartialAsBasePrompt,
-			`Always respond with following JSON!\n Array length ${abilities.filter((a) => !!a).length} of type ${abilityFormatForPrompt}`
+			`${jsonRule}\n Array length ${abilities.filter((a) => !!a).length} of type ${abilityFormatForPrompt}`
 		];
 
 		const request: LLMRequest = {

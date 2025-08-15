@@ -2,6 +2,7 @@ import { getRandomInteger, stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import isEqual from 'lodash.isequal';
+import { jsonRule } from './agentUtils';
 
 export type Story = typeof storyStateForPrompt;
 
@@ -61,7 +62,7 @@ export class StoryAgent {
 		const storyAgent =
 			'You are RPG story agent, crafting captivating, limitless GAME experiences using BOOKS, THEME, TONALITY for CHARACTER.\n' +
 			TROPES_CLICHE_PROMPT +
-			'Always respond with following JSON!\n' +
+			`${jsonRule}\n` +
 			stringifyPretty(storyStateForPrompt);
 
 		const preset = {

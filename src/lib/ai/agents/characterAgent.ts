@@ -1,6 +1,7 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 import { TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
+import { jsonRule } from './agentUtils';
 
 export type CharacterDescription = {
 	name: string;
@@ -61,7 +62,7 @@ export class CharacterAgent {
 					transformInto
 			);
 		}
-		agentInstruction.push('Always respond with following JSON!\n' + characterDescriptionForPrompt);
+		agentInstruction.push(jsonRule + '\n' + characterDescriptionForPrompt);
 
 		const preset = {
 			...storyState,

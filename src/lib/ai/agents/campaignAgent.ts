@@ -4,6 +4,7 @@ import type { Action } from '$lib/ai/agents/gameAgent';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import isEqual from 'lodash.isequal';
 import { exampleGameSystems, TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
+import { jsonRule } from './agentUtils';
 
 export type CampaignChapterPlotPoint = {
 	plotId: number;
@@ -122,9 +123,7 @@ export class CampaignAgent {
 		const agent =
 			mainAgent +
 			'\nProvide 3 - 6 chapters.\n' +
-			plotPointNumberPrompt +
-			'\nAlways respond with following JSON!\n' +
-			jsonPrompt;
+			plotPointNumberPrompt + '\n' + jsonRule + jsonPrompt;
 
 		const preset: Partial<Campaign> = {
 			...overwrites
@@ -168,7 +167,7 @@ export class CampaignAgent {
 			'You will be given a plan for a campaign as plannedCampaign and how the actual campaign unfolded during the play session as actualCampaign.\n' +
 			'Then you must decide if the actualCampaign has deviated too much from plannedCampaign and create a nudge that gently guides the character back to follow the chapter plot.\n' +
 			'Do not micro manage every single plot point but only take care that the overall chapter and campaign stay on track.\n' +
-			'Always respond with following JSON!\n' +
+			`${jsonRule}\n` +
 			`{
 				"currentChapter": Identify the most relevant chapterId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - CHAPTER_ID: {chapterId}",
 				"currentPlotPoint": Identify the most relevant plotId in plannedCampaign that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
@@ -218,7 +217,7 @@ export class CampaignAgent {
 			'The new chapter must fit within the other chapters, generate a chapter with chapterId: ' +
 				chapterNumberToGenerate
 		);
-		agentInstruction.push('Always respond with following JSON!\n' + chaptersPrompt);
+		agentInstruction.push(jsonRule + '\n' + chaptersPrompt);
 
 		let userMessage = 'Generate the new chapter.';
 		if (chapter) {
