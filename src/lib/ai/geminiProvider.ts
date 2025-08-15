@@ -24,6 +24,7 @@ import {
 	setIsGeminiThinkingOverloaded
 } from '$lib/state/errorState.svelte';
 import { requestLLMJsonStream } from './jsonStreamHelper';
+import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 export const GEMINI_MODELS = {
 	FLASH_THINKING_2_5: 'gemini-2.5-flash-preview-05-20',
@@ -300,13 +301,8 @@ export class GeminiProvider extends LLM {
 			} catch (firstError) {
 				try {
 					console.log('Error parsing JSON: ' + json, firstError);
-					console.log('Try json simple fix 1');
-					if (
-						(firstError as SyntaxError).message.includes('Bad control character in string literal')
-					) {
-						return { thoughts, content: JSON.parse(json.replaceAll('\\', '')) };
-					}
-					return { thoughts, content: JSON.parse(json.split('```json')[1].split('```')[0].trim()) };
+					console.log('Try json simple fix');
+					return { thoughts, content: sanitizeAnndParseJSON(json) };
 				} catch (secondError) {
 					if (
 						(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&

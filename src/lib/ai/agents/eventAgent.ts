@@ -2,6 +2,7 @@ import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
 import type { Ability } from './characterStatsAgent';
 import { GEMINI_MODELS } from '../geminiProvider';
+import { jsonRule } from './agentUtils';
 
 export const initialCharacterTransformState: CharacterChangedInto = {
 	changed_into: '',
@@ -73,7 +74,7 @@ export class EventAgent {
     *   Do not list abilities already known: ${currentAbilitiesNames.join(', ')}
     *   If yes, describe the new ability/spell/skill.
     *   If no, empty array.`,
-			'Always respond with following JSON!\n' + jsonFormat
+			`${jsonRule}\n` + jsonFormat
 		];
 
 		const request: LLMRequest = {

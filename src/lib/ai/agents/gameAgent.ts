@@ -12,6 +12,7 @@ import {
 	type Resources
 } from '$lib/ai/agents/characterStatsAgent';
 import type { CampaignChapter } from '$lib/ai/agents/campaignAgent';
+import { jsonRule } from './agentUtils';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -434,7 +435,7 @@ Always review context from system instructions and my last message before respon
 
 const jsonSystemInstructionForGameAgent = (
 	gameSettingsState: GameSettings
-) => `Important Instruction! You must always respond with valid JSON in the following format:
+) => `${jsonRule}
 {
   "currentPlotPoint": VALUE MUST BE ALWAYS IN ENGLISH; Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
   "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
@@ -468,7 +469,7 @@ const jsonSystemInstructionForGameAgent = (
   "currently_present_npcs": List of NPCs or party members that are present in the current situation. Format: ${currentlyPresentNPCSForPrompt}
 }`;
 
-const jsonSystemInstructionForPlayerQuestion = `Important Instruction! You must always respond with valid JSON in the following format:
+const jsonSystemInstructionForPlayerQuestion = `${jsonRule}
 {
   "game_state_considered": Brief explanation on how the game state is involved in the answer; mention relevant variables explicitly,
   "rules_considered": String Array; Identify the relevant Game Master's rules that are related to the question; Include the exact text of a rule,

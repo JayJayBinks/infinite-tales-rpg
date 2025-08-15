@@ -2,6 +2,7 @@ import JSONParser from '@streamparser/json/jsonparser.js';
 import type { LLM, LLMRequest } from './llm';
 import type { GenerateContentResponse } from '@google/genai';
 import { GEMINI_MODELS, getThoughtsFromResponse } from './geminiProvider';
+import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 /**
  * Fetches a JSON stream, parses it, calls a callback for progressive
@@ -44,7 +45,7 @@ export async function requestLLMJsonStream(
 
 	const liveParserPromise = new Promise<void>((resolve) => {
 		liveParser.onValue = ({ value, key, partial }) => {
-			// console.log('LiveParser Value:', { key, value, partial }); // Debugging
+			//console.log('LiveParser Value:', { key, value, partial }); // Debugging
 			try {
 				// Send partial story updates as they come
 				if (key === 'story' && typeof value === 'string') {
@@ -207,6 +208,7 @@ export async function requestLLMJsonStream(
 	let cleanedJsonText = accumulatedJsonText;
 
 	// 1. Remove trailing ``` marker ONLY if the ```json marker was found initially
+	//TODO always split on last } ? end can continue with text   ],\n    \"neutral\": []\n  }\n}\n```\n**Critique on my own process:**\nThe `PAST
 	const endMarker = '```';
 	if (markerFound) {
 		// Check if it ends with ``` possibly followed by whitespace
@@ -244,38 +246,14 @@ export async function requestLLMJsonStream(
 		return undefined;
 	}
 
-	if (!cleanedJsonText.startsWith('{') || !cleanedJsonText.endsWith('}')) {
-		// This can happen with partial parses if emitPartialValues is on and stream cuts early
-		console.warn("Cleaned text doesn't start with '{' or end with '}'. Attempting to repair.");
-		//TODO repair issue with missing opening brace
-
-		// Attempt to fix the end of the string by removing text after the last '}'
-		const lastBraceIndex = cleanedJsonText.lastIndexOf('}');
-		if (lastBraceIndex !== -1) {
-			// If a '}' is found, check if there's actually text after it to remove.
-			if (lastBraceIndex < cleanedJsonText.length - 1) {
-				const removedText = cleanedJsonText.substring(lastBraceIndex + 1);
-				console.warn(
-					`Repairing JSON: Removing text after the last '}'. Removed: "${removedText.substring(0, 30)}${removedText.length > 30 ? '...' : ''}"`
-				);
-				cleanedJsonText = cleanedJsonText.substring(0, lastBraceIndex + 1);
-			}
-			// If lastBraceIndex is already the last character of the string,
-			// it means cleanedJsonText.endsWith('}') is true.
-			// In this case, no modification is needed for the end of the string,
-			// even if the outer 'if' condition was met due to !cleanedJsonText.startsWith('{').
-		} else {
-			// No '}' was found in the string.
-			// This implies the string is likely not a valid JSON object if one was expected.
-			// The subsequent JSON.parse will probably fail, which is handled later.
-			console.warn(
-				"Repair attempt: No '}' found in the string. Cannot remove text after the last '}' as none exists."
-			);
-		}
-	}
-
 	cleanedJsonText = cleanedJsonText.replaceAll('```', '').trim();
-	finalJsonObject = JSON.parse(cleanedJsonText);
+	try{
+		finalJsonObject = sanitizeAnndParseJSON(cleanedJsonText);
+	}catch(e){
+		console.error('Failedat stream end to parse JSON:', e);
+		throw e; // Re-throw to handle it upstream
+	}
+	
 	console.log('--> Final JSON object successfully parsed after cleaning.');
 
 	// Ensure the final story state is sent via callback
