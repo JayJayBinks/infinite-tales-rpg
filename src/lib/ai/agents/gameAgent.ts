@@ -50,6 +50,10 @@ export type Action = {
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: object;
 	is_interruptible?: ReasonedEnum;
+	truth_query?: {
+		reasoning: string;
+		question?: string;
+	};
 	resource_cost?: {
 		resource_key: string | undefined;
 		cost: number;
@@ -433,9 +437,7 @@ NPC Interactions:
 
 Always review context from system instructions and my last message before responding.`;
 
-const jsonSystemInstructionForGameAgent = (
-	gameSettingsState: GameSettings
-) => `${jsonRule}
+const jsonSystemInstructionForGameAgent = (gameSettingsState: GameSettings) => `${jsonRule}
 {
   "currentPlotPoint": VALUE MUST BE ALWAYS IN ENGLISH; Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
   "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",

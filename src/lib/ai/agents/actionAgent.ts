@@ -28,6 +28,13 @@ export enum InterruptProbability {
 	HIGH = 'HIGH',
 	ALWAYS = 'ALWAYS'
 }
+
+export interface TruthOracleResult {
+	state: boolean;
+	reason: string;
+	simulation: string;
+}
+
 export class ActionAgent {
 	llm: LLM;
 
@@ -65,6 +72,7 @@ export class ActionAgent {
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
   					"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
 					"is_interruptible": Format {"reasoning": string, "enum_english": ${Object.keys(InterruptProbability).join('|')}}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,
+					"truth_query": Format {"reasoning": string, "question": "if the action is investigative, this query must probe the intent behind the action by asking about any discoverable causes, clues, or hidden realities, otherwise it must be null."},
 					${diceRollPrompt}
 				}`;
 	};
@@ -182,7 +190,13 @@ export class ActionAgent {
 		- Any action is allowed to target anything per game rules.
 		- Suggest actions that make creative use of environmental features or interactions with NPCs when possible.
 		- Only suggest actions that are plausible in the current situation.
-		- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points`;
+		- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points
+		
+		Follow these principles when creating the truth_query, which will be sent to a "World Logic Simulator" to determine the hidden reality of the scene.:
+1.  **Focus on Intent:** Don't just rephrase the action. Ask about the underlying goal (e.g., finding secrets, understanding motives, discovering a cause).
+2.  **Probe for Causality:** Frame the question around "why" or "how." Ask if there is a discoverable reason for the current situation.
+3.  **Broaden the Scope:** Ask about the existence of *any relevant information* or anomalies, not just a single specific thing.
+		`;
 
 	async generateActions(
 		currentGameState: GameActionState,
@@ -349,6 +363,79 @@ export class ActionAgent {
 		shuffleArray(actions);
 		return { thoughts: response?.thoughts, actions };
 	}
+
+	TRUTH_ORACLE_PROMPT_TEMPLATE = `### INSTRUCTIONS ###
+You are a World Logic Simulator for a text-based RPG. Your task is to determine the hidden, objective truth of a situation by simulating the world's state based on the provided context and the principles of cause and effect.
+
+Your response MUST be a single, valid JSON object with three specific keys:
+1.  state: A simple true or false boolean.
+2.  simulation: **This is the most important field.** It must be a concise, definitive statement of the hidden truth from an in-world perspective. This is the direct, factual answer to the QUESTION.
+3.  reason: Your meta-level justification for *why* the simulation is the most logical outcome, explaining the cause-and-effect link to the story. This is where you show your work.
+
+Treat the RECENT STORY as a set of initial conditions. Your goal is to determine what *must also be true* in this world, even if it has not been written yet.
+
+### EXAMPLE 1 (Inferential Simulation) ###
+RECENT STORY: "The study was pristine, except for a knocked-over vase on the floor, a small puddle of water spreading from it. The large window behind the desk was ajar, and there were faint, muddy scuff marks on the windowsill."
+QUESTION: "Are there signs of a recent break-in?"
+RESPONSE:
+{
+  "state": true,
+  "simulation": "The scene contains clear physical evidence of a recent, unauthorized entry through the window.",
+  "reason": "Simulating the cause for the combined effects (disturbed vase, muddy marks, open window) makes a hasty entry the most plausible reality, even if the word 'break-in' is not used."
+}
+
+### EXAMPLE 2 (Causality Simulation) ###
+RECENT STORY: "A massive explosion rocked the engine room. Alarms blared as the lights flickered and died, plunging the corridor into darkness. The air quickly filled with the acrid smell of burning electronics."
+QUESTION: "Is the corridor's main door operational?"
+RESPONSE:
+{
+  "state": false,
+  "simulation": "The door is unpowered and likely inoperable due to damage from the explosion's shockwave.",
+  "reason": "A massive explosion in the engine room would almost certainly cause a widespread power failure and potentially damage door mechanisms. The fact the main lights are out supports this simulation."
+}
+### END OF EXAMPLES ###`;
+
+	get_ground_truth = async (
+		question: string,
+		historyMessages: Array<LLMMessage>,
+		relatedHistory?: string[]
+	): Promise<TruthOracleResult | null> => {
+		// Construct the prompt
+		const agent = this.TRUTH_ORACLE_PROMPT_TEMPLATE;
+		const userMessage = '\nQUESTION:\n' + question;
+
+		//shallow clone array historyMessages
+		const historyMessagesClone = [...historyMessages];
+
+		relatedHistory?.forEach((message) => {
+			historyMessagesClone.push({ role: 'user', content: message });
+		});
+		const request: LLMRequest = {
+			userMessage,
+			historyMessages: historyMessagesClone,
+			systemInstruction: agent,
+			temperature: 0.2,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				thinkingBudget: 0,
+				includeThoughts: false
+			}
+		};
+		try {
+			const response = await this.llm.generateContent(request);
+			console.log('Truth Oracle Result:', response);
+			if (!response) return null;
+			const parsed = response.content;
+
+			if (typeof parsed === 'object' && 'reason' in parsed) {
+				return parsed as TruthOracleResult;
+			} else {
+				return null;
+			}
+		} catch (error: any) {
+			return null;
+		}
+	};
 
 	private getCurrentGameStateMapped(currentGameState: GameActionState) {
 		return {

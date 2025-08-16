@@ -63,7 +63,7 @@
 	import DiceRollComponent from '$lib/components/interaction_modals/dice/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
 	import { type Campaign, CampaignAgent, type CampaignChapter } from '$lib/ai/agents/campaignAgent';
-	import { ActionAgent } from '$lib/ai/agents/actionAgent';
+	import { ActionAgent, type TruthOracleResult } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import { applyLevelUp, getXPNeededForLevel } from './levelLogic';
@@ -481,9 +481,9 @@
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
 			}
 
-			additionalStoryInputState.value =
+			const dice_roll_addition_text =
 				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInputState.value || '');
-			sendAction(chosenActionState.value, false);
+			sendAction(chosenActionState.value, false, dice_roll_addition_text);
 		});
 	}
 
@@ -680,7 +680,9 @@
 	// Helper to prepare additional story input by incorporating combat prompts
 	async function prepareAdditionalStoryInput(
 		action: Action,
-		initialAdditionalStoryInput: string
+		groundTruth: TruthOracleResult | null,
+		initialAdditionalStoryInput: string,
+		diceRollAdditionText: string
 	): Promise<{
 		finalAdditionalStoryInput: string;
 		combatAndNPCState: {
@@ -691,7 +693,14 @@
 		};
 	}> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
-
+		// Add ground truth information if available.
+		additionalStoryInput += groundTruth
+			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
+				groundTruth.simulation +
+				'\n'
+			: '';
+		// Add dice roll addition text if available.
+		additionalStoryInput += diceRollAdditionText ? '\n' + diceRollAdditionText + '\n' : '';
 		// Retrieve combat and NPC-related story additions.
 		const combatAndNPCState = await getCombatAndNPCState(
 			action,
@@ -926,7 +935,7 @@
 	}
 
 	// Main sendAction function that orchestrates the action processing.
-	async function sendAction(action: Action, rollDice = false) {
+	async function sendAction(action: Action, rollDice = false, diceRollAdditionText = '') {
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
@@ -945,11 +954,6 @@
 				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
 
-				// Prepare the additional story input (including combat and chapter info)
-				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
-					action,
-					additionalStoryInputState.value
-				);
 				if (relatedActionHistoryState.value.length === 0) {
 					relatedActionHistoryState.value = await getRelatedHistory(
 						summaryAgent,
@@ -959,6 +963,22 @@
 						$state.snapshot(customMemoriesState.value)
 					);
 				}
+				//determine if the game state yields an outcome (trap even present etc.)
+				let groundTruth: TruthOracleResult | null = null;
+				if (action.truth_query?.question) {
+					groundTruth = await actionAgent.get_ground_truth(
+						action.truth_query.question,
+						getLatestStoryMessages(5),
+						$state.snapshot(relatedActionHistoryState.value)
+					);
+				}
+				// Prepare the additional story input (including combat and chapter info)
+				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
+					action,
+					groundTruth,
+					additionalStoryInputState.value,
+					diceRollAdditionText
+				);
 				// Process the AI story progression and update game state
 				didAIProcessActionState = false;
 				await processStoryProgression(
@@ -1244,7 +1264,7 @@
 	};
 
 	function handleUtilityAction(actionValue: string) {
-		if(!actionValue) {
+		if (!actionValue) {
 			return;
 		}
 		let text = '';

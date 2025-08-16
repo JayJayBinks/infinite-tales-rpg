@@ -27,14 +27,17 @@ import { requestLLMJsonStream } from './jsonStreamHelper';
 import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 export const GEMINI_MODELS = {
-	FLASH_THINKING_2_5: 'gemini-2.5-flash-preview-05-20',
+	FLASH_LITE_2_5: 'gemini-2.5-flash-lite',
+	FLASH_2_5: 'gemini-2.5-flash',
 	FLASH_THINKING_2_0: 'gemini-2.0-flash-thinking-exp-01-21',
 	FLASH_2_0: 'gemini-2.0-flash'
 };
 
 //Numbe of tokens
 export const THINKING_BUDGET = {
-	FAST: 256
+	VERY_FAST: 64,
+	FAST: 256,
+	DEFAULT: 512
 };
 
 const safetySettings: Array<SafetySetting> = [
@@ -174,7 +177,7 @@ export class GeminiProvider extends LLM {
 		thoughtUpdateCallback?: (thoughtChunk: string, isComplete: boolean) => void
 	): Promise<object | undefined> {
 		request.stream = true;
-		const modelToUse = request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_THINKING_2_5;
+		const modelToUse = request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_2_5;
 		try {
 			if (this.shouldEarlyFallback(modelToUse)) {
 				throw new Error(
@@ -198,15 +201,19 @@ export class GeminiProvider extends LLM {
 	}
 
 	isThinkingModel(model: string): boolean {
-		return model === GEMINI_MODELS.FLASH_THINKING_2_5;
+		return model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
 	}
 
 	supportsThinkingBudget(model: string): boolean {
-		return model === GEMINI_MODELS.FLASH_THINKING_2_5;
+		return model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
 	}
 
 	supportsReturnThoughts(model: string): boolean {
-		return model === GEMINI_MODELS.FLASH_THINKING_2_5 || model === GEMINI_MODELS.FLASH_THINKING_2_0;
+		return (
+			model === GEMINI_MODELS.FLASH_THINKING_2_0 ||
+			model === GEMINI_MODELS.FLASH_LITE_2_5 ||
+			model === GEMINI_MODELS.FLASH_2_5
+		);
 	}
 
 	async generateContent(
@@ -234,7 +241,7 @@ export class GeminiProvider extends LLM {
 			);
 		}
 
-		const modelToUse = request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_THINKING_2_5;
+		const modelToUse = request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_2_5;
 		if (this.llmConfig.language) {
 			const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
 			systemInstruction?.parts?.push({ text: languageInstruction });
@@ -313,10 +320,12 @@ export class GeminiProvider extends LLM {
 							json,
 							(firstError as SyntaxError).message
 						);
-						return fixedJson && {
-							thoughts: '',
-							content: fixedJson
-						};
+						return (
+							fixedJson && {
+								thoughts: '',
+								content: fixedJson
+							}
+						);
 					}
 					handleError(firstError as string);
 					return undefined;

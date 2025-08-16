@@ -247,13 +247,13 @@ export async function requestLLMJsonStream(
 	}
 
 	cleanedJsonText = cleanedJsonText.replaceAll('```', '').trim();
-	try{
+	try {
 		finalJsonObject = sanitizeAnndParseJSON(cleanedJsonText);
-	}catch(e){
+	} catch (e) {
 		console.error('Failedat stream end to parse JSON:', e);
 		throw e; // Re-throw to handle it upstream
 	}
-	
+
 	console.log('--> Final JSON object successfully parsed after cleaning.');
 
 	// Ensure the final story state is sent via callback

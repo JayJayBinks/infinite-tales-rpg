@@ -123,7 +123,10 @@ export class CampaignAgent {
 		const agent =
 			mainAgent +
 			'\nProvide 3 - 6 chapters.\n' +
-			plotPointNumberPrompt + '\n' + jsonRule + jsonPrompt;
+			plotPointNumberPrompt +
+			'\n' +
+			jsonRule +
+			jsonPrompt;
 
 		const preset: Partial<Campaign> = {
 			...overwrites
