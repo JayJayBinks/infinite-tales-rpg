@@ -250,7 +250,8 @@ export async function requestLLMJsonStream(
 	try {
 		finalJsonObject = sanitizeAnndParseJSON(cleanedJsonText);
 	} catch (e) {
-		console.error('Failedat stream end to parse JSON:', e);
+		console.error('Failed at stream end to parse JSON:', e);
+		console.error('Accumulated JSON text:', cleanedJsonText);
 		throw e; // Re-throw to handle it upstream
 	}
 

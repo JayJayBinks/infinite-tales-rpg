@@ -1,3 +1,6 @@
+export const jsonRule =
+	'Most important Instruction! You must always respond with a single valid JSON in the following format, do not include any text before or after the JSON: ';
+
 /**
  * Attempts to repair a malformed JSON string and parse it.
  * Accepts any legal JSON start character or empty string.
@@ -34,7 +37,70 @@ export const sanitizeAnndParseJSON = (input: string): any => {
 		);
 		working = working.slice(0, lastEndIdx + 1);
 	}
-	return JSON.parse(working);
+	try {
+		return JSON.parse(working);
+	} catch (e) {
+		console.error('Failed to parse JSON after sanitization:', e);
+		const extracted = extractFirstJsonObject(working);
+		if (!extracted) throw e;
+		return extracted;
+	}
 };
-export const jsonRule =
-	'Most important Instruction! You must always respond with valid JSON in the following format, do not include any text before or after the JSON: ';
+
+/**
+ * Finds and parses the first valid, top-level JSON object from a string.
+ * It correctly handles nested objects/arrays and ignores braces within strings.
+ *
+ * @param text A string that may contain a JSON object mixed with other text.
+ * @returns A parsed JSON object of type T if found, otherwise null.
+ */
+function extractFirstJsonObject<T = Record<string, any>>(text: string): T | null {
+	// Find the first opening curly brace or array bracket
+	const objStart = text.indexOf('{');
+	const arrStart = text.indexOf('[');
+	let startIndex = -1;
+	let isArray = false;
+	if (objStart === -1 && arrStart === -1) {
+		return null; // No object or array found
+	}
+	if (objStart === -1 || (arrStart !== -1 && arrStart < objStart)) {
+		startIndex = arrStart;
+		isArray = true;
+	} else {
+		startIndex = objStart;
+	}
+
+	// Scan for matching closing brace/bracket
+	let level = 1;
+	let inString = false;
+	const openChar = isArray ? '[' : '{';
+	const closeChar = isArray ? ']' : '}';
+
+	for (let i = startIndex + 1; i < text.length; i++) {
+		const char = text[i];
+		// Toggle inString state if we encounter a quote that isn't escaped
+		if (char === '"' && text[i - 1] !== '\\') {
+			inString = !inString;
+		}
+		// If we are not inside a string, check for braces/brackets
+		if (!inString) {
+			if (char === openChar) {
+				level++;
+			} else if (char === closeChar) {
+				level--;
+			}
+		}
+		// If level is 0, we've found the end
+		if (level === 0) {
+			const endIndex = i + 1;
+			const jsonString = text.substring(startIndex, endIndex);
+			try {
+				return JSON.parse(jsonString) as T;
+			} catch {
+				return null;
+			}
+		}
+	}
+	// If the loop finishes without finding a matching closing
+	return null;
+}
