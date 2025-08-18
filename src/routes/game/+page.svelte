@@ -159,6 +159,9 @@
 		{ relatedDetails: [] }
 	);
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
+	const relatedActionGroundTruthState = useLocalStorage<TruthOracleResult | null>(
+		'relatedActionGroundTruthState'
+	);
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
@@ -468,7 +471,7 @@
 		}
 	};
 
-	function openDiceRollDialog() {
+	function openDiceRollDialog(waitForFunction?: Promise<void>) {
 		//TODO showModal can not be used because it hides the dice roll
 		didAIProcessDiceRollActionState.value = false;
 		diceRollDialog.show();
@@ -483,7 +486,7 @@
 
 			const dice_roll_addition_text =
 				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInputState.value || '');
-			sendAction(chosenActionState.value, false, dice_roll_addition_text);
+			sendAction(chosenActionState.value, false, dice_roll_addition_text, waitForFunction);
 		});
 	}
 
@@ -597,6 +600,7 @@
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
 		relatedStoryHistoryState.reset();
+		relatedActionGroundTruthState.reset();
 		skillsProgressionForCurrentActionState = undefined;
 		if (actionsDiv) actionsDiv.innerHTML = '';
 		if (customActionInput) customActionInput.value = '';
@@ -798,7 +802,8 @@
 			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
 				typeof combatAgent.generateActionsFromContext
 			>;
-		}
+		},
+		groundTruth: TruthOracleResult | null
 	) {
 		thoughtsState.value.storyThoughts = '';
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
@@ -815,7 +820,8 @@
 			playerCharactersGameState,
 			inventoryState.value,
 			relatedHistory,
-			gameSettingsState.value
+			gameSettingsState.value,
+			groundTruth
 		);
 
 		if (newState?.story) {
@@ -935,7 +941,12 @@
 	}
 
 	// Main sendAction function that orchestrates the action processing.
-	async function sendAction(action: Action, rollDice = false, diceRollAdditionText = '') {
+	async function sendAction(
+		action: Action,
+		rollDice = false,
+		diceRollAdditionText = '',
+		waitForFunction?: Promise<void>
+	) {
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
@@ -949,10 +960,31 @@
 						relatedActionHistoryState.value = relatedHistory;
 					});
 				}
-				openDiceRollDialog();
+				//determine if the game state yields an outcome (trap even present etc.)
+				let waitForGroundTruthResult;
+				if (!relatedActionGroundTruthState.value && action.truth_query?.question) {
+					waitForGroundTruthResult = actionAgent
+						.get_ground_truth(
+							action,
+							action.truth_query.question,
+							getLatestStoryMessages(5),
+							$state.snapshot(relatedActionHistoryState.value),
+							$state.snapshot(characterState.value),
+							$state.snapshot(storyState.value)
+						)
+						.then((groundTruth) => {
+							relatedActionGroundTruthState.value = groundTruth;
+						});
+				}
+				openDiceRollDialog(waitForGroundTruthResult);
 			} else {
 				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
+				if (waitForFunction) {
+					console.log('Waiting for function...', new Date().toLocaleTimeString());
+					await waitForFunction;
+					console.log('Waiting for function finished', new Date().toLocaleTimeString());
+				}
 
 				if (relatedActionHistoryState.value.length === 0) {
 					relatedActionHistoryState.value = await getRelatedHistory(
@@ -963,19 +995,10 @@
 						$state.snapshot(customMemoriesState.value)
 					);
 				}
-				//determine if the game state yields an outcome (trap even present etc.)
-				let groundTruth: TruthOracleResult | null = null;
-				if (action.truth_query?.question) {
-					groundTruth = await actionAgent.get_ground_truth(
-						action.truth_query.question,
-						getLatestStoryMessages(5),
-						$state.snapshot(relatedActionHistoryState.value)
-					);
-				}
 				// Prepare the additional story input (including combat and chapter info)
 				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
 					action,
-					groundTruth,
+					relatedActionGroundTruthState.value,
 					additionalStoryInputState.value,
 					diceRollAdditionText
 				);
@@ -986,7 +1009,8 @@
 					finalAdditionalStoryInput,
 					relatedActionHistoryState.value,
 					currentGameActionState.is_character_in_combat,
-					combatAndNPCState
+					combatAndNPCState,
+					relatedActionGroundTruthState.value
 				);
 				didAIProcessActionState = true;
 				isAiGeneratingState = false;

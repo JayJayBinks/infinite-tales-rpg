@@ -13,6 +13,8 @@ import {
 } from '$lib/ai/agents/characterStatsAgent';
 import type { CampaignChapter } from '$lib/ai/agents/campaignAgent';
 import { jsonRule } from './agentUtils';
+import type { TruthOracleResult } from './actionAgent';
+import { GEMINI_MODELS } from '../geminiProvider';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -142,7 +144,8 @@ export class GameAgent {
 		playerCharactersGameState: PlayerCharactersGameState,
 		inventoryState: InventoryState,
 		relatedHistory: string[],
-		gameSettings: GameSettings
+		gameSettings: GameSettings,
+		groundTruth: TruthOracleResult | null
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let playerActionText = action.characterName + ': ' + action.text;
 		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
@@ -173,7 +176,8 @@ export class GameAgent {
 			userMessage: combinedText,
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent,
-			returnFallbackProperty: true
+			returnFallbackProperty: true,
+			model: GEMINI_MODELS.FLASH_2_5
 		};
 		const time = new Date().toLocaleTimeString();
 		console.log('Starting game agent:', time);
@@ -186,6 +190,10 @@ export class GameAgent {
 			playerActionTextForHistory,
 			newState
 		);
+		//add groundTruth to short term context
+		if (groundTruth) {
+			userMessage.content += `\nFollowing needs to be considered for the continuous progression of the story:\n${groundTruth.simulation}`;
+		}
 		const updatedHistoryMessages = [...historyMessages, userMessage, modelMessage];
 		mapGameState(newState);
 		return { newState, updatedHistoryMessages };

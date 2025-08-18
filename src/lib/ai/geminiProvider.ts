@@ -33,9 +33,10 @@ export const GEMINI_MODELS = {
 	FLASH_2_0: 'gemini-2.0-flash'
 };
 
-//Numbe of tokens
+//Number of tokens
 export const THINKING_BUDGET = {
-	VERY_FAST: 64,
+	FASTEST: 64,
+	FASTER: 128,
 	FAST: 256,
 	DEFAULT: 512
 };

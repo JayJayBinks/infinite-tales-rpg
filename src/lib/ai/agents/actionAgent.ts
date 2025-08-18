@@ -365,44 +365,71 @@ export class ActionAgent {
 	}
 
 	TRUTH_ORACLE_PROMPT_TEMPLATE = `### INSTRUCTIONS ###
-You are a World Logic Simulator for a text-based RPG. Your task is to determine the hidden, objective truth of a situation by simulating the world's state based on the provided context and the principles of cause and effect.
+You are a Impartial World Logic Simulator and Cold, Logical Referee for a text-based RPG.
+Your absolute primary directive is to simulate a neutral, often challenging, world based on its internal logic. **You MUST prioritize the direct, causal consequences of recent story event and WORLD CONTEXT over generic genre tropes (like 'convenient secret passages').** 
+Your goal is to create a plausible world, which is often difficult and unforgiving.
 
-Your response MUST be a single, valid JSON object with three specific keys:
-1.  state: A simple true or false boolean.
-2.  simulation: **This is the most important field.** It must be a concise, definitive statement of the hidden truth from an in-world perspective. This is the direct, factual answer to the QUESTION.
-3.  reason: Your meta-level justification for *why* the simulation is the most logical outcome, explaining the cause-and-effect link to the story. This is where you show your work.
-
+Analyze the RECENT STORY, WORLD CONTEXT, PLAYER ACTION and QUESTION to determine the objective hidden truth.
+Maintain plausibility and avoid repetition. If many similar events have already occurred, significantly decrease the probability of another one happening right away.
 Treat the RECENT STORY as a set of initial conditions. Your goal is to determine what *must also be true* in this world, even if it has not been written yet.
 
-### EXAMPLE 1 (Inferential Simulation) ###
-RECENT STORY: "The study was pristine, except for a knocked-over vase on the floor, a small puddle of water spreading from it. The large window behind the desk was ajar, and there were faint, muddy scuff marks on the windowsill."
-QUESTION: "Are there signs of a recent break-in?"
+Your response MUST be a single, valid JSON object with four specific keys:
+1.  state: A simple true or false boolean.
+2.  repetition_awareness: A brief, meta-level explanation if you detected repetition and how to address it in the simulation.
+3.  impartiality_check: A mandatory, meta-level explanation of how this decision is based on world logic and not to drive the story forward or help the character but is impartial.
+4.  reasononing: Your meta-level justification for the *why* of the simulation, explaining the cause-and-effect link to the story.
+5.  simulation: **This is the most important field.** It must be a concise, definitive statement of the hidden truth from an in-world perspective. This is the direct, factual answer to the QUESTION.
+
+### EXAMPLE 1 (Impartiality Simulation) ###
+RECENT STORY: "The player stands before the main military barracks, a fortress of stone and steel. The front gate is heavily guarded."
+QUESTION: "Is there a secret, unguarded entrance Kaelen can use to bypass the main gate?"
 RESPONSE:
 {
-  "state": true,
-  "simulation": "The scene contains clear physical evidence of a recent, unauthorized entry through the window.",
-  "reason": "Simulating the cause for the combined effects (disturbed vase, muddy marks, open window) makes a hasty entry the most plausible reality, even if the word 'break-in' is not used."
+  "state": false,
+  "simulation": "The barracks was built for high security; all entrances are reinforced and guarded. There are no convenient, secret 'back doors'.",
+  "impartiality_check": "This decision creates a direct obstacle (the guards) instead of providing a convenient bypass. It forces the player to engage with the challenge as presented, upholding the logic of a secure fortress.",
+  "repetition_awareness": "Repetition is not a factor. The decision is based on the internal logic of a high-security location.",
+  "reason": "Simulating a military architect's mindset. Security and defensibility would be the top priorities, making a convenient unguarded entrance a critical and illogical design flaw."
 }
 
 ### EXAMPLE 2 (Causality Simulation) ###
-RECENT STORY: "A massive explosion rocked the engine room. Alarms blared as the lights flickered and died, plunging the corridor into darkness. The air quickly filled with the acrid smell of burning electronics."
+RECENT STORY: "A massive explosion rocked the engine room. Alarms blared as the lights flickered and died..."
 QUESTION: "Is the corridor's main door operational?"
 RESPONSE:
 {
   "state": false,
   "simulation": "The door is unpowered and likely inoperable due to damage from the explosion's shockwave.",
-  "reason": "A massive explosion in the engine room would almost certainly cause a widespread power failure and potentially damage door mechanisms. The fact the main lights are out supports this simulation."
+  "impartiality_check": "The outcome is a negative consequence that complicates the player's situation, not simplifies it. It's a realistic result of a catastrophic event.",
+  "repetition_awareness": "Repetition is not a factor. This is a direct causal consequence of a unique event.",
+  "reason": "A massive explosion in the engine room would cause a widespread power failure. The fact the main lights are out supports this simulation."
+}
+
+### EXAMPLE 3 (Repetition-Aware Simulation) ###
+RECENT STORY: "This new chamber looks much like the others. The previous two rooms contained traps."
+QUESTION: "Are there any hidden traps in this room?"
+RESPONSE:
+{
+  "state": false,
+  "simulation": "This particular chamber, while ominous, appears to be free of mechanical traps.",
+  "impartiality_check": "The decision is based on a game design principle (avoiding monotony) rather than what would be easiest or most expected for the player.",
+  "repetition_awareness": "The decision is directly driven by avoiding repetition. The RECENT STORY shows two recent traps, so introducing a third immediately would be predictable.",
+  "reason": "While traps are plausible, this decision subverts the established pattern to create a more varied experience. The lack of a trap becomes its own form of tension."
 }
 ### END OF EXAMPLES ###`;
 
 	get_ground_truth = async (
+		action: Action,
 		question: string,
 		historyMessages: Array<LLMMessage>,
-		relatedHistory?: string[]
+		relatedHistory?: string[],
+		characterState?: CharacterDescription,
+		storyState?: Story
 	): Promise<TruthOracleResult | null> => {
 		// Construct the prompt
-		const agent = this.TRUTH_ORACLE_PROMPT_TEMPLATE;
-		const userMessage = '\nQUESTION:\n' + question;
+		const agent = [this.TRUTH_ORACLE_PROMPT_TEMPLATE, 
+			//"CHARACTER CONTEXT:\n" + JSON.stringify(characterState), 
+			"WORLD CONTEXT:\n" + JSON.stringify(storyState)];
+		const userMessage = '\nPLAYER ACTION:\n' + action.text + '\nQUESTION:\n' + question;
 
 		//shallow clone array historyMessages
 		const historyMessagesClone = [...historyMessages];
@@ -417,21 +444,15 @@ RESPONSE:
 			temperature: 0.2,
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
-				thinkingBudget: 0,
-				includeThoughts: false
+				thinkingBudget: 0, //THINKING_BUDGET.DEFAULT,
+				includeThoughts: true
 			}
 		};
 		try {
 			const response = await this.llm.generateContent(request);
-			console.log('Truth Oracle Result:', response);
+			console.log(action.text, question, stringifyPretty(response));
 			if (!response) return null;
-			const parsed = response.content;
-
-			if (typeof parsed === 'object' && 'reason' in parsed) {
-				return parsed as TruthOracleResult;
-			} else {
-				return null;
-			}
+			return response.content as TruthOracleResult;
 		} catch (error: any) {
 			return null;
 		}
