@@ -698,9 +698,10 @@
 	}> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
 		// Add ground truth information if available.
-		additionalStoryInput += groundTruth
+		additionalStoryInput += groundTruth?.simulation
 			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
-				groundTruth.simulation +
+				groundTruth.answer + '\n' +
+				stringifyPretty(groundTruth.simulation) +
 				'\n'
 			: '';
 		// Add dice roll addition text if available.

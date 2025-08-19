@@ -74,6 +74,7 @@
 		'playerCharactersIdToNamesMapState',
 		{}
 	);
+	const relatedActionGroundTruthState = useLocalStorage('relatedActionGroundTruthState');
 
 	let isGeneratingState = $state(false);
 	let quickstartModalOpen = $state(false);
@@ -128,6 +129,7 @@
 		skillsProgressionState.reset();
 		eventEvaluationState.reset();
 		playerCharactersIdToNamesMapState.reset();
+		relatedActionGroundTruthState.reset();
 	}
 
 	async function onQuickstartNew(story: string | Story | undefined) {

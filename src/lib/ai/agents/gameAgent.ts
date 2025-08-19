@@ -191,8 +191,8 @@ export class GameAgent {
 			newState
 		);
 		//add groundTruth to short term context
-		if (groundTruth) {
-			userMessage.content += `\nFollowing needs to be considered for the continuous progression of the story:\n${groundTruth.simulation}`;
+		if (groundTruth?.simulation) {
+			userMessage.content += `\nFollowing needs to be considered for the continuous progression of the story:\n${stringifyPretty(groundTruth.simulation)}`;
 		}
 		const updatedHistoryMessages = [...historyMessages, userMessage, modelMessage];
 		mapGameState(newState);
