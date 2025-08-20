@@ -31,7 +31,6 @@ export enum InterruptProbability {
 
 export interface TruthOracleResult {
 	state: boolean;
-	answer: string;
 	simulation: Record<string, string>;
 }
 
@@ -210,7 +209,7 @@ export class ActionAgent {
 		relatedHistory?: string[],
 		newSkillsAllowed: boolean = false,
 		restrainingState?: string,
-		additionalActionInputState?: string
+		additionalActionInputState?: string,
 	): Promise<{ thoughts: string; actions: Array<Action> }> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -366,65 +365,62 @@ export class ActionAgent {
 
 	TRUTH_ORACLE_PROMPT_TEMPLATE = `### INSTRUCTIONS ###
 You are a Impartial World Logic Simulator and Cold, Logical Referee for a text-based RPG.
-Your absolute primary directive is to simulate a neutral, often challenging, world based on its internal logic. **You MUST prioritize the direct, causal consequences of recent story event and WORLD CONTEXT over generic genre tropes (like 'convenient secret passages').** 
+Your absolute primary directive is to simulate a neutral, often challenging, world based on its internal logic.
+**You MUST prioritize the direct, causal consequences of recent story event and WORLD CONTEXT over generic genre tropes (like 'convenient secret passages').** 
 
-Analyze the RECENT STORY, WORLD CONTEXT, PLAYER ACTION and QUESTION to determine the objective hidden truth.
-Maintain plausibility and avoid repetition. If many similar events have already occurred, significantly decrease the probability of another one happening right away.
+Analyze the RECENT STORY, WORLD CONTEXT to simulate any relevant objective hidden truth regarding PLAYER ACTION. Simulation means not what could be, but what actually is the truth!
 Treat the RECENT STORY as a set of initial conditions. Your goal is to determine what *must also be true* in this world, even if it has not been written yet.
+Maintain plausibility and avoid repetition. If many similar events have already occurred, significantly decrease the probability of another one happening right away.
 
 Your response MUST be a single, valid JSON object with the following five keys, **in this exact logical order**:
-1.  answer_reasoning: explain the in-world logic and cause-and-effect that directly led to the specific answer to the QUESTION in your simulation. Justify your conclusion.
+1.  simulation_reasoning: explain the in-world logic and cause-and-effect that directly led to the specific truths in your simulation. Justify your conclusion.
 2.  impartiality_check: A mandatory, meta-level explanation of how this decision is based on world logic and not to drive the story forward or help the character but is impartial.
 3.  repetition_awareness: A brief, meta-level explanation if you detected repetition and how to address it in the simulation.
 4.  simulation: **The Complete Hidden Truth.** This must be a dynamic JSON object containing all relevant, discoverable facts about the situation as key-value pairs in format {"key": "string; brief description of the simulation"}
-5.  answer: **The Verdict.** This must be a string in the format "true|false; [brief summary]". The summary should be a concise answer to the QUESTION.
 
 ### EXAMPLE 1 (Impartiality Simulation) ###
 RECENT STORY: "The player stands before the main military barracks, a fortress of stone and steel. The front gate is heavily guarded."
-QUESTION: "Is there a secret, unguarded entrance Kaelen can use to bypass the main gate?"
+PLAYER ACTION: "Search for any hidden entrances to bypass the main gate."
 RESPONSE:
 {
-  "answer_reasoning": "Simulating a Security-Focused entity. An easy secret entrance is an illogical design flaw, but structural imperfections and predictable routines are plausible realities in any fortress.",
+  "simulation_reasoning": "Simulating a Security-Focused entity. An easy secret entrance is an illogical design flaw, but structural imperfections and predictable routines are plausible realities in any fortress.",
   "impartiality_check": "The decision directly denies the player a convenient solution (a secret door). Instead, it presents logical, but more difficult and complex, opportunities that require further planning and risk.",
   "repetition_awareness": "Repetition is not a factor. This is a fresh challenge.",
   "simulation": {
     "secret_entrance_exists": "No, the barracks was built for high security; all entrances are reinforced and guarded. There are no convenient, secret 'back doors'.",
     "potential_structural_weakness": "However, a detailed survey of the outer wall might reveal that the sewer outflow grate on the north wall is older and less reinforced than the rest of the structure.",
     "observable_guard_routine": "The guards at the main gate perform a shift change with predictable precision every two hours, creating a brief window of heightened activity and potential distraction."
-  },
-  "answer": "false; there are no secret entrances"
+  }
 }
 
 ### EXAMPLE 2 (Causality Simulation) ###
 RECENT STORY: "A massive explosion rocked the engine room. Alarms blared as the lights flickered and died..."
-QUESTION: "Is the corridor's main door operational?"
+PLAYER ACTION: "Exit the room through the door."
 RESPONSE:
 {
-  "answer_reasoning": "A massive explosion on a ship with a Failing-Power-Grid would logically cause power loss and secondary damage. The presence of an emergency override is a plausible design feature for any critical door.",
+  "simulation_reasoning": "A massive explosion on a ship with a Failing-Power-Grid would logically cause power loss and secondary damage. The presence of an emergency override is a plausible design feature for any critical door.",
   "impartiality_check": "The outcome is a direct, negative consequence of the explosion. It doesn't provide an easy pass but transforms the door from a simple obstacle into a more complex, multi-stage challenge (hazard + strength test).",
   "repetition_awareness": "Repetition is not a factor. This is a direct causal consequence.",
   "simulation": {
     "door_is_operational": "No, the door is completely unpowered and its magnetic locks have seized. It is inoperable.",
     "environmental_hazard": "Sparks are intermittently arcing from the damaged control panel next to the door, making the immediate area dangerous.",
     "manual_override_option": "A heavily-reinforced emergency release lever is visible, though it looks rusted and would require significant physical force to operate."
-  },
-  "answer": "false; the door is unpowered and inoperable"
+  }
 }
 
 ### EXAMPLE 3 (Repetition-Aware Simulation) ###
 RECENT STORY: "This new chamber looks much like the others. The previous two rooms contained traps."
-QUESTION: "Are there any hidden traps in this room?"
+PLAYER ACTION: "Search for any hidden traps."
 RESPONSE:
 {
-  "answer_reasoning": "This decision subverts the established pattern to create a more varied experience. The unique features of the room provide a logical in-world explanation for the lack of traps.",
+  "simulation_reasoning": "This decision subverts the established pattern to create a more varied experience. The unique features of the room provide a logical in-world explanation for the lack of traps.",
   "impartiality_check": "The decision denies the player's expectation (a trap) but rewards their perception with a new, more interesting mystery. It replaces a repetitive physical challenge with a narrative one.",
   "repetition_awareness": "The decision is directly driven by the story history to avoid predictable, repetitive encounters. The secondary truths answer the question 'Why is this room different?'",
   "simulation": {
     "contains_traps": "No, this particular chamber, while ominous, is free of any mechanical or magical traps.",
     "unique_point_of_interest": "The reason it is untrapped is that it served a different purpose. Faded, almost invisible ritualistic runes are carved in a complex circle in the center of the floor.",
     "subtle_clue": "A faint, unusual scent—like ozone and dried herbs—lingers in the air, a smell not present in the other trapped chambers."
-  },
-  "answer": "false; the chamber contains no traps"
+  }
 }
 ### END OF EXAMPLES ###`;
 
@@ -440,7 +436,7 @@ RESPONSE:
 		const agent = [this.TRUTH_ORACLE_PROMPT_TEMPLATE, 
 			//"CHARACTER CONTEXT:\n" + JSON.stringify(characterState), 
 			"WORLD CONTEXT:\n" + JSON.stringify(storyState)];
-		const userMessage = '\nPLAYER ACTION:\n' + action.text + '\nQUESTION:\n' + question;
+		const userMessage = 'Simulate the hidden truths for following \nPLAYER ACTION:\n' + action.text;
 
 		//shallow clone array historyMessages
 		const historyMessagesClone = [...historyMessages];
@@ -461,7 +457,7 @@ RESPONSE:
 		};
 		try {
 			const response = await this.llm.generateContent(request);
-			console.log(action.text, question, stringifyPretty(response));
+			console.log(action.text, stringifyPretty(response));
 			if (!response) return null;
 			return response.content as TruthOracleResult;
 		} catch (error: any) {

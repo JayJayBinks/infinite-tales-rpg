@@ -596,7 +596,6 @@
 	function resetStatesAfterActionProcessed() {
 		chosenActionState.reset();
 		additionalStoryInputState.reset();
-		additionalActionInputState.reset();
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
 		relatedStoryHistoryState.reset();
@@ -605,6 +604,9 @@
 		if (actionsDiv) actionsDiv.innerHTML = '';
 		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
+	}
+	function resetStatesAfterActionsGenerated(){
+				additionalActionInputState.reset();
 	}
 
 	function checkForNewNPCs(newState: GameActionState) {
@@ -700,7 +702,6 @@
 		// Add ground truth information if available.
 		additionalStoryInput += groundTruth?.simulation
 			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
-				groundTruth.answer + '\n' +
 				stringifyPretty(groundTruth.simulation) +
 				'\n'
 			: '';
@@ -901,7 +902,7 @@
 						relatedHistory,
 						gameSettingsState.value?.aiIntroducesSkills,
 						newState.is_character_restrained_explanation,
-						additionalActionInputState.value
+						additionalActionInputState.value,
 					)
 					.then(({ thoughts, actions }) => {
 						if (actions) {
@@ -911,6 +912,7 @@
 							addSkillsIfApplicable(actions);
 						}
 						thoughtsState.value.actionsThoughts = thoughts;
+						resetStatesAfterActionsGenerated();
 					});
 				checkForLevelUp();
 			}
@@ -1003,6 +1005,9 @@
 					additionalStoryInputState.value,
 					diceRollAdditionText
 				);
+				//prepare additional action input
+				const simulation = relatedActionGroundTruthState.value?.simulation;
+				additionalActionInputState.value += simulation ? '\n' + stringifyPretty(simulation) + '\n' : '';
 				// Process the AI story progression and update game state
 				didAIProcessActionState = false;
 				await processStoryProgression(
