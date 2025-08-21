@@ -3,7 +3,7 @@ import type { SummaryAgent, RelatedStoryHistory } from '$lib/ai/agents/summaryAg
 import type { Action } from '$lib/ai/agents/gameAgent';
 
 export const getRelatedHistory = async (
-	summaryAgent: SummaryAgent,
+	summaryAgent?: SummaryAgent,
 	action?: Action,
 	gameActions?: GameActionState[],
 	relatedStoryHistoryState?: RelatedStoryHistory,
@@ -20,7 +20,7 @@ export const getRelatedHistory = async (
 	relatedHistoryWithRelevance.relatedDetails.push(
 		...(relatedStoryHistoryState?.relatedDetails || [])
 	);
-	if (action && action.text != 'Continue The Tale') {
+	if (summaryAgent && action && action.text != 'Continue The Tale') {
 		relatedHistoryWithRelevance.relatedDetails.push(
 			...(await summaryAgent.retrieveRelatedHistory(action.text, gameActions || [])).relatedDetails
 		);

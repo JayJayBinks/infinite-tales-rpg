@@ -13,7 +13,6 @@ import type { Story } from '$lib/ai/agents/storyAgent';
 import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
 import { CombatAgent } from './combatAgent';
 import { jsonRule } from './agentUtils';
-
 export const diceRollPrompt = `"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
 						# If action_difficulty is difficult apply a bonus.
@@ -71,7 +70,6 @@ export class ActionAgent {
 					"actionSideEffects": "Reasoning whether this action causes any side effects on the environment or reactions from NPCs",
   					"enemyEncounterExplanation": Format {"reasoning": string, "enum_english": LOW|MEDIUM|HIGH}; Brief {reasoning} for the probability of an enemy encounter; if probable describe enemy details; LOW probability if an encounter recently happened,
 					"is_interruptible": Format {"reasoning": string, "enum_english": ${Object.keys(InterruptProbability).join('|')}}; Brief {reasoning} for the probability that this action is interrupted; e.g. travel in dangerous environment is HIGH,
-					"truth_query": Format {"reasoning": string, "question": "if the action is investigative, this query must probe the intent behind the action by asking about any discoverable causes, clues, or hidden realities, otherwise it must be null."},
 					${diceRollPrompt}
 				}`;
 	};
@@ -189,12 +187,7 @@ export class ActionAgent {
 		- Any action is allowed to target anything per game rules.
 		- Suggest actions that make creative use of environmental features or interactions with NPCs when possible.
 		- Only suggest actions that are plausible in the current situation.
-		- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points
-		
-		Follow these principles when creating the truth_query, which will be sent to a "World Logic Simulator" to determine the hidden reality of the scene.:
-1.  **Focus on Intent:** Don't just rephrase the action. Ask about the underlying goal (e.g., finding secrets, understanding motives, discovering a cause).
-2.  **Probe for Causality:** Frame the question around "why" or "how." Ask if there is a discoverable reason for the current situation.
-3.  **Broaden the Scope:** Ask about the existence of *any relevant information* or anomalies, not just a single specific thing.
+		- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points.
 		`;
 
 	async generateActions(
@@ -209,7 +202,7 @@ export class ActionAgent {
 		relatedHistory?: string[],
 		newSkillsAllowed: boolean = false,
 		restrainingState?: string,
-		additionalActionInputState?: string,
+		additionalActionInputState?: string
 	): Promise<{ thoughts: string; actions: Array<Action> }> {
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -426,23 +419,25 @@ RESPONSE:
 
 	get_ground_truth = async (
 		action: Action,
-		question: string,
 		historyMessages: Array<LLMMessage>,
-		relatedHistory?: string[],
-		characterState?: CharacterDescription,
-		storyState?: Story
+		storyState: Story,
+		relatedHistory?: string[]
 	): Promise<TruthOracleResult | null> => {
 		// Construct the prompt
-		const agent = [this.TRUTH_ORACLE_PROMPT_TEMPLATE, 
-			//"CHARACTER CONTEXT:\n" + JSON.stringify(characterState), 
-			"WORLD CONTEXT:\n" + JSON.stringify(storyState)];
+		const agent = [
+			this.TRUTH_ORACLE_PROMPT_TEMPLATE,
+			//"CHARACTER CONTEXT:\n" + JSON.stringify(characterState),
+			'WORLD CONTEXT:\n' + JSON.stringify(storyState)
+		];
 		const userMessage = 'Simulate the hidden truths for following \nPLAYER ACTION:\n' + action.text;
 
 		//shallow clone array historyMessages
-		const historyMessagesClone = [...historyMessages];
-
+		const historyMessagesClone: Array<LLMMessage> = [];
 		relatedHistory?.forEach((message) => {
 			historyMessagesClone.push({ role: 'user', content: message });
+		});
+		historyMessages.forEach((message) => {
+			historyMessagesClone.push({ role: 'user', content: message.content });
 		});
 		const request: LLMRequest = {
 			userMessage,

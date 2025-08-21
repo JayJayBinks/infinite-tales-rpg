@@ -52,10 +52,6 @@ export type Action = {
 	actionSideEffects?: string;
 	enemyEncounterExplanation?: object;
 	is_interruptible?: ReasonedEnum;
-	truth_query?: {
-		reasoning: string;
-		question?: string;
-	};
 	resource_cost?: {
 		resource_key: string | undefined;
 		cost: number;

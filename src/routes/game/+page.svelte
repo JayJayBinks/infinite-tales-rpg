@@ -605,8 +605,8 @@
 		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
 	}
-	function resetStatesAfterActionsGenerated(){
-				additionalActionInputState.reset();
+	function resetStatesAfterActionsGenerated() {
+		additionalActionInputState.reset();
 	}
 
 	function checkForNewNPCs(newState: GameActionState) {
@@ -902,7 +902,7 @@
 						relatedHistory,
 						gameSettingsState.value?.aiIntroducesSkills,
 						newState.is_character_restrained_explanation,
-						additionalActionInputState.value,
+						additionalActionInputState.value
 					)
 					.then(({ thoughts, actions }) => {
 						if (actions) {
@@ -965,15 +965,20 @@
 				}
 				//determine if the game state yields an outcome (trap even present etc.)
 				let waitForGroundTruthResult;
-				if (!relatedActionGroundTruthState.value && action.truth_query?.question) {
+				if (!relatedActionGroundTruthState.value) {
 					waitForGroundTruthResult = actionAgent
 						.get_ground_truth(
 							action,
-							action.truth_query.question,
 							getLatestStoryMessages(5),
-							$state.snapshot(relatedActionHistoryState.value),
-							$state.snapshot(characterState.value),
-							$state.snapshot(storyState.value)
+							$state.snapshot(storyState.value),
+							await getRelatedHistory(
+								undefined,
+								undefined,
+								undefined,
+								// never actually await cause no action
+								$state.snapshot(relatedStoryHistoryState.value),
+								$state.snapshot(customMemoriesState.value)
+							)
 						)
 						.then((groundTruth) => {
 							relatedActionGroundTruthState.value = groundTruth;
@@ -1006,8 +1011,15 @@
 					diceRollAdditionText
 				);
 				//prepare additional action input
-				const simulation = relatedActionGroundTruthState.value?.simulation;
-				additionalActionInputState.value += simulation ? '\n' + stringifyPretty(simulation) + '\n' : '';
+				if (!diceRollAdditionText?.toLowerCase().includes('failure')) {
+					//if the character didnt reckognize the simulation, do not generate actions based on it
+					const simulation = relatedActionGroundTruthState.value?.simulation;
+					additionalActionInputState.value += simulation
+						? '\nThe character reckognized following truths and so actions could be based on them:\n' +
+							stringifyPretty(simulation) +
+							'\n'
+						: '';
+				}
 				// Process the AI story progression and update game state
 				didAIProcessActionState = false;
 				await processStoryProgression(
