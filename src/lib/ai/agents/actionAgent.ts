@@ -30,7 +30,7 @@ export enum InterruptProbability {
 
 export interface TruthOracleResult {
 	state: boolean;
-	simulation: Record<string, string>;
+	simulation: { discoverable_weakness_or_clue: string } & Record<string, string>;
 }
 
 export class ActionAgent {
@@ -370,6 +370,7 @@ Your response MUST be a single, valid JSON object with the following five keys, 
 2.  impartiality_check: A mandatory, meta-level explanation of how this decision is based on world logic and not to drive the story forward or help the character but is impartial.
 3.  repetition_awareness: A brief, meta-level explanation if you detected repetition and how to address it in the simulation.
 4.  simulation: **The Complete Hidden Truth.** This must be a dynamic JSON object containing all relevant, discoverable facts about the situation as key-value pairs in format {"key": "string; brief description of the simulation"}
+				One entry must always be "discoverable_weakness_or_clue" (english and never translated!); it describes how to overcome the challenge, which a successful action reveals.
 
 ### EXAMPLE 1 (Impartiality Simulation) ###
 RECENT STORY: "The player stands before the main military barracks, a fortress of stone and steel. The front gate is heavily guarded."

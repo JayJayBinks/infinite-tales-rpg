@@ -83,7 +83,7 @@
 					<AbilityComponent {ability} />
 				{/each}
 				<div class="mt-4 flex gap-2">
-					<button class="btn btn-primary flex-1" onclick={() => onclose([])}>Decline</button>
+					<button class="btn btn-primary flex-1" onclick={() => onclose([])}>Cancel</button>
 					<button class="btn btn-accent flex-1" onclick={onConfirm}>Learn</button>
 				</div>
 			{:else}
@@ -95,7 +95,7 @@
 					</div>
 				{/each}
 				<div class="mt-4 flex gap-2">
-					<button class="btn btn-primary flex-1" onclick={() => onclose([])}>Decline</button>
+					<button class="btn btn-primary flex-1" onclick={() => onclose([])}>Cancel</button>
 					<button class="btn btn-accent flex-1" onclick={onGenerate}>Generate</button>
 				</div>
 			{/if}

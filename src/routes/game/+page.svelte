@@ -249,14 +249,15 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
-		beforeNavigate(({ cancel }) => {
-			if (!didAIProcessActionState) {
-				if (!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
-					didAIProcessActionState = true;
-					cancel();
-				}
-			}
-		});
+		// TODO for some reason does not work, as its also shown on custom action despite everything being loaded already
+		// beforeNavigate(({ cancel }) => {
+		// 	if (!didAIProcessActionState) {
+		// 		if (!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
+		// 			didAIProcessActionState = true;
+		// 			cancel();
+		// 		}
+		// 	}
+		// });
 		const llm = LLMProvider.provideLLM(
 			{
 				temperature: temperatureState.value,
@@ -686,7 +687,7 @@
 	// Helper to prepare additional story input by incorporating combat prompts
 	async function prepareAdditionalStoryInput(
 		action: Action,
-		groundTruth: TruthOracleResult | null,
+		simulationAddition: string,
 		initialAdditionalStoryInput: string,
 		diceRollAdditionText: string
 	): Promise<{
@@ -699,12 +700,11 @@
 		};
 	}> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
-		// Add ground truth information if available.
-		additionalStoryInput += groundTruth?.simulation
-			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
-				stringifyPretty(groundTruth.simulation) +
-				'\n'
-			: '';
+		additionalStoryInput += simulationAddition ? (
+			'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
+			simulationAddition + '\n'
+		) : '';
+
 		// Add dice roll addition text if available.
 		additionalStoryInput += diceRollAdditionText ? '\n' + diceRollAdditionText + '\n' : '';
 		// Retrieve combat and NPC-related story additions.
@@ -805,7 +805,7 @@
 				typeof combatAgent.generateActionsFromContext
 			>;
 		},
-		groundTruth: TruthOracleResult | null
+		simulation: string
 	) {
 		thoughtsState.value.storyThoughts = '';
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
@@ -823,7 +823,7 @@
 			inventoryState.value,
 			relatedHistory,
 			gameSettingsState.value,
-			groundTruth
+			simulation
 		);
 
 		if (newState?.story) {
@@ -1003,10 +1003,23 @@
 						$state.snapshot(customMemoriesState.value)
 					);
 				}
+				//create new object without discoverable_weakness_or_clue  groundTruth.simulation
+
+				let simulationToUse: string = '';
+				if (relatedActionGroundTruthState.value) {
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { discoverable_weakness_or_clue, ...simulationWithoutWeakness } =
+						relatedActionGroundTruthState.value.simulation || {};
+					if (diceRollAdditionText.includes('success')) {
+						simulationToUse = stringifyPretty(relatedActionGroundTruthState.value.simulation);
+					} else {
+						simulationToUse = stringifyPretty(simulationWithoutWeakness);
+					}
+				}
 				// Prepare the additional story input (including combat and chapter info)
 				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
 					action,
-					relatedActionGroundTruthState.value,
+					simulationToUse,
 					additionalStoryInputState.value,
 					diceRollAdditionText
 				);
@@ -1028,7 +1041,7 @@
 					relatedActionHistoryState.value,
 					currentGameActionState.is_character_in_combat,
 					combatAndNPCState,
-					relatedActionGroundTruthState.value
+					simulationToUse
 				);
 				didAIProcessActionState = true;
 				isAiGeneratingState = false;

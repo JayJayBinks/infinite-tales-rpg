@@ -13,7 +13,6 @@ import {
 } from '$lib/ai/agents/characterStatsAgent';
 import type { CampaignChapter } from '$lib/ai/agents/campaignAgent';
 import { jsonRule } from './agentUtils';
-import type { TruthOracleResult } from './actionAgent';
 import { GEMINI_MODELS } from '../geminiProvider';
 
 export type InventoryUpdate = {
@@ -141,7 +140,7 @@ export class GameAgent {
 		inventoryState: InventoryState,
 		relatedHistory: string[],
 		gameSettings: GameSettings,
-		groundTruth: TruthOracleResult | null
+		simulation: string
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
 		let playerActionText = action.characterName + ': ' + action.text;
 		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
@@ -186,9 +185,9 @@ export class GameAgent {
 			playerActionTextForHistory,
 			newState
 		);
-		//add groundTruth to short term context
-		if (groundTruth?.simulation) {
-			userMessage.content += `\nFollowing needs to be considered for the continuous progression of the story:\n${stringifyPretty(groundTruth.simulation)}`;
+		//add simulation to short term context
+		if (simulation) {
+			userMessage.content += `\nFollowing needs to be considered for the continuous progression of the story:\n${simulation}`;
 		}
 		const updatedHistoryMessages = [...historyMessages, userMessage, modelMessage];
 		mapGameState(newState);
