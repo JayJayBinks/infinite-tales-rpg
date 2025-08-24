@@ -315,6 +315,7 @@ export class GeminiProvider extends LLM {
 					console.log('Error parsing JSON: ' + json, firstError);
 					console.log('Try json simple fix');
 					return { thoughts, content: sanitizeAnndParseJSON(json) };
+					//eslint-disable-next-line
 				} catch (secondError) {
 					if (
 						(request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&

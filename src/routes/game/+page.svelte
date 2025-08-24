@@ -11,10 +11,7 @@
 		type InventoryState,
 		type Item,
 		type PlayerCharactersGameState,
-		type PlayerCharactersIdToNamesMap,
-
-		type Targets
-
+		type PlayerCharactersIdToNamesMap
 	} from '$lib/ai/agents/gameAgent';
 	import { onMount, tick } from 'svelte';
 	import {
@@ -660,10 +657,6 @@
 		}
 	}
 
-	function updateMessagesHistory(updatedHistoryMessages: Array<LLMMessage>) {
-		historyMessagesState.value = updatedHistoryMessages;
-	}
-
 	async function addCampaignAdditionalStoryInput(action: Action, additionalStoryInput: string) {
 		// If the game is played in campaign mode
 		if (campaignState.value?.chapters?.length > 0) {
@@ -872,7 +865,7 @@
 				);
 			}
 			console.log('new state', stringifyPretty(newState));
-			
+
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
 			console.log('skillName to improve', skillName);
 			if (skillName) {
@@ -891,7 +884,6 @@
 			// Let the summary agent shorten the history, if needed.
 			const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
 			historyMessagesState.value = newHistory;
-			
 
 			const updatedGameActions = gameLogic.mergeUpdatedGameActions(
 				newState,
@@ -899,12 +891,16 @@
 				gameStateUpdateOnly
 			);
 			gameActionsState.value = updatedGameActions;
-			if(!gameStateUpdateOnly){
+			// Update history messages based on game state
+			if (!gameStateUpdateOnly) {
 				historyMessagesState.value = updatedHistoryMessages;
-			}else{
+			} else {
 				//update last model message
-				historyMessagesState.value[historyMessagesState.value.length-1] = 
-				gameAgent.buildHistoryMessages('', updatedGameActions[updatedGameActions.length-1]).modelMessage;
+				historyMessagesState.value[historyMessagesState.value.length - 1] =
+					gameAgent.buildHistoryMessages(
+						'',
+						updatedGameActions[updatedGameActions.length - 1]
+					).modelMessage;
 			}
 
 			const time = new Date().toLocaleTimeString();
@@ -1343,7 +1339,8 @@
 		let stateUpdateOnly = false;
 		if (customActionReceiver === 'State Command') {
 			stateUpdateOnly = true;
-			additionalStoryInputState.value += 'Only apply the mentioned state updates, but nothing else.';
+			additionalStoryInputState.value +=
+				'Only apply the mentioned state updates, but nothing else.';
 		}
 		if (['State Command', 'Story Command'].includes(customActionReceiver)) {
 			additionalStoryInputState.value +=

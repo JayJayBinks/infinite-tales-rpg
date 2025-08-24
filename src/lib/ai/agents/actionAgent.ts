@@ -456,6 +456,7 @@ RESPONSE:
 			console.log(action.text, stringifyPretty(response));
 			if (!response) return null;
 			return response.content as TruthOracleResult;
+			//eslint-disable-next-line
 		} catch (error: any) {
 			return null;
 		}

@@ -46,17 +46,9 @@ export async function requestLLMJsonStream(
 	const liveParserPromise = new Promise<void>((resolve) => {
 		liveParser.onValue = ({ value, key, partial }) => {
 			//console.log('LiveParser Value:', { key, value, partial }); // Debugging
-			try {
-				// Send partial story updates as they come
-				if (key === 'story' && typeof value === 'string') {
-					storyUpdateCallback(value, !partial);
-				}
-				// Store the complete object structure as it builds (optional)
-				// Note: This might store incomplete objects if the stream stops early
-				// finalJsonObject = value; // Re-enabled final parsing later for robustness
-			} catch (callbackError) {
-				// Let errors propagate
-				throw callbackError;
+			// Send partial story updates as they come
+			if (key === 'story' && typeof value === 'string') {
+				storyUpdateCallback(value, !partial);
 			}
 		};
 		liveParser.onError = (err) => {
