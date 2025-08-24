@@ -11,7 +11,10 @@
 		type InventoryState,
 		type Item,
 		type PlayerCharactersGameState,
-		type PlayerCharactersIdToNamesMap
+		type PlayerCharactersIdToNamesMap,
+
+		type Targets
+
 	} from '$lib/ai/agents/gameAgent';
 	import { onMount, tick } from 'svelte';
 	import {
@@ -63,7 +66,7 @@
 	import DiceRollComponent from '$lib/components/interaction_modals/dice/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
 	import { type Campaign, CampaignAgent, type CampaignChapter } from '$lib/ai/agents/campaignAgent';
-	import { ActionAgent } from '$lib/ai/agents/actionAgent';
+	import { ActionAgent, type TruthOracleResult } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import { applyLevelUp, getXPNeededForLevel } from './levelLogic';
@@ -106,6 +109,7 @@
 	import StoryProgressionWithImage, {
 		type StoryProgressionWithImageProps
 	} from '$lib/components/StoryProgressionWithImage.svelte';
+	import { ImagePromptAgent } from '$lib/ai/agents/imagePromptAgent';
 	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog,
@@ -126,6 +130,7 @@
 	let isAiGeneratingState = $state(false);
 	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
 	let didAIProcessActionState = $state<boolean>(true);
+	let imagePromptAgent: ImagePromptAgent;
 	let gameAgent: GameAgent,
 		summaryAgent: SummaryAgent,
 		characterAgent: CharacterAgent,
@@ -159,6 +164,9 @@
 		{ relatedDetails: [] }
 	);
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
+	const relatedActionGroundTruthState = useLocalStorage<TruthOracleResult | null>(
+		'relatedActionGroundTruthState'
+	);
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
@@ -226,8 +234,12 @@
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
-	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' | 'Dice Roll' =
-		$state('Character Action');
+	let customActionReceiver:
+		| 'Story Command'
+		| 'State Command'
+		| 'Character Action'
+		| 'GM Question'
+		| 'Dice Roll' = $state('Character Action');
 	let customActionImpossibleReasonState: 'not_enough_resource' | 'not_plausible' | undefined =
 		$state(undefined);
 
@@ -246,14 +258,15 @@
 	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
 
 	onMount(async () => {
-		beforeNavigate(({ cancel }) => {
-			if (!didAIProcessActionState) {
-				if (!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
-					didAIProcessActionState = true;
-					cancel();
-				}
-			}
-		});
+		// TODO for some reason does not work, as its also shown on custom action despite everything being loaded already
+		// beforeNavigate(({ cancel }) => {
+		// 	if (!didAIProcessActionState) {
+		// 		if (!confirm('Navigation will cancel the current AI generation. Are you sure?')) {
+		// 			didAIProcessActionState = true;
+		// 			cancel();
+		// 		}
+		// 	}
+		// });
 		const llm = LLMProvider.provideLLM(
 			{
 				temperature: temperatureState.value,
@@ -270,6 +283,9 @@
 		actionAgent = new ActionAgent(llm);
 		eventAgent = new EventAgent(llm);
 		characterAgent = new CharacterAgent(llm);
+
+		// image prompt generator
+		imagePromptAgent = new ImagePromptAgent(llm);
 
 		migrateStates();
 		const currentCharacterName = characterState.value.name;
@@ -468,7 +484,7 @@
 		}
 	};
 
-	function openDiceRollDialog() {
+	function openDiceRollDialog(waitForFunction?: Promise<void>) {
 		//TODO showModal can not be used because it hides the dice roll
 		didAIProcessDiceRollActionState.value = false;
 		diceRollDialog.show();
@@ -481,9 +497,9 @@
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
 			}
 
-			additionalStoryInputState.value =
+			const dice_roll_addition_text =
 				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInputState.value || '');
-			sendAction(chosenActionState.value, false);
+			sendAction(chosenActionState.value, false, dice_roll_addition_text, false, waitForFunction);
 		});
 	}
 
@@ -593,14 +609,17 @@
 	function resetStatesAfterActionProcessed() {
 		chosenActionState.reset();
 		additionalStoryInputState.reset();
-		additionalActionInputState.reset();
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
 		relatedStoryHistoryState.reset();
+		relatedActionGroundTruthState.reset();
 		skillsProgressionForCurrentActionState = undefined;
 		if (actionsDiv) actionsDiv.innerHTML = '';
 		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
+	}
+	function resetStatesAfterActionsGenerated() {
+		additionalActionInputState.reset();
 	}
 
 	function checkForNewNPCs(newState: GameActionState) {
@@ -680,7 +699,9 @@
 	// Helper to prepare additional story input by incorporating combat prompts
 	async function prepareAdditionalStoryInput(
 		action: Action,
-		initialAdditionalStoryInput: string
+		simulationAddition: string,
+		initialAdditionalStoryInput: string,
+		diceRollAdditionText: string
 	): Promise<{
 		finalAdditionalStoryInput: string;
 		combatAndNPCState: {
@@ -691,7 +712,14 @@
 		};
 	}> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
+		additionalStoryInput += simulationAddition
+			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
+				simulationAddition +
+				'\n'
+			: '';
 
+		// Add dice roll addition text if available.
+		additionalStoryInput += diceRollAdditionText ? '\n' + diceRollAdditionText + '\n' : '';
 		// Retrieve combat and NPC-related story additions.
 		const combatAndNPCState = await getCombatAndNPCState(
 			action,
@@ -789,11 +817,13 @@
 			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
 				typeof combatAgent.generateActionsFromContext
 			>;
-		}
+		},
+		simulation: string,
+		gameStateUpdateOnly: boolean
 	) {
 		thoughtsState.value.storyThoughts = '';
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
-			onStoryStreamUpdate,
+			gameStateUpdateOnly ? () => {} : onStoryStreamUpdate,
 			onThoughtStreamUpdate,
 			action,
 			additionalStoryInput,
@@ -806,16 +836,30 @@
 			playerCharactersGameState,
 			inventoryState.value,
 			relatedHistory,
-			gameSettingsState.value
+			gameSettingsState.value,
+			simulation
 		);
 
 		if (newState?.story) {
+			newState.image_prompt = '';
+			if (!gameStateUpdateOnly) {
+				try {
+					newState.image_prompt = await imagePromptAgent.generateImagePrompt(
+						getLatestStoryMessages(),
+						newState.story,
+						characterState.value.name,
+						currentGameActionState.image_prompt!
+					);
+				} catch (e) {
+					console.warn('Failed to generate image prompt', e);
+				}
+			}
 			checkForNewNPCs(newState);
 			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
 			// If combat provided a specific stat update, use it.
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
-					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
+					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate['stats_update'];
 				applyInventoryUpdate(inventoryState.value, newState);
 			} else {
 				// Otherwise, apply the new state to the game state.
@@ -828,7 +872,7 @@
 				);
 			}
 			console.log('new state', stringifyPretty(newState));
-			updateMessagesHistory(updatedHistoryMessages);
+			
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
 			console.log('skillName to improve', skillName);
 			if (skillName) {
@@ -847,14 +891,22 @@
 			// Let the summary agent shorten the history, if needed.
 			const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
 			historyMessagesState.value = newHistory;
-			// Append the new game state to the game actions.
-			gameActionsState.value = [
-				...gameActionsState.value,
-				{
-					...newState,
-					id: gameActionsState.value.length
-				}
-			];
+			
+
+			const updatedGameActions = gameLogic.mergeUpdatedGameActions(
+				newState,
+				gameActionsState.value,
+				gameStateUpdateOnly
+			);
+			gameActionsState.value = updatedGameActions;
+			if(!gameStateUpdateOnly){
+				historyMessagesState.value = updatedHistoryMessages;
+			}else{
+				//update last model message
+				historyMessagesState.value[historyMessagesState.value.length-1] = 
+				gameAgent.buildHistoryMessages('', updatedGameActions[updatedGameActions.length-1]).modelMessage;
+			}
+
 			const time = new Date().toLocaleTimeString();
 			console.log('Complete parsing:', time);
 			storyChunkState = '';
@@ -895,6 +947,7 @@
 							addSkillsIfApplicable(actions);
 						}
 						thoughtsState.value.actionsThoughts = thoughts;
+						resetStatesAfterActionsGenerated();
 					});
 				checkForLevelUp();
 			}
@@ -925,8 +978,35 @@
 			});
 	}
 
+	function removeCluesFromSimulationOnFailure(diceRollAdditionText: string): any {
+		let sim = { ...(relatedActionGroundTruthState.value?.simulation || {}) };
+		if (relatedActionGroundTruthState.value) {
+			if (!diceRollAdditionText.includes('success')) {
+				// sanitize simulation: remove "discoverable_weakness_or_clue" if present, otherwise remove the last key
+				if ('discoverable_weakness_or_clue' in sim) {
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { discoverable_weakness_or_clue, ...rest } = sim;
+					sim = rest as typeof sim;
+				} else {
+					const keys = Object.keys(sim);
+					if (keys.length > 0) {
+						const lastKey = keys[keys.length - 1];
+						delete sim[lastKey];
+					}
+				}
+			}
+		}
+		return sim;
+	}
+
 	// Main sendAction function that orchestrates the action processing.
-	async function sendAction(action: Action, rollDice = false) {
+	async function sendAction(
+		action: Action,
+		rollDice = false,
+		diceRollAdditionText = '',
+		gameStateUpdateOnly = false,
+		waitForFunction?: Promise<void>
+	) {
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
@@ -940,16 +1020,37 @@
 						relatedActionHistoryState.value = relatedHistory;
 					});
 				}
-				openDiceRollDialog();
+				//determine if the game state yields an outcome (trap even present etc.)
+				let waitForGroundTruthResult;
+				if (!relatedActionGroundTruthState.value) {
+					waitForGroundTruthResult = actionAgent
+						.get_ground_truth(
+							action,
+							getLatestStoryMessages(5),
+							$state.snapshot(storyState.value),
+							await getRelatedHistory(
+								undefined,
+								undefined,
+								undefined,
+								// never actually await cause no action
+								$state.snapshot(relatedStoryHistoryState.value),
+								$state.snapshot(customMemoriesState.value)
+							)
+						)
+						.then((groundTruth) => {
+							relatedActionGroundTruthState.value = groundTruth;
+						});
+				}
+				openDiceRollDialog(waitForGroundTruthResult);
 			} else {
 				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
+				if (waitForFunction) {
+					console.log('Waiting for function...', new Date().toLocaleTimeString());
+					await waitForFunction;
+					console.log('Waiting for function finished', new Date().toLocaleTimeString());
+				}
 
-				// Prepare the additional story input (including combat and chapter info)
-				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
-					action,
-					additionalStoryInputState.value
-				);
 				if (relatedActionHistoryState.value.length === 0) {
 					relatedActionHistoryState.value = await getRelatedHistory(
 						summaryAgent,
@@ -959,6 +1060,26 @@
 						$state.snapshot(customMemoriesState.value)
 					);
 				}
+				let simulationToUse = stringifyPretty(
+					removeCluesFromSimulationOnFailure(diceRollAdditionText)
+				);
+				// Prepare the additional story input (including combat and chapter info)
+				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
+					action,
+					simulationToUse,
+					additionalStoryInputState.value,
+					diceRollAdditionText
+				);
+				//prepare additional action input
+				if (!diceRollAdditionText?.toLowerCase().includes('failure')) {
+					//if the character didnt reckognize the simulation, do not generate actions based on it
+					const simulation = relatedActionGroundTruthState.value?.simulation;
+					additionalActionInputState.value += simulation
+						? '\nThe character reckognized following truths and so actions could be based on them:\n' +
+							stringifyPretty(simulation) +
+							'\n'
+						: '';
+				}
 				// Process the AI story progression and update game state
 				didAIProcessActionState = false;
 				await processStoryProgression(
@@ -966,7 +1087,9 @@
 					finalAdditionalStoryInput,
 					relatedActionHistoryState.value,
 					currentGameActionState.is_character_in_combat,
-					combatAndNPCState
+					combatAndNPCState,
+					simulationToUse,
+					gameStateUpdateOnly
 				);
 				didAIProcessActionState = true;
 				isAiGeneratingState = false;
@@ -1217,11 +1340,16 @@
 		if (customActionReceiver === 'Dice Roll') {
 			customDiceRollNotation = action.text;
 		}
-		if (customActionReceiver === 'Game Command') {
+		let stateUpdateOnly = false;
+		if (customActionReceiver === 'State Command') {
+			stateUpdateOnly = true;
+			additionalStoryInputState.value += 'Only apply the mentioned state updates, but nothing else.';
+		}
+		if (['State Command', 'Story Command'].includes(customActionReceiver)) {
 			additionalStoryInputState.value +=
 				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
 				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
-			await sendAction(action, false);
+			await sendAction(action, false, '', stateUpdateOnly);
 		}
 	};
 	const onGMQuestionClosed = (
@@ -1244,7 +1372,7 @@
 	};
 
 	function handleUtilityAction(actionValue: string) {
-		if(!actionValue) {
+		if (!actionValue) {
 			return;
 		}
 		let text = '';
@@ -1425,6 +1553,23 @@
 			'gameSettingsState',
 			$state.snapshot(gameSettingsState.value)
 		);
+	}
+
+	function getCustomActionPlaceholder(customActionReceiver: string): string | null | undefined {
+		switch (customActionReceiver) {
+			case 'Character Action':
+				return 'What do you want to do?';
+			case 'GM Question':
+				return 'Message to the Game Master';
+			case 'Dice Roll':
+				return 'notation like 1d20, 2d6+3';
+			case 'State Command':
+				return 'Updates game state only, not story';
+			case 'Story Command':
+				return 'Updates story and game state';
+			default:
+				return 'No action selected';
+		}
 	}
 </script>
 
@@ -1627,7 +1772,8 @@
 			<div class="w-full lg:join">
 				<select bind:value={customActionReceiver} class="select select-bordered w-full lg:w-fit">
 					<option selected>Character Action</option>
-					<option>Game Command</option>
+					<option>Story Command</option>
+					<option>State Command</option>
 					<option>GM Question</option>
 					<option>Dice Roll</option>
 				</select>
@@ -1636,13 +1782,7 @@
 					bind:this={customActionInput}
 					class="input input-bordered w-full"
 					id="user-input"
-					placeholder={customActionReceiver === 'Character Action'
-						? 'What do you want to do?'
-						: customActionReceiver === 'GM Question'
-							? 'Message to the Game Master'
-							: customActionReceiver === 'Dice Roll'
-								? 'notation like 1d20, 2d6+3'
-								: 'Command without restrictions'}
+					placeholder={getCustomActionPlaceholder(customActionReceiver)}
 				/>
 				<button
 					onclick={() => onCustomActionSubmitted(customActionInput.value)}

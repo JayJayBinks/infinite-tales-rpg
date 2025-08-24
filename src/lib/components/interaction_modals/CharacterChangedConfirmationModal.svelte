@@ -25,7 +25,7 @@
 		</p>
 		<button class="btn btn-primary mt-3" onclick={downloadLocalStorageAsJson}>Save Game</button>
 		<div class="mt-2 flex gap-2">
-			<button class="btn btn-primary flex-1" onclick={() => onclose(false)}>Decline</button>
+			<button class="btn btn-primary flex-1" onclick={() => onclose(false)}>Cancel</button>
 			<button class="btn btn-accent flex-1" onclick={() => onclose(true)}>Accept</button>
 		</div>
 	</div>

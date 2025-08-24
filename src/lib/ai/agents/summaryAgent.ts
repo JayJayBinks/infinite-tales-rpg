@@ -33,7 +33,8 @@ export class SummaryAgent {
 			'You are a Summary Agent for a RPG adventure, who is responsible for summarizing the most important bits of a continuous story.' +
 			' Summarize the story so the most important events, which have a long term impact on the story, and characters are included.\n' +
 			' Emphasize on the most important events, and include their details.\n' +
-			jsonRule + '{"keyDetails": string array, "story": ""}';
+			jsonRule +
+			'{"keyDetails": string array, "story": ""}';
 
 		const toSummarize = historyMessages.slice(2, (numOfLastActions + 1) * -1);
 		console.log('toSummarize', toSummarize);
@@ -67,7 +68,8 @@ export class SummaryAgent {
 		}
 		const jsonPrompt =
 			`${jsonRule} {"relatedDetails": [{"storyReference": string, "relevanceScore": decimal number; 0-1}] array length ` +
-			maxRelatedDetails + '}';
+			maxRelatedDetails +
+			'}';
 		const agent =
 			'Scan the FULL STORY HISTORY and identify any SPECIFIC STORY REFERENCES from past events that are HIGHLY RELEVANT to the current STORY PROGRESSION. Focus on details that will help maintain consistency and plausibility.\n' +
 			'The RELEVANT REFERENCES must be only relevant to the current STORY PROGRESSION and not the whole story.\n' +

@@ -1,7 +1,7 @@
 import JSONParser from '@streamparser/json/jsonparser.js';
 import type { LLM, LLMRequest } from './llm';
 import type { GenerateContentResponse } from '@google/genai';
-import { GEMINI_MODELS, getThoughtsFromResponse } from './geminiProvider';
+import { getThoughtsFromResponse } from './geminiProvider';
 import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 /**
@@ -247,13 +247,14 @@ export async function requestLLMJsonStream(
 	}
 
 	cleanedJsonText = cleanedJsonText.replaceAll('```', '').trim();
-	try{
+	try {
 		finalJsonObject = sanitizeAnndParseJSON(cleanedJsonText);
-	}catch(e){
-		console.error('Failedat stream end to parse JSON:', e);
+	} catch (e) {
+		console.error('Failed at stream end to parse JSON:', e);
+		console.error('Accumulated JSON text:', cleanedJsonText);
 		throw e; // Re-throw to handle it upstream
 	}
-	
+
 	console.log('--> Final JSON object successfully parsed after cleaning.');
 
 	// Ensure the final story state is sent via callback

@@ -27,6 +27,7 @@
 		{ relatedDetails: [] }
 	);
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
+	const relatedActionGroundTruthState = useLocalStorage('relatedActionGroundTruthState');
 
 	const importSettings = () => {
 		importJsonFromFile((parsed) => {
@@ -36,6 +37,7 @@
 			);
 			relatedStoryHistoryState.reset();
 			relatedActionHistoryState.reset();
+			relatedActionGroundTruthState.reset();
 			if (isSaveGame) {
 				Object.keys(parsed).forEach((key) => {
 					const state = migrateIfApplicable(key, parsed[key]);
