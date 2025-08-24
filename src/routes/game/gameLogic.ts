@@ -472,3 +472,44 @@ export const utilityPlayerActions = [
 		value: 'long-rest'
 	}
 ];
+
+
+// Build or merge into the game actions array depending on gameStateUpdateOnly.
+			export const mergeUpdatedGameActions = (
+				newState: GameActionState,
+				existingActions: GameActionState[],
+				gameStateUpdateOnly: boolean
+			): GameActionState[] => {
+				const updatedGameActions: GameActionState[] = [...existingActions];
+
+				// If we should append new action as a separate action
+				if (!gameStateUpdateOnly) {
+					const newAction: GameActionState = { ...newState, id: updatedGameActions.length };
+					updatedGameActions.push(newAction);
+					return updatedGameActions;
+				}
+
+				// Merge into last action when doing a game-state-only update
+				if (updatedGameActions.length === 0) {
+					updatedGameActions.push({ ...newState, id: 0 });
+					return updatedGameActions;
+				}
+
+				const lastIndex = updatedGameActions.length - 1;
+				const lastAction = updatedGameActions[lastIndex];
+
+				const mergedAction: GameActionState = {
+					...lastAction,
+					stats_update: [
+						...(lastAction.stats_update ?? []),
+						...(newState.stats_update ?? [])
+					],
+					inventory_update: [
+						...(lastAction.inventory_update ?? []),
+						...(newState.inventory_update ?? [])
+					]
+				};
+
+				updatedGameActions[lastIndex] = mergedAction;
+				return updatedGameActions;
+			};

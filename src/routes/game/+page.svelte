@@ -11,7 +11,10 @@
 		type InventoryState,
 		type Item,
 		type PlayerCharactersGameState,
-		type PlayerCharactersIdToNamesMap
+		type PlayerCharactersIdToNamesMap,
+
+		type Targets
+
 	} from '$lib/ai/agents/gameAgent';
 	import { onMount, tick } from 'svelte';
 	import {
@@ -231,8 +234,12 @@
 	//TODO const lastCombatSinceXActions: number = $derived(
 	//	gameActionsState.value && (gameActionsState.value.length - (gameActionsState.value.findLastIndex(state => state.is_character_in_combat ) + 1))
 	//);
-	let customActionReceiver: 'Game Command' | 'Character Action' | 'GM Question' | 'Dice Roll' =
-		$state('Character Action');
+	let customActionReceiver:
+		| 'Story Command'
+		| 'State Command'
+		| 'Character Action'
+		| 'GM Question'
+		| 'Dice Roll' = $state('Character Action');
 	let customActionImpossibleReasonState: 'not_enough_resource' | 'not_plausible' | undefined =
 		$state(undefined);
 
@@ -492,7 +499,7 @@
 
 			const dice_roll_addition_text =
 				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInputState.value || '');
-			sendAction(chosenActionState.value, false, dice_roll_addition_text, waitForFunction);
+			sendAction(chosenActionState.value, false, dice_roll_addition_text, false, waitForFunction);
 		});
 	}
 
@@ -811,11 +818,12 @@
 				typeof combatAgent.generateActionsFromContext
 			>;
 		},
-		simulation: string
+		simulation: string,
+		gameStateUpdateOnly: boolean
 	) {
 		thoughtsState.value.storyThoughts = '';
 		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
-			onStoryStreamUpdate,
+			gameStateUpdateOnly ? () => {} : onStoryStreamUpdate,
 			onThoughtStreamUpdate,
 			action,
 			additionalStoryInput,
@@ -834,22 +842,24 @@
 
 		if (newState?.story) {
 			newState.image_prompt = '';
-			try {
-				newState.image_prompt = await imagePromptAgent.generateImagePrompt(
-					getLatestStoryMessages(),
-					newState.story,
-					characterState.value.name,
-					currentGameActionState.image_prompt!
-				);
-			} catch (e) {
-				console.warn('Failed to generate image prompt', e);
+			if (!gameStateUpdateOnly) {
+				try {
+					newState.image_prompt = await imagePromptAgent.generateImagePrompt(
+						getLatestStoryMessages(),
+						newState.story,
+						characterState.value.name,
+						currentGameActionState.image_prompt!
+					);
+				} catch (e) {
+					console.warn('Failed to generate image prompt', e);
+				}
 			}
 			checkForNewNPCs(newState);
 			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
 			// If combat provided a specific stat update, use it.
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
-					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate.stats_update;
+					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate['stats_update'];
 				applyInventoryUpdate(inventoryState.value, newState);
 			} else {
 				// Otherwise, apply the new state to the game state.
@@ -862,7 +872,7 @@
 				);
 			}
 			console.log('new state', stringifyPretty(newState));
-			updateMessagesHistory(updatedHistoryMessages);
+			
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
 			console.log('skillName to improve', skillName);
 			if (skillName) {
@@ -881,14 +891,22 @@
 			// Let the summary agent shorten the history, if needed.
 			const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
 			historyMessagesState.value = newHistory;
-			// Append the new game state to the game actions.
-			gameActionsState.value = [
-				...gameActionsState.value,
-				{
-					...newState,
-					id: gameActionsState.value.length
-				}
-			];
+			
+
+			const updatedGameActions = gameLogic.mergeUpdatedGameActions(
+				newState,
+				gameActionsState.value,
+				gameStateUpdateOnly
+			);
+			gameActionsState.value = updatedGameActions;
+			if(!gameStateUpdateOnly){
+				historyMessagesState.value = updatedHistoryMessages;
+			}else{
+				//update last model message
+				historyMessagesState.value[historyMessagesState.value.length-1] = 
+				gameAgent.buildHistoryMessages('', updatedGameActions[updatedGameActions.length-1]).modelMessage;
+			}
+
 			const time = new Date().toLocaleTimeString();
 			console.log('Complete parsing:', time);
 			storyChunkState = '';
@@ -986,6 +1004,7 @@
 		action: Action,
 		rollDice = false,
 		diceRollAdditionText = '',
+		gameStateUpdateOnly = false,
 		waitForFunction?: Promise<void>
 	) {
 		try {
@@ -1069,7 +1088,8 @@
 					relatedActionHistoryState.value,
 					currentGameActionState.is_character_in_combat,
 					combatAndNPCState,
-					simulationToUse
+					simulationToUse,
+					gameStateUpdateOnly
 				);
 				didAIProcessActionState = true;
 				isAiGeneratingState = false;
@@ -1320,11 +1340,16 @@
 		if (customActionReceiver === 'Dice Roll') {
 			customDiceRollNotation = action.text;
 		}
-		if (customActionReceiver === 'Game Command') {
+		let stateUpdateOnly = false;
+		if (customActionReceiver === 'State Command') {
+			stateUpdateOnly = true;
+			additionalStoryInputState.value += 'Only apply the mentioned state updates, but nothing else.';
+		}
+		if (['State Command', 'Story Command'].includes(customActionReceiver)) {
 			additionalStoryInputState.value +=
 				'\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
 				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
-			await sendAction(action, false);
+			await sendAction(action, false, '', stateUpdateOnly);
 		}
 	};
 	const onGMQuestionClosed = (
@@ -1529,6 +1554,23 @@
 			$state.snapshot(gameSettingsState.value)
 		);
 	}
+
+	function getCustomActionPlaceholder(customActionReceiver: string): string | null | undefined {
+		switch (customActionReceiver) {
+			case 'Character Action':
+				return 'What do you want to do?';
+			case 'GM Question':
+				return 'Message to the Game Master';
+			case 'Dice Roll':
+				return 'notation like 1d20, 2d6+3';
+			case 'State Command':
+				return 'Updates game state only, not story';
+			case 'Story Command':
+				return 'Updates story and game state';
+			default:
+				return 'No action selected';
+		}
+	}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -1730,7 +1772,8 @@
 			<div class="w-full lg:join">
 				<select bind:value={customActionReceiver} class="select select-bordered w-full lg:w-fit">
 					<option selected>Character Action</option>
-					<option>Game Command</option>
+					<option>Story Command</option>
+					<option>State Command</option>
 					<option>GM Question</option>
 					<option>Dice Roll</option>
 				</select>
@@ -1739,13 +1782,7 @@
 					bind:this={customActionInput}
 					class="input input-bordered w-full"
 					id="user-input"
-					placeholder={customActionReceiver === 'Character Action'
-						? 'What do you want to do?'
-						: customActionReceiver === 'GM Question'
-							? 'Message to the Game Master'
-							: customActionReceiver === 'Dice Roll'
-								? 'notation like 1d20, 2d6+3'
-								: 'Command without restrictions'}
+					placeholder={getCustomActionPlaceholder(customActionReceiver)}
 				/>
 				<button
 					onclick={() => onCustomActionSubmitted(customActionInput.value)}
