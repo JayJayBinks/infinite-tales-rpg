@@ -243,9 +243,13 @@ export class GeminiProvider extends LLM {
 		}
 
 		const modelToUse = request.model || this.llmConfig.model || GEMINI_MODELS.FLASH_2_5;
-		if (this.llmConfig.language) {
-			const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
-			systemInstruction?.parts?.push({ text: languageInstruction });
+		if (request.englishText) {
+			systemInstruction?.parts?.push({ text: 'Only respond in English ALWAYS!' });
+		} else {
+			if (this.llmConfig.language) {
+				const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
+				systemInstruction?.parts?.push({ text: languageInstruction });
+			}
 		}
 		let result: GenerateContentResponse;
 		try {

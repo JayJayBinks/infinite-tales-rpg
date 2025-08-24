@@ -1,7 +1,7 @@
 import JSONParser from '@streamparser/json/jsonparser.js';
 import type { LLM, LLMRequest } from './llm';
 import type { GenerateContentResponse } from '@google/genai';
-import { GEMINI_MODELS, getThoughtsFromResponse } from './geminiProvider';
+import { getThoughtsFromResponse } from './geminiProvider';
 import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 /**

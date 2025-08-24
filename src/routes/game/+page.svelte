@@ -106,6 +106,7 @@
 	import StoryProgressionWithImage, {
 		type StoryProgressionWithImageProps
 	} from '$lib/components/StoryProgressionWithImage.svelte';
+	import { ImagePromptAgent } from '$lib/ai/agents/imagePromptAgent';
 	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog,
@@ -126,6 +127,7 @@
 	let isAiGeneratingState = $state(false);
 	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
 	let didAIProcessActionState = $state<boolean>(true);
+	let imagePromptAgent: ImagePromptAgent;
 	let gameAgent: GameAgent,
 		summaryAgent: SummaryAgent,
 		characterAgent: CharacterAgent,
@@ -274,6 +276,9 @@
 		actionAgent = new ActionAgent(llm);
 		eventAgent = new EventAgent(llm);
 		characterAgent = new CharacterAgent(llm);
+
+		// image prompt generator
+		imagePromptAgent = new ImagePromptAgent(llm);
 
 		migrateStates();
 		const currentCharacterName = characterState.value.name;
@@ -700,10 +705,11 @@
 		};
 	}> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
-		additionalStoryInput += simulationAddition ? (
-			'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
-			simulationAddition + '\n'
-		) : '';
+		additionalStoryInput += simulationAddition
+			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
+				simulationAddition +
+				'\n'
+			: '';
 
 		// Add dice roll addition text if available.
 		additionalStoryInput += diceRollAdditionText ? '\n' + diceRollAdditionText + '\n' : '';
@@ -827,6 +833,17 @@
 		);
 
 		if (newState?.story) {
+			newState.image_prompt = '';
+			try {
+				newState.image_prompt = await imagePromptAgent.generateImagePrompt(
+					getLatestStoryMessages(),
+					newState.story,
+					characterState.value.name,
+					currentGameActionState.image_prompt!
+				);
+			} catch (e) {
+				console.warn('Failed to generate image prompt', e);
+			}
 			checkForNewNPCs(newState);
 			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
 			// If combat provided a specific stat update, use it.
@@ -943,6 +960,27 @@
 			});
 	}
 
+	function removeCluesFromSimulationOnFailure(diceRollAdditionText: string): any {
+		let sim = { ...(relatedActionGroundTruthState.value?.simulation || {}) };
+		if (relatedActionGroundTruthState.value) {
+			if (!diceRollAdditionText.includes('success')) {
+				// sanitize simulation: remove "discoverable_weakness_or_clue" if present, otherwise remove the last key
+				if ('discoverable_weakness_or_clue' in sim) {
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { discoverable_weakness_or_clue, ...rest } = sim;
+					sim = rest as typeof sim;
+				} else {
+					const keys = Object.keys(sim);
+					if (keys.length > 0) {
+						const lastKey = keys[keys.length - 1];
+						delete sim[lastKey];
+					}
+				}
+			}
+		}
+		return sim;
+	}
+
 	// Main sendAction function that orchestrates the action processing.
 	async function sendAction(
 		action: Action,
@@ -1003,19 +1041,9 @@
 						$state.snapshot(customMemoriesState.value)
 					);
 				}
-				//create new object without discoverable_weakness_or_clue  groundTruth.simulation
-
-				let simulationToUse: string = '';
-				if (relatedActionGroundTruthState.value) {
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { discoverable_weakness_or_clue, ...simulationWithoutWeakness } =
-						relatedActionGroundTruthState.value.simulation || {};
-					if (diceRollAdditionText.includes('success')) {
-						simulationToUse = stringifyPretty(relatedActionGroundTruthState.value.simulation);
-					} else {
-						simulationToUse = stringifyPretty(simulationWithoutWeakness);
-					}
-				}
+				let simulationToUse = stringifyPretty(
+					removeCluesFromSimulationOnFailure(diceRollAdditionText)
+				);
 				// Prepare the additional story input (including combat and chapter info)
 				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
 					action,

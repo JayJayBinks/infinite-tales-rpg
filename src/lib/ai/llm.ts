@@ -35,6 +35,7 @@ export interface LLMRequest {
 	returnFallbackProperty?: boolean;
 	stream?: boolean;
 	thinkingConfig?: ThinkingConfig;
+	englishText?: boolean;
 }
 
 export interface LLMconfig {
