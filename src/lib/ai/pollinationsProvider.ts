@@ -173,7 +173,8 @@ export class PollinationsProvider extends LLM {
 				console.log('Try json fix with llm agent');
 				return this.jsonFixingInterceptorAgent.fixJSON(
 					response,
-					(firstError as SyntaxError).message
+					(firstError as SyntaxError).message,
+					false
 				);
 			}
 			handleError(firstError as string);

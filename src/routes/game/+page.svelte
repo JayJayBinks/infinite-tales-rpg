@@ -843,8 +843,12 @@
 						characterState.value.name,
 						currentGameActionState.image_prompt!
 					);
+					if(!newState.image_prompt){
+						newState.image_prompt = 'big letters showing FAILED TO GENERATE IMAGE PROMPT';
+					}
 				} catch (e) {
 					console.warn('Failed to generate image prompt', e);
+					newState.image_prompt = 'big letters showing FAILED TO GENERATE IMAGE PROMPT';
 				}
 			}
 			checkForNewNPCs(newState);

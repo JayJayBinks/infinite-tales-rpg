@@ -140,7 +140,9 @@ export class GeminiProvider extends LLM {
 				console.log('Fallback LLM for error: ', e.message);
 				const fallbackResult = await fallbackMethod(request);
 				if (!fallbackResult) {
-					handleError(e as unknown as string);
+					if (request.reportErrorToUser !== false) {
+						handleError(e as unknown as string);
+					}
 				} else {
 					if (this.llmConfig.returnFallbackProperty || request.returnFallbackProperty) {
 						if (fallbackResult.content) {
@@ -152,11 +154,15 @@ export class GeminiProvider extends LLM {
 					return fallbackResult;
 				}
 			} else {
-				handleError(e as unknown as string);
+				if (request.reportErrorToUser !== false) {
+					handleError(e as unknown as string);
+				}
 				return undefined;
 			}
 		}
-		handleError(e as string);
+		if (request.reportErrorToUser !== false) {
+			handleError(e as string);
+		}
 		return undefined;
 	}
 
@@ -300,7 +306,9 @@ export class GeminiProvider extends LLM {
 			if (result.text) {
 				json = result.text;
 			} else {
-				handleError('Gemini did not send a response...');
+				if (request.reportErrorToUser !== false) {
+					handleError('Gemini did not send a response...');
+				}
 				return undefined;
 			}
 			try {
@@ -324,7 +332,8 @@ export class GeminiProvider extends LLM {
 						console.log('Try json fix with llm agent');
 						const fixedJson = await this.jsonFixingInterceptorAgent.fixJSON(
 							json,
-							(firstError as SyntaxError).message
+							(firstError as SyntaxError).message,
+							request.reportErrorToUser
 						);
 						return (
 							fixedJson && {
@@ -333,12 +342,16 @@ export class GeminiProvider extends LLM {
 							}
 						);
 					}
-					handleError(firstError as string);
-					return undefined;
+					if (request.reportErrorToUser !== false) {
+						handleError(firstError as string);
+						return undefined;
+					}
 				}
 			}
 		} catch (e) {
-			handleError(e as string);
+			if (request.reportErrorToUser !== false) {
+				handleError(e as string);
+			}
 		}
 		return undefined;
 	}

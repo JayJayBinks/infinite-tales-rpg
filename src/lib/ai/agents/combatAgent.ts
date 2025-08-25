@@ -111,7 +111,8 @@ export class CombatAgent {
 		const request: LLMRequest = {
 			userMessage: actionToSend,
 			historyMessages: historyMessages,
-			systemInstruction: agent
+			systemInstruction: agent,
+			reportErrorToUser: false
 		};
 
 		const state = (await this.llm.generateContent(request))?.content as any;

@@ -198,7 +198,8 @@ export class CampaignAgent {
 					content: 'actualCampaign: ' + stringifyPretty(actionHistoryStoryOnly)
 				}
 			],
-			systemInstruction: agent
+			systemInstruction: agent,
+			reportErrorToUser: false
 		};
 		return (await this.llm.generateContent(request))?.content as Campaign;
 	}

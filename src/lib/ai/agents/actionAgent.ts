@@ -449,7 +449,8 @@ RESPONSE:
 			thinkingConfig: {
 				thinkingBudget: 0, //THINKING_BUDGET.DEFAULT,
 				includeThoughts: true
-			}
+			},
+			reportErrorToUser: false
 		};
 		try {
 			const response = await this.llm.generateContent(request);

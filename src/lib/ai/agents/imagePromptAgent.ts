@@ -22,7 +22,6 @@ Analyze the Previous Prompt: Read the previous prompt to identify the core eleme
 The Setting (e.g., a tavern, a forest)
 The Characters present and their descriptions
 The Mood and Lighting.
-Old story elements must be replaced by new ones from STORY CONTEXT.
 
 Your prompt must describe a single, coherent instant—the state of the scene at that exact moment.
 Identify the Peak Moment: Read the story segment and choose the most recent and visually impactful event to be the main subject of your image.
@@ -45,10 +44,15 @@ NPC DESCRIPTION PROTOCOL
 When describing Non-Player Characters (NPCs), never use their names.
 Instead, describe them by their gender and a consistent set of key visual features.
 
+DYNAMIC COMPOSITION
+Introduce visual variety. If the previous prompt focused on a character's face, your new prompt must find a new subject, a new angle, or a new detail to focus on. Never generate the same type of shot twice in a row.
+Old story elements must be replaced by new ones from STORY CONTEXT, make sure that there is a different most important element than in the previous prompt.
+Shift the focus between NPC, significant object and environmental detail.
+
 STRUCTURE OF YOUR GENERATED PROMPT
 Your output must be a single, descriptive paragraph. simply describe what is happening in the scene according to the story text, while strictly following the Golden Rule.
 Declare the Frame & Focus: Start by stating the shot type and composition (close-up, wide shot, etc..
-Maintaining the Context: Weave in the setting, style, mood, and lighting from the previous prompt. Reuse character descriptions to stay consistent, but the old story elements must be replaced by new ones from STORY CONTEXT.
+Maintaining the Context: Weave in the setting, style, mood, and lighting from the previous prompt. Reuse character descriptions to stay consistent, but make sure that there is a different most important element than in the previous prompt.
 Main Focus: Describe the most important visual element currently happening in the scene (e.g., the NPC's reaction, an object being used, a change in the environment).
 Setting & Atmosphere: Detail the surrounding environment, props, and other characters to provide context and build a palpable atmosphere.
 Lighting & Color: Describe the light sources, quality of light, shadows, and the overall color palette.
@@ -76,7 +80,8 @@ ${story}
 			thinkingConfig: {
 				thinkingBudget: 0
 			},
-			englishText: true
+			englishText: true,
+			reportErrorToUser: false
 		};
 		const response = await this.llm.generateContent(request);
 		console.log('generated image prompt', stringifyPretty(response));

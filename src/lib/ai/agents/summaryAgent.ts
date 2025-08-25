@@ -42,7 +42,8 @@ export class SummaryAgent {
 			userMessage: 'Summarize the following story: \n' + stringifyPretty(toSummarize),
 			systemInstruction: agent,
 			temperature: 1,
-			model: GEMINI_MODELS.FLASH_THINKING_2_0
+			model: GEMINI_MODELS.FLASH_THINKING_2_0,
+			reportErrorToUser: false
 		};
 		const response = (await this.llm.generateContent(request))?.content as {
 			story: string;
@@ -98,7 +99,8 @@ export class SummaryAgent {
 			systemInstruction: agent,
 			historyMessages: consideredHistory,
 			model: GEMINI_MODELS.FLASH_2_0,
-			temperature: 0.1
+			temperature: 0.1,
+			reportErrorToUser: false
 		};
 		const response = (await this.llm.generateContent(request))?.content as RelatedStoryHistory;
 		console.log(storyProgression, 'Related history returned ', stringifyPretty(response));

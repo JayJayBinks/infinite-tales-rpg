@@ -36,6 +36,7 @@ export interface LLMRequest {
 	stream?: boolean;
 	thinkingConfig?: ThinkingConfig;
 	englishText?: boolean;
+	reportErrorToUser?: boolean;
 }
 
 export interface LLMconfig {
