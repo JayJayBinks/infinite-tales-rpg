@@ -138,6 +138,7 @@ export class GeminiProvider extends LLM {
 			}
 			if (this.fallbackLLM) {
 				console.log('Fallback LLM for error: ', e.message);
+				request.model = this.fallbackLLM.llmConfig.model;
 				const fallbackResult = await fallbackMethod(request);
 				if (!fallbackResult) {
 					if (request.reportErrorToUser !== false) {
