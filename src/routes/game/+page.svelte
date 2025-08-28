@@ -494,8 +494,7 @@
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
 			}
 
-			const dice_roll_addition_text =
-				getDiceRollPromptAddition(result) + '\n' + (additionalStoryInputState.value || '');
+			const dice_roll_addition_text = getDiceRollPromptAddition(result)
 			sendAction(chosenActionState.value, false, dice_roll_addition_text, false, waitForFunction);
 		});
 	}
@@ -1007,6 +1006,12 @@
 		gameStateUpdateOnly = false,
 		waitForFunction?: Promise<void>
 	) {
+		//TODO can happen if action fails multiple times, for retry state is not cleaned then
+		if (additionalStoryInputState.value.length > 10_000) {
+			console.warn('Additional story input is too long, reducing it to under 10_000 characters.');
+			//take the last 10000 characters as it is probably the real input
+			additionalStoryInputState.value = additionalStoryInputState.value.slice(-10_000);
+		}
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
