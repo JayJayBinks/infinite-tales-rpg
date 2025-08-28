@@ -254,6 +254,9 @@ export function applyGameActionState(
 		let resource = resources[key];
 		if (!resource) {
 			resource = resources[key.toUpperCase()];
+			if (!resource) {
+				resource = resources[key.charAt(0).toUpperCase() + key.substring(1).toLowerCase()];
+			}
 		}
 		return resource;
 	}
@@ -262,20 +265,19 @@ export function applyGameActionState(
 		const characterId =
 			getCharacterTechnicalId(playerCharactersIdToNamesMapState, statUpdate.targetName) || '';
 		if (playerCharactersGameState[characterId]) {
+			const updateResourceValue = Number.parseInt(statUpdate.value.result) || 0;
 			if (statUpdate.type.includes('now_level')) {
-				playerCharactersGameState[characterId].XP.current_value -=
-					Number.parseInt(statUpdate.value.result) || 0;
+				playerCharactersGameState[characterId].XP.current_value -= updateResourceValue;
 				continue;
 			}
 			if (statUpdate.type === 'xp_gained') {
-				playerCharactersGameState[characterId].XP.current_value +=
-					Number.parseInt(statUpdate.value.result) || 0;
+				playerCharactersGameState[characterId].XP.current_value += updateResourceValue;
 			} else {
 				if (statUpdate.type.includes('_gained')) {
 					const resource: string = statUpdate.type.replace('_gained', '');
 					const res = getResourceIfPresent(playerCharactersGameState[characterId], resource);
 					if (!res) continue;
-					let gained = Number.parseInt(statUpdate.value.result) || 0;
+					let gained = updateResourceValue;
 					gained = gained > 0 ? gained : 0;
 					if ((res.current_value || 0) + gained <= res.max_value) {
 						res.current_value = (res.current_value || 0) + gained;
@@ -288,7 +290,7 @@ export function applyGameActionState(
 				const resource: string = statUpdate.type.replace('_lost', '');
 				const res = getResourceIfPresent(playerCharactersGameState[characterId], resource);
 				if (!res) continue;
-				let lost = Number.parseInt(statUpdate.value.result) || 0;
+				let lost = updateResourceValue;
 				lost = lost > 0 ? lost : 0;
 				res.current_value -= lost;
 			}

@@ -102,6 +102,9 @@ export type GameMasterAnswer = {
 	game_state_considered: string;
 };
 
+export const SUDO_COMMAND = '\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
+				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
+
 export const PAST_STORY_PLOT_RULE =
 	'\n\nThe next story progression must be plausible in context of PAST STORY PLOT;\n' +
 	'From PAST STORY PLOT do not reintroduce or repeat elements that have already been established.\n' +
@@ -113,6 +116,40 @@ export class GameAgent {
 
 	constructor(llm: LLM) {
 		this.llm = llm;
+	}
+
+	async generateStateOnlyNoStory(
+		action: Action,
+		characterName: string,
+		playerCharactersGameState: ResourcesWithCurrentValue,
+		inventoryState: InventoryState,
+		ncState: NPCState
+	) {
+		const systemInstruction: string[] = [];
+		systemInstruction.push(jsonRule + '\n{' + jsonStoryCharacterStatusPart() + '}');
+		systemInstruction.push(
+			"If targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources: \n" +
+				stringifyPretty(playerCharactersGameState)
+		);
+		systemInstruction.push(
+			"The following is the character's inventory\n" + stringifyPretty(Object.keys(inventoryState))
+		);
+		const names = Object.keys(ncState).map((key) => ncState[key].known_names?.join(', '));
+		systemInstruction.push(
+			'Determine stats_update targetName from the player prompt, map it to one of NPC NAMES LIST, if none present use player character name ' + characterName 
+			+ '\nNPC NAMES LIST: ' + names.slice(-50)
+		);
+		const request: LLMRequest = {
+			userMessage: action.text,
+			historyMessages: [],
+			systemInstruction,
+			returnFallbackProperty: true,
+			model: GEMINI_MODELS.FLASH_LITE_2_5
+		};
+		const newState = (await this.llm.generateContent(request))?.content as GameActionState;
+
+		mapGameState(newState);
+		return newState;
 	}
 
 	/**
@@ -136,7 +173,7 @@ export class GameAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
 		characterState: CharacterDescription,
-		playerCharactersGameState: PlayerCharactersGameState,
+		playerCharactersGameState: ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
 		relatedHistory: string[],
 		gameSettings: GameSettings,
@@ -440,15 +477,7 @@ NPC Interactions:
 
 Always review context from system instructions and my last message before responding.`;
 
-const jsonSystemInstructionForGameAgent = (gameSettingsState: GameSettings) => `${jsonRule}
-{
-  "currentPlotPoint": VALUE MUST BE ALWAYS IN ENGLISH; Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
-  "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
-  "plotPointAdvancingNudgeExplanation": "VALUE MUST BE ALWAYS IN ENGLISH; Explain what could happen next to advance the story towards NEXT_PLOT_ID according to ADVENTURE_AND_MAIN_EVENT; Include brief explanation of NEXT_PLOT_ID; Format "CURRENT_PLOT_ID: {plotId}; NEXT_PLOT_ID: {currentPlotId + 1}; {Reasoning}",
-  "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${!gameSettingsState.detailedNarrationLength ? storyWordLimit : ''} For character speech use single quotes. Format the narration using HTML tags for easier reading.",
-  "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} LONG_TERM_IMPACT: LOW, MEDIUM, HIGH",
-  "image_prompt": "Based on the most recent events, generate a a prompt for an image AI, describing the current scene. My character must never be described or shown. Instead, focus entirely on what I see: the environment, objects, and any NPCs. When describing an NPC, never use their name; instead, describe them by their gender and a consistent set of key visual features. Your prompt must weave together the scene's main focus, the setting, the artistic style and mood, the precise lighting and color, and a cinematic composition to vividly capture this specific moment.",
-  "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation",
+const jsonStoryCharacterStatusPart = () => `
   ${statsUpdatePromptObject},
   "inventory_update": [
         #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
@@ -467,7 +496,17 @@ const jsonSystemInstructionForGameAgent = (gameSettingsState: GameSettings) => `
       "type": "remove_item",
       "item_id": "unique name of the item to identify it"
     }
-  ],
+  ]`;
+const jsonSystemInstructionForGameAgent = (gameSettingsState: GameSettings) => `${jsonRule}
+{
+  "currentPlotPoint": VALUE MUST BE ALWAYS IN ENGLISH; Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
+  "gradualNarrativeExplanation": "Reasoning how the story development is broken down to meaningful narrative moments. Each step should represent a significant part of the process, giving the player the opportunity to make impactful choices.",
+  "plotPointAdvancingNudgeExplanation": "VALUE MUST BE ALWAYS IN ENGLISH; Explain what could happen next to advance the story towards NEXT_PLOT_ID according to ADVENTURE_AND_MAIN_EVENT; Include brief explanation of NEXT_PLOT_ID; Format "CURRENT_PLOT_ID: {plotId}; NEXT_PLOT_ID: {currentPlotId + 1}; {Reasoning}",
+  "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${!gameSettingsState.detailedNarrationLength ? storyWordLimit : ''} For character speech use single quotes. Format the narration using HTML tags for easier reading.",
+  "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} LONG_TERM_IMPACT: LOW, MEDIUM, HIGH",
+  "image_prompt": "Based on the most recent events, generate a a prompt for an image AI, describing the current scene. My character must never be described or shown. Instead, focus entirely on what I see: the environment, objects, and any NPCs. When describing an NPC, never use their name; instead, describe them by their gender and a consistent set of key visual features. Your prompt must weave together the scene's main focus, the setting, the artistic style and mood, the precise lighting and color, and a cinematic composition to vividly capture this specific moment.",
+  "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation", 
+  ${jsonStoryCharacterStatusPart()},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
   "is_character_restrained_explanation": null | string; "If not restrained null, else Briefly explain how the character has entered a TEMPORARY state or condition that SIGNIFICANTLY RESTRICTS their available actions, changes how they act, or puts them under external control? (Examples: Put to sleep, paralyzed, charmed, blinded,  affected by an illusion, under a compulsion spell)",
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
