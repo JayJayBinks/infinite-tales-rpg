@@ -884,9 +884,9 @@
 
 			resetStatesAfterActionProcessed();
 
+			const historyToSummarize = gameStateUpdateOnly ? historyMessagesState.value : updatedHistoryMessages;
 			// Let the summary agent shorten the history, if needed.
-			const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyMessagesState.value);
-			historyMessagesState.value = newHistory;
+			const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyToSummarize);
 
 			const updatedGameActions = gameLogic.mergeUpdatedGameActions(
 				newState,
@@ -895,16 +895,15 @@
 			);
 			gameActionsState.value = updatedGameActions;
 			// Update history messages based on game state
-			if (!gameStateUpdateOnly) {
-				historyMessagesState.value = updatedHistoryMessages;
-			} else {
+			if (gameStateUpdateOnly) {
 				//update last model message
-				historyMessagesState.value[historyMessagesState.value.length - 1] =
+				newHistory[newHistory.length - 1] =
 					gameAgent.buildHistoryMessages(
 						'',
 						updatedGameActions[updatedGameActions.length - 1]
 					).modelMessage;
 			}
+			historyMessagesState.value = newHistory;
 
 			const time = new Date().toLocaleTimeString();
 			console.log('Complete parsing:', time);
