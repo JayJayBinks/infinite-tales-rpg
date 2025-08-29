@@ -979,7 +979,7 @@
 	function removeCluesFromSimulationOnFailure(diceRollAdditionText: string): any {
 		let sim = { ...(relatedActionGroundTruthState.value?.simulation || {}) };
 		if (relatedActionGroundTruthState.value) {
-			if (!diceRollAdditionText.includes('success')) {
+			if (!diceRollAdditionText.includes('major success') && !diceRollAdditionText.includes('critical success')) {
 				// sanitize simulation: remove "discoverable_weakness_or_clue" if present, otherwise remove the last key
 				if ('discoverable_weakness_or_clue' in sim) {
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
