@@ -18,7 +18,7 @@ export function mapStatsUpdate(stats_update): StatsUpdate {
 		parsed = Dice.detailed(stats_update.value);
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	} catch (e) {
-		parsed = { result: Number.parseInt(stats_update.value) || stats_update.value };
+		parsed = { result: Number.parseInt(stats_update.value) || Number.parseInt(stats_update.value?.value) || stats_update.value?.value || stats_update.value };
 	}
 	return { ...stats_update, value: parsed };
 }
