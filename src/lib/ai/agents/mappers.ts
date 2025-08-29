@@ -1,5 +1,6 @@
 import type { GameActionState } from '$lib/ai/agents/gameAgent';
 import type { DiceRoll, StatsUpdate } from '$lib/ai/agents/combatAgent';
+import isPlainObject from 'lodash.isplainobject';
 import Dice from 'dice-notation-js';
 
 export function mapGameState(state: GameActionState) {
@@ -16,8 +17,15 @@ export function mapStatsUpdate(stats_update): StatsUpdate {
 	let parsed: DiceRoll;
 
 	function tryMapAnyResult(stats_update) {
-		return { result: Number.parseInt(stats_update.value) || Number.parseInt(stats_update.value?.result) || Number.parseInt(stats_update.value?.result?.result)
-				|| stats_update.value };
+		const recursiveResult = recursiveIsResultObject(stats_update.value);
+		return { result: Number.parseInt(stats_update.value) || Number.parseInt(recursiveResult)
+				|| recursiveResult || stats_update.value  };
+	}
+	function recursiveIsResultObject(obj){
+		if(isPlainObject(obj.result)){
+			return recursiveIsResultObject(obj.result)
+		}
+		return obj.result;
 	}
 
 	try {
