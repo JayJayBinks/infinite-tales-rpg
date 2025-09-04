@@ -345,7 +345,10 @@ export class ActionAgent {
 			userMessage,
 			historyMessages,
 			systemInstruction: agent,
-			model: GEMINI_MODELS.FLASH_THINKING_2_0
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				thinkingBudget: 0
+			},
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 
@@ -447,8 +450,7 @@ RESPONSE:
 			temperature: 0.2,
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
-				thinkingBudget: 0, //THINKING_BUDGET.DEFAULT,
-				includeThoughts: true
+				thinkingBudget: 0
 			},
 			reportErrorToUser: false
 		};

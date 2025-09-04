@@ -98,7 +98,10 @@ export class SummaryAgent {
 			userMessage: 'STORY PROGRESSION:\n' + storyProgression + '\n\n' + jsonPrompt,
 			systemInstruction: agent,
 			historyMessages: consideredHistory,
-			model: GEMINI_MODELS.FLASH_2_0,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				thinkingBudget: 0
+			},
 			temperature: 0.1,
 			reportErrorToUser: false
 		};

@@ -13,7 +13,7 @@ import {
 } from '$lib/ai/agents/characterStatsAgent';
 import type { CampaignChapter } from '$lib/ai/agents/campaignAgent';
 import { jsonRule } from './agentUtils';
-import { GEMINI_MODELS } from '../geminiProvider';
+import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -147,7 +147,10 @@ export class GameAgent {
 			historyMessages: [],
 			systemInstruction,
 			returnFallbackProperty: true,
-			model: GEMINI_MODELS.FLASH_LITE_2_5
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				thinkingBudget: 0
+			},
 		};
 		const newState = (await this.llm.generateContent(request))?.content as GameActionState;
 
@@ -241,7 +244,7 @@ export class GameAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
 		characterState: CharacterDescription,
-		playerCharactersGameState: PlayerCharactersGameState,
+		playerCharactersGameState: ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
 		npcState: NPCState,
 		relatedHistory: string[],
@@ -301,7 +304,11 @@ export class GameAgent {
 		const request: LLMRequest = {
 			userMessage: userMessage,
 			historyMessages: historyMessages,
-			systemInstruction: gameAgent
+						systemInstruction: gameAgent,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				thinkingBudget: THINKING_BUDGET.DEFAULT
+			},
 		};
 		const response = await this.llm.generateContent(request);
 		return {
@@ -313,7 +320,7 @@ export class GameAgent {
 	private getGameAgentSystemInstructionsFromStates(
 		storyState: Story,
 		characterState: CharacterDescription,
-		playerCharactersGameState: PlayerCharactersGameState,
+		playerCharactersGameState: ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
 		customSystemInstruction: string,
 		customStoryAgentInstruction: string,

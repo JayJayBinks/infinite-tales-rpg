@@ -19,10 +19,10 @@ export class LLMProvider {
 			return new GeminiProvider(
 				configToUse,
 				new GeminiProvider(
-					{ ...configToUse, model: GEMINI_MODELS.FLASH_THINKING_2_0 },
+					{ ...configToUse, model: GEMINI_MODELS.FLASH_LITE_2_5 },
 					!useFallback
 						? undefined
-						: new GeminiProvider({ ...configToUse, model: GEMINI_MODELS.FLASH_2_0 })
+						: new GeminiProvider({ ...configToUse, model: GEMINI_MODELS.FLASH_THINKING_2_0 })
 				)
 			);
 		}
