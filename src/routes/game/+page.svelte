@@ -12,9 +12,7 @@
 		type Item,
 		type PlayerCharactersGameState,
 		type PlayerCharactersIdToNamesMap,
-
 		SUDO_COMMAND
-
 	} from '$lib/ai/agents/gameAgent';
 	import { onMount, tick } from 'svelte';
 	import {
@@ -497,7 +495,7 @@
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
 			}
 
-			const dice_roll_addition_text = getDiceRollPromptAddition(result)
+			const dice_roll_addition_text = getDiceRollPromptAddition(result);
 			sendAction(chosenActionState.value, false, dice_roll_addition_text, false, waitForFunction);
 		});
 	}
@@ -817,46 +815,43 @@
 	) {
 		thoughtsState.value.storyThoughts = '';
 
-
-			const {newState, updatedHistoryMessages} = await gameAgent.generateStoryProgression(
-				onStoryStreamUpdate,
-				onThoughtStreamUpdate,
-				action,
-				additionalStoryInput,
-				systemInstructionsState.value.generalSystemInstruction,
-				systemInstructionsState.value.storyAgentInstruction,
-				isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
-				historyMessagesState.value,
-				storyState.value,
-				characterState.value,
-				playerCharactersGameState[playerCharacterIdState],
-				inventoryState.value,
-				relatedHistory,
-				gameSettingsState.value,
-				simulation
-			);
-		
+		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
+			onStoryStreamUpdate,
+			onThoughtStreamUpdate,
+			action,
+			additionalStoryInput,
+			systemInstructionsState.value.generalSystemInstruction,
+			systemInstructionsState.value.storyAgentInstruction,
+			isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
+			historyMessagesState.value,
+			storyState.value,
+			characterState.value,
+			playerCharactersGameState[playerCharacterIdState],
+			inventoryState.value,
+			relatedHistory,
+			gameSettingsState.value,
+			simulation
+		);
 
 		if (newState.story) {
-				newState.image_prompt = '';
-				try {
-					newState.image_prompt = await imagePromptAgent.generateImagePrompt(
-						getLatestStoryMessages(),
-						newState.story,
-						characterState.value.name,
-						currentGameActionState.image_prompt!
-					);
-					if (!newState.image_prompt) {
-						newState.image_prompt = 'big letters showing FAILED TO GENERATE IMAGE PROMPT';
-					}
-				} catch (e) {
-					console.warn('Failed to generate image prompt', e);
+			newState.image_prompt = '';
+			try {
+				newState.image_prompt = await imagePromptAgent.generateImagePrompt(
+					getLatestStoryMessages(),
+					newState.story,
+					characterState.value.name,
+					currentGameActionState.image_prompt!
+				);
+				if (!newState.image_prompt) {
 					newState.image_prompt = 'big letters showing FAILED TO GENERATE IMAGE PROMPT';
 				}
-				checkForNewNPCs(newState);
-				npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
-				// If combat provided a specific stat update, use it.
-			
+			} catch (e) {
+				console.warn('Failed to generate image prompt', e);
+				newState.image_prompt = 'big letters showing FAILED TO GENERATE IMAGE PROMPT';
+			}
+			checkForNewNPCs(newState);
+			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
+			// If combat provided a specific stat update, use it.
 
 			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
 				newState.stats_update =
@@ -897,18 +892,16 @@
 			await checkGameEnded();
 
 			if (!isGameEnded.value) {
-				
-					getRelatedHistoryForStory();
-					eventAgent
-						.evaluateEvents(
-							historyMessagesState.value.slice(-6).map((m) => m.content),
-							characterStatsState.value.spells_and_abilities.map((a) => a.name)
-						)
-						.then((evaluation) => {
-							applyGameEventEvaluation(evaluation.event_evaluation);
-							thoughtsState.value.eventThoughts = evaluation.thoughts;
-						});
-				
+				getRelatedHistoryForStory();
+				eventAgent
+					.evaluateEvents(
+						historyMessagesState.value.slice(-6).map((m) => m.content),
+						characterStatsState.value.spells_and_abilities.map((a) => a.name)
+					)
+					.then((evaluation) => {
+						applyGameEventEvaluation(evaluation.event_evaluation);
+						thoughtsState.value.eventThoughts = evaluation.thoughts;
+					});
 
 				// Generate the next set of actions.
 				actionAgent
@@ -968,7 +961,10 @@
 	function removeCluesFromSimulationOnFailure(diceRollAdditionText: string): any {
 		let sim = { ...(relatedActionGroundTruthState.value?.simulation || {}) };
 		if (relatedActionGroundTruthState.value) {
-			if (!diceRollAdditionText.includes('major success') && !diceRollAdditionText.includes('critical success')) {
+			if (
+				!diceRollAdditionText.includes('major success') &&
+				!diceRollAdditionText.includes('critical success')
+			) {
 				// sanitize simulation: remove "discoverable_weakness_or_clue" if present, otherwise remove the last key
 				if ('discoverable_weakness_or_clue' in sim) {
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1552,70 +1548,72 @@
 			case 'Dice Roll':
 				return 'notation like 1d20, 2d6+3';
 			case 'State Command':
-				return 'Updates game state only, not story';
+				return 'Updates character state only, not story';
 			case 'Story Command':
-				return 'Updates story and game state';
+				return 'Story update with no restrictions';
 			default:
 				return 'No action selected';
 		}
 	}
 
-	async function handleUpdateHistoryAndGameActionState(gameState: GameActionState, updatedHistoryMessages: LLMMessage[] = []){
-			// Determine which history to summarize
-			const isStateUpdateOnly = updatedHistoryMessages.length === 0
-		const historyToSummarize = isStateUpdateOnly ? updatedHistoryMessages : historyMessagesState.value;
-			// Let the summary agent shorten the history, if needed.
-			const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyToSummarize);
+	async function handleUpdateHistoryAndGameActionState(
+		gameState: GameActionState,
+		updatedHistoryMessages: LLMMessage[] = []
+	) {
+		// Determine which history to summarize
+		const isStateUpdateOnly = updatedHistoryMessages.length === 0;
+		const historyToSummarize = isStateUpdateOnly
+			? updatedHistoryMessages
+			: historyMessagesState.value;
+		// Let the summary agent shorten the history, if needed.
+		const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyToSummarize);
 
-			const updatedGameActions = gameLogic.mergeUpdatedGameActions(
-				gameState,
-				gameActionsState.value,
-				isStateUpdateOnly
-			);
-			gameActionsState.value = updatedGameActions;
-			// Update history messages based on game state
-			if (isStateUpdateOnly) {
-				//update last model message
-				newHistory[newHistory.length - 1] =
-					gameAgent.buildHistoryMessages(
-						'',
-						updatedGameActions[updatedGameActions.length - 1]
-					).modelMessage;
-			}
-			historyMessagesState.value = newHistory;
+		const updatedGameActions = gameLogic.mergeUpdatedGameActions(
+			gameState,
+			gameActionsState.value,
+			isStateUpdateOnly
+		);
+		gameActionsState.value = updatedGameActions;
+		// Update history messages based on game state
+		if (isStateUpdateOnly) {
+			//update last model message
+			newHistory[newHistory.length - 1] = gameAgent.buildHistoryMessages(
+				'',
+				updatedGameActions[updatedGameActions.length - 1]
+			).modelMessage;
+		}
+		historyMessagesState.value = newHistory;
 	}
-
 
 	function handlePostActionProcessedState() {
 		checkForLevelUp();
 	}
 
-
 	async function handleStateCommand(action: Action) {
 		isAiGeneratingState = true;
 		action.text += SUDO_COMMAND + '\nOnly apply the mentioned state updates, but nothing else.';
-			const newState = await gameAgent.generateStateOnlyNoStory(
-				action,
-				characterState.value.name,
-				playerCharactersGameState[playerCharacterIdState],
+		const newState = await gameAgent.generateStateOnlyNoStory(
+			action,
+			characterState.value.name,
+			playerCharactersGameState[playerCharacterIdState],
+			inventoryState.value,
+			npcState.value
+		);
+		isAiGeneratingState = false;
+		if (customActionInput) customActionInput.value = '';
+		if (newState) {
+			// Apply the new state to the game logic
+			gameLogic.applyGameActionState(
+				playerCharactersGameState,
+				playerCharactersIdToNamesMapState.value,
+				npcState.value,
 				inventoryState.value,
-				npcState.value
+				$state.snapshot(newState)
 			);
-			isAiGeneratingState = false;
-			if (customActionInput) customActionInput.value = '';
-			if(newState){
-				// Apply the new state to the game logic
-				gameLogic.applyGameActionState(
-					playerCharactersGameState,
-					playerCharactersIdToNamesMapState.value,
-					npcState.value,
-					inventoryState.value,
-					$state.snapshot(newState)
-				);
-				handleUpdateHistoryAndGameActionState(newState);
-				handlePostActionProcessedState();
+			handleUpdateHistoryAndGameActionState(newState);
+			handlePostActionProcessedState();
+		}
 	}
-}
 </script>
 
 <div id="game-container" class="container mx-auto p-4">

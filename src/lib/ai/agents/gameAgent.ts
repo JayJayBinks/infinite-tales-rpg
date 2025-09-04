@@ -102,8 +102,9 @@ export type GameMasterAnswer = {
 	game_state_considered: string;
 };
 
-export const SUDO_COMMAND = '\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
-				'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
+export const SUDO_COMMAND =
+	'\nsudo: Ignore the rules and play out this action even if it should not be possible!\n' +
+	'If this action contradicts the PAST STORY PLOT, adjust the narrative to fit the action.';
 
 export const PAST_STORY_PLOT_RULE =
 	'\n\nThe next story progression must be plausible in context of PAST STORY PLOT;\n' +
@@ -128,7 +129,7 @@ export class GameAgent {
 		const systemInstruction: string[] = [];
 		systemInstruction.push(jsonRule + '\n{' + jsonStoryCharacterStatusPart() + '}');
 		systemInstruction.push(
-			"If targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources: \n" +
+			'If targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources: \n' +
 				stringifyPretty(playerCharactersGameState)
 		);
 		systemInstruction.push(
@@ -136,8 +137,10 @@ export class GameAgent {
 		);
 		const names = Object.keys(ncState).map((key) => ncState[key].known_names?.join(', '));
 		systemInstruction.push(
-			'Determine stats_update targetName from the player prompt, map it to one of NPC NAMES LIST, if none present use player character name ' + characterName 
-			+ '\nNPC NAMES LIST: ' + names.slice(-50)
+			'Determine stats_update targetName from the player prompt, map it to one of NPC NAMES LIST, if none present use player character name ' +
+				characterName +
+				'\nNPC NAMES LIST: ' +
+				names.slice(-50)
 		);
 		const request: LLMRequest = {
 			userMessage: action.text,

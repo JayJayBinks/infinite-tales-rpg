@@ -21,10 +21,7 @@
 	<summary class="collapse-title text-lg font-bold capitalize">
 		<p class="text-center">Current Simulation</p>
 	</summary>
-	<output style="white-space: pre-wrap"
-		>{historyMessagesState.value?.findLast((message) => message.role === 'user')?.content ||
-			'No simulation'}</output
-	>
+	<output style="white-space: pre-wrap">{historyMessagesState.value?.findLast((message) => message.role === 'user')?.content || "No simulation"}</output>
 </details>
 
 <details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">

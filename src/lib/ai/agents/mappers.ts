@@ -18,12 +18,17 @@ export function mapStatsUpdate(stats_update): StatsUpdate {
 
 	function tryMapAnyResult(stats_update) {
 		const recursiveResult = recursiveIsResultObject(stats_update.value);
-		return { result: Number.parseInt(stats_update.value) || Number.parseInt(recursiveResult)
-				|| recursiveResult || stats_update.value  };
+		return {
+			result:
+				Number.parseInt(stats_update.value) ||
+				Number.parseInt(recursiveResult) ||
+				recursiveResult ||
+				stats_update.value
+		};
 	}
-	function recursiveIsResultObject(obj){
-		if(isPlainObject(obj.result)){
-			return recursiveIsResultObject(obj.result)
+	function recursiveIsResultObject(obj) {
+		if (isPlainObject(obj.result)) {
+			return recursiveIsResultObject(obj.result);
 		}
 		return obj.result;
 	}
