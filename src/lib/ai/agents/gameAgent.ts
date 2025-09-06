@@ -57,6 +57,12 @@ export type Action = {
 	};
 } & DiceRollDifficulty;
 
+  export type NPCAction = {
+	sourceId: string;
+	targetId: string;
+	actionOnly: string;
+	simulated_outcome: string;
+  };
 export type ResourcesWithCurrentValue = {
 	[resourceKey: string]: { max_value: number; current_value: number; game_ends_when_zero: boolean };
 };

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { beforeNavigate } from '$app/navigation';
 	import {
 		type Action,
 		defaultGameSettings,
@@ -10,6 +9,7 @@
 		type GameSettings,
 		type InventoryState,
 		type Item,
+		type NPCAction,
 		type PlayerCharactersGameState,
 		type PlayerCharactersIdToNamesMap,
 		SUDO_COMMAND
@@ -398,24 +398,29 @@
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
-		playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
 		combatAgent: CombatAgent
 	): Promise<{
 		additionalStoryInput: string;
-		determinedActionsAndStatsUpdate: ReturnType<typeof combatAgent.generateActionsFromContext>;
+		determinedActions: Array<NPCAction>;
 	}> {
 		// Get details for all NPC targets based on the current game action state.
 		const allNpcsDetailsAsList = gameLogic
 			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
-			.map((technicalId) => ({
-				technicalId,
-				...npcState[technicalId]
-			}));
+			.map((technicalId) => {
+				const npc = npcState[technicalId];
+				return {
+					technicalId,
+					is_party_member: npc.is_party_member,
+					class: npc.class,
+					rank_enum_english: npc.rank_enum_english,
+					level: npc.level,
+					spells_and_abilities: npc.spells_and_abilities.map((ability: Ability) => ability.name + ': ' + ability.effect),
+				};
+			});
 
 		// Compute the determined combat actions and stats update.
-		const determinedActionsAndStatsUpdate = await combatAgent.generateActionsFromContext(
+		const determinedActions = await combatAgent.generateActionsFromContext(
 			playerAction,
-			playerCharactersGameState[playerCharacterIdState],
 			inventoryState,
 			allNpcsDetailsAsList,
 			customSystemInstruction,
@@ -424,30 +429,12 @@
 			storyState
 		);
 
-		// Apply the action state update on the playerCharactersGameState (and related states)
-		// by passing a snapshot of the determined update.
-		gameLogic.applyGameActionState(
-			playerCharactersGameState,
-			playerCharactersIdToNamesMapState,
-			npcState,
-			inventoryState,
-			$state.snapshot(determinedActionsAndStatsUpdate)
-		);
-
-		// Filter to find the alive NPCs.
-		const aliveNPCs = allNpcsDetailsAsList
-			.filter((npc) => npc?.resources && npc.resources.current_hp > 0)
-			.map((npc) => npc.technicalId);
-
 		// Generate additional story input based on the combat results.
 		const additionalStoryInput = CombatAgent.getAdditionalStoryInput(
-			determinedActionsAndStatsUpdate.actions,
-			[],
-			aliveNPCs,
-			playerCharactersGameState
+			determinedActions
 		);
 
-		return { additionalStoryInput, determinedActionsAndStatsUpdate };
+		return { additionalStoryInput, determinedActions };
 	}
 
 	const advanceSkillIfApplicable = (skillName: string) => {
@@ -552,18 +539,15 @@
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
-		playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
 		combatAgent: CombatAgent,
 		useDynamicCombat: boolean
 	): Promise<{
 		additionalStoryInput: string;
-		allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
-			typeof combatAgent.generateActionsFromContext
-		>;
+		allCombatDeterminedActions?: Array<NPCAction>;
 	}> {
 		let deadNPCs: string[] = [];
 		let additionalStoryInput = '';
-		let allCombatDeterminedActionsAndStatsUpdate;
+		let allCombatDeterminedActions;
 		if (!isGameEnded && currentGameActionState.is_character_in_combat) {
 			if (useDynamicCombat) {
 				const combatObject = await getActionPromptForCombat(
@@ -576,17 +560,16 @@
 					latestStoryMessages,
 					storyState,
 					playerCharactersGameState,
-					playerCharactersIdToNamesMapState,
 					combatAgent
 				);
 				//dynamic combat already handled the getNPCsHealthStatePrompt
 				additionalStoryInput += combatObject.additionalStoryInput;
-				allCombatDeterminedActionsAndStatsUpdate = combatObject.determinedActionsAndStatsUpdate;
+				allCombatDeterminedActions = combatObject.determinedActions;
 			}
 		}
 		deadNPCs = npcLogic.removeDeadNPCs(npcState);
 		additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
-		return { additionalStoryInput, allCombatDeterminedActionsAndStatsUpdate };
+		return { additionalStoryInput, allCombatDeterminedActions };
 	}
 
 	//TODO sendAction should not be handled here so it can be externally called
@@ -699,9 +682,7 @@
 		finalAdditionalStoryInput: string;
 		combatAndNPCState: {
 			additionalStoryInput: string;
-			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
-				typeof combatAgent.generateActionsFromContext
-			>;
+			allCombatDeterminedActions?: Array<NPCAction>;
 		};
 	}> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
@@ -725,7 +706,6 @@
 			getLatestStoryMessages(),
 			storyState.value,
 			playerCharactersGameState,
-			playerCharactersIdToNamesMapState.value,
 			combatAgent,
 			useDynamicCombat.value
 		);
@@ -805,12 +785,6 @@
 		additionalStoryInput: string,
 		relatedHistory: string[],
 		isCharacterInCombat: boolean,
-		combatAndNPCState: {
-			additionalStoryInput: string;
-			allCombatDeterminedActionsAndStatsUpdate?: ReturnType<
-				typeof combatAgent.generateActionsFromContext
-			>;
-		},
 		simulation: string
 	) {
 		thoughtsState.value.storyThoughts = '';
@@ -851,13 +825,6 @@
 			}
 			checkForNewNPCs(newState);
 			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
-			// If combat provided a specific stat update, use it.
-
-			if (combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate) {
-				newState.stats_update =
-					combatAndNPCState.allCombatDeterminedActionsAndStatsUpdate['stats_update'];
-				applyInventoryUpdate(inventoryState.value, newState);
-			} else {
 				// Otherwise, apply the new state to the game state.
 				gameLogic.applyGameActionState(
 					playerCharactersGameState,
@@ -866,7 +833,6 @@
 					inventoryState.value,
 					$state.snapshot(newState)
 				);
-			}
 			console.log('new state', stringifyPretty(newState));
 
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
@@ -1055,7 +1021,7 @@
 				// Prepare the additional story input (including combat and chapter info)
 				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
 					action,
-					simulationToUse,
+					simulationToUse !== '{}' ? simulationToUse : '',
 					additionalStoryInputState.value,
 					diceRollAdditionText
 				);
@@ -1076,7 +1042,6 @@
 					finalAdditionalStoryInput,
 					relatedActionHistoryState.value,
 					currentGameActionState.is_character_in_combat,
-					combatAndNPCState,
 					simulationToUse
 				);
 				didAIProcessActionState = true;
@@ -1612,7 +1577,7 @@
 			);
 			handleUpdateHistoryAndGameActionState(newState);
 			handlePostActionProcessedState();
-		}
+}
 	}
 </script>
 

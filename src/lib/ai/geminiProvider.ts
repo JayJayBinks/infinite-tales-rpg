@@ -107,7 +107,7 @@ export class GeminiProvider extends LLM {
 	private shouldEarlyFallback(modelToUse: string): boolean {
 		return (
 			this.fallbackLLM !== undefined &&
-			this.isThinkingModel(modelToUse) &&
+			modelToUse === GEMINI_MODELS.FLASH_2_5 &&
 			getIsGeminiThinkingOverloaded()
 		);
 	}
@@ -281,6 +281,14 @@ export class GeminiProvider extends LLM {
 				}
 				if (config.thinkingConfig.includeThoughts === undefined) {
 					config.thinkingConfig.includeThoughts = true;
+				}
+			}
+
+			if(modelToUse === GEMINI_MODELS.FLASH_LITE_2_5){
+				const budget = config.thinkingConfig?.thinkingBudget
+				const budgetTooLow = budget && budget > 0 && budget < THINKING_BUDGET.DEFAULT
+				if(budgetTooLow){
+					config.thinkingConfig!.thinkingBudget = THINKING_BUDGET.DEFAULT
 				}
 			}
 			const genAIRequest = {

@@ -180,7 +180,7 @@ export function renderStatUpdates(
 							) || resourceText);
 					}
 				} else {
-					responseText = statsUpdate.targetName.replaceAll('_', ' ').replaceAll('id', '') + ' ';
+					responseText = statsUpdate.targetName?.replaceAll('_', ' ').replaceAll('id', '') + ' ' || '';
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'is';

@@ -3,13 +3,13 @@ import type { LLM, LLMMessage, LLMRequest } from '$lib/ai/llm';
 import type {
 	Action,
 	InventoryState,
-	PlayerCharactersGameState,
-	ResourcesWithCurrentValue
+	NPCAction,
+	PlayerCharactersGameState
 } from '$lib/ai/agents/gameAgent';
 import { ActionDifficulty, getEmptyCriticalResourceKeys } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
-import { mapStatsUpdates } from '$lib/ai/agents/mappers';
 import { jsonRule } from './agentUtils';
+import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
 
 export type DiceRoll = {
 	result;
@@ -56,41 +56,34 @@ export class CombatAgent {
 	//TODO far future improvement, include initiative with chain of actions, some actions then are skipped due to stun, death etc.
 	async generateActionsFromContext(
 		action: Action,
-		playerCharResources: ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
 		npcsList: Array<object>,
 		customSystemInstruction: string,
 		customCombatAgentInstruction: string,
 		historyMessages: Array<LLMMessage>,
 		storyState: Story
-	) {
+	): Promise<NPCAction[]> {
 		const agent = [
-			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
-				'and what the consequences of these actions are. ' +
-				'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
-				'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
-				'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
-			`Only for the player character ${action.characterName} use the following resources:\n ${stringifyPretty(playerCharResources)}\n\nFor stats_update regarding NPC, you must exactly use resourceKey "hp" or "mp", and no deviations of that.`,
-			"The following is the character's inventory, if an item is relevant in the current situation then apply it's effect." +
+			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action and the outcomes of these actions" +
+			'\n For deciding the outcome simulate if the NPC action can be successfull based on the circumstances.' +	
+			'\n You must include an action for each NPC from the list.',
+						"The following is the character's inventory, if an item is relevant in combat then apply it's effect." +
 				'\n' +
 				stringifyPretty(inventoryState),
 			'The following is a description of the story setting to keep the actions consistent on.' +
 				'\n' +
 				stringifyPretty(storyState),
 			`${jsonRule}
-                 {
-                  "actions": [
-                    # You must include one object for each npc and one for the player character
+                 [
+                    # You must include one object for each npc
                     {
-                      "sourceId": "NPC id or player character name, who is the initiator of this action",
+                      "sourceId": "NPC id",
                       "targetId": "NPC id or player character name, whose stats must be updated. if sourceId targets self then same as sourceId",
-					  "text": "description of the action the NPC takes",
-                      "explanation": "Short explanation for the reason of this action"
+					  "actionOnly": "only description of the action the NPC takes",
+					  "simulated_outcome": "short description of the simulated outcome (success or failure) of the action"
                     },
                     ...
-                  ],
-                  ${statsUpdatePromptObject}
-                }`
+                ]`
 		];
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
@@ -104,7 +97,7 @@ export class CombatAgent {
 			' takes following action: ' +
 			action.text +
 			'\n' +
-			'Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action. Important: You must reuse the exact nameIds that are given!' +
+			'Decide the action for each of the following NPCs. It can be a spell, ability or any other action. Important: You must reuse the exact nameIds that are given!' +
 			'\n' +
 			stringifyPretty(npcsList);
 		console.log('combat', actionToSend);
@@ -112,29 +105,26 @@ export class CombatAgent {
 			userMessage: actionToSend,
 			historyMessages: historyMessages,
 			systemInstruction: agent,
-			reportErrorToUser: false
+			reportErrorToUser: false,
+						model: GEMINI_MODELS.FLASH_LITE_2_5,
+						thinkingConfig: {
+							thinkingBudget: THINKING_BUDGET.DEFAULT
+						},
 		};
 
-		const state = (await this.llm.generateContent(request))?.content as any;
-		mapStatsUpdates(state);
+		const state = (await this.llm.generateContent(request))?.content as Array<NPCAction>;
 		return state;
 	}
 
 	static getAdditionalStoryInput(
-		actions: Array<Action>,
-		deadNPCs: string[],
-		aliveNPCs: string[],
-		playerCharactersGameState: PlayerCharactersGameState
+		actions: Array<NPCAction>
 	) {
 		// let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
 		//     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
+		const mappedActions = actions.map((action) => `${action.sourceId} targets ${action.targetId} with result: ${action.simulated_outcome}`);
 		return (
-			'\nNPCs can never be finished off with a single attack!' +
-			'\nYou must not apply stats_update for following actions, as this was already done!' +
-			'\nDescribe the following actions in the story progression:\n' +
-			stringifyPretty(actions) +
-			'\n\nMost important! ' +
-			this.getNPCsHealthStatePrompt(deadNPCs, aliveNPCs, playerCharactersGameState)
+			'\nDescribe the player action and the following NPCS actions in the story progression and apply stats_update for each action:\n' +
+			stringifyPretty(mappedActions)
 		);
 	}
 

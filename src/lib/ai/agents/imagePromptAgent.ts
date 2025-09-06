@@ -75,7 +75,7 @@ ${story}
 			systemInstruction: [
 				'Always output a single, vivid image prompt suitable for generative AI art as JSON with the keys "most_important_element", "frame_focus" and "image_prompt". No extra text.'
 			],
-			temperature: 0.7,
+			temperature: 1,
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
 				thinkingBudget: 0
