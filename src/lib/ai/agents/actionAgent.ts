@@ -348,7 +348,7 @@ export class ActionAgent {
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
 				thinkingBudget: 0
-			},
+			}
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 

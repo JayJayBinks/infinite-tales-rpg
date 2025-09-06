@@ -22,7 +22,7 @@
 		initialEventEvaluationState
 	} from '$lib/ai/agents/eventAgent';
 	import type { CharacterChangedInto, EventEvaluation } from '$lib/ai/agents/eventAgent';
-	import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
+	import type { NPCAction, PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
 	import AiGenerationSettings from '$lib/components/interaction_modals/settings/AiGenerationSettings.svelte';
 	import OutputFeaturesModal from '$lib/components/interaction_modals/settings/OutputFeaturesModal.svelte';
 	import SystemPromptsModal from '$lib/components/interaction_modals/settings/SystemPromptsModal.svelte';
@@ -75,6 +75,7 @@
 		{}
 	);
 	const relatedActionGroundTruthState = useLocalStorage('relatedActionGroundTruthState');
+	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
 
 	let isGeneratingState = $state(false);
 	let quickstartModalOpen = $state(false);
@@ -130,6 +131,7 @@
 		eventEvaluationState.reset();
 		playerCharactersIdToNamesMapState.reset();
 		relatedActionGroundTruthState.reset();
+		relatedNPCActionsState.reset();
 	}
 
 	async function onQuickstartNew(story: string | Story | undefined) {

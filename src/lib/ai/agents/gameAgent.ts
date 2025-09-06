@@ -57,12 +57,12 @@ export type Action = {
 	};
 } & DiceRollDifficulty;
 
-  export type NPCAction = {
+export type NPCAction = {
 	sourceId: string;
 	targetId: string;
 	actionOnly: string;
 	simulated_outcome: string;
-  };
+};
 export type ResourcesWithCurrentValue = {
 	[resourceKey: string]: { max_value: number; current_value: number; game_ends_when_zero: boolean };
 };
@@ -156,7 +156,7 @@ export class GameAgent {
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
 				thinkingBudget: 0
-			},
+			}
 		};
 		const newState = (await this.llm.generateContent(request))?.content as GameActionState;
 
@@ -310,11 +310,11 @@ export class GameAgent {
 		const request: LLMRequest = {
 			userMessage: userMessage,
 			historyMessages: historyMessages,
-						systemInstruction: gameAgent,
+			systemInstruction: gameAgent,
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
 				thinkingBudget: THINKING_BUDGET.DEFAULT
-			},
+			}
 		};
 		const response = await this.llm.generateContent(request);
 		return {

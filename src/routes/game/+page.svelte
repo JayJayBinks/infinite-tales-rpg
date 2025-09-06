@@ -40,7 +40,6 @@
 	import * as npcLogic from './npcLogic';
 	import {
 		ActionDifficulty,
-		applyInventoryUpdate,
 		getEmptyCriticalResourceKeys,
 		isEnoughResource,
 		mustRollDice,
@@ -165,6 +164,7 @@
 	const relatedActionGroundTruthState = useLocalStorage<TruthOracleResult | null>(
 		'relatedActionGroundTruthState'
 	);
+	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
 	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
@@ -399,10 +399,7 @@
 		storyState: Story,
 		playerCharactersGameState: PlayerCharactersGameState,
 		combatAgent: CombatAgent
-	): Promise<{
-		additionalStoryInput: string;
-		determinedActions: Array<NPCAction>;
-	}> {
+	): Promise<Array<NPCAction>> {
 		// Get details for all NPC targets based on the current game action state.
 		const allNpcsDetailsAsList = gameLogic
 			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
@@ -414,7 +411,9 @@
 					class: npc.class,
 					rank_enum_english: npc.rank_enum_english,
 					level: npc.level,
-					spells_and_abilities: npc.spells_and_abilities.map((ability: Ability) => ability.name + ': ' + ability.effect),
+					spells_and_abilities: npc.spells_and_abilities.map(
+						(ability: Ability) => ability.name + ': ' + ability.effect
+					)
 				};
 			});
 
@@ -428,13 +427,7 @@
 			latestStoryMessages,
 			storyState
 		);
-
-		// Generate additional story input based on the combat results.
-		const additionalStoryInput = CombatAgent.getAdditionalStoryInput(
-			determinedActions
-		);
-
-		return { additionalStoryInput, determinedActions };
+		return determinedActions;
 	}
 
 	const advanceSkillIfApplicable = (skillName: string) => {
@@ -469,7 +462,10 @@
 		}
 	};
 
-	function openDiceRollDialog(waitForFunction?: Promise<void>) {
+	function openDiceRollDialog(
+		waitForFunction?: Promise<void>,
+		waitForActionsResult?: Promise<void>
+	) {
 		//TODO showModal can not be used because it hides the dice roll
 		didAIProcessDiceRollActionState.value = false;
 		diceRollDialog.show();
@@ -483,7 +479,15 @@
 			}
 
 			const dice_roll_addition_text = getDiceRollPromptAddition(result);
-			sendAction(chosenActionState.value, false, dice_roll_addition_text, false, waitForFunction);
+					// Add dice roll addition text if available.
+		additionalStoryInputState.value += '\n' + dice_roll_addition_text + '\n';
+			sendAction(
+				chosenActionState.value,
+				false,
+				dice_roll_addition_text,
+				waitForFunction,
+				waitForActionsResult
+			);
 		});
 	}
 
@@ -527,51 +531,6 @@
 		customActionImpossibleReasonState = undefined;
 	}
 
-	//TODO depends on getActionPromptForCombat
-	async function getCombatAndNPCState(
-		action: Action,
-		isGameEnded: boolean,
-		currentGameActionState: GameActionState,
-		npcState: NPCState,
-		inventoryState: InventoryState,
-		customSystemInstruction: string,
-		customCombatAgentInstruction: string,
-		latestStoryMessages: LLMMessage[],
-		storyState: Story,
-		playerCharactersGameState: PlayerCharactersGameState,
-		combatAgent: CombatAgent,
-		useDynamicCombat: boolean
-	): Promise<{
-		additionalStoryInput: string;
-		allCombatDeterminedActions?: Array<NPCAction>;
-	}> {
-		let deadNPCs: string[] = [];
-		let additionalStoryInput = '';
-		let allCombatDeterminedActions;
-		if (!isGameEnded && currentGameActionState.is_character_in_combat) {
-			if (useDynamicCombat) {
-				const combatObject = await getActionPromptForCombat(
-					action,
-					currentGameActionState,
-					npcState,
-					inventoryState,
-					customSystemInstruction,
-					customCombatAgentInstruction,
-					latestStoryMessages,
-					storyState,
-					playerCharactersGameState,
-					combatAgent
-				);
-				//dynamic combat already handled the getNPCsHealthStatePrompt
-				additionalStoryInput += combatObject.additionalStoryInput;
-				allCombatDeterminedActions = combatObject.determinedActions;
-			}
-		}
-		deadNPCs = npcLogic.removeDeadNPCs(npcState);
-		additionalStoryInput += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
-		return { additionalStoryInput, allCombatDeterminedActions };
-	}
-
 	//TODO sendAction should not be handled here so it can be externally called
 	async function checkGameEnded() {
 		const emptyResourceKeys = getEmptyCriticalResourceKeys(
@@ -592,6 +551,7 @@
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
 		relatedStoryHistoryState.reset();
+		relatedNPCActionsState.reset();
 		relatedActionGroundTruthState.reset();
 		skillsProgressionForCurrentActionState = undefined;
 		if (actionsDiv) actionsDiv.innerHTML = '';
@@ -676,42 +636,14 @@
 	async function prepareAdditionalStoryInput(
 		action: Action,
 		simulationAddition: string,
-		initialAdditionalStoryInput: string,
-		diceRollAdditionText: string
-	): Promise<{
-		finalAdditionalStoryInput: string;
-		combatAndNPCState: {
-			additionalStoryInput: string;
-			allCombatDeterminedActions?: Array<NPCAction>;
-		};
-	}> {
+		initialAdditionalStoryInput: string
+	): Promise<string> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
 		additionalStoryInput += simulationAddition
 			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
 				simulationAddition +
 				'\n'
 			: '';
-
-		// Add dice roll addition text if available.
-		additionalStoryInput += diceRollAdditionText ? '\n' + diceRollAdditionText + '\n' : '';
-		// Retrieve combat and NPC-related story additions.
-		const combatAndNPCState = await getCombatAndNPCState(
-			action,
-			isGameEnded.value,
-			currentGameActionState,
-			npcState.value,
-			inventoryState.value,
-			systemInstructionsState.value.generalSystemInstruction,
-			systemInstructionsState.value.combatAgentInstruction,
-			getLatestStoryMessages(),
-			storyState.value,
-			playerCharactersGameState,
-			combatAgent,
-			useDynamicCombat.value
-		);
-		// Combine combat-related additional story input.
-		additionalStoryInput += combatAndNPCState.additionalStoryInput;
-
 		additionalStoryInput = await addCampaignAdditionalStoryInput(action, additionalStoryInput);
 
 		const gmNotes = getGameMasterNotesForCampaignChapter(
@@ -743,7 +675,7 @@
 		// Update the store for additional story input.
 		additionalStoryInputState.value = additionalStoryInput;
 
-		return { finalAdditionalStoryInput: additionalStoryInput, combatAndNPCState };
+		return additionalStoryInput;
 	}
 
 	const applyGameEventEvaluation = (evaluated: EventEvaluation) => {
@@ -825,14 +757,14 @@
 			}
 			checkForNewNPCs(newState);
 			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
-				// Otherwise, apply the new state to the game state.
-				gameLogic.applyGameActionState(
-					playerCharactersGameState,
-					playerCharactersIdToNamesMapState.value,
-					npcState.value,
-					inventoryState.value,
-					$state.snapshot(newState)
-				);
+			// Otherwise, apply the new state to the game state.
+			gameLogic.applyGameActionState(
+				playerCharactersGameState,
+				playerCharactersIdToNamesMapState.value,
+				npcState.value,
+				inventoryState.value,
+				$state.snapshot(newState)
+			);
 			console.log('new state', stringifyPretty(newState));
 
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
@@ -953,8 +885,8 @@
 		action: Action,
 		rollDice = false,
 		diceRollAdditionText = '',
-		gameStateUpdateOnly = false,
-		waitForFunction?: Promise<void>
+		waitForFunction?: Promise<void>,
+		waitForActionsResult?: Promise<void>
 	) {
 		//TODO can happen if action fails multiple times, for retry state is not cleaned then
 		if (additionalStoryInputState.value.length > 10_000) {
@@ -962,6 +894,28 @@
 			//take the last 10000 characters as it is probably the real input
 			additionalStoryInputState.value = additionalStoryInputState.value.slice(-10_000);
 		}
+		// Retrieve combat and NPC-related story additions.
+		if (
+					!waitForActionsResult &&
+					useDynamicCombat.value &&
+					!isGameEnded.value &&
+					currentGameActionState.is_character_in_combat
+				) {
+					waitForActionsResult = getActionPromptForCombat(
+						action,
+						currentGameActionState,
+						npcState.value,
+						inventoryState.value,
+						systemInstructionsState.value.generalSystemInstruction,
+						systemInstructionsState.value.combatAgentInstruction,
+						getLatestStoryMessages(),
+						storyState.value,
+						playerCharactersGameState,
+						combatAgent
+					).then((actions) => {
+						relatedNPCActionsState.value = actions;
+					});
+				}
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
@@ -996,7 +950,7 @@
 							relatedActionGroundTruthState.value = groundTruth;
 						});
 				}
-				openDiceRollDialog(waitForGroundTruthResult);
+				openDiceRollDialog(waitForGroundTruthResult, waitForActionsResult);
 			} else {
 				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
@@ -1004,6 +958,14 @@
 					console.log('Waiting for function...', new Date().toLocaleTimeString());
 					await waitForFunction;
 					console.log('Waiting for function finished', new Date().toLocaleTimeString());
+				}
+				if (waitForActionsResult) {
+					console.log('Waiting for combat actions result...', new Date().toLocaleTimeString());
+					await waitForActionsResult;
+					console.log(
+						'Waiting for combat actions result finished',
+						new Date().toLocaleTimeString()
+					);
 				}
 
 				if (relatedActionHistoryState.value.length === 0) {
@@ -1018,12 +980,16 @@
 				let simulationToUse = stringifyPretty(
 					removeCluesFromSimulationOnFailure(diceRollAdditionText)
 				);
+
+				const deadNPCs = npcLogic.removeDeadNPCs(npcState.value);
+				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(relatedNPCActionsState.value, deadNPCs);
+				additionalStoryInputState.value += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
+
 				// Prepare the additional story input (including combat and chapter info)
-				const { finalAdditionalStoryInput, combatAndNPCState } = await prepareAdditionalStoryInput(
+				const finalAdditionalStoryInput = await prepareAdditionalStoryInput(
 					action,
 					simulationToUse !== '{}' ? simulationToUse : '',
-					additionalStoryInputState.value,
-					diceRollAdditionText
+					additionalStoryInputState.value
 				);
 				//prepare additional action input
 				if (!diceRollAdditionText?.toLowerCase().includes('failure')) {
@@ -1577,7 +1543,7 @@
 			);
 			handleUpdateHistoryAndGameActionState(newState);
 			handlePostActionProcessedState();
-}
+		}
 	}
 </script>
 

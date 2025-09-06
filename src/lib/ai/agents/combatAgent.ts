@@ -29,18 +29,18 @@ export const statsUpdatePromptObject = `
         # You must include one update for each action
         # Also include one update per turn effect like poisoned or bleeding
         {
-        		"explanation": "Short explanation for the reason of this change",
-        		# if targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources
-        		"type": "{resourceKey}_lost|{resourceKey}_gained",
+        	"explanation": "Short explanation for the reason of this change",
+        	# if targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources
             "sourceName": "NPC name or player CHARACTER name, who is the initiator of this action",
             "targetName": "NPC name or player CHARACTER name, whose stats must be updated.",
+			"type": "{resourceKey}_lost|{resourceKey}_gained; resourceKey must be one of the targetName's resources",
             "value": "must be dice roll notation in format 1d6+3 or 3d4 etc."
         },
         {
-        	 "targetName": "Player CHARACTER name who gains XP.",
-        	 "explanation": "Short explanation for the reason of this change",
-           "type": "xp_gained",
-           "value": "SMALL|MEDIUM|HIGH"
+        	"targetName": "Player CHARACTER name who gains XP.",
+        	"explanation": "Short explanation for the reason of this change",
+           	"type": "xp_gained",
+           	"value": "SMALL|MEDIUM|HIGH"
         },
         ...
         ]`;
@@ -65,9 +65,9 @@ export class CombatAgent {
 	): Promise<NPCAction[]> {
 		const agent = [
 			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action and the outcomes of these actions" +
-			'\n For deciding the outcome simulate if the NPC action can be successfull based on the circumstances.' +	
-			'\n You must include an action for each NPC from the list.',
-						"The following is the character's inventory, if an item is relevant in combat then apply it's effect." +
+				'\n For deciding the outcome simulate if the NPC action can be successfull based on the circumstances.' +
+				'\n You must include an action for each NPC from the list.',
+			"The following is the character's inventory, if an item is relevant in combat then apply it's effect." +
 				'\n' +
 				stringifyPretty(inventoryState),
 			'The following is a description of the story setting to keep the actions consistent on.' +
@@ -106,25 +106,29 @@ export class CombatAgent {
 			historyMessages: historyMessages,
 			systemInstruction: agent,
 			reportErrorToUser: false,
-						model: GEMINI_MODELS.FLASH_LITE_2_5,
-						thinkingConfig: {
-							thinkingBudget: THINKING_BUDGET.DEFAULT
-						},
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				thinkingBudget: THINKING_BUDGET.DEFAULT
+			}
 		};
 
 		const state = (await this.llm.generateContent(request))?.content as Array<NPCAction>;
 		return state;
 	}
 
-	static getAdditionalStoryInput(
-		actions: Array<NPCAction>
-	) {
+	static getAdditionalStoryInput(actions: Array<NPCAction>, deadNPCs?: Array<string>) {
 		// let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
 		//     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
-		const mappedActions = actions.map((action) => `${action.sourceId} targets ${action.targetId} with result: ${action.simulated_outcome}`);
+		if(deadNPCs && deadNPCs.length > 0) {
+			actions = actions.filter(action => !deadNPCs.includes(action.sourceId) && !deadNPCs.includes(action.targetId));
+		}
+		const mappedActions = actions.map(
+			(action) =>
+				`${action.sourceId} targets ${action.targetId} with result: ${action.simulated_outcome}`
+		);
 		return (
 			'\nDescribe the player action and the following NPCS actions in the story progression and apply stats_update for each action:\n' +
-			stringifyPretty(mappedActions)
+			stringifyPretty(mappedActions) + '\n\n'
 		);
 	}
 

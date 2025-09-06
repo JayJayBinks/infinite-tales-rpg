@@ -170,7 +170,8 @@ export function renderStatUpdates(
 					}
 					if (mappedType.includes('LEVEL')) {
 						resourceText = '';
-					} else {
+					}
+					if (!mappedType.includes('XP')) {
 						resourceText =
 							'' +
 							(getTakeLessDamageForManyHits(
@@ -180,7 +181,8 @@ export function renderStatUpdates(
 							) || resourceText);
 					}
 				} else {
-					responseText = statsUpdate.targetName?.replaceAll('_', ' ').replaceAll('id', '') + ' ' || '';
+					responseText =
+						statsUpdate.targetName?.replaceAll('_', ' ').replaceAll('id', '') + ' ' || '';
 					if (!changeText) {
 						//probably unhandled status effect
 						changeText = 'is';
@@ -400,7 +402,7 @@ export function addAdditionsFromActionSideeffects(
 		additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
 	}
 	const encounterString = JSON.stringify(action.enemyEncounterExplanation) || '';
-	if (encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
+	if (!is_character_in_combat && encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
 		additionalStoryInput += '\nenemyEncounter: ' + encounterString;
 	}
 

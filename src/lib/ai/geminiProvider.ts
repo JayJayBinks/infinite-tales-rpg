@@ -284,11 +284,11 @@ export class GeminiProvider extends LLM {
 				}
 			}
 
-			if(modelToUse === GEMINI_MODELS.FLASH_LITE_2_5){
-				const budget = config.thinkingConfig?.thinkingBudget
-				const budgetTooLow = budget && budget > 0 && budget < THINKING_BUDGET.DEFAULT
-				if(budgetTooLow){
-					config.thinkingConfig!.thinkingBudget = THINKING_BUDGET.DEFAULT
+			if (modelToUse === GEMINI_MODELS.FLASH_LITE_2_5) {
+				const budget = config.thinkingConfig?.thinkingBudget;
+				const budgetTooLow = budget && budget > 0 && budget < THINKING_BUDGET.DEFAULT;
+				if (budgetTooLow) {
+					config.thinkingConfig!.thinkingBudget = THINKING_BUDGET.DEFAULT;
 				}
 			}
 			const genAIRequest = {
