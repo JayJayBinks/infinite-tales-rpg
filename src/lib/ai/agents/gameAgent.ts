@@ -191,7 +191,7 @@ export class GameAgent {
 		gameSettings: GameSettings,
 		simulation: string
 	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
-		let playerActionText = action.characterName + ': ' + action.text;
+		let playerActionText = 'Player Character named ' + action.characterName + ': ' + action.text;
 		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
 		if (cost > 0) {
 			playerActionText += `\n${action.resource_cost?.cost} ${action.resource_cost?.resource_key} cost`;

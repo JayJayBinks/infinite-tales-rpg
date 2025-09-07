@@ -116,19 +116,19 @@ export class CombatAgent {
 		return state;
 	}
 
-	static getAdditionalStoryInput(actions: Array<NPCAction>, deadNPCs?: Array<string>) {
+	static getAdditionalStoryInput(actions: Array<NPCAction>, playerName: string, playerAction: Action, deadNPCs?: Array<string>) {
 		// let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
 		//     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
 		if(deadNPCs && deadNPCs.length > 0) {
 			actions = actions.filter(action => !deadNPCs.includes(action.sourceId) && !deadNPCs.includes(action.targetId));
 		}
-		const mappedActions = actions.map(
+		const mappedActions = [`Player Character named ${playerName}: ${playerAction.text}`].concat(actions.map(
 			(action) =>
 				`${action.sourceId} targets ${action.targetId} with result: ${action.simulated_outcome}`
-		);
-		return (
+		));
+		return mappedActions.length === 1 ? '' : (
 			'\nDescribe the player action and the following NPCS actions in the story progression and apply stats_update for each action:\n' +
-			stringifyPretty(mappedActions) + '\n\n'
+			stringifyPretty(mappedActions) + '\n'
 		);
 	}
 
@@ -150,7 +150,8 @@ export class CombatAgent {
 				'\n ' +
 				'Following NPCs have died, describe their death in the story progression.' +
 				'\n' +
-				stringifyPretty(deadNPCs);
+				stringifyPretty(deadNPCs) +
+				'\n';
 		}
 		if (playerCharactersGameState) {
 			const aliveChars = Object.keys(playerCharactersGameState).filter(

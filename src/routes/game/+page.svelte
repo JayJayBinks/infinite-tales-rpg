@@ -1,27 +1,27 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import {
-		type Action,
-		defaultGameSettings,
-		type GameActionState,
-		GameAgent,
-		type GameMasterAnswer,
-		type GameSettings,
-		type InventoryState,
-		type Item,
-		type NPCAction,
-		type PlayerCharactersGameState,
-		type PlayerCharactersIdToNamesMap,
-		SUDO_COMMAND
-	} from '$lib/ai/agents/gameAgent';
-	import { onMount, tick } from 'svelte';
-	import {
 		getTextForActionButton,
 		handleError,
 		initialThoughtsState,
 		stringifyPretty,
 		type ThoughtsState
 	} from '$lib/util.svelte';
+import {
+	type Action,
+	defaultGameSettings,
+	type GameActionState,
+	GameAgent,
+	type GameMasterAnswer,
+	type GameSettings,
+	type InventoryState,
+	type Item,
+	type NPCAction,
+	type PlayerCharactersGameState,
+	type PlayerCharactersIdToNamesMap,
+	SUDO_COMMAND
+} from '$lib/ai/agents/gameAgent';
+import { onMount, tick } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
@@ -32,6 +32,7 @@
 		CharacterStatsAgent,
 		initialCharacterStatsState,
 		type NPCState,
+		type NPCStats,
 		type SkillsProgression
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
@@ -397,16 +398,20 @@
 		customCombatAgentInstruction: string,
 		latestStoryMessages: LLMMessage[],
 		storyState: Story,
-		playerCharactersGameState: PlayerCharactersGameState,
 		combatAgent: CombatAgent
 	): Promise<Array<NPCAction>> {
 		// Get details for all NPC targets based on the current game action state.
 		const allNpcsDetailsAsList = gameLogic
-			.getAllTargetsAsList(currentGameActionState.currently_present_npcs)
-			.map((technicalId) => {
-				const npc = npcState[technicalId];
+			.getAllNpcsIds(currentGameActionState.currently_present_npcs)
+			.map((npcId) => {
+				const npc = npcState[npcId.uniqueTechnicalNameId];
+				if (!npc) return undefined;
 				return {
-					technicalId,
+					technicalId: npcId.uniqueTechnicalNameId,
+					relation: npcLogic.deriveRelationForNpc(
+						currentGameActionState.currently_present_npcs,
+						npcId.uniqueTechnicalNameId
+					),
 					is_party_member: npc.is_party_member,
 					class: npc.class,
 					rank_enum_english: npc.rank_enum_english,
@@ -415,7 +420,8 @@
 						(ability: Ability) => ability.name + ': ' + ability.effect
 					)
 				};
-			});
+			})
+			.filter(npc => npc !== undefined);
 
 		// Compute the determined combat actions and stats update.
 		const determinedActions = await combatAgent.generateActionsFromContext(
@@ -461,10 +467,10 @@
 			skillsProgressionState.value[skillName] += skillProgression;
 		}
 	};
-
 	function openDiceRollDialog(
 		waitForFunction?: Promise<void>,
-		waitForActionsResult?: Promise<void>
+		waitForActionsResult?: Promise<void>,
+		deadNPCs?: Array<string>
 	) {
 		//TODO showModal can not be used because it hides the dice roll
 		didAIProcessDiceRollActionState.value = false;
@@ -486,7 +492,8 @@
 				false,
 				dice_roll_addition_text,
 				waitForFunction,
-				waitForActionsResult
+				waitForActionsResult,
+				deadNPCs
 			);
 		});
 	}
@@ -573,15 +580,15 @@
 					characterStatsState.value,
 					systemInstructionsState.value.generalSystemInstruction
 				)
-				.then((newState: NPCState) => {
-					if (newState) {
-						combatLogic.addResourceValues(newState);
+				.then((newNPCState: NPCState) => {
+					if (newNPCState) {
+						combatLogic.addResourceValues(newNPCState);
 						newNPCsIds.forEach((id) => {
-							if (newState[id.uniqueTechnicalNameId]) {
-								newState[id.uniqueTechnicalNameId].known_names = [id.displayName];
+							if (newNPCState[id.uniqueTechnicalNameId]) {
+								newNPCState[id.uniqueTechnicalNameId].known_names = [id.displayName];
 							}
 						});
-						npcState.value = { ...npcState.value, ...newState };
+						npcState.value = { ...npcState.value, ...newNPCState };
 						console.log(stringifyPretty(npcState.value));
 					}
 				});
@@ -886,13 +893,17 @@
 		rollDice = false,
 		diceRollAdditionText = '',
 		waitForFunction?: Promise<void>,
-		waitForActionsResult?: Promise<void>
+		waitForActionsResult?: Promise<void>,
+		deadNPCs?: Array<string>
 	) {
 		//TODO can happen if action fails multiple times, for retry state is not cleaned then
 		if (additionalStoryInputState.value.length > 10_000) {
 			console.warn('Additional story input is too long, reducing it to under 10_000 characters.');
 			//take the last 10000 characters as it is probably the real input
 			additionalStoryInputState.value = additionalStoryInputState.value.slice(-10_000);
+		}
+		if(!deadNPCs){
+			deadNPCs = npcLogic.removeDeadNPCs(npcState.value);
 		}
 		// Retrieve combat and NPC-related story additions.
 		if (
@@ -910,7 +921,6 @@
 						systemInstructionsState.value.combatAgentInstruction,
 						getLatestStoryMessages(),
 						storyState.value,
-						playerCharactersGameState,
 						combatAgent
 					).then((actions) => {
 						relatedNPCActionsState.value = actions;
@@ -950,7 +960,7 @@
 							relatedActionGroundTruthState.value = groundTruth;
 						});
 				}
-				openDiceRollDialog(waitForGroundTruthResult, waitForActionsResult);
+				openDiceRollDialog(waitForGroundTruthResult, waitForActionsResult, deadNPCs);
 			} else {
 				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
@@ -981,8 +991,9 @@
 					removeCluesFromSimulationOnFailure(diceRollAdditionText)
 				);
 
-				const deadNPCs = npcLogic.removeDeadNPCs(npcState.value);
-				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(relatedNPCActionsState.value, deadNPCs);
+
+				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(relatedNPCActionsState.value, 
+				characterState.value.name , action, deadNPCs);
 				additionalStoryInputState.value += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 
 				// Prepare the additional story input (including combat and chapter info)
