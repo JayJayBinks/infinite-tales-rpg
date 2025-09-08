@@ -1,191 +1,229 @@
 <script lang="ts">
-    import { $state, $effect } from 'svelte';
-    import LoadingIcon from '$lib/components/LoadingIcon.svelte';
-    import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { onMount } from 'svelte';
+	import {
+		CharacterAgent,
+		type CharacterDescription,
+		initialCharacterState
+	} from '$lib/ai/agents/characterAgent';
+	import LoadingModal from '$lib/components/LoadingModal.svelte';
+	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
+	import isEqual from 'lodash.isequal';
+	import { beforeNavigate, goto } from '$app/navigation';
+	import { LLMProvider } from '$lib/ai/llmProvider';
+	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
+	import type { Campaign } from '$lib/ai/agents/campaignAgent';
+	import type { AIConfig } from '$lib';
+	import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
+	import {
+		addCharacterToPlayerCharactersIdToNamesMap,
+		getCharacterTechnicalId
+	} from '../../characterLogic';
 
-    interface AIGeneratedImageProps {
-        storageKey?: string;
-        showGenerateButton?: boolean;
-        buttonClassesString?: string;
-        showLoadingSpinner?: boolean;
-        noLogo?: boolean;
-        enhance?: boolean;
-        onClickGenerate?: (e: MouseEvent) => void;
-        resetImageState?: boolean;
-        imagePrompt?: string;
-        imageClassesString?: string;
-        width?: number;
-        height?: number;
-        minPromptLength?: number;
-    }
+	let isGeneratingState = $state(false);
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
+	const campaignState = useLocalStorage<Campaign>('campaignState');
+	const characterState = useLocalStorage<CharacterDescription>(
+		'characterState',
+		initialCharacterState
+	);
+	const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value));
 
-    const {
-        storageKey = '',
-        showGenerateButton = true,
-        buttonClassesString = 'btn-md',
-        showLoadingSpinner = true,
-        noLogo = false,
-        enhance = false,
-        onClickGenerate = () => {},
-        resetImageState = false,
-        imagePrompt = '',
-        imageClassesString = 'm-auto h-[296px] sm:h-[512px]',
-        width = 768,
-        height = 768,
-        minPromptLength = 4
-    } = $props<AIGeneratedImageProps>();
+	let characterStateOverwrites: Partial<CharacterDescription> = $state({});
+	let resetImageState = $state(false);
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	const playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
+		'playerCharactersIdToNamesMapState',
+		{}
+	);
+	let characterAgent: CharacterAgent;
+	onMount(() => {
+		characterAgent = new CharacterAgent(
+			LLMProvider.provideLLM(
+				{
+					temperature: 2,
+					apiKey: apiKeyState.value,
+					language: aiLanguage.value
+				},
+				aiConfigState.value?.useFallbackLlmState
+			)
+		);
+		let playerCharacterId = getCharacterTechnicalId(
+			playerCharactersIdToNamesMapState.value,
+			characterState.value.name
+		);
+		beforeNavigate(() => {
+			if (playerCharacterId) {
+				addCharacterToPlayerCharactersIdToNamesMap(
+					playerCharactersIdToNamesMapState.value,
+					playerCharacterId,
+					characterState.value.name
+				);
+			} else {
+				console.error('Player character id not found to add new name');
+			}
+		});
+	});
 
-    type ImageState = {
-        prompt: string;
-        isGenerating: boolean;
-        error?: string | null;
-        link: { title: string; href: string };
-        image: { alt: string; src: string };
-    };
-
-    const placeholder: ImageState = {
-        prompt: imagePrompt.trim(),
-        isGenerating: false,
-        error: null,
-        link: {
-            title:
-                'Vegas Bleeds Neon, CC BY-SA 3.0 https://creativecommons.org/licenses/by-sa/3.0>, via Wikimedia Commons',
-            href: 'https://commons.wikimedia.org/wiki/File:Placeholder_female_superhero_c.png'
-        },
-        image: {
-            alt: 'Placeholder female superhero c',
-            src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Placeholder_female_superhero_c.png/256px-Placeholder_female_superhero_c.png?20110305190235'
-        }
-    };
-
-    const imageState = storageKey
-        ? useLocalStorage<ImageState>(storageKey, { ...placeholder })
-        : $state<{ value: ImageState }>({ value: { ...placeholder } });
-
-    let lastRequestedPrompt = $state('');
-    let lastCompletedPrompt = $state('');
-    let currentRequestId = $state(0);
-    const inMemoryCache = new Map<string, string>(); // key -> URL
-
-    const buildKey = (prompt: string) =>
-        `${prompt}::${enhance ? 1 : 0}::${noLogo ? 1 : 0}::${width}x${height}`;
-
-    const handleGenerateImage = (manual = false) => {
-        const prompt = imageState.value.prompt.trim();
-        if (!prompt || prompt.length < minPromptLength) return;
-        if (imageState.value.isGenerating) return;
-        const key = buildKey(prompt);
-        // Cached
-        if (inMemoryCache.has(key)) {
-            imageState.value = {
-                ...imageState.value,
-                isGenerating: false,
-                error: null,
-                link: { title: '', href: inMemoryCache.get(key)! },
-                image: { alt: prompt, src: inMemoryCache.get(key)! }
-            };
-            lastCompletedPrompt = prompt;
-            return;
-        }
-
-        imageState.value.isGenerating = true;
-        imageState.value.error = null;
-        const requestId = ++currentRequestId;
-        lastRequestedPrompt = prompt;
-
-        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(
-            prompt
-        )}?width=${width}&height=${height}&enhance=${enhance}&nologo=${noLogo}`;
-
-        const img = new Image();
-        img.onload = () => {
-            if (requestId !== currentRequestId) return; // stale
-            inMemoryCache.set(key, url);
-            imageState.value = {
-                prompt,
-                isGenerating: false,
-                error: null,
-                link: { title: '', href: url },
-                image: { alt: prompt, src: url }
-            };
-            lastCompletedPrompt = prompt;
-        };
-        img.onerror = () => {
-            if (requestId !== currentRequestId) return;
-            imageState.value.isGenerating = false;
-            imageState.value.error = 'Failed to load AI image';
-        };
-        img.src = url;
-
-        if (manual) onClickGenerate(new MouseEvent('click'));
-    };
-
-	// Prop -> state synchronization
-    $effect(() => {
-        const trimmed = imagePrompt.trim();
-        if (trimmed && trimmed !== imageState.value.prompt) {
-            imageState.value.prompt = trimmed;
-        }
-    });
-
-    // Reset logic
-    $effect(() => {
-        if (resetImageState) {
-            imageState.value = { ...placeholder, prompt: imagePrompt.trim() };
-            lastRequestedPrompt = '';
-            lastCompletedPrompt = '';
-        }
-    });
-
-    // Auto-generate when button hidden & prompt changes
-    $effect(() => {
-        const p = imageState.value.prompt.trim();
-        if (
-            !showGenerateButton &&
-            p &&
-            p.length >= minPromptLength &&
-            p !== lastCompletedPrompt &&
-            !imageState.value.isGenerating
-        ) {
-            handleGenerateImage();
-        }
-    });
+	const onRandomize = async () => {
+		isGeneratingState = true;
+		const newState = await characterAgent.generateCharacterDescription(
+			$state.snapshot(storyState.value),
+			characterStateOverwrites
+		);
+		if (newState) {
+			characterState.value = newState;
+			resetImageState = true;
+		}
+		isGeneratingState = false;
+	};
+	const onRandomizeSingle = async (stateValue) => {
+		isGeneratingState = true;
+		const currentCharacter = { ...characterState.value };
+		currentCharacter[stateValue] = undefined;
+		const characterInput = { ...currentCharacter, ...characterStateOverwrites };
+		const newState = await characterAgent.generateCharacterDescription(
+			$state.snapshot(storyState.value),
+			characterInput
+		);
+		if (newState) {
+			characterState.value[stateValue] = newState[stateValue];
+			if (stateValue === 'appearance') {
+				resetImageState = true;
+			}
+		}
+		isGeneratingState = false;
+	};
 </script>
 
-<div
-    class="flex flex-col items-center"
-    role="group"
-    aria-busy={imageState.value.isGenerating}
-    aria-label="AI generated image section"
->
-    {#if showLoadingSpinner && imageState.value.isGenerating}
-        <div class={'content-center ' + imageClassesString} aria-live="polite">
-            <LoadingIcon />
-            <span class="sr-only">Generating image…</span>
-        </div>
-    {/if}
+{#if isGeneratingState}
+	<LoadingModal />
+{/if}
+<ul class="steps mt-3 w-full">
+	<!--TODO  -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
+	{#if campaignState.value?.campaign_title}
+		<li class="step step-primary cursor-pointer" onclick={() => goto('campaign')}>Campaign</li>
+	{:else}
+		<li class="step step-primary cursor-pointer" onclick={() => goto('tale')}>Tale</li>
+	{/if}
+	<li class="step step-primary">Character</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
+	<li class="step cursor-pointer" onclick={() => goto('characterStats')}>Stats</li>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events  -->
+	<li class="step cursor-pointer" onclick={() => goto('characterStats')}>Start</li>
+</ul>
+<form class="m-6 grid items-center gap-2 text-center">
+	<p>Click on Randomize All to generate a random Character based on the Tale settings</p>
+	<button
+		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
+		disabled={isGeneratingState}
+		onclick={onRandomize}
+	>
+		Randomize All
+	</button>
+	<button
+		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
+		onclick={() => {
+			characterState.reset();
+			characterStateOverwrites = {};
+			resetImageState = true;
+		}}
+	>
+		Clear All
+	</button>
+	{#if campaignState.value?.campaign_title}
+		<button
+			class="btn btn-primary m-auto w-3/4 sm:w-1/2"
+			onclick={() => {
+				navigate('/new/campaign');
+			}}
+		>
+			Previous Step:<br /> Customize Campaign
+		</button>
+	{:else}
+		<button
+			class="btn btn-primary m-auto w-3/4 sm:w-1/2"
+			onclick={() => {
+				navigate('/new/tale');
+			}}
+		>
+			Previous Step:<br /> Customize Tale
+		</button>
+	{/if}
 
-    <img
-        class:hidden={showLoadingSpinner && imageState.value.isGenerating}
-        class={imageClassesString}
-        alt={imageState.value.image.alt}
-        src={imageState.value.image.src}
-        loading="lazy"
-        decoding="async"
-    />
+	<button
+		class="btn btn-primary m-auto w-3/4 sm:w-1/2"
+		onclick={() => {
+			navigate('/new/characterStats');
+		}}
+		disabled={isEqual(characterState.value, initialCharacterState)}
+	>
+		Next Step:<br /> Customize Stats & Abilities
+	</button>
 
-    {#if imageState.value.error}
-        <p class="mt-2 text-sm text-error">{imageState.value.error}</p>
-    {/if}
-
-    {#if showGenerateButton}
-        <button
-            class="btn btn-accent mt-3 {buttonClassesString}"
-            disabled={imageState.value.isGenerating}
-            aria-label="Generate AI image"
-            onclick={() => handleGenerateImage(true)}
-        >
-            {imageState.value.isGenerating ? 'Generating…' : 'Generate Image'}
-        </button>
-    {/if}
-</div>
+	{#each Object.keys(characterState.value) as stateValue}
+		<label class="form-control mt-3 w-full">
+			<div class="flex-row capitalize">
+				{stateValue.replaceAll('_', ' ')}
+				{#if characterStateOverwrites[stateValue]}
+					<span class="badge badge-accent ml-2">overwritten</span>
+				{/if}
+			</div>
+			<textarea
+				bind:value={characterState.value[stateValue]}
+				rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue] : 2}
+				placeholder=""
+				oninput={(evt) => {
+					characterStateOverwrites[stateValue] = evt.currentTarget.value;
+				}}
+				class="textarea textarea-bordered textarea-md mt-2 w-full"
+			>
+			</textarea>
+		</label>
+		<button
+			class="btn btn-accent m-auto mt-2 w-3/4 capitalize sm:w-1/2"
+			onclick={() => {
+				onRandomizeSingle(stateValue);
+			}}
+		>
+			Randomize {stateValue.replaceAll('_', ' ')}
+		</button>
+		<button
+			class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
+			onclick={() => {
+				characterState.resetProperty(stateValue);
+				delete characterStateOverwrites[stateValue];
+				if (stateValue === 'appearance') {
+					resetImageState = true;
+				}
+			}}
+		>
+			Clear {stateValue.replaceAll('_', ' ')}
+		</button>
+		{#if !aiConfigState.value?.disableImagesState && stateValue === 'appearance'}
+			<div class="m-auto flex w-full flex-col">
+				<AIGeneratedImage
+					storageKey="characterImageState"
+					{resetImageState}
+					imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
+				/>
+			</div>
+		{/if}
+	{/each}
+	<button
+		class="btn btn-primary m-auto w-3/4 sm:w-1/2"
+		onclick={() => {
+			navigate('/new/characterStats');
+		}}
+		disabled={isEqual(characterState.value, initialCharacterState)}
+	>
+		Next Step:<br /> Customize Stats & Abilities
+	</button>
+</form>
