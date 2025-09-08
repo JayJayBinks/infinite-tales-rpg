@@ -1563,8 +1563,8 @@
 		// Determine which history to summarize
 		const isStateUpdateOnly = updatedHistoryMessages.length === 0;
 		const historyToSummarize = isStateUpdateOnly
-			? updatedHistoryMessages
-			: historyMessagesState.value;
+			? historyMessagesState.value
+			: updatedHistoryMessages;
 		// Let the summary agent shorten the history, if needed.
 		const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyToSummarize);
 
