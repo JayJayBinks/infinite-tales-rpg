@@ -756,11 +756,11 @@ import { onMount, tick } from 'svelte';
 					currentGameActionState.image_prompt!
 				);
 				if (!newState.image_prompt) {
-					newState.image_prompt = 'big letters showing FAILED TO GENERATE IMAGE PROMPT';
+					newState.image_prompt = 'big letters showing ERROR GENERATING IMAGE PROMPT';
 				}
 			} catch (e) {
 				console.warn('Failed to generate image prompt', e);
-				newState.image_prompt = 'big letters showing FAILED TO GENERATE IMAGE PROMPT';
+				newState.image_prompt = 'big letters showing ERROR GENERATING IMAGE PROMPT';
 			}
 			checkForNewNPCs(newState);
 			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
@@ -1505,8 +1505,8 @@ import { onMount, tick } from 'svelte';
 		// Determine which history to summarize
 		const isStateUpdateOnly = updatedHistoryMessages.length === 0;
 		const historyToSummarize = isStateUpdateOnly
-			? updatedHistoryMessages
-			: historyMessagesState.value;
+			? historyMessagesState.value
+			: updatedHistoryMessages;
 		// Let the summary agent shorten the history, if needed.
 		const { newHistory } = await summaryAgent.summarizeStoryIfTooLong(historyToSummarize);
 
