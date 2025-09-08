@@ -35,13 +35,48 @@
 		imageState = useLocalStorage(storageKey, { ...initialImageState, prompt: imagePrompt?.trim() });
 	}
 
+	// Ensure prop drives prompt even when localStorage has an older value.
 	$effect(() => {
-		if (imagePrompt?.trim()) {
-			imageState.value.prompt = imagePrompt?.trim();
+		const trimmed = imagePrompt?.trim();
+		if (trimmed && imageState.value.prompt !== trimmed) {
+			// Update prompt from prop; allow auto-regeneration logic to handle fetching.
+			imageState.value.prompt = trimmed;
+			// Reset generation marker so change is recognized if previous prompt matched lastGeneratedPrompt.
+			if (!showGenerateButton) {
+				imageState.value.isGenerating = false;
+				lastGeneratedPrompt = '';
+			}
 		}
+	});
+
+	$effect(() => {
 		if (resetImageState) {
-			imageState.value = { ...initialImageState };
+			imageState.value = {
+				...initialImageState,
+				prompt: imagePrompt?.trim(),
+				isGenerating: false,
+				image: { ...initialImageState.image }
+			};
+			lastGeneratedPrompt = '';
 			resetImageState = false;
+		}
+	});
+
+	// Track last generated prompt to know when to regenerate automatically
+	let lastGeneratedPrompt = $state('');
+	$effect(() => {
+		const currentPrompt = imageState.value.prompt?.trim();
+		if (
+			!showGenerateButton &&
+			currentPrompt &&
+			currentPrompt.length > 3 &&
+			currentPrompt !== lastGeneratedPrompt &&
+			!imageState.value.isGenerating
+		) {
+			// Reset to placeholder while loading to avoid stale previous image flashing
+			imageState.value.isGenerating = true;
+			lastGeneratedPrompt = currentPrompt;
+			replaceWithAiGenerated();
 		}
 	});
 
