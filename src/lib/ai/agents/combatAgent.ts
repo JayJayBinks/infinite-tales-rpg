@@ -4,8 +4,10 @@ import type {
 	Action,
 	InventoryState,
 	NPCAction,
-	PlayerCharactersGameState
+	PlayerCharactersGameState,
+	ResourcesWithCurrentValue
 } from '$lib/ai/agents/gameAgent';
+import { mapStatsUpdates } from '$lib/ai/agents/mappers';
 import { ActionDifficulty, getEmptyCriticalResourceKeys } from '../../../routes/game/gameLogic';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { jsonRule } from './agentUtils';
@@ -50,6 +52,98 @@ export class CombatAgent {
 
 	constructor(llm: LLM) {
 		this.llm = llm;
+	}
+
+	/**
+	 * Generates ONLY stats_update (including xp_gained) after the story narration has been produced.
+	 * Inventory is intentionally excluded (still handled in GameAgent story generation).
+	 */
+	async generateStatsUpdatesFromStory(
+		story: string,
+		playerAction: Action,
+		playerCharacterNames: string[],
+		playerResources: ResourcesWithCurrentValue,
+		presentNPCKnownNames: string[],
+		customSystemInstruction: string,
+		customCombatAgentInstruction: string
+	): Promise<StatsUpdate[]> {
+		const npcNames = presentNPCKnownNames.slice(-50);
+
+		const systemInstruction: string[] = [];
+		// Role description
+		systemInstruction.push(
+			'You are Stats Update Agent. Your tasks: 1. determine what ACTIVE ACTIONS player character and NPCs take from STORY; 2. Derive precise stats_update entries from the determined ACTIONS. Do not invent events absent from the STORY.'
+		);
+		// Provide resource context
+		systemInstruction.push(
+			`The following are PLAYER CHARACTER with known names '${playerCharacterNames.join(', ')}' resources, derive EXACTLY one of these names and following resourceKeys exactly typed for that target:
+			${Object.keys(playerResources).join(', ')}
+			Action resource costs will be explicitly stated in the user prompt, you dont have to infer it.`
+		);
+		systemInstruction.push(
+			'NPC names you may reference EXACTLY (hp/mp only):\n' + npcNames.join(', ')
+		);
+		// Reuse original stats update spec
+		systemInstruction.push(
+			`${jsonRule}\n{\n"determined_actions": "string array; one entry per ACTIVE action but not outcomes", ${statsUpdatePromptObject}\n}\n` +
+			'# Rules:\n' +
+			`ACTIONS:
+			**Strict Adherence to Text:** Derive stat changes ONLY from events EXPLICITLY stated in the STORY. If the story says an attack *missed* or a character *dodged*, you MUST NOT create a hp_lost entry for that attack. 
+			Do not infer damage from descriptions of attack preparation, heat, close calls, or environmental damage unless the character is explicitly stated to be harmed.
+			**Action vs. Outcome Distinction:** In determined_actions, list only the initial, active action (e.g., 'Character A attacks Character B'). Do NOT list the result or outcome of that action (e.g., 'Character B's shield is hit', 'The attack misses and hits a wall') as a separate, new action.
+			**Confirmed Hits Only:** Only generate a hp_lost entry if the STORY explicitly describes an attack *connecting* with its target and causing harm.\n` +
+			`STATS_UPDATE:
+			- Determine if stats_update is necessary for each ACTION or ongoing effect (bleeding/poison/etc.) if present in STORY.
+			- Use dice notation (e.g. 1d6+2) for value for non-xp changes, or if mentioned directly COST OF THE PLAYER ACTION
+			- Types follow pattern {resourceKey}_lost or {resourceKey}_gained OR xp_gained.\n` + 
+			`- Handle PLAYER CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
+			XP:
+				- Award XP only for contributions to a challenge according to significance.
+				- SMALL: Obtaining clues, engaging in reconnaissance, or learning background information.
+				- MEDIUM: Major progress toward a challenge, such as uncovering a vital piece of evidence, or getting access to a crucial location.
+				- HIGH: Achieving breakthroughs or resolving significant challenges.
+			- XP is also granted for the character’s growth (e.g. a warrior mastering a new technique).
+			- Never grant XP for routine tasks (e.g. basic dialogue, non-story shopping) or actions that build tension but don’t change outcomes.
+			`
+		);
+		if (customSystemInstruction) {
+			systemInstruction.push('Additional instructions which can override others: ' + customSystemInstruction);
+		}
+		if (customCombatAgentInstruction) {
+			systemInstruction.push('Additional instructions which can override others: ' + customCombatAgentInstruction);
+		}
+
+		const userMessage =
+			'STORY (reference only, do NOT repeat):\n' +
+			story +
+			(playerAction.resource_cost ? '\n\nCOST OF THE PLAYER ACTION:\n' + JSON.stringify(playerAction.resource_cost) : '') +
+			'\n\nReturn ONLY JSON with determined_actions and stats_update.';
+
+		const request: LLMRequest = {
+			userMessage,
+			historyMessages: [],
+			systemInstruction,
+			returnFallbackProperty: true,
+			reportErrorToUser: false,
+			temperature: .7,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: { includeThoughts: true, thinkingBudget: THINKING_BUDGET.DEFAULT }
+		};
+		const response = await this.llm.generateContent(request);
+		console.log('stats updates thoughts: ', response?.thoughts);
+		// Expect either {stats_update: [...]} or just [...]
+		let stats_update: StatsUpdate[] = [];
+		const content: any = response?.content;
+		if (Array.isArray(content)) {
+			stats_update = content as StatsUpdate[];
+		} else if (content?.stats_update && Array.isArray(content.stats_update)) {
+			stats_update = content.stats_update as StatsUpdate[];
+		}
+		console.log('stats updates raw: ', stringifyPretty(content));
+		// Map dice notations
+		const updates = { stats_update }
+		mapStatsUpdates(updates);
+		return updates.stats_update || [];
 	}
 
 	//TODO are effects like stunned etc. considered via historyMessages?
@@ -116,18 +210,18 @@ export class CombatAgent {
 		return state;
 	}
 
-	static getAdditionalStoryInput(actions: Array<NPCAction>, playerName: string, playerAction: Action, deadNPCs?: Array<string>) {
+	static getAdditionalStoryInput(actions: Array<NPCAction>, deadNPCs?: Array<string>) {
 		// let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
 		//     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
 		if(deadNPCs && deadNPCs.length > 0) {
 			actions = actions.filter(action => !deadNPCs.includes(action.sourceId) && !deadNPCs.includes(action.targetId));
 		}
-		const mappedActions = [`Player Character named ${playerName}: ${playerAction.text}`].concat(actions.map(
+		const mappedActions = actions.map(
 			(action) =>
 				`${action.sourceId} targets ${action.targetId} with result: ${action.simulated_outcome}`
-		));
-		return mappedActions.length === 1 ? '' : (
-			'\nDescribe the player action and the following NPCS actions in the story progression and apply stats_update for each action:\n' +
+		);
+		return mappedActions.length === 0 ? '' : (
+			'\nDescribe the player action and the following NPCS actions in the story progression:\n' +
 			stringifyPretty(mappedActions) + '\n'
 		);
 	}

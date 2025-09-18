@@ -1,6 +1,6 @@
 import { stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
 import { ActionDifficulty } from '../../../routes/game/gameLogic';
-import { type StatsUpdate, statsUpdatePromptObject } from '$lib/ai/agents/combatAgent';
+import { statsUpdatePromptObject, type StatsUpdate } from '$lib/ai/agents/combatAgent';
 import type { LLM, LLMMessage, LLMRequest, SystemInstructionsState } from '$lib/ai/llm';
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
@@ -130,18 +130,18 @@ export class GameAgent {
 		characterName: string,
 		playerCharactersGameState: ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
-		ncState: NPCState
+		npcState: NPCState
 	) {
 		const systemInstruction: string[] = [];
-		systemInstruction.push(jsonRule + '\n{' + jsonStoryCharacterStatusPart() + '}');
+		systemInstruction.push(jsonRule + '\n{' + statsUpdatePromptObject + '}');
 		systemInstruction.push(
-			'If targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources: \n' +
-				stringifyPretty(playerCharactersGameState)
+			'If targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources, EXACTLY typed as: \n' +
+				Object.keys(playerCharactersGameState).join(', ')
 		);
 		systemInstruction.push(
-			"The following is the character's inventory\n" + stringifyPretty(Object.keys(inventoryState))
+			"The following is the character's inventory\n" + Object.keys(inventoryState).join(', ')
 		);
-		const names = Object.keys(ncState).map((key) => ncState[key].known_names?.join(', '));
+		const names = Object.keys(npcState).map((key) => npcState[key].known_names?.join(', '));
 		systemInstruction.push(
 			'Determine stats_update targetName from the player prompt, map it to one of NPC NAMES LIST, if none present use player character name ' +
 				characterName +
@@ -451,8 +451,6 @@ The Game Master's General Responsibilities Include:
 - Never narrate events briefly or summarize; Always describe detailed scenes with character conversation in direct speech
 - Show, Don't Tell: Do not narrate abstract concepts or the "meaning" of an event. Instead, communicate the theme through tangible, sensory details
 - Use GAME's core knowledge and rules.
-- Handle CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
-- Handle NPC resources, you must exactly use resourceKey "hp" or "mp", and no deviations of that
 ${!gameSettingsState.detailedNarrationLength ? '- The story narration ' + storyWordLimit : ''}
 - Ensure a balanced mix of role-play, combat, and puzzles. Integrate these elements dynamically and naturally based on context.
 - Craft varied NPCs, ranging from good to evil.
@@ -472,14 +470,6 @@ Actions:
 - Involve other characters' reactions, doubts, or support during the action, encouraging a deeper exploration of relationships and motivations.
 - On each action review the character's inventory and spells_and_abilities for items and skills that have passive effects such as defense or health regeneration and apply them
 
-XP:
-- Award XP only for contributions to a challenge according to significance.
-	- SMALL: Obtaining clues, engaging in reconnaissance, or learning background information.
-	- MEDIUM: Major progress toward a challenge, such as uncovering a vital piece of evidence, or getting access to a crucial location.
-	- HIGH: Achieving breakthroughs or resolving significant challenges.
-- XP is also granted for the character’s growth (e.g. a warrior mastering a new technique).
-- Never grant XP for routine tasks (e.g. basic dialogue, non-story shopping) or actions that build tension but don’t change outcomes.
-
 Combat:
 - Pace All Challenges Like Combat: All significant challenges—not just combat—are slow-paced and multi-round. Treat tense negotiations, intricate rituals, disarming magical traps, or navigating a collapsing ruin as a series of actions and reactions between the CHARACTER and the environment. Never resolve a complex challenge in one response.
 - Never decide on your own that NPCs or CHARACTER die, apply appropriate damage instead. Only the player will tell you when they die.
@@ -494,25 +484,24 @@ NPC Interactions:
 Always review context from system instructions and my last message before responding.`;
 
 const jsonStoryCharacterStatusPart = () => `
-  ${statsUpdatePromptObject},
-  "inventory_update": [
-        #Add this to the JSON if the story implies that an item is added or removed from the character's inventory
+	"inventory_update": [
+				#Add this to the JSON if the story implies that an item is added or removed from the character's inventory
 		#This section is only for items and never spells or abilities
-        #For each item addition or removal this object is added once, the whole inventory does not need to be tracked here
-        #The starting items are also listed here as add_item
-    {
-      "type": "add_item",
-      "item_id": "unique name of the item to identify it",
-      "item_added": {
-        "description": "A description of the item",
-        "effect": "Clearly state effect(s) and whether an effect is active or passive"
-      }
-    },
-    {
-      "type": "remove_item",
-      "item_id": "unique name of the item to identify it"
-    }
-  ]`;
+				#For each item addition or removal this object is added once, the whole inventory does not need to be tracked here
+				#The starting items are also listed here as add_item
+		{
+			"type": "add_item",
+			"item_id": "unique name of the item to identify it",
+			"item_added": {
+				"description": "A description of the item",
+				"effect": "Clearly state effect(s) and whether an effect is active or passive"
+			}
+		},
+		{
+			"type": "remove_item",
+			"item_id": "unique name of the item to identify it"
+		}
+	]`;
 const jsonSystemInstructionForGameAgent = (gameSettingsState: GameSettings) => `${jsonRule}
 {
   "currentPlotPoint": VALUE MUST BE ALWAYS IN ENGLISH; Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",

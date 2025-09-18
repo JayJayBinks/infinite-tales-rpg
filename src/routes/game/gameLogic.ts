@@ -50,6 +50,17 @@ export function getAllNpcsIds(targets: Targets): Array<NpcID> {
 	return [...targets.hostile, ...targets.neutral, ...targets.friendly];
 }
 
+export function getAllNpcsKnownNames(targets: Targets, npcState: NPCState): Array<string> {
+	if (!targets || !targets.hostile) {
+		return [];
+	}
+	return [
+		...(targets.hostile.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || [])),
+		...(targets.neutral.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || [])),
+		...(targets.friendly.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || []))
+	].flat();
+}
+
 export function getNewNPCs(targets: Targets, npcState: NPCState) {
 	return getAllNpcsIds(targets).filter(
 		(newNPC) => !Object.keys(npcState).includes(newNPC.uniqueTechnicalNameId)
@@ -256,8 +267,13 @@ export function applyGameActionState(
 		let resource = resources[key];
 		if (!resource) {
 			resource = resources[key.toUpperCase()];
-			if (!resource) {
-				resource = resources[key.charAt(0).toUpperCase() + key.substring(1).toLowerCase()];
+			let everyWordUpperKey;
+			if(!resource){
+				everyWordUpperKey = key.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+				resource = resources[everyWordUpperKey];
+			}
+			if(!resource){
+				resource = resources[everyWordUpperKey.replaceAll(' ', '-')];
 			}
 		}
 		return resource;

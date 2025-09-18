@@ -190,6 +190,16 @@ export function getCharacterTechnicalId(
 	return characterId;
 }
 
+export function getCharacterKnownNames(
+	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
+	characterName: string
+): string[] {
+	const characterId = Object.keys(playerCharactersIdToNamesMapState).find((key) =>
+		playerCharactersIdToNamesMapState[key].includes(characterName)
+	);
+	return characterId ? playerCharactersIdToNamesMapState[characterId] : [];
+}
+
 export function getCharacterTechnicalIdOrThrow(
 	playerCharactersIdToNamesMapState: PlayerCharactersIdToNamesMap,
 	characterName: string

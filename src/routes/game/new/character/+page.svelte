@@ -18,7 +18,7 @@
 	import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
 	import {
 		addCharacterToPlayerCharactersIdToNamesMap,
-		getCharacterTechnicalId
+		getCharacterTechnicalId,
 	} from '../../characterLogic';
 
 	let isGeneratingState = $state(false);
@@ -198,7 +198,7 @@
 		<button
 			class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 			onclick={() => {
-				characterState.resetProperty(stateValue);
+				characterState.resetProperty(stateValue as keyof CharacterDescription);
 				delete characterStateOverwrites[stateValue];
 				if (stateValue === 'appearance') {
 					resetImageState = true;

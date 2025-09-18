@@ -99,7 +99,8 @@ import { onMount, tick } from 'svelte';
 		getSkillIfApplicable,
 		getFreeCharacterTechnicalId,
 		getCharacterTechnicalId,
-		addCharacterToPlayerCharactersIdToNamesMap
+		addCharacterToPlayerCharactersIdToNamesMap,
+		getCharacterKnownNames
 	} from './characterLogic';
 	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
@@ -647,7 +648,7 @@ import { onMount, tick } from 'svelte';
 	): Promise<string> {
 		let additionalStoryInput = initialAdditionalStoryInput || '';
 		additionalStoryInput += simulationAddition
-			? 'The following action outcome context is the hidden truth. On a success, narrate the character discovering this truth. On a failure, describe their attempt without revealing it: ' +
+			? 'The following action outcome context is the hidden truth. On a success, include this truth in the narration. On a failure, do not reaveal it: ' +
 				simulationAddition +
 				'\n'
 			: '';
@@ -747,32 +748,7 @@ import { onMount, tick } from 'svelte';
 		);
 
 		if (newState.story) {
-			newState.image_prompt = '';
-			try {
-				newState.image_prompt = await imagePromptAgent.generateImagePrompt(
-					getLatestStoryMessages(),
-					newState.story,
-					characterState.value.name,
-					currentGameActionState.image_prompt!
-				);
-				if (!newState.image_prompt) {
-					newState.image_prompt = 'big letters showing ERROR GENERATING IMAGE PROMPT';
-				}
-			} catch (e) {
-				console.warn('Failed to generate image prompt', e);
-				newState.image_prompt = 'big letters showing ERROR GENERATING IMAGE PROMPT';
-			}
-			checkForNewNPCs(newState);
-			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
-			// Otherwise, apply the new state to the game state.
-			gameLogic.applyGameActionState(
-				playerCharactersGameState,
-				playerCharactersIdToNamesMapState.value,
-				npcState.value,
-				inventoryState.value,
-				$state.snapshot(newState)
-			);
-			console.log('new state', stringifyPretty(newState));
+			await processPostStory(newState, action, simulation);
 
 			const skillName = getSkillIfApplicable(characterStatsState.value, action);
 			console.log('skillName to improve', skillName);
@@ -837,6 +813,72 @@ import { onMount, tick } from 'svelte';
 				handlePostActionProcessedState();
 			}
 		}
+	}
+
+	// Runs post-story async tasks (image prompt + stats generation) concurrently, then applies results.
+	async function processPostStory(
+		newState: GameActionState,
+		action: Action,
+		simulation: string
+	) {
+		newState.image_prompt = '';
+		checkForNewNPCs(newState);
+		npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
+
+		const imagePromptPromise = (async () => {
+			try {
+				const prompt = await imagePromptAgent.generateImagePrompt(
+					getLatestStoryMessages(),
+					newState.story || '',
+					characterState.value.name,
+					currentGameActionState.image_prompt || ''
+				);
+				return prompt || 'big letters showing ERROR GENERATING IMAGE PROMPT';
+			} catch (e) {
+				console.warn('Failed to generate image prompt', e);
+				return 'big letters showing ERROR GENERATING IMAGE PROMPT';
+			}
+		})();
+
+		const statsUpdatesPromise = (async () => {
+			try {
+				const generated = await combatAgent.generateStatsUpdatesFromStory(
+					newState.story || '',
+					action,
+					getCharacterKnownNames(
+						playerCharactersIdToNamesMapState.value,
+						characterState.value.name
+					),
+					playerCharactersGameState[playerCharacterIdState],
+					gameLogic.getAllTargetsAsList(currentGameActionState.currently_present_npcs),
+					systemInstructionsState.value.generalSystemInstruction,
+					currentGameActionState.is_character_in_combat
+						? systemInstructionsState.value.combatAgentInstruction
+						: ''
+				);
+				return generated;
+			} catch (e) {
+				console.warn('Failed to post-generate stats updates', e);
+				return [];
+			}
+		})();
+
+		const [imagePrompt, statsUpdates] = await Promise.all([
+			imagePromptPromise,
+			statsUpdatesPromise
+		]);
+
+		newState.image_prompt = imagePrompt;
+		newState.stats_update = statsUpdates;
+
+		gameLogic.applyGameActionState(
+			playerCharactersGameState,
+			playerCharactersIdToNamesMapState.value,
+			npcState.value,
+			inventoryState.value,
+			$state.snapshot(newState)
+		);
+		console.log('new state', stringifyPretty(newState));
 	}
 
 	const addSkillsIfApplicable = (actions: Action[]) => {
@@ -992,8 +1034,7 @@ import { onMount, tick } from 'svelte';
 				);
 
 
-				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(relatedNPCActionsState.value, 
-				characterState.value.name , action, deadNPCs);
+				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(relatedNPCActionsState.value, deadNPCs);
 				additionalStoryInputState.value += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 
 				// Prepare the additional story input (including combat and chapter info)
