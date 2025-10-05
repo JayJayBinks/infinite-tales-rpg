@@ -273,6 +273,10 @@ export function applyGameActionState(
 				resource = resources[everyWordUpperKey];
 			}
 			if(!resource){
+				everyWordUpperKey = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+				resource = resources[everyWordUpperKey];
+			}
+			if(!resource){
 				resource = resources[everyWordUpperKey.replaceAll(' ', '-')];
 			}
 		}
