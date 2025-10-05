@@ -27,8 +27,8 @@ import { requestLLMJsonStream } from './jsonStreamHelper';
 import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 export const GEMINI_MODELS = {
-	FLASH_LITE_2_5: 'gemini-2.5-flash-lite',
-	FLASH_2_5: 'gemini-2.5-flash',
+	FLASH_LITE_2_5: 'gemini-flash-lite-latest',
+	FLASH_2_5: 'gemini-flash-latest',
 	FLASH_THINKING_2_0: 'gemini-2.0-flash-thinking-exp-01-21',
 	FLASH_2_0: 'gemini-2.0-flash'
 };
