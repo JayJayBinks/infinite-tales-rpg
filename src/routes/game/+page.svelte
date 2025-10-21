@@ -124,6 +124,7 @@ import { onMount, tick } from 'svelte';
 	} from '$lib/components/StoryProgressionWithImage.svelte';
 	import { ImagePromptAgent } from '$lib/ai/agents/imagePromptAgent';
 	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
+	import PartyMemberSwitcher from '$lib/components/PartyMemberSwitcher.svelte';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog,
 		useSpellsAbilitiesModal,
@@ -322,19 +323,55 @@ import { onMount, tick } from 'svelte';
 			playerCharactersIdToNamesMapState.value,
 			currentCharacterName
 		);
-		if (!characterId) {
+		
+		// Initialize party if it exists
+		if (partyState.value.members.length > 0) {
+			// Initialize resources for all party members
+			for (const member of partyState.value.members) {
+				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
+				if (memberStats && !playerCharactersGameState[member.id]) {
+					playerCharactersGameState[member.id] = {};
+					
+					// Convert resources to have current_value
+					for (const [key, resource] of Object.entries(memberStats.resources)) {
+						playerCharactersGameState[member.id][key] = {
+							max_value: resource.max_value,
+							current_value: resource.start_value,
+							game_ends_when_zero: resource.game_ends_when_zero
+						};
+					}
+					
+					// Initialize XP
+					if (!playerCharactersGameState[member.id].XP) {
+						playerCharactersGameState[member.id].XP = {
+							max_value: 9999,
+							current_value: 0,
+							game_ends_when_zero: false
+						};
+					}
+				}
+			}
+			
+			// Update playerCharactersIdToNamesMapState
+			updatePlayerCharactersIdToNamesMapForParty(partyState.value, playerCharactersIdToNamesMapState.value);
+			
+			// Set character ID to active party member
+			characterId = partyState.value.activeCharacterId;
+		} else if (!characterId) {
+			// Fallback to old single character system
 			characterId = getFreeCharacterTechnicalId(playerCharactersIdToNamesMapState.value);
 			addCharacterToPlayerCharactersIdToNamesMap(
 				playerCharactersIdToNamesMapState.value,
 				characterId,
 				currentCharacterName
 			);
+			
+			// Initialize the player's resource state if it doesn't exist.
+			playerCharactersGameState[characterId] = {
+				...$state.snapshot(characterStatsState.value.resources),
+				XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
+			};
 		}
-		// Initialize the player's resource state if it doesn't exist.
-		playerCharactersGameState[characterId] = {
-			...$state.snapshot(characterStatsState.value.resources),
-			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
-		};
 		if (relatedStoryHistoryState.value.relatedDetails.length === 0) {
 			getRelatedHistoryForStory();
 		}
@@ -1707,6 +1744,18 @@ import { onMount, tick } from 'svelte';
 	{#if customDiceRollNotation}
 		<SimpleDiceRoller onClose={onCustomDiceRollClosed} notation={customDiceRollNotation} />
 	{/if}
+	
+	<!-- Party Member Switcher -->
+	{#if partyState.value.members.length > 1}
+		<PartyMemberSwitcher
+			party={partyState.value}
+			partyStats={partyStatsState.value}
+			onSwitch={() => {
+				// Refresh UI when switching characters
+			}}
+		/>
+	{/if}
+	
 	<ResourcesComponent
 		resources={getCurrentCharacterGameState()}
 		currentLevel={characterStatsState.value?.level}
