@@ -39,6 +39,29 @@ export const initialCharacterState: CharacterDescription = {
 	motivation: ''
 };
 
+// Party types
+export type PartyMember = {
+	id: string;
+	character: CharacterDescription;
+};
+
+export type Party = {
+	members: PartyMember[];
+	activeCharacterId: string;
+};
+
+export const initialPartyState: Party = {
+	members: [],
+	activeCharacterId: ''
+};
+
+const partyDescriptionForPrompt = `[
+	${characterDescriptionForPrompt},
+	${characterDescriptionForPrompt},
+	${characterDescriptionForPrompt},
+	${characterDescriptionForPrompt}
+]`;
+
 export class CharacterAgent {
 	llm: LLM;
 
@@ -73,5 +96,29 @@ export class CharacterAgent {
 			systemInstruction: agentInstruction
 		};
 		return (await this.llm.generateContent(request))?.content as CharacterDescription;
+	}
+
+	async generatePartyDescriptions(
+		storyState: object,
+		partyOverwrites?: Partial<CharacterDescription>[]
+	): Promise<CharacterDescription[]> {
+		const agentInstruction = [
+			'You are RPG character agent, creating a party of 4 diverse characters for an RPG adventure.\n' +
+				'Create 4 unique characters that complement each other with different classes, races, and personalities.\n' +
+				'Ensure the party has a good balance of combat, magic, support, and social skills.\n' +
+				TROPES_CLICHE_PROMPT
+		];
+		agentInstruction.push(jsonRule + '\n' + partyDescriptionForPrompt);
+
+		const preset = partyOverwrites || [{}, {}, {}, {}];
+		const request: LLMRequest = {
+			userMessage:
+				'Create a party of 4 characters for this adventure:\n' +
+				stringifyPretty(storyState) +
+				'\n\nParty overwrites (if any):\n' +
+				stringifyPretty(preset),
+			systemInstruction: agentInstruction
+		};
+		return (await this.llm.generateContent(request))?.content as CharacterDescription[];
 	}
 }
