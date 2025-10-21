@@ -33,7 +33,9 @@ import { onMount, tick } from 'svelte';
 		initialCharacterStatsState,
 		type NPCState,
 		type NPCStats,
-		type SkillsProgression
+		type SkillsProgression,
+		type PartyStats,
+		initialPartyStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
@@ -59,7 +61,9 @@ import { onMount, tick } from 'svelte';
 	import {
 		CharacterAgent,
 		type CharacterDescription,
-		initialCharacterState
+		initialCharacterState,
+		type Party,
+		initialPartyState
 	} from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/interaction_modals/dice/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
@@ -102,6 +106,16 @@ import { onMount, tick } from 'svelte';
 		addCharacterToPlayerCharactersIdToNamesMap,
 		getCharacterKnownNames
 	} from './characterLogic';
+	import { 
+		getActivePartyMember, 
+		getActivePartyMemberStats,
+		updatePartyMemberCharacter,
+		updatePartyMemberStats,
+		getPartyMemberByCharacterName,
+		getPartyMemberStatsByCharacterName,
+		updatePlayerCharactersIdToNamesMapForParty,
+		switchActiveCharacter
+	} from './partyLogic';
 	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
 	import SimpleDiceRoller from '$lib/components/interaction_modals/dice/SimpleDiceRoller.svelte';
@@ -151,10 +165,25 @@ import { onMount, tick } from 'svelte';
 		'characterStatsState',
 		initialCharacterStatsState
 	);
+	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
+	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
+	
+	// Sync character state with active party member
+	$effect(() => {
+		if (partyState.value.members.length > 0) {
+			const activeMember = getActivePartyMember(partyState.value);
+			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
+			if (activeMember && activeMemberStats) {
+				characterState.value = activeMember.character;
+				characterStatsState.value = activeMemberStats;
+			}
+		}
+	});
 	let storyChunkState = $state<string>('');
 	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
 
-	const skillsProgressionState = useLocalStorage<SkillsProgression>('skillsProgressionState', {});
+	// Skills progression - now per party member
+	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>('skillsProgressionByMemberState', {});
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
