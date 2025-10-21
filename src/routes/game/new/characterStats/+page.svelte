@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
-	import { initialCharacterState, type CharacterDescription } from '$lib/ai/agents/characterAgent';
+	import { 
+		initialCharacterState, 
+		type CharacterDescription,
+		type Party,
+		initialPartyState
+	} from '$lib/ai/agents/characterAgent';
 	import {
 		CharacterStatsAgent,
 		initialCharacterStatsState,
 		type CharacterStats,
 		type Ability,
-		type Resource
+		type Resource,
+		type PartyStats,
+		initialPartyStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { type Story, initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
@@ -20,6 +27,38 @@
 	import { defaultGameSettings, type GameSettings } from '$lib/ai/agents/gameAgent';
 	import type { AIConfig } from '$lib';
 	import AbilityEditor from '$lib/components/interaction_modals/character/AbilityEditor.svelte';
+
+	let isGeneratingState = $state(false);
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
+
+	let characterStatsAgent: CharacterStatsAgent;
+	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
+	const characterState = useLocalStorage<CharacterDescription>(
+		'characterState',
+		initialCharacterState
+	);
+	const characterStatsState = useLocalStorage<CharacterStats>(
+		'characterStatsState',
+		initialCharacterStatsState
+	);
+	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
+	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
+	
+	// Track which character we're editing
+	let currentCharacterIndex = $state(0);
+	
+	// Initialize party stats if needed
+	$effect(() => {
+		if (partyState.value.members.length > 0 && partyStatsState.value.members.length === 0) {
+			for (let i = 0; i < partyState.value.members.length; i++) {
+				partyStatsState.value.members.push({
+					id: partyState.value.members[i].id,
+					stats: { ...initialCharacterStatsState }
+				});
+			}
+		}
+	});
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -57,20 +96,57 @@
 		);
 	});
 
+	const onRandomizePartyStats = async () => {
+		isGeneratingState = true;
+		const partyCharacters = partyState.value.members.map(m => m.character);
+		const partyStats = await characterStatsAgent.generatePartyStats(
+			$state.snapshot(storyState.value),
+			partyCharacters
+		);
+		if (partyStats && partyStats.length === partyState.value.members.length) {
+			for (let i = 0; i < partyStats.length; i++) {
+				partyStatsState.value.members[i].stats = partyStats[i];
+			}
+			// Set first character stats as active
+			characterStatsState.value = partyStatsState.value.members[0].stats;
+		}
+		isGeneratingState = false;
+	};
+
 	const onRandomize = async () => {
 		isGeneratingState = true;
 		const filteredOverwrites = removeEmptyValues($state.snapshot(characterStatsStateOverwrites));
+		const currentCharacter = partyState.value.members.length > 0 
+			? partyState.value.members[currentCharacterIndex].character
+			: characterState.value;
+		
 		const newState = await characterStatsAgent.generateCharacterStats(
 			$state.snapshot(storyState.value),
-			$state.snapshot(characterState.value),
+			currentCharacter,
 			filteredOverwrites
 		);
 		if (newState) {
 			console.log(newState);
 			parseState(newState);
 			characterStatsState.value = newState;
+			// Update party stats if we're using party mode
+			if (partyState.value.members.length > 0) {
+				partyStatsState.value.members[currentCharacterIndex].stats = newState;
+			}
 		}
 		isGeneratingState = false;
+	};
+	
+	const switchToCharacterStats = (index: number) => {
+		// Save current stats
+		if (partyState.value.members.length > 0) {
+			partyStatsState.value.members[currentCharacterIndex].stats = characterStatsState.value;
+		}
+		
+		// Switch to new character
+		currentCharacterIndex = index;
+		characterStatsState.value = partyStatsState.value.members[index].stats;
+		characterStatsStateOverwrites = cloneDeep(initialCharacterStatsState);
 	};
 
 	const onRandomizeAttributes = async () => {
