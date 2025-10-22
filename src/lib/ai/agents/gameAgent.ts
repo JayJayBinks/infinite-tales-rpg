@@ -333,15 +333,26 @@ export class GameAgent {
 		customCombatAgentInstruction: string,
 		gameSettings: GameSettings
 	) {
+		// Check if there are multiple party members
+		const partyMembers = Object.keys(playerCharactersGameState);
+		const isParty = partyMembers.length > 1;
+		
 		const gameAgent = [
 			systemBehaviour(gameSettings),
 			stringifyPretty(storyState),
-			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-				'\n' +
-				stringifyPretty(characterState),
-			"The following are the character's CURRENT resources, consider it in your response\n" +
-				stringifyPretty(Object.entries(playerCharactersGameState)),
-			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
+			isParty
+				? 'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story.' +
+					'\n' +
+					stringifyPretty(characterState)
+				: 'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
+					'\n' +
+					stringifyPretty(characterState),
+			isParty
+				? "The following are all party members' CURRENT resources. Consider the party's overall condition in your response.\n" +
+					stringifyPretty(Object.entries(playerCharactersGameState))
+				: "The following are the character's CURRENT resources, consider it in your response\n" +
+					stringifyPretty(Object.entries(playerCharactersGameState)),
+			"The party's shared inventory - check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
 				stringifyPretty(inventoryState)
 		];
 		if (customSystemInstruction) {
@@ -357,15 +368,15 @@ export class GameAgent {
 	}
 
 	static getGameEndedPrompt(emptyResourceKey: string[]) {
-		return `The CHARACTER has fallen to 0 ${emptyResourceKey.join(' and ')}; Describe how the GAME is ending.`;
+		return `A party member has fallen to 0 ${emptyResourceKey.join(' and ')}; Describe the consequences and how this affects the party.`;
 	}
 
 	static getStartingPrompt() {
 		return (
 			'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
 			'\nAt the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
-			'\nIf the player character is accompanied by party members, give them names and add them to currently_present_npcs' +
-			'\nCHARACTER starts with some random items.'
+			'\nIf there are multiple party members, naturally introduce them into the scene and add them to currently_present_npcs as friendly.' +
+			'\nThe party starts with some random items.'
 		);
 	}
 
