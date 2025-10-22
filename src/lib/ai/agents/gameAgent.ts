@@ -341,7 +341,7 @@ export class GameAgent {
 			systemBehaviour(gameSettings),
 			stringifyPretty(storyState),
 			isParty
-				? 'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story.' +
+				? 'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story. IMPORTANT: Party members are player characters and should NEVER be added to currently_present_npcs.' +
 					'\n' +
 					stringifyPretty(characterState)
 				: 'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
@@ -375,7 +375,7 @@ export class GameAgent {
 		return (
 			'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
 			'\nAt the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
-			'\nIf there are multiple party members, naturally introduce them into the scene and add them to currently_present_npcs as friendly.' +
+			'\nDo NOT add party members to currently_present_npcs - they are player characters, not NPCs. Only add actual NPCs (non-player characters) to this list.' +
 			'\nThe party starts with some random items.'
 		);
 	}
