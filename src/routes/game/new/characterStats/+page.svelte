@@ -90,6 +90,18 @@
 			partyCharacters
 		);
 		if (partyStats && partyStats.length === partyState.value.members.length) {
+			// Ensure we have the right number of members in partyStatsState
+			while (partyStatsState.value.members.length < partyState.value.members.length) {
+				partyStatsState.value.members.push({
+					id: partyState.value.members[partyStatsState.value.members.length].id,
+					stats: { ...initialCharacterStatsState }
+				});
+			}
+			// Remove extra members if party shrunk
+			while (partyStatsState.value.members.length > partyState.value.members.length) {
+				partyStatsState.value.members.pop();
+			}
+			
 			for (let i = 0; i < partyStats.length; i++) {
 				partyStatsState.value.members[i].stats = partyStats[i];
 			}

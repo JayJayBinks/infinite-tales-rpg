@@ -51,19 +51,47 @@
 	);
 	let characterAgent: CharacterAgent;
 
-	// Initialize party with 4 empty slots if not exists
+	// Initialize party with 1 member if not exists
 	$effect(() => {
 		if (partyState.value.members.length === 0) {
-			for (let i = 0; i < 4; i++) {
-				const id = `player_character_${i + 1}`;
-				partyState.value.members.push({
-					id,
-					character: { ...initialCharacterState }
-				});
-			}
+			const id = 'player_character_1';
+			partyState.value.members.push({
+				id,
+				character: { ...initialCharacterState }
+			});
 			partyState.value.activeCharacterId = 'player_character_1';
+			currentCharacterIndex = 0;
 		}
 	});
+
+	function addPartyMember() {
+		if (partyState.value.members.length >= 4) return;
+		
+		const nextId = `player_character_${partyState.value.members.length + 1}`;
+		partyState.value.members.push({
+			id: nextId,
+			character: { ...initialCharacterState }
+		});
+	}
+
+	function removePartyMember(index: number) {
+		if (partyState.value.members.length <= 1) return;
+		
+		partyState.value.members.splice(index, 1);
+		
+		// Adjust current index if needed
+		if (currentCharacterIndex >= partyState.value.members.length) {
+			currentCharacterIndex = partyState.value.members.length - 1;
+		}
+		
+		// Update active character if we removed the active one
+		if (partyState.value.activeCharacterId === `player_character_${index + 1}`) {
+			partyState.value.activeCharacterId = partyState.value.members[currentCharacterIndex].id;
+		}
+		
+		// Load the current character
+		characterState.value = partyState.value.members[currentCharacterIndex].character;
+	}
 
 	onMount(() => {
 		characterAgent = new CharacterAgent(
@@ -101,11 +129,14 @@
 
 	const onRandomizeParty = async () => {
 		isGeneratingState = true;
+		const partySize = partyState.value.members.length;
 		const partyDescriptions = await characterAgent.generatePartyDescriptions(
-			$state.snapshot(storyState.value)
+			$state.snapshot(storyState.value),
+			undefined,
+			partySize
 		);
-		if (partyDescriptions && partyDescriptions.length === 4) {
-			for (let i = 0; i < 4; i++) {
+		if (partyDescriptions && partyDescriptions.length === partySize) {
+			for (let i = 0; i < partySize; i++) {
 				partyState.value.members[i].character = partyDescriptions[i];
 			}
 			// Set first character as active
@@ -187,20 +218,43 @@
 </ul>
 
 <!-- Party Member Tabs -->
-<div class="tabs-boxed tabs mt-4 flex justify-center">
-	{#each partyState.value.members as member, index}
-		<button
-			class="tab"
-			class:tab-active={currentCharacterIndex === index}
-			onclick={() => switchToCharacter(index)}
-		>
-			{member.character.name || `Character ${index + 1}`}
-		</button>
-	{/each}
+<div class="mt-4 flex flex-col items-center gap-2">
+	<div class="tabs tabs-boxed flex justify-center flex-wrap">
+		{#each partyState.value.members as member, index}
+			<button
+				class="tab"
+				class:tab-active={currentCharacterIndex === index}
+				onclick={() => switchToCharacter(index)}
+			>
+				{member.character.name || `Character ${index + 1}`}
+				{#if partyState.value.members.length > 1}
+					<button
+						class="btn btn-circle btn-ghost btn-xs ml-1"
+						onclick={(e) => {
+							e.stopPropagation();
+							removePartyMember(index);
+						}}
+					>
+						✕
+					</button>
+				{/if}
+			</button>
+		{/each}
+	</div>
+	<div class="flex gap-2 items-center">
+		{#if partyState.value.members.length < 4}
+			<button class="btn btn-sm btn-primary" onclick={addPartyMember}>
+				+ Add Party Member
+			</button>
+		{/if}
+		<span class="text-sm text-gray-500">
+			{partyState.value.members.length}/4 party members
+		</span>
+	</div>
 </div>
 
 <form class="m-6 grid items-center gap-2 text-center">
-	<p>Generate a party of 4 characters, or customize each character individually</p>
+	<p>Generate party of {partyState.value.members.length} character{partyState.value.members.length > 1 ? 's' : ''}, or customize each character individually</p>
 	<button
 		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
 		disabled={isGeneratingState}

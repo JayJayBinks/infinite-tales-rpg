@@ -76,6 +76,8 @@
 	);
 	const relatedActionGroundTruthState = useLocalStorage('relatedActionGroundTruthState');
 	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
+	const partyState = useLocalStorage('partyState');
+	const partyStatsState = useLocalStorage('partyStatsState');
 
 	let isGeneratingState = $state(false);
 	let quickstartModalOpen = $state(false);
@@ -132,43 +134,60 @@
 		playerCharactersIdToNamesMapState.reset();
 		relatedActionGroundTruthState.reset();
 		relatedNPCActionsState.reset();
+		partyState.reset();
+		partyStatsState.reset();
 	}
 
-	async function onQuickstartNew(story: string | Story | undefined) {
+	async function onQuickstartNew(data: any) {
 		clearStates();
 		isGeneratingState = true;
 		let newStoryState;
 		try {
+			const story = data.story || data;
+			const partyDescription = data.partyDescription;
+			const partyMemberCount = data.partyMemberCount || 1;
+			
 			if (story && isPlainObject(story)) {
 				newStoryState = story as Story;
 			} else {
-				const overwriteStory = !story ? {} : { adventure_and_main_event: story as string };
+				const overwriteStory = !story ? {} : { 
+					adventure_and_main_event: story as string,
+					character_simple_description: partyDescription || (story as string)
+				};
 				newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 			}
 			if (newStoryState) {
 				storyState.value = newStoryState;
 				const characterAgent = new CharacterAgent(llm);
-				const newCharacterState = await characterAgent.generateCharacterDescription(
-					$state.snapshot(storyState.value)
+				const characterStatsAgent = new CharacterStatsAgent(llm);
+				
+				// Generate party
+				const partyDescriptions = await characterAgent.generatePartyDescriptions(
+					$state.snapshot(storyState.value),
+					partyDescription ? [{ background: partyDescription }] : undefined,
+					partyMemberCount
 				);
-				if (newCharacterState) {
-					characterState.value = newCharacterState;
-					const characterStatsAgent = new CharacterStatsAgent(llm);
-					const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(
+				
+				if (partyDescriptions && partyDescriptions.length > 0) {
+					// Generate stats for all party members
+					const partyStats = await characterStatsAgent.generatePartyStats(
 						storyState.value,
-						characterState.value,
-						{
+						partyDescriptions,
+						partyDescriptions.map(() => ({
 							level: 1,
 							resources: {
 								HP: { max_value: 0, game_ends_when_zero: true },
 								MP: { max_value: 0, game_ends_when_zero: false }
 							}
-						},
-						true
+						}))
 					);
-					parseState(newCharacterStatsState);
-					if (newCharacterStatsState) {
-						characterStatsState.value = newCharacterStatsState;
+					
+					if (partyStats && partyStats.length === partyDescriptions.length) {
+						// Set first character as active
+						characterState.value = partyDescriptions[0];
+						characterStatsState.value = partyStats[0];
+						parseState(characterStatsState.value);
+						
 						quickstartModalOpen = false;
 						await goto('/game');
 					}

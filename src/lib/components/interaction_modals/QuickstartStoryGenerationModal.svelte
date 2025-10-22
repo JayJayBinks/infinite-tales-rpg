@@ -12,15 +12,18 @@
 		storyAgent: StoryAgent | undefined;
 	} = $props();
 	let storyDescription: string | undefined = $state(undefined);
+	let partyDescription: string | undefined = $state(undefined);
+	let partyMemberCount: number = $state(1);
 	let storyState: Story | undefined = $state(undefined);
 	let isGenerating = $state(false);
 
 	function generateStory() {
-		if (storyState) {
-			onsubmit(storyState);
-		} else {
-			onsubmit(storyDescription);
-		}
+		const data = {
+			story: storyState || storyDescription,
+			partyDescription,
+			partyMemberCount
+		};
+		onsubmit(data);
 	}
 
 	async function generateIdea() {
@@ -32,7 +35,7 @@
 		if (storyDescription) {
 			overwriteStory = {
 				adventure_and_main_event: storyDescription,
-				character_simple_description: storyDescription
+				character_simple_description: partyDescription || storyDescription
 			};
 		}
 		const generated = await storyAgent!.generateRandomStorySettings(overwriteStory);
@@ -49,7 +52,7 @@
 		<LoadingModal />
 	{/if}
 	<div class="modal-box flex flex-col items-center">
-		<span class="m-auto">Tale Description</span>
+		<span class="m-auto text-lg font-bold">Tale Description</span>
 		<button class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2" onclick={onclose}
 			>✕
 		</button>
@@ -57,14 +60,43 @@
 		<textarea
 			bind:value={storyDescription}
 			class="textarea textarea-bordered mt-3 w-full"
-			rows="5"
+			rows="4"
 			oninput={() => (storyState = undefined)}
-			placeholder="Type your idea or let the AI generate one.
-By entering an idea and click Generate Idea, the AI will enhance what you entered."
+			placeholder="Type your adventure idea or let the AI generate one.
+Example: A dark fantasy quest to stop a necromancer from raising an undead army."
 		>
 		</textarea>
 
-		<div class="mt-3 flex gap-2">
+		<div class="divider my-2">Party Configuration</div>
+
+		<div class="form-control w-full">
+			<label class="label">
+				<span class="label-text">Number of Party Members</span>
+			</label>
+			<div class="flex gap-2 justify-center">
+				{#each [1, 2, 3, 4] as count}
+					<button
+						class="btn btn-sm"
+						class:btn-primary={partyMemberCount === count}
+						class:btn-outline={partyMemberCount !== count}
+						onclick={() => (partyMemberCount = count)}
+					>
+						{count}
+					</button>
+				{/each}
+			</div>
+		</div>
+
+		<textarea
+			bind:value={partyDescription}
+			class="textarea textarea-bordered mt-3 w-full"
+			rows="3"
+			placeholder="Optional: Describe your party.
+Example: A balanced party with a warrior, mage, rogue, and cleric."
+		>
+		</textarea>
+
+		<div class="mt-3 flex gap-2 w-full">
 			<button class="btn btn-primary flex-1" onclick={generateIdea}>Generate Idea</button>
 			<button class="btn btn-accent flex-1" onclick={generateStory}>Start</button>
 		</div>
