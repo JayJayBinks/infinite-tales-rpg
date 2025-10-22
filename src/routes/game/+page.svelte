@@ -158,6 +158,7 @@
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
 	const characterActionsState = useLocalStorage<Action[]>('characterActionsState', []);
 	const characterActionsByMemberState = useLocalStorage<Record<string, Action[]>>('characterActionsByMemberState', {});
+	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, Action | null>>('selectedCombatActionsByMemberState', {});
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
 	const characterState = useLocalStorage<CharacterDescription>(
 		'characterState',
@@ -760,6 +761,48 @@
 			levelUpState.value.buttonEnabled = true;
 		}
 	}
+	
+	async function confirmCombatActions() {
+		if (!currentGameActionState.is_character_in_combat) {
+			return;
+		}
+		
+		isAiGeneratingState = true;
+		
+		// Build combat actions prompt for all party members
+		let combatActionsPrompt = '\n\nPARTY COMBAT ACTIONS:\n';
+		
+		for (const member of partyState.value.members) {
+			const selectedAction = selectedCombatActionsByMemberState.value[member.id];
+			if (selectedAction) {
+				combatActionsPrompt += `- ${member.character.name}: ${selectedAction.text}\n`;
+			} else {
+				combatActionsPrompt += `- ${member.character.name}: [AI should choose an appropriate action for this character]\n`;
+			}
+		}
+		
+		combatActionsPrompt += '\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
+		
+		// Create a combined action representing the party's turn
+		const partyAction: Action = {
+			characterName: partyState.value.members.map(m => m.character.name).join(', '),
+			text: combatActionsPrompt,
+			type: 'Party Combat Turn'
+		};
+		
+		// Clear selected actions after confirmation
+		selectedCombatActionsByMemberState.value = {};
+		
+		// Send the party action
+		chosenActionState.value = $state.snapshot(partyAction);
+		await sendAction(chosenActionState.value, false);
+		
+		isAiGeneratingState = false;
+	}
+	
+	function hasAnySelectedCombatActions(): boolean {
+		return Object.values(selectedCombatActionsByMemberState.value).some(action => action !== null && action !== undefined);
+	}
 
 	async function addCampaignAdditionalStoryInput(action: Action, additionalStoryInput: string) {
 		// If the game is played in campaign mode
@@ -1269,12 +1312,31 @@
 		) {
 			button.disabled = true;
 		}
+		
+		// Check if this action is selected for this character in combat
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const isSelected = is_character_in_combat && 
+			selectedCombatActionsByMemberState.value[activeId] === action;
+		
+		if (isSelected) {
+			button.className += ' btn-accent';
+		}
+		
 		button.addEventListener('click', () => {
-			chosenActionState.value = $state.snapshot(action);
-			sendAction(
-				chosenActionState.value,
-				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat)
-			);
+			if (is_character_in_combat) {
+				// In combat, just select the action for this character
+				selectedCombatActionsByMemberState.value[activeId] = action;
+				// Re-render to show selection
+				if (actionsDiv) actionsDiv.innerHTML = '';
+				renderGameState(currentGameActionState, characterActionsState.value);
+			} else {
+				// Outside combat, send action immediately
+				chosenActionState.value = $state.snapshot(action);
+				sendAction(
+					chosenActionState.value,
+					gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat)
+				);
+			}
 		});
 		actionsDiv.appendChild(button);
 	}
@@ -1972,6 +2034,23 @@
 	{/if}
 	
 	<div id="actions" bind:this={actionsDiv} class="mt-2 p-4 pb-0 pt-0"></div>
+	
+	{#if currentGameActionState.is_character_in_combat && !isGameEnded.value}
+		<div class="p-4 pb-0 pt-0">
+			<button
+				onclick={() => confirmCombatActions()}
+				class="text-md btn btn-success mb-3 w-full"
+				disabled={!hasAnySelectedCombatActions() && characterActionsState.value.length === 0}
+				>
+				{#if hasAnySelectedCombatActions()}
+					Confirm Combat Actions ({Object.keys(selectedCombatActionsByMemberState.value).filter(k => selectedCombatActionsByMemberState.value[k]).length}/{partyState.value.members.length} selected)
+				{:else}
+					Confirm Combat Actions (Let AI choose for all)
+				{/if}
+			</button>
+		</div>
+	{/if}
+	
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}
 			{#if characterActionsState.value?.length === 0}
