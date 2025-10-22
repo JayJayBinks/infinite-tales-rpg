@@ -58,7 +58,7 @@
 			<a href="/game/debugstate" class:active={activeUrl === '/game/debugstate'}>Debug Info</a>
 		</li>
 		<li>
-			<a href="/game/character" class:active={activeUrl === '/game/character'}>Character</a>
+			<a href="/game/party" class:active={activeUrl === '/game/party'}>Party</a>
 		</li>
 		<li>
 			<a href="/game/settings/ai" class:active={activeUrl.includes('/game/settings')}>Menu</a>

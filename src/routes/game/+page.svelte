@@ -1749,17 +1749,6 @@
 		<SimpleDiceRoller onClose={onCustomDiceRollClosed} notation={customDiceRollNotation} />
 	{/if}
 
-	<!-- Party Member Switcher -->
-	{#if partyState.value.members.length > 1}
-		<PartyMemberSwitcher
-			party={partyState.value}
-			partyStats={partyStatsState.value}
-			onSwitch={() => {
-				// Refresh UI when switching characters
-			}}
-		/>
-	{/if}
-
 	<ResourcesComponent
 		resources={getCurrentCharacterGameState()}
 		currentLevel={characterStatsState.value?.level}
@@ -1804,6 +1793,21 @@
 			></TTSComponent>
 		</div>
 	{/if}
+	
+	<!-- Party Member Switcher above actions -->
+	{#if partyState.value.members.length > 1 && !isGameEnded.value}
+		<div class="mt-4">
+			<PartyMemberSwitcher
+				party={partyState.value}
+				partyStats={partyStatsState.value}
+				onSwitch={() => {
+					// Refresh UI when switching characters
+					// TODO: Generate actions if not present for this character
+				}}
+			/>
+		</div>
+	{/if}
+	
 	<div id="actions" bind:this={actionsDiv} class="mt-2 p-4 pb-0 pt-0"></div>
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}
