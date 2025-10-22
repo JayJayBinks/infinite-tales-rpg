@@ -31,12 +31,12 @@ Instead of describing an action in progress: Describe the result of that action 
 To ensure the AI focuses on the correct subject, you must begin your prompt by defining the composition.
 
 THE GOLDEN RULE: Describe what is seen, Not the Actor.
-Your most critical and non-negotiable task is to completely omit the player character ${player_character_name} from the description. Never mention body parts, especially hands. 
-The scene must be described as if the player character does not exist visually. 
-You will achieve this by focusing on the effects of the character's actions, not the character performing them.
+Your most critical and non-negotiable task is to completely omit player characters and party members (including ${player_character_name}) from the description. Never mention body parts, especially hands. 
+The scene must be described as if the player characters do not exist visually. 
+You will achieve this by focusing on the effects of the characters' actions, not the characters performing them.
 
 ABSOLUTE PROHIBITIONS
-You must never mention, allude to, or describe the player character ${player_character_name} in any way. The character is visually non-existent.
+You must never mention, allude to, or describe player characters or party members (including ${player_character_name}) in any way. They are visually non-existent.
 Avoid all first-person pronouns ("I," "me," "my").
 Never describe what is outside of the frame.
 
