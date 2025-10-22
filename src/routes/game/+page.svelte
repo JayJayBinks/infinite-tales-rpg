@@ -1553,15 +1553,32 @@
 			);
 
 			if (transformedCharacter) {
+				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				
+				// Update character ID mapping
 				addCharacterToPlayerCharactersIdToNamesMap(
 					playerCharactersIdToNamesMapState.value,
-					playerCharacterIdState,
+					activeId,
 					transformedCharacter.name
 				);
 				characterState.value = transformedCharacter;
+				
+				// Update party member if in party mode
+				const partyMember = partyState.value.members.find(m => m.id === activeId);
+				if (partyMember) {
+					partyMember.character = transformedCharacter;
+				}
 			}
 			if (transformedCharacterStats) {
 				characterStatsState.value = transformedCharacterStats;
+				
+				// Update party stats if in party mode
+				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
+				if (memberStats) {
+					memberStats.stats = transformedCharacterStats;
+				}
+				
 				//generate new actions considering resources might have changed
 				regenerateActions();
 				additionalStoryInputState.value +=
@@ -1570,13 +1587,14 @@
 			}
 
 			//apply new resources
-			playerCharactersGameState[playerCharacterIdState] = {
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			playerCharactersGameState[activeId] = {
 				...$state.snapshot(characterStatsState.value.resources),
-				XP: playerCharactersGameState[playerCharacterIdState].XP
+				XP: playerCharactersGameState[activeId].XP
 			};
 			const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
 				$state.snapshot(characterStatsState.value.resources),
-				playerCharacterIdState,
+				activeId,
 				characterState.value.name,
 				$state.snapshot(gameActionsState.value),
 				$state.snapshot(playerCharactersGameState)
