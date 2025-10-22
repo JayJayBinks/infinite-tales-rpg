@@ -227,6 +227,7 @@
 		buttonEnabled: boolean;
 		dialogOpened: boolean;
 		playerName: string;
+		partyLevelUpStatus?: Record<string, boolean>;
 	}>('levelUpState', {
 		buttonEnabled: false,
 		dialogOpened: false,
@@ -531,21 +532,36 @@
 	}
 
 	const advanceSkillIfApplicable = (skillName: string) => {
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const requiredSkillProgression = getRequiredSkillProgression(
 			skillName,
 			characterStatsState.value
 		);
 		if (requiredSkillProgression) {
-			if (skillsProgressionState.value[skillName] >= requiredSkillProgression) {
-				console.log('Advancing skill ' + skillName + ' by 1');
+			// Initialize member's skills progression if not exists
+			if (!skillsProgressionState.value[activeId]) {
+				skillsProgressionState.value[activeId] = {};
+			}
+			if (!skillsProgressionState.value[activeId][skillName]) {
+				skillsProgressionState.value[activeId][skillName] = 0;
+			}
+			
+			if (skillsProgressionState.value[activeId][skillName] >= requiredSkillProgression) {
+				console.log('Advancing skill ' + skillName + ' by 1 for character ' + activeId);
 				characterStatsState.value.skills[skillName] += 1;
-				skillsProgressionState.value[skillName] = 0;
+				skillsProgressionState.value[activeId][skillName] = 0;
 				gameActionsState.value[gameActionsState.value.length].stats_update.push({
 					sourceName: characterState.value.name,
 					targetName: characterState.value.name,
 					value: { result: skillName },
 					type: 'skill_increased'
 				});
+				
+				// Update party stats for the active member
+				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
+				if (memberStats) {
+					memberStats.stats.skills[skillName] = characterStatsState.value.skills[skillName];
+				}
 			}
 		} else {
 			console.log('No required skill progression found for skill: ' + skillName);
@@ -554,11 +570,16 @@
 
 	const addSkillProgression = (skillName: string, skillProgression: number) => {
 		if (skillProgression) {
-			if (!skillsProgressionState.value[skillName]) {
-				skillsProgressionState.value[skillName] = 0;
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			// Initialize member's skills progression if not exists
+			if (!skillsProgressionState.value[activeId]) {
+				skillsProgressionState.value[activeId] = {};
 			}
-			console.log('Adding skill progression for ' + skillName + ': ' + skillProgression);
-			skillsProgressionState.value[skillName] += skillProgression;
+			if (!skillsProgressionState.value[activeId][skillName]) {
+				skillsProgressionState.value[activeId][skillName] = 0;
+			}
+			console.log('Adding skill progression for ' + skillName + ': ' + skillProgression + ' to character ' + activeId);
+			skillsProgressionState.value[activeId][skillName] += skillProgression;
 		}
 	};
 	function openDiceRollDialog(
@@ -708,12 +729,33 @@
 	}
 
 	function checkForLevelUp() {
-		levelUpState.value.buttonEnabled = false;
+		// Check level-up for all party members
+		partyState.value.members.forEach(member => {
+			const memberGameState = playerCharactersGameState[member.id];
+			const memberStats = partyStatsState.value.members.find(m => m.id === member.id);
+			
+			if (memberGameState && memberStats) {
+				const neededXP = getXPNeededForLevel(memberStats.stats.level);
+				const canLevelUp = neededXP && memberGameState.XP.current_value >= neededXP;
+				
+				// Store level-up availability per member
+				if (!levelUpState.value.partyLevelUpStatus) {
+					levelUpState.value.partyLevelUpStatus = {};
+				}
+				levelUpState.value.partyLevelUpStatus[member.id] = canLevelUp || false;
+			}
+		});
+		
+		// Enable button if ANY party member can level up
+		const anyCanLevelUp = Object.values(levelUpState.value.partyLevelUpStatus || {}).some(status => status);
+		levelUpState.value.buttonEnabled = anyCanLevelUp;
+		
+		// For active character (for backward compatibility)
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
-
 		if (
 			neededXP &&
-			playerCharactersGameState[playerCharacterIdState]?.XP.current_value >= neededXP
+			playerCharactersGameState[activeId]?.XP.current_value >= neededXP
 		) {
 			levelUpState.value.buttonEnabled = true;
 		}
