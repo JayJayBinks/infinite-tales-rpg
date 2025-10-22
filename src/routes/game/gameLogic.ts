@@ -139,7 +139,8 @@ function getColorForStatUpdate(mappedType: string, resources: ResourcesWithCurre
 export function renderStatUpdates(
 	statsUpdates: Array<StatsUpdate>,
 	resources: ResourcesWithCurrentValue,
-	playerNames: Array<string>
+	playerNames: Array<string>,
+	isParty: boolean = false
 ): (undefined | RenderedGameUpdate)[] {
 	if (statsUpdates) {
 		return statsUpdates
@@ -174,10 +175,22 @@ export function renderStatUpdates(
 				const color = getColorForStatUpdate(mappedType, resources);
 
 				if (playerNames.includes(statsUpdate.targetName)) {
-					responseText = 'You ';
-					if (!changeText) {
-						//probably unhandled status effect
-						changeText = 'are';
+					// For party, use character name instead of "You"
+					if (isParty) {
+						responseText = statsUpdate.targetName + ' ';
+						if (!changeText) {
+							//probably unhandled status effect
+							changeText = 'is';
+						} else {
+							//third person
+							changeText += 's';
+						}
+					} else {
+						responseText = 'You ';
+						if (!changeText) {
+							//probably unhandled status effect
+							changeText = 'are';
+						}
 					}
 					if (mappedType.includes('LEVEL')) {
 						resourceText = '';

@@ -249,7 +249,8 @@
 			.renderStatUpdates(
 				$state.snapshot(gameState.stats_update),
 				getCurrentCharacterGameState(),
-				playerCharactersIdToNamesMapState.value[playerId]
+				playerCharactersIdToNamesMapState.value[playerId],
+				partyState.value.members.length > 1 // Pass isParty flag
 			)
 			.concat(gameLogic.renderInventoryUpdate($state.snapshot(gameState.inventory_update)));
 
@@ -769,6 +770,37 @@
 		
 		isAiGeneratingState = true;
 		
+		// Check if any selected actions require dice rolls
+		for (const member of partyState.value.members) {
+			const selectedAction = selectedCombatActionsByMemberState.value[member.id];
+			if (selectedAction && mustRollDice(selectedAction, true)) {
+				// Show dice modal with character name
+				didAIProcessDiceRollActionState.value = false;
+				customDiceRollNotation = '';
+				gmQuestionState = '';
+				customActionReceiver = 'Dice Roll';
+				chosenActionState.value = selectedAction;
+				
+				// Store information about which character is rolling
+				const diceRollMessage = `Rolling for ${member.character.name}'s action: ${selectedAction.text}`;
+				
+				// Show dice roll modal
+				if (diceRollDialog) {
+					diceRollDialog.showModal();
+				}
+				
+				// Wait for dice roll to complete
+				await new Promise<void>((resolve) => {
+					const checkInterval = setInterval(() => {
+						if (didAIProcessDiceRollActionState.value) {
+							clearInterval(checkInterval);
+							resolve();
+						}
+					}, 100);
+				});
+			}
+		}
+		
 		// Build combat actions prompt for all party members
 		let combatActionsPrompt = '\n\nPARTY COMBAT ACTIONS:\n';
 		
@@ -1037,10 +1069,12 @@
 				const generated = await combatAgent.generateStatsUpdatesFromStory(
 					newState.story || '',
 					action,
-					getCharacterKnownNames(
-						playerCharactersIdToNamesMapState.value,
-						characterState.value.name
-					),
+					partyState.value.members.length > 0
+						? partyState.value.members.map(m => m.character.name)
+						: getCharacterKnownNames(
+								playerCharactersIdToNamesMapState.value,
+								characterState.value.name
+						  ),
 					playerCharactersGameState[playerCharacterIdState],
 					gameLogic.getAllTargetsAsList(currentGameActionState.currently_present_npcs),
 					systemInstructionsState.value.generalSystemInstruction,
@@ -1303,10 +1337,13 @@
 		}
 		button.textContent = getTextForActionButton(action);
 
+		// Get active character ID for resource checks
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		
 		if (
 			!isEnoughResource(
 				action,
-				playerCharactersGameState[playerCharacterIdState],
+				playerCharactersGameState[activeId],
 				inventoryState.value
 			)
 		) {
@@ -1314,7 +1351,6 @@
 		}
 		
 		// Check if this action is selected for this character in combat
-		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const isSelected = is_character_in_combat && 
 			selectedCombatActionsByMemberState.value[activeId] === action;
 		
@@ -1490,10 +1526,11 @@
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 			if (
 				!isEnoughResource(
 					action,
-					playerCharactersGameState[playerCharacterIdState],
+					playerCharactersGameState[activeId],
 					inventoryState.value
 				)
 			) {
@@ -1868,6 +1905,7 @@
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
+		party={partyState.value}
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
@@ -2028,6 +2066,9 @@
 						
 						renderGameState(currentGameActionState, characterActionsState.value);
 					}
+					
+					// Check level-up status for newly active character
+					checkForLevelUp();
 				}}
 			/>
 		</div>

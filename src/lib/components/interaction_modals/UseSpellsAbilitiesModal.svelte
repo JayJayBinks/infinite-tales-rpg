@@ -5,6 +5,7 @@
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { AIConfig } from '$lib';
+	import type { Party } from '$lib/ai/agents/characterAgent';
 
 	let {
 		abilities,
@@ -13,7 +14,8 @@
 		resources,
 		targets,
 		onclose,
-		dialogRef = $bindable()
+		dialogRef = $bindable(),
+		party
 	}: {
 		abilities: Array<Ability>;
 		playerName: string;
@@ -22,6 +24,7 @@
 		targets: Targets;
 		onclose;
 		dialogRef;
+		party?: Party;
 	} = $props();
 
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -40,7 +43,7 @@
 </script>
 
 {#if targets}
-	<TargetModal bind:dialogRef={targetModalRef} {targets} action={abilityActionState} {onclose}
+	<TargetModal bind:dialogRef={targetModalRef} {targets} action={abilityActionState} {onclose} {party}
 	></TargetModal>
 {/if}
 <dialog bind:this={dialogRef} class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
