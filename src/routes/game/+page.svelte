@@ -412,12 +412,27 @@
 		playerCharactersGameState = updatedPlayerCharactersGameState;
 		tick().then(() => customActionInput.scrollIntoView(false));
 		if (characterActionsState.value.length === 0) {
+			// Get current resources for the active character
+			const currentResources = getCurrentCharacterGameState();
+			const characterStatsWithCurrentResources = {
+				...characterStatsState.value,
+				resources: Object.fromEntries(
+					Object.entries(characterStatsState.value.resources).map(([key, resource]) => [
+						key,
+						{
+							...resource,
+							current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+						}
+					])
+				)
+			};
+			
 			const { thoughts, actions } = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
 				storyState.value,
 				characterState.value,
-				characterStatsState.value,
+				characterStatsWithCurrentResources,
 				inventoryState.value,
 				systemInstructionsState.value.generalSystemInstruction,
 				systemInstructionsState.value.actionAgentInstruction,
@@ -434,6 +449,12 @@
 			);
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
+			
+			// Save actions for current character
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			if (activeId) {
+				characterActionsByMemberState.value[activeId] = actions;
+			}
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
 		if (!didAIProcessDiceRollActionState.value) {
@@ -1840,12 +1861,27 @@
 						characterActionsState.reset();
 						if (actionsDiv) actionsDiv.innerHTML = '';
 						
+						// Get current resources for the active character
+						const currentResources = getCurrentCharacterGameState();
+						const characterStatsWithCurrentResources = {
+							...characterStatsState.value,
+							resources: Object.fromEntries(
+								Object.entries(characterStatsState.value.resources).map(([key, resource]) => [
+									key,
+									{
+										...resource,
+										current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+									}
+								])
+							)
+						};
+						
 						const { thoughts, actions } = await actionAgent.generateActions(
 							currentGameActionState,
 							historyMessagesState.value,
 							storyState.value,
 							characterState.value,
-							characterStatsState.value,
+							characterStatsWithCurrentResources,
 							inventoryState.value,
 							systemInstructionsState.value.generalSystemInstruction,
 							systemInstructionsState.value.actionAgentInstruction,
@@ -1862,6 +1898,10 @@
 						);
 						characterActionsState.value = actions;
 						thoughtsState.value.actionsThoughts = thoughts;
+						
+						// Save actions for this character
+						characterActionsByMemberState.value[activeId] = actions;
+						
 						renderGameState(currentGameActionState, characterActionsState.value);
 					}
 				}}

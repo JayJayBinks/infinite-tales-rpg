@@ -17,6 +17,18 @@
 	const storyState = useLocalStorage<Story>('storyState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	
+	// Sync character state when active party member changes
+	$effect(() => {
+		if (partyState.value.members.length > 0) {
+			const activeMember = getActivePartyMember(partyState.value);
+			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
+			if (activeMember && activeMemberStats) {
+				characterState.value = activeMember.character;
+				characterStatsState.value = activeMemberStats;
+			}
+		}
+	});
+	
 	// Get current member skills
 	const currentMemberSkills = $derived(
 		partyState.value.activeCharacterId 
