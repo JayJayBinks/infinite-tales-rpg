@@ -20,9 +20,12 @@
 	import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
 	import {
 		addCharacterToPlayerCharactersIdToNamesMap,
-		getCharacterTechnicalId,
+		getCharacterTechnicalId
 	} from '../../characterLogic';
-	import { createPartyFromCharacters, updatePlayerCharactersIdToNamesMapForParty } from '../../partyLogic';
+	import {
+		createPartyFromCharacters,
+		updatePlayerCharactersIdToNamesMapForParty
+	} from '../../partyLogic';
 
 	let isGeneratingState = $state(false);
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -34,7 +37,7 @@
 		initialCharacterState
 	);
 	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
-	
+
 	// Track which character index we're editing (0-3 for party members)
 	let currentCharacterIndex = $state(0);
 	const textAreaRowsDerived = $derived(getRowsForTextarea(characterState.value));
@@ -47,7 +50,7 @@
 		{}
 	);
 	let characterAgent: CharacterAgent;
-	
+
 	// Initialize party with 4 empty slots if not exists
 	$effect(() => {
 		if (partyState.value.members.length === 0) {
@@ -61,7 +64,7 @@
 			partyState.value.activeCharacterId = 'player_character_1';
 		}
 	});
-	
+
 	onMount(() => {
 		characterAgent = new CharacterAgent(
 			LLMProvider.provideLLM(
@@ -80,7 +83,10 @@
 		beforeNavigate(() => {
 			// Update party state
 			if (partyState.value.members.length > 0) {
-				updatePlayerCharactersIdToNamesMapForParty(partyState.value, playerCharactersIdToNamesMapState.value);
+				updatePlayerCharactersIdToNamesMapForParty(
+					partyState.value,
+					playerCharactersIdToNamesMapState.value
+				);
 			} else if (playerCharacterId) {
 				addCharacterToPlayerCharactersIdToNamesMap(
 					playerCharactersIdToNamesMapState.value,
@@ -142,20 +148,20 @@
 		}
 		isGeneratingState = false;
 	};
-	
+
 	const switchToCharacter = (index: number) => {
 		// Save current character state to party
 		partyState.value.members[currentCharacterIndex].character = characterState.value;
-		
+
 		// Switch to new character
 		currentCharacterIndex = index;
 		characterState.value = partyState.value.members[index].character;
 		characterStateOverwrites = {};
 		resetImageState = true;
 	};
-	
+
 	const isPartyComplete = $derived(
-		partyState.value.members.every(m => !isEqual(m.character, initialCharacterState))
+		partyState.value.members.every((m) => !isEqual(m.character, initialCharacterState))
 	);
 </script>
 
@@ -181,7 +187,7 @@
 </ul>
 
 <!-- Party Member Tabs -->
-<div class="tabs tabs-boxed mt-4 flex justify-center">
+<div class="tabs-boxed tabs mt-4 flex justify-center">
 	{#each partyState.value.members as member, index}
 		<button
 			class="tab"
@@ -203,7 +209,10 @@
 		Randomize Entire Party
 	</button>
 	<div class="divider">OR</div>
-	<p>Customize Current Character ({partyState.value.members[currentCharacterIndex].character.name || `Character ${currentCharacterIndex + 1}`})</p>
+	<p>
+		Customize Current Character ({partyState.value.members[currentCharacterIndex]?.character.name ||
+			`Character ${currentCharacterIndex + 1}`})
+	</p>
 	<button
 		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
 		disabled={isGeneratingState}

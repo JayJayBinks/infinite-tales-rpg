@@ -7,21 +7,21 @@
 		stringifyPretty,
 		type ThoughtsState
 	} from '$lib/util.svelte';
-import {
-	type Action,
-	defaultGameSettings,
-	type GameActionState,
-	GameAgent,
-	type GameMasterAnswer,
-	type GameSettings,
-	type InventoryState,
-	type Item,
-	type NPCAction,
-	type PlayerCharactersGameState,
-	type PlayerCharactersIdToNamesMap,
-	SUDO_COMMAND
-} from '$lib/ai/agents/gameAgent';
-import { onMount, tick } from 'svelte';
+	import {
+		type Action,
+		defaultGameSettings,
+		type GameActionState,
+		GameAgent,
+		type GameMasterAnswer,
+		type GameSettings,
+		type InventoryState,
+		type Item,
+		type NPCAction,
+		type PlayerCharactersGameState,
+		type PlayerCharactersIdToNamesMap,
+		SUDO_COMMAND
+	} from '$lib/ai/agents/gameAgent';
+	import { onMount, tick } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
@@ -106,8 +106,8 @@ import { onMount, tick } from 'svelte';
 		addCharacterToPlayerCharactersIdToNamesMap,
 		getCharacterKnownNames
 	} from './characterLogic';
-	import { 
-		getActivePartyMember, 
+	import {
+		getActivePartyMember,
 		getActivePartyMemberStats,
 		updatePartyMemberCharacter,
 		updatePartyMemberStats,
@@ -168,7 +168,7 @@ import { onMount, tick } from 'svelte';
 	);
 	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
 	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
-	
+
 	// Sync character state with active party member
 	$effect(() => {
 		if (partyState.value.members.length > 0) {
@@ -184,7 +184,10 @@ import { onMount, tick } from 'svelte';
 	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
 
 	// Skills progression - now per party member
-	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>('skillsProgressionByMemberState', {});
+	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>(
+		'skillsProgressionByMemberState',
+		{}
+	);
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
@@ -323,15 +326,15 @@ import { onMount, tick } from 'svelte';
 			playerCharactersIdToNamesMapState.value,
 			currentCharacterName
 		);
-		
+
 		// Initialize party if it exists
 		if (partyState.value.members.length > 0) {
 			// Initialize resources for all party members
 			for (const member of partyState.value.members) {
-				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
+				const memberStats = partyStatsState.value.members.find((m) => m.id === member.id)?.stats;
 				if (memberStats && !playerCharactersGameState[member.id]) {
 					playerCharactersGameState[member.id] = {};
-					
+
 					// Convert resources to have current_value
 					for (const [key, resource] of Object.entries(memberStats.resources)) {
 						playerCharactersGameState[member.id][key] = {
@@ -340,7 +343,7 @@ import { onMount, tick } from 'svelte';
 							game_ends_when_zero: resource.game_ends_when_zero
 						};
 					}
-					
+
 					// Initialize XP
 					if (!playerCharactersGameState[member.id].XP) {
 						playerCharactersGameState[member.id].XP = {
@@ -351,10 +354,13 @@ import { onMount, tick } from 'svelte';
 					}
 				}
 			}
-			
+
 			// Update playerCharactersIdToNamesMapState
-			updatePlayerCharactersIdToNamesMapForParty(partyState.value, playerCharactersIdToNamesMapState.value);
-			
+			updatePlayerCharactersIdToNamesMapForParty(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value
+			);
+
 			// Set character ID to active party member
 			characterId = partyState.value.activeCharacterId;
 		} else if (!characterId) {
@@ -365,7 +371,7 @@ import { onMount, tick } from 'svelte';
 				characterId,
 				currentCharacterName
 			);
-			
+
 			// Initialize the player's resource state if it doesn't exist.
 			playerCharactersGameState[characterId] = {
 				...$state.snapshot(characterStatsState.value.resources),
@@ -488,7 +494,7 @@ import { onMount, tick } from 'svelte';
 					)
 				};
 			})
-			.filter(npc => npc !== undefined);
+			.filter((npc) => npc !== undefined);
 
 		// Compute the determined combat actions and stats update.
 		const determinedActions = await combatAgent.generateActionsFromContext(
@@ -552,8 +558,8 @@ import { onMount, tick } from 'svelte';
 			}
 
 			const dice_roll_addition_text = getDiceRollPromptAddition(result);
-					// Add dice roll addition text if available.
-		additionalStoryInputState.value += '\n' + dice_roll_addition_text + '\n';
+			// Add dice roll addition text if available.
+			additionalStoryInputState.value += '\n' + dice_roll_addition_text + '\n';
 			sendAction(
 				chosenActionState.value,
 				false,
@@ -882,11 +888,7 @@ import { onMount, tick } from 'svelte';
 	}
 
 	// Runs post-story async tasks (image prompt + stats generation) concurrently, then applies results.
-	async function processPostStory(
-		newState: GameActionState,
-		action: Action,
-		simulation: string
-	) {
+	async function processPostStory(newState: GameActionState, action: Action, simulation: string) {
 		newState.image_prompt = '';
 		checkForNewNPCs(newState);
 		npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
@@ -1010,30 +1012,30 @@ import { onMount, tick } from 'svelte';
 			//take the last 10000 characters as it is probably the real input
 			additionalStoryInputState.value = additionalStoryInputState.value.slice(-10_000);
 		}
-		if(!deadNPCs){
+		if (!deadNPCs) {
 			deadNPCs = npcLogic.removeDeadNPCs(npcState.value);
 		}
 		// Retrieve combat and NPC-related story additions.
 		if (
-					!waitForActionsResult &&
-					useDynamicCombat.value &&
-					!isGameEnded.value &&
-					currentGameActionState.is_character_in_combat
-				) {
-					waitForActionsResult = getActionPromptForCombat(
-						action,
-						currentGameActionState,
-						npcState.value,
-						inventoryState.value,
-						systemInstructionsState.value.generalSystemInstruction,
-						systemInstructionsState.value.combatAgentInstruction,
-						getLatestStoryMessages(),
-						storyState.value,
-						combatAgent
-					).then((actions) => {
-						relatedNPCActionsState.value = actions;
-					});
-				}
+			!waitForActionsResult &&
+			useDynamicCombat.value &&
+			!isGameEnded.value &&
+			currentGameActionState.is_character_in_combat
+		) {
+			waitForActionsResult = getActionPromptForCombat(
+				action,
+				currentGameActionState,
+				npcState.value,
+				inventoryState.value,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.combatAgentInstruction,
+				getLatestStoryMessages(),
+				storyState.value,
+				combatAgent
+			).then((actions) => {
+				relatedNPCActionsState.value = actions;
+			});
+		}
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
@@ -1099,8 +1101,10 @@ import { onMount, tick } from 'svelte';
 					removeCluesFromSimulationOnFailure(diceRollAdditionText)
 				);
 
-
-				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(relatedNPCActionsState.value, deadNPCs);
+				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(
+					relatedNPCActionsState.value,
+					deadNPCs
+				);
 				additionalStoryInputState.value += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 
 				// Prepare the additional story input (including combat and chapter info)
@@ -1744,7 +1748,7 @@ import { onMount, tick } from 'svelte';
 	{#if customDiceRollNotation}
 		<SimpleDiceRoller onClose={onCustomDiceRollClosed} notation={customDiceRollNotation} />
 	{/if}
-	
+
 	<!-- Party Member Switcher -->
 	{#if partyState.value.members.length > 1}
 		<PartyMemberSwitcher
@@ -1755,7 +1759,7 @@ import { onMount, tick } from 'svelte';
 			}}
 		/>
 	{/if}
-	
+
 	<ResourcesComponent
 		resources={getCurrentCharacterGameState()}
 		currentLevel={characterStatsState.value?.level}

@@ -9,24 +9,29 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 ### 1. Core Data Structures ✅
 
 #### New Types
+
 - `Party` - Contains array of PartyMember and tracks active character
 - `PartyMember` - Individual character with unique ID
-- `PartyStats` - Contains stats for all party members  
+- `PartyStats` - Contains stats for all party members
 - `PartyMemberStats` - Stats for individual member
 
 #### Files Created
+
 - `/src/routes/game/partyLogic.ts` - 15+ helper functions for party management
 - `/src/lib/components/PartyMemberSwitcher.svelte` - UI component for switching characters
 - `/PARTY_SYSTEM_IMPLEMENTATION.md` - Comprehensive implementation guide
 
 #### Files Modified
+
 - `/src/lib/ai/agents/characterAgent.ts` - Added `generatePartyDescriptions()` method
 - `/src/lib/ai/agents/characterStatsAgent.ts` - Added `generatePartyStats()` method
 
 ### 2. Character Generation Flow ✅
 
 #### `/game/new/character/+page.svelte`
+
 **Added:**
+
 - Party state tracking (`partyState`)
 - Character switcher tabs (shows all 4 party members)
 - "Randomize Entire Party" button - generates all 4 characters at once
@@ -35,13 +40,16 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 - Party state persistence when navigating
 
 **User Experience:**
+
 - User can generate all 4 characters with one click
 - Or customize each character individually using tabs
 - Progress saved across all characters
 - Next button disabled until all 4 characters complete
 
 #### `/game/new/characterStats/+page.svelte`
+
 **Added:**
+
 - Party stats state tracking (`partyStatsState`)
 - `onRandomizePartyStats()` - generates stats for all 4 members
 - Character stats switcher functionality
@@ -51,7 +59,9 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 ### 3. Main Game Integration ✅
 
 #### `/game/+page.svelte`
+
 **Added:**
+
 - Imported party types and logic helpers
 - `partyState` and `partyStatsState` local storage
 - Party initialization in `onMount`:
@@ -64,6 +74,7 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 - PartyMemberSwitcher component in UI
 
 **How It Works:**
+
 ```typescript
 // When game loads:
 1. Check if party exists
@@ -82,11 +93,13 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 ### 4. Resource Management ✅
 
 **Already Working:**
+
 - Stats updates use `playerCharactersGameState` which is keyed by character ID
 - Combat system uses `playerCharactersIdToNamesMap` to find characters
 - Resource tracking is per-character via character ID
 
 **What Was Added:**
+
 - Initialize resources for all party members on game start
 - ResourcesComponent already works correctly (shows active character)
 - Party member switcher shows character names and key stats
@@ -94,7 +107,9 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 ### 5. UI Components ✅
 
 #### PartyMemberSwitcher Component
+
 **Features:**
+
 - Shows all party members as buttons
 - Active member highlighted
 - Displays character name and class
@@ -120,8 +135,10 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 ### High Priority
 
 #### 1. Test Everything 🔴
+
 **Why Critical:** Need to verify the flow works end-to-end
 **Test Steps:**
+
 1. Create new game
 2. Generate party of 4 characters
 3. Generate stats for all 4
@@ -132,14 +149,16 @@ This PR implements a comprehensive party system for the Infinite Tales RPG, tran
 8. Verify stats update correct character
 
 #### 2. Skills Progression Per Member 🔴
+
 **Current Issue:** Skills tracked in single object
 **Fix Required:**
+
 ```typescript
 // Change from:
-skillsProgressionState: SkillsProgression
+skillsProgressionState: SkillsProgression;
 
 // To:
-skillsProgressionByMemberState: Record<string, SkillsProgression>
+skillsProgressionByMemberState: Record<string, SkillsProgression>;
 
 // Update all uses to:
 const currentMemberId = partyState.value.activeCharacterId;
@@ -147,19 +166,22 @@ const skills = skillsProgressionState.value[currentMemberId];
 ```
 
 **Files to Update:**
+
 - Character sheet page (displaying skills)
 - Skill progression logic during actions
 - Level up modal
 
 #### 3. Action Generation Context 🟡
+
 **Current:** Actions generated for single character
 **Needed:** Actions should consider party composition
 
 **Changes Required:**
+
 ```typescript
 // In actionAgent.generateActions():
 const partyInfo = `Party composition:
-${party.members.map(m => `- ${m.character.name} (${m.character.class}, Level ${stats.level})`).join('\n')}
+${party.members.map((m) => `- ${m.character.name} (${m.character.class}, Level ${stats.level})`).join('\n')}
 
 Currently active: ${activeCharacter.name}`;
 
@@ -167,30 +189,37 @@ Currently active: ${activeCharacter.name}`;
 ```
 
 #### 4. AI Prompt Updates 🟡
+
 **Files to Update:**
+
 - `gameAgent.ts` - Include party in story generation
-- `storyAgent.ts` - Reference party members in narration  
+- `storyAgent.ts` - Reference party members in narration
 - `combatAgent.ts` - Verify considers all members
 - `actionAgent.ts` - Generate party-contextual actions
 
 ### Medium Priority
 
 #### 5. Character Sheet for Party 🟡
+
 **File:** `/game/character/+page.svelte`
 **Changes:**
+
 - Add party overview tab
 - Show all members' basic info
 - Allow detailed view per member
 
 #### 6. Level Up for Party Members 🟡
+
 **Current:** Only checks active character
 **Needed:** Check all members, show who can level up
 **Changes:**
+
 - Check XP for all party members
 - Show "Level Up Available" for each
 - Allow leveling any member
 
 #### 7. Inventory Management 🟡
+
 **Current:** Items are party-wide (good!)
 **Consider:** Allow targeting which member uses item
 **Optional Enhancement**
@@ -198,23 +227,27 @@ Currently active: ${activeCharacter.name}`;
 ### Low Priority
 
 #### 8. Party Member Status Indicators 🟢
+
 **Enhancement:** Show health bars for all members
 **Location:** Near party switcher
 **Visual:** Mini health/resource bars
 
 #### 9. Character Transformation for Party 🟢
+
 **Current:** Works for single character
 **Update:** Specify which party member transforms
 **Add:** Party member ID to transformation event
 
 #### 10. Migration Logic 🟢
+
 **Create:** Function to convert single character saves
 **Logic:**
+
 ```typescript
 function migrateToParty(characterState, characterStatsState) {
-  // Create party with 1 member + 3 empty slots
-  // Old character becomes party leader
-  // Empty slots can be filled later
+	// Create party with 1 member + 3 empty slots
+	// Old character becomes party leader
+	// Empty slots can be filled later
 }
 ```
 
@@ -267,29 +300,37 @@ Advanced:
 ## Architecture Decisions
 
 ### 1. Active Character Pattern
+
 **Decision:** Sync `characterState` with active party member
-**Rationale:** 
+**Rationale:**
+
 - Minimizes changes to existing code
 - Most components already use `characterState`
 - Automatic updates via `$effect`
 
 ### 2. Resource Tracking
+
 **Decision:** Use existing `playerCharactersGameState` keyed by ID
 **Rationale:**
+
 - Already supports multiple characters
 - Combat system already uses this
 - Stats updates already work correctly
 
 ### 3. Party Generation
+
 **Decision:** Generate all 4 at once OR individually
 **Rationale:**
+
 - Gives user flexibility
 - Single button for quick start
 - Tabs for customization
 
 ### 4. Backward Compatibility
+
 **Decision:** Support single character parties
 **Rationale:**
+
 - Existing saves continue working
 - Gradual adoption possible
 - Empty slots can be filled later
@@ -297,21 +338,25 @@ Advanced:
 ## Common Pitfalls
 
 ### 1. Skills Progression
+
 **Issue:** Still tracked globally
 **Impact:** All characters share skill progression
 **Fix:** Update to per-member dictionary
 
 ### 2. Level Up
+
 **Issue:** Only checks active character
 **Impact:** Other members might be ready to level
 **Fix:** Check all members, show notifications
 
 ### 3. Action Context
+
 **Issue:** Actions don't consider party
 **Impact:** Suggestions not optimal for party play
 **Fix:** Include party info in prompts
 
 ### 4. Image Storage
+
 **Issue:** Character images might conflict
 **Impact:** Images overwrite each other
 **Fix:** Use character ID in storage key (already done: `characterImageState_{index}`)
@@ -319,6 +364,7 @@ Advanced:
 ## Code Examples
 
 ### Switching Active Character
+
 ```typescript
 import { switchActiveCharacter } from './partyLogic';
 
@@ -328,42 +374,31 @@ switchActiveCharacter(partyState.value, 'player_character_2');
 ```
 
 ### Getting Active Character Stats
+
 ```typescript
 import { getActivePartyMemberStats } from './partyLogic';
 
-const stats = getActivePartyMemberStats(
-  partyState.value, 
-  partyStatsState.value
-);
+const stats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
 ```
 
 ### Updating a Party Member
+
 ```typescript
 import { updatePartyMemberCharacter, updatePartyMemberStats } from './partyLogic';
 
 // Update character description
-updatePartyMemberCharacter(
-  partyState.value, 
-  memberId, 
-  newCharacterDescription
-);
+updatePartyMemberCharacter(partyState.value, memberId, newCharacterDescription);
 
 // Update character stats
-updatePartyMemberStats(
-  partyStatsState.value, 
-  memberId, 
-  newStats
-);
+updatePartyMemberStats(partyStatsState.value, memberId, newStats);
 ```
 
 ### Finding Party Member by Name
+
 ```typescript
 import { getPartyMemberByCharacterName } from './partyLogic';
 
-const member = getPartyMemberByCharacterName(
-  partyState.value, 
-  'Gandalf'
-);
+const member = getPartyMemberByCharacterName(partyState.value, 'Gandalf');
 ```
 
 ## Performance Considerations
@@ -437,12 +472,14 @@ A: Technically yes, but not recommended. IDs are unique.
 ## Files Changed Summary
 
 **Created (3):**
+
 - `/src/routes/game/partyLogic.ts` (party helper functions)
 - `/src/lib/components/PartyMemberSwitcher.svelte` (UI component)
 - `/PARTY_SYSTEM_IMPLEMENTATION.md` (documentation)
 - `/PARTY_SYSTEM_SUMMARY.md` (this file)
 
 **Modified (5):**
+
 - `/src/lib/ai/agents/characterAgent.ts` (party generation)
 - `/src/lib/ai/agents/characterStatsAgent.ts` (party stats generation)
 - `/src/routes/game/new/character/+page.svelte` (party UI)
@@ -454,12 +491,14 @@ A: Technically yes, but not recommended. IDs are unique.
 ## Conclusion
 
 The party system is **architecturally complete** and **functionally ready for testing**. The core infrastructure handles:
+
 - Party generation ✅
 - Resource tracking ✅
 - Character switching ✅
 - Stats updates ✅
 
 Remaining work is primarily:
+
 - Testing and bug fixes
 - UI polish
 - AI prompt updates

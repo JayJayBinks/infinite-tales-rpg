@@ -86,17 +86,17 @@ export class CombatAgent {
 		// Reuse original stats update spec
 		systemInstruction.push(
 			`${jsonRule}\n{\n"determined_actions": "string array; one entry per ACTIVE action but not outcomes", ${statsUpdatePromptObject}\n}\n` +
-			'# Rules:\n' +
-			`ACTIONS:
+				'# Rules:\n' +
+				`ACTIONS:
 			**Strict Adherence to Text:** Derive stat changes ONLY from events EXPLICITLY stated in the STORY. If the story says an attack *missed* or a character *dodged*, you MUST NOT create a hp_lost entry for that attack. 
 			Do not infer damage from descriptions of attack preparation, heat, close calls, or environmental damage unless the character is explicitly stated to be harmed.
 			**Action vs. Outcome Distinction:** In determined_actions, list only the initial, active action (e.g., 'Character A attacks Character B'). Do NOT list the result or outcome of that action (e.g., 'Character B's shield is hit', 'The attack misses and hits a wall') as a separate, new action.
 			**Confirmed Hits Only:** Only generate a hp_lost entry if the STORY explicitly describes an attack *connecting* with its target and causing harm.\n` +
-			`STATS_UPDATE:
+				`STATS_UPDATE:
 			- Determine if stats_update is necessary for each ACTION or ongoing effect (bleeding/poison/etc.) if present in STORY.
 			- Use dice notation (e.g. 1d6+2) for value for non-xp changes, or if mentioned directly COST OF THE PLAYER ACTION
-			- Types follow pattern {resourceKey}_lost or {resourceKey}_gained OR xp_gained.\n` + 
-			`- Handle PLAYER CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
+			- Types follow pattern {resourceKey}_lost or {resourceKey}_gained OR xp_gained.\n` +
+				`- Handle PLAYER CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
 			XP:
 				- Award XP only for contributions to a challenge according to significance.
 				- SMALL: Obtaining clues, engaging in reconnaissance, or learning background information.
@@ -107,16 +107,22 @@ export class CombatAgent {
 			`
 		);
 		if (customSystemInstruction) {
-			systemInstruction.push('Additional instructions which can override others: ' + customSystemInstruction);
+			systemInstruction.push(
+				'Additional instructions which can override others: ' + customSystemInstruction
+			);
 		}
 		if (customCombatAgentInstruction) {
-			systemInstruction.push('Additional instructions which can override others: ' + customCombatAgentInstruction);
+			systemInstruction.push(
+				'Additional instructions which can override others: ' + customCombatAgentInstruction
+			);
 		}
 
 		const userMessage =
 			'STORY (reference only, do NOT repeat):\n' +
 			story +
-			(playerAction.resource_cost ? '\n\nCOST OF THE PLAYER ACTION:\n' + JSON.stringify(playerAction.resource_cost) : '') +
+			(playerAction.resource_cost
+				? '\n\nCOST OF THE PLAYER ACTION:\n' + JSON.stringify(playerAction.resource_cost)
+				: '') +
 			'\n\nReturn ONLY JSON with determined_actions and stats_update.';
 
 		const request: LLMRequest = {
@@ -125,7 +131,7 @@ export class CombatAgent {
 			systemInstruction,
 			returnFallbackProperty: true,
 			reportErrorToUser: false,
-			temperature: .7,
+			temperature: 0.7,
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: { includeThoughts: true, thinkingBudget: THINKING_BUDGET.DEFAULT }
 		};
@@ -141,7 +147,7 @@ export class CombatAgent {
 		}
 		console.log('stats updates raw: ', stringifyPretty(content));
 		// Map dice notations
-		const updates = { stats_update }
+		const updates = { stats_update };
 		mapStatsUpdates(updates);
 		return updates.stats_update || [];
 	}
@@ -213,17 +219,20 @@ export class CombatAgent {
 	static getAdditionalStoryInput(actions: Array<NPCAction>, deadNPCs?: Array<string>) {
 		// let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
 		//     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
-		if(deadNPCs && deadNPCs.length > 0) {
-			actions = actions.filter(action => !deadNPCs.includes(action.sourceId) && !deadNPCs.includes(action.targetId));
+		if (deadNPCs && deadNPCs.length > 0) {
+			actions = actions.filter(
+				(action) => !deadNPCs.includes(action.sourceId) && !deadNPCs.includes(action.targetId)
+			);
 		}
 		const mappedActions = actions.map(
 			(action) =>
 				`${action.sourceId} targets ${action.targetId} with result: ${action.simulated_outcome}`
 		);
-		return mappedActions.length === 0 ? '' : (
-			'\nDescribe the player action and the following NPCS actions in the story progression:\n' +
-			stringifyPretty(mappedActions) + '\n'
-		);
+		return mappedActions.length === 0
+			? ''
+			: '\nDescribe the player action and the following NPCS actions in the story progression:\n' +
+					stringifyPretty(mappedActions) +
+					'\n';
 	}
 
 	static getNPCsHealthStatePrompt(

@@ -55,9 +55,9 @@ export function getAllNpcsKnownNames(targets: Targets, npcState: NPCState): Arra
 		return [];
 	}
 	return [
-		...(targets.hostile.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || [])),
-		...(targets.neutral.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || [])),
-		...(targets.friendly.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || []))
+		...targets.hostile.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || []),
+		...targets.neutral.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || []),
+		...targets.friendly.map((npcId) => npcState[npcId.uniqueTechnicalNameId]?.known_names || [])
 	].flat();
 }
 
@@ -268,15 +268,21 @@ export function applyGameActionState(
 		if (!resource) {
 			resource = resources[key.toUpperCase()];
 			let everyWordUpperKey;
-			if(!resource){
-				everyWordUpperKey = key.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+			if (!resource) {
+				everyWordUpperKey = key
+					.split(' ')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ');
 				resource = resources[everyWordUpperKey];
 			}
-			if(!resource){
-				everyWordUpperKey = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+			if (!resource) {
+				everyWordUpperKey = key
+					.split('_')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ');
 				resource = resources[everyWordUpperKey];
 			}
-			if(!resource){
+			if (!resource) {
 				resource = resources[everyWordUpperKey.replaceAll(' ', '-')];
 			}
 		}
@@ -422,7 +428,11 @@ export function addAdditionsFromActionSideeffects(
 		additionalStoryInput += '\n' + SLOW_STORY_PROMPT;
 	}
 	const encounterString = JSON.stringify(action.enemyEncounterExplanation) || '';
-	if (!is_character_in_combat && encounterString.includes('HIGH') && !encounterString.includes('LOW')) {
+	if (
+		!is_character_in_combat &&
+		encounterString.includes('HIGH') &&
+		!encounterString.includes('LOW')
+	) {
 		additionalStoryInput += '\nenemyEncounter: ' + encounterString;
 	}
 

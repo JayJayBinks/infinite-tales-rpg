@@ -193,21 +193,16 @@ export class CharacterStatsAgent {
 		statsOverwrites?: Partial<CharacterStats>[]
 	): Promise<CharacterStats[]> {
 		const partyStats: CharacterStats[] = [];
-		
+
 		for (let i = 0; i < partyCharacters.length; i++) {
 			const character = partyCharacters[i];
 			const overwrites = statsOverwrites?.[i];
-			
-			const stats = await this.generateCharacterStats(
-				storyState,
-				character,
-				overwrites,
-				false
-			);
-			
+
+			const stats = await this.generateCharacterStats(storyState, character, overwrites, false);
+
 			partyStats.push(stats);
 		}
-		
+
 		return partyStats;
 	}
 

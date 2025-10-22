@@ -1,9 +1,5 @@
-import type { 
-	Party, 
-	PartyMember, 
-	CharacterDescription 
-} from '$lib/ai/agents/characterAgent';
-import type { 
+import type { Party, PartyMember, CharacterDescription } from '$lib/ai/agents/characterAgent';
+import type {
 	CharacterStats,
 	PartyStats,
 	PartyMemberStats,
@@ -19,46 +15,46 @@ export function createPartyFromCharacters(
 		members: [],
 		activeCharacterId: ''
 	};
-	
+
 	const partyStats: PartyStats = {
 		members: []
 	};
-	
+
 	for (let i = 0; i < characters.length; i++) {
 		const id = `player_character_${i + 1}`;
-		
+
 		party.members.push({
 			id,
 			character: characters[i]
 		});
-		
+
 		partyStats.members.push({
 			id,
 			stats: stats[i]
 		});
-		
+
 		if (i === 0) {
 			party.activeCharacterId = id;
 		}
 	}
-	
+
 	return { party, partyStats };
 }
 
 export function getActivePartyMember(party: Party): PartyMember | undefined {
-	return party.members.find(m => m.id === party.activeCharacterId);
+	return party.members.find((m) => m.id === party.activeCharacterId);
 }
 
 export function getActivePartyMemberStats(
-	party: Party, 
+	party: Party,
 	partyStats: PartyStats
 ): CharacterStats | undefined {
-	const memberStats = partyStats.members.find(m => m.id === party.activeCharacterId);
+	const memberStats = partyStats.members.find((m) => m.id === party.activeCharacterId);
 	return memberStats?.stats;
 }
 
 export function getPartyMemberById(party: Party, id: string): PartyMember | undefined {
-	return party.members.find(m => m.id === id);
+	return party.members.find((m) => m.id === id);
 }
 
 export function getPartyMemberStatsByCharacterName(
@@ -66,22 +62,22 @@ export function getPartyMemberStatsByCharacterName(
 	partyStats: PartyStats,
 	characterName: string
 ): CharacterStats | undefined {
-	const member = party.members.find(m => m.character.name === characterName);
+	const member = party.members.find((m) => m.character.name === characterName);
 	if (!member) return undefined;
-	
-	const memberStats = partyStats.members.find(m => m.id === member.id);
+
+	const memberStats = partyStats.members.find((m) => m.id === member.id);
 	return memberStats?.stats;
 }
 
 export function switchActiveCharacter(party: Party, characterId: string): void {
-	const member = party.members.find(m => m.id === characterId);
+	const member = party.members.find((m) => m.id === characterId);
 	if (member) {
 		party.activeCharacterId = characterId;
 	}
 }
 
 export function getAllPartyCharacterNames(party: Party): string[] {
-	return party.members.map(m => m.character.name);
+	return party.members.map((m) => m.character.name);
 }
 
 export function updatePlayerCharactersIdToNamesMapForParty(
@@ -124,7 +120,7 @@ export function getPartyMemberByCharacterName(
 	party: Party,
 	characterName: string
 ): PartyMember | undefined {
-	return party.members.find(m => m.character.name === characterName);
+	return party.members.find((m) => m.character.name === characterName);
 }
 
 export function updatePartyMemberCharacter(
@@ -132,7 +128,7 @@ export function updatePartyMemberCharacter(
 	memberId: string,
 	character: CharacterDescription
 ): void {
-	const member = party.members.find(m => m.id === memberId);
+	const member = party.members.find((m) => m.id === memberId);
 	if (member) {
 		member.character = character;
 	}
@@ -143,7 +139,7 @@ export function updatePartyMemberStats(
 	memberId: string,
 	stats: CharacterStats
 ): void {
-	const memberStats = partyStats.members.find(m => m.id === memberId);
+	const memberStats = partyStats.members.find((m) => m.id === memberId);
 	if (memberStats) {
 		memberStats.stats = stats;
 	}
