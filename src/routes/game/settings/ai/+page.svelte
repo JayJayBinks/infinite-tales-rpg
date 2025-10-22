@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import { handleError, navigate, parseState } from '$lib/util.svelte';
-	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import { CharacterAgent, initialCharacterState, type Party } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		CharacterStatsAgent,
-		initialCharacterStatsState
+		initialCharacterStatsState,
+		type PartyStats
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import { onMount } from 'svelte';
@@ -183,7 +184,26 @@
 					);
 					
 					if (partyStats && partyStats.length === partyDescriptions.length) {
-						// Set first character as active
+						// Initialize party state with all generated members
+						const party: Party = {
+							members: partyDescriptions.map((desc, index) => ({
+								id: `player_character_${index + 1}`,
+								character: desc
+							})),
+							activeCharacterId: 'player_character_1'
+						};
+						
+						const partyStatsData: PartyStats = {
+							members: partyStats.map((stats, index) => ({
+								id: `player_character_${index + 1}`,
+								stats
+							}))
+						};
+						
+						partyState.value = party;
+						partyStatsState.value = partyStatsData;
+						
+						// Set first character as active character
 						characterState.value = partyDescriptions[0];
 						characterStatsState.value = partyStats[0];
 						parseState(characterStatsState.value);

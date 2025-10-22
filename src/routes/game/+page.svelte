@@ -1855,6 +1855,8 @@
 					// Load actions for new character or generate if not present
 					if (characterActionsByMemberState.value[activeId] && characterActionsByMemberState.value[activeId].length > 0) {
 						characterActionsState.value = characterActionsByMemberState.value[activeId];
+						// Clear previous action buttons before rendering new ones
+						if (actionsDiv) actionsDiv.innerHTML = '';
 						renderGameState(currentGameActionState, characterActionsState.value);
 					} else {
 						// Generate new actions for this character
