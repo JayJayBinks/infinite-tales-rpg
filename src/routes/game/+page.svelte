@@ -217,11 +217,20 @@
 		{}
 	);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
-	const getCurrentCharacterGameState = () => {
-		return playerCharactersGameState[
-			getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
-				''
-		];
+	// Returns the game state (resources etc.) for the requested character id.
+	// Priority:
+	// 1. Explicit id param
+	// 2. Currently active party member id
+	// 3. Derived playerCharacterIdState (fallback single-character mode)
+	const getCurrentCharacterGameState = (id?: string) => {
+		const effectiveId =
+			id ||
+			partyState.value.activeCharacterId ||
+			(getCharacterTechnicalId(
+				playerCharactersIdToNamesMapState.value,
+				characterState.value.name
+			) || '');
+		return playerCharactersGameState[effectiveId];
 	};
 
 	let levelUpState = useLocalStorage<{
@@ -699,6 +708,7 @@
 		if (actionsDiv) actionsDiv.innerHTML = '';
 		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
+		characterActionsByMemberState.reset();
 	}
 	function resetStatesAfterActionsGenerated() {
 		additionalActionInputState.reset();
@@ -1865,6 +1875,111 @@
 			handlePostActionProcessedState();
 		}
 	}
+
+
+	// Track in-flight generations so we don't start duplicate calls for same character
+	let actionGenerationInFlight: Record<string, boolean> = {};
+
+	const onSwitchCharacter = async (characterId: string) => {
+		const activeId = characterId;
+
+		// Update active character id first so resource lookups use the new id.
+		if (partyState.value.activeCharacterId !== activeId) {
+			partyState.value.activeCharacterId = activeId;
+			// Sync character + stats to selected member for immediate UI consistency
+			const member = partyState.value.members.find((m) => m.id === activeId);
+			if (member) {
+				characterState.value = member.character;
+				const memberStats = partyStatsState.value.members.find((m) => m.id === activeId);
+				if (memberStats) {
+					characterStatsState.value = memberStats.stats;
+				}
+			}
+		}
+
+		// If a generation is already running for this character and no cached actions yet, just bail.
+		if (actionGenerationInFlight[activeId]) {
+			return; // Prevent spawning another LLM request
+		}
+
+		// Persist current visible actions with the previously active character id
+		if (characterActionsState.value.length > 0) {
+			const prevId = Object.keys(characterActionsByMemberState.value).find(
+				id => characterActionsByMemberState.value[id] === characterActionsState.value
+			);
+			if (prevId && prevId !== activeId) {
+				characterActionsByMemberState.value[prevId] = characterActionsState.value;
+			}
+		}
+
+		// If cached actions exist, show them immediately (only if still the active character)
+		if (
+			characterActionsByMemberState.value[activeId] &&
+			characterActionsByMemberState.value[activeId].length > 0
+		) {
+			if (partyState.value.activeCharacterId === activeId) {
+				characterActionsState.value = characterActionsByMemberState.value[activeId];
+				if (actionsDiv) actionsDiv.innerHTML = '';
+				renderGameState(currentGameActionState, characterActionsState.value);
+			}
+			checkForLevelUp();
+			return;
+		}
+
+		actionGenerationInFlight[activeId] = true;
+		if (partyState.value.activeCharacterId === activeId) {
+			characterActionsState.reset();
+			if (actionsDiv) actionsDiv.innerHTML = '';
+		}
+
+		const currentStats = partyStatsState.value.members.find(m => m.id === activeId)?.stats;
+
+		let thoughts, actions;
+		try {
+			({ thoughts, actions } = await actionAgent.generateActions(
+			currentGameActionState,
+			historyMessagesState.value,
+			storyState.value,
+			characterState.value,
+			currentStats!,
+			inventoryState.value,
+			systemInstructionsState.value.generalSystemInstruction,
+			systemInstructionsState.value.actionAgentInstruction,
+			await getRelatedHistory(
+				summaryAgent,
+				undefined,
+				undefined,
+				relatedStoryHistoryState.value,
+				customMemoriesState.value
+			),
+			gameSettingsState.value?.aiIntroducesSkills,
+			currentGameActionState.is_character_restrained_explanation,
+			additionalActionInputState.value
+			));
+		} catch (e) {
+			// On failure clear in-flight flag and rethrow/log
+			console.warn('Action generation failed for character', activeId, e);
+			actionGenerationInFlight[activeId] = false;
+			return; // Do not proceed
+		}
+		finally {
+			// Nothing here yet; keep for future cleanup.
+		}
+
+		// Always save generated actions for this character
+		characterActionsByMemberState.value[activeId] = actions;
+
+		// Only update UI if still active character
+		if (partyState.value.activeCharacterId === activeId) {
+			characterActionsState.value = actions;
+			thoughtsState.value.actionsThoughts = thoughts;
+			if (actionsDiv) actionsDiv.innerHTML = '';
+			renderGameState(currentGameActionState, characterActionsState.value);
+		}
+
+		actionGenerationInFlight[activeId] = false;
+		checkForLevelUp();
+	};
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -1998,78 +2113,7 @@
 		<div class="mt-4">
 			<PartyMemberSwitcher
 				party={partyState.value}
-				partyStats={partyStatsState.value}
-				onSwitch={async () => {
-					const activeId = partyState.value.activeCharacterId;
-					
-					// Save current actions if they exist
-					if (characterActionsState.value.length > 0) {
-						const prevId = Object.keys(characterActionsByMemberState.value).find(
-							id => characterActionsByMemberState.value[id] === characterActionsState.value
-						);
-						if (prevId && prevId !== activeId) {
-							characterActionsByMemberState.value[prevId] = characterActionsState.value;
-						}
-					}
-					
-					// Load actions for new character or generate if not present
-					if (characterActionsByMemberState.value[activeId] && characterActionsByMemberState.value[activeId].length > 0) {
-						characterActionsState.value = characterActionsByMemberState.value[activeId];
-						// Clear previous action buttons before rendering new ones
-						if (actionsDiv) actionsDiv.innerHTML = '';
-						renderGameState(currentGameActionState, characterActionsState.value);
-					} else {
-						// Generate new actions for this character
-						characterActionsState.reset();
-						if (actionsDiv) actionsDiv.innerHTML = '';
-						
-						// Get current resources for the active character
-						const currentResources = getCurrentCharacterGameState();
-						const characterStatsWithCurrentResources = {
-							...characterStatsState.value,
-							resources: Object.fromEntries(
-								Object.entries(characterStatsState.value.resources).map(([key, resource]) => [
-									key,
-									{
-										...resource,
-										current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
-									}
-								])
-							)
-						};
-						
-						const { thoughts, actions } = await actionAgent.generateActions(
-							currentGameActionState,
-							historyMessagesState.value,
-							storyState.value,
-							characterState.value,
-							characterStatsWithCurrentResources,
-							inventoryState.value,
-							systemInstructionsState.value.generalSystemInstruction,
-							systemInstructionsState.value.actionAgentInstruction,
-							await getRelatedHistory(
-								summaryAgent,
-								undefined,
-								undefined,
-								relatedStoryHistoryState.value,
-								customMemoriesState.value
-							),
-							gameSettingsState.value?.aiIntroducesSkills,
-							currentGameActionState.is_character_restrained_explanation,
-							additionalActionInputState.value
-						);
-						characterActionsState.value = actions;
-						thoughtsState.value.actionsThoughts = thoughts;
-						
-						// Save actions for this character
-						characterActionsByMemberState.value[activeId] = actions;
-						
-						renderGameState(currentGameActionState, characterActionsState.value);
-					}
-					
-					// Check level-up status for newly active character
-					checkForLevelUp();
-				}}
+				onSwitch={() => onSwitchCharacter($state.snapshot(partyState.value.activeCharacterId))}
 			/>
 		</div>
 	{/if}

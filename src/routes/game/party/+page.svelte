@@ -39,7 +39,7 @@
 
 {#if characterState.value}
 	<div
-		class="menu-content flex min-h-screen items-center justify-center p-4 text-center"
+		class="menu-content flex min-h-screen items-center justify-center p-4 text-center flex-col mt-4"
 		id="stats"
 	>
 		<!-- Party Switcher -->
@@ -47,7 +47,6 @@
 			<div class="mb-4">
 				<PartyMemberSwitcher
 					party={partyState.value}
-					partyStats={partyStatsState.value}
 					onSwitch={() => {
 						// Character state is automatically synced via $effect in main game
 					}}
@@ -143,6 +142,17 @@
 					{/each}
 				</ul>
 			</div>
+					<!-- Party Switcher -->
+		{#if partyState.value.members.length > 1}
+			<div class="mb-4">
+				<PartyMemberSwitcher
+					party={partyState.value}
+					onSwitch={() => {
+						// Character state is automatically synced via $effect in main game
+					}}
+				/>
+			</div>
+		{/if}
 		</div>
 	</div>
 {/if}
