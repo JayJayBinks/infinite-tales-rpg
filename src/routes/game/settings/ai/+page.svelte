@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { handleError, navigate, parseState } from '$lib/util.svelte';
+	import { handleError, navigate, parseState, initialThoughtsState, type ThoughtsState } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState, type Party } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
@@ -78,6 +78,24 @@
 	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
 	const partyState = useLocalStorage('partyState');
 	const partyStatsState = useLocalStorage('partyStatsState');
+	// Additional per-party / per-tale states (must be cleared on new tale)
+	const characterActionsByMemberState = useLocalStorage<Record<string, any>>(
+		'characterActionsByMemberState',
+		{}
+	);
+	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, any>>(
+		'selectedCombatActionsByMemberState',
+		{}
+	);
+	const eventEvaluationByMemberState = useLocalStorage<Record<string, EventEvaluation>>(
+		'eventEvaluationByMemberState',
+		{}
+	);
+	const chosenActionState = useLocalStorage('chosenActionState');
+	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState', '');
+	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState', '');
+	const thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
+	const didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
 
 	let isGeneratingState = $state(false);
 	let quickstartModalOpen = $state(false);
@@ -133,6 +151,15 @@
 		relatedNPCActionsState.reset();
 		partyState.reset();
 		partyStatsState.reset();
+		// Newly added party / multi-member states
+		characterActionsByMemberState.reset();
+		selectedCombatActionsByMemberState.reset();
+		eventEvaluationByMemberState.reset();
+		chosenActionState.reset();
+		additionalStoryInputState.reset();
+		additionalActionInputState.reset();
+		thoughtsState.reset();
+		didAIProcessDiceRollActionState.reset();
 	}
 
 	async function onQuickstartNew(data: any) {

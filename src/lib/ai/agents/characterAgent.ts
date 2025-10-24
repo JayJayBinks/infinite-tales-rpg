@@ -1,6 +1,6 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
-import { TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
+import { TROPES_CLICHE_PROMPT, type Story } from '$lib/ai/agents/storyAgent';
 import { jsonRule } from './agentUtils';
 
 export type CharacterDescription = {
@@ -55,13 +55,6 @@ export const initialPartyState: Party = {
 	activeCharacterId: ''
 };
 
-const partyDescriptionForPrompt = `[
-	${characterDescriptionForPrompt},
-	${characterDescriptionForPrompt},
-	${characterDescriptionForPrompt},
-	${characterDescriptionForPrompt}
-]`;
-
 export class CharacterAgent {
 	llm: LLM;
 
@@ -99,8 +92,8 @@ export class CharacterAgent {
 	}
 
 	async generatePartyDescriptions(
-		storyState: object,
-		partyOverwrites?: Partial<CharacterDescription>[],
+		storyState: Story,
+		partyOverwrites?: Partial<CharacterDescription>[] | string,
 		partySize: number = 4
 	): Promise<CharacterDescription[]> {
 		const partyPrompt = Array(partySize).fill(characterDescriptionForPrompt).join(',\n');
@@ -119,8 +112,10 @@ export class CharacterAgent {
 			userMessage:
 				`Create a party of ${partySize} character${partySize > 1 ? 's' : ''} for this adventure:\n` +
 				stringifyPretty(storyState) +
-				'\n\nParty overwrites (if any):\n' +
-				stringifyPretty(preset),
+				'\n\nMake sure to create characters that fit the following description:\n' +
+				storyState.party_description +
+				(preset ? '\n\nParty overwrites:\n' +
+				stringifyPretty(preset) : ''),
 			systemInstruction: agentInstruction
 		};
 		return (await this.llm.generateContent(request))?.content as CharacterDescription[];

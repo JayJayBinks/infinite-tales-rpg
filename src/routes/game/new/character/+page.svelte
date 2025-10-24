@@ -142,14 +142,14 @@
 
 	const onRandomizeParty = async () => {
 		isGeneratingState = true;
-		const partySize = partyState.value.members.length;
+		const party = partyState.value.members;
 		const partyDescriptions = await characterAgent.generatePartyDescriptions(
 			$state.snapshot(storyState.value),
 			undefined,
-			partySize
+			party.length
 		);
-		if (partyDescriptions && partyDescriptions.length === partySize) {
-			for (let i = 0; i < partySize; i++) {
+		if (partyDescriptions && partyDescriptions.length === party.length) {
+			for (let i = 0; i < party.length; i++) {
 				partyState.value.members[i].character = partyDescriptions[i];
 			}
 			// Set first character as active
@@ -173,7 +173,7 @@
 		}
 		isGeneratingState = false;
 	};
-	const onRandomizeSingle = async (stateValue) => {
+	const onRandomizeSingle = async (state) => {
 		isGeneratingState = true;
 		const currentCharacter = { ...characterState.value };
 		currentCharacter[stateValue] = undefined;

@@ -31,7 +31,7 @@ export const storyStateForPrompt = {
 	adventure_and_main_event:
 		'Generate a random adventure with a random main story line. It does not have to be a quest, it can also be an event. It should be extraordinary and not cliche.',
 	party_description:
-		'Generate a concise party concept: list each member as bullet points with name, archetype/role, one vivid trait, and a distinguishing hook; 1-4 members only; avoid clichés and overused fantasy races unless subverted.',
+		'Generate a concise party concept for the player: list each member as bullet points with name, archetype/role, one vivid trait, and a distinguishing hook; 1-4 members only; avoid clichés and overused fantasy races unless subverted.',
 	party_count:
 		'Provide only the integer number of party members you generated (1-4 range). Return just the number, no words.',
 	general_image_prompt:

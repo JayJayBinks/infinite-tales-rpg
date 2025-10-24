@@ -21,7 +21,7 @@
 		{#each party.members as member}
 			{@const isActive = party.activeCharacterId === member.id}
 			<button
-				class="btn btn-sm w-1/5"
+				class="btn btn-sm w-1/3"
 				class:btn-primary={isActive}
 				class:btn-outline={!isActive}
 				onclick={() => handleSwitch(member.id)}
