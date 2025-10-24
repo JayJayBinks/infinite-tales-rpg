@@ -302,6 +302,11 @@
 		'eventEvaluationState',
 		initialEventEvaluationState
 	);
+	// NEW: Per-party-member event evaluations (mapping id -> EventEvaluation)
+	const eventEvaluationByMemberState = useLocalStorage<Record<string, EventEvaluation>>(
+		'eventEvaluationByMemberState',
+		{}
+	);
 
 	//feature toggles
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -902,38 +907,60 @@
 		return additionalStoryInput;
 	}
 
-	const applyGameEventEvaluation = (evaluated: EventEvaluation) => {
-		if (!evaluated) {
-			return;
-		}
-		const changeInto = evaluated?.character_changed?.changed_into;
-		if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
-			evaluated.character_changed!.aiProcessingComplete = false;
-			eventEvaluationState.value = {
-				...eventEvaluationState.value,
-				character_changed: evaluated.character_changed
-			};
-		}
-		const abilities = evaluated?.abilities_learned?.abilities
-			?.filter(
-				(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
-			)
-			.filter(
-				(newAbility) =>
-					!eventEvaluationState.value.abilities_learned?.abilities?.some(
-						(existing) =>
-							existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
-							existing.name === newAbility.name
+	const applyGameEventEvaluationForMember = (memberId: string, evaluated: EventEvaluation) => {
+				if (!evaluated) return;
+				const currentStored = eventEvaluationByMemberState.value[memberId] || initialEventEvaluationState;
+				let updated: EventEvaluation = { ...currentStored };
+
+				// Character transformation detection
+				const changeInto = evaluated?.character_changed?.changed_into;
+				if (changeInto && changeInto !== currentStored.character_changed?.changed_into) {
+					updated = {
+						...updated,
+						character_changed: {
+							...evaluated.character_changed!,
+							aiProcessingComplete: false,
+							showEventConfirmationDialog: false
+						}
+					};
+				}
+
+				// Abilities learned filtering (exclude already known & duplicates in stored state)
+				const abilities = evaluated?.abilities_learned?.abilities
+					?.filter(
+						(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
 					)
-			);
-		if (abilities && abilities.length > 0) {
-			evaluated.abilities_learned!.aiProcessingComplete = false;
-			eventEvaluationState.value = {
-				...eventEvaluationState.value,
-				abilities_learned: { ...evaluated?.abilities_learned, abilities }
-			};
-		}
-	};
+					.filter(
+						(newAbility) =>
+							!currentStored.abilities_learned?.abilities?.some(
+								(existing) =>
+									existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
+									existing.name === newAbility.name
+								)
+						);
+				if (abilities && abilities.length > 0) {
+					updated = {
+						...updated,
+						abilities_learned: {
+							...updated.abilities_learned,
+							abilities: abilities,
+							aiProcessingComplete: false,
+							showEventConfirmationDialog: false
+						}
+					};
+				}
+
+				// Persist in mapping
+				eventEvaluationByMemberState.value = {
+					...eventEvaluationByMemberState.value,
+					[memberId]: updated
+				};
+				// If active member, reflect in single-character reactive state for existing UI compatibility
+				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				if (memberId === activeId) {
+					eventEvaluationState.value = updated;
+				}
+			}
 
 	// Helper to process the AI story progression and update game state accordingly.
 	async function processStoryProgression(
@@ -990,14 +1017,36 @@
 
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
+				getRelatedHistoryForStory();
+				// Build party evaluation input (fallback to single active character if party not initialized)
+				const partyMembersForEvaluation = (partyState.value.members.length
+					? partyState.value.members
+					: [{ id: playerCharacterIdState, character: characterState.value }]
+				).map((m) => ({
+					id: m.id,
+					name: m.character.name,
+					known_abilities:
+						(partyStatsState.value.members.find((ms) => ms.id === m.id)?.stats.spells_and_abilities || characterStatsState.value.spells_and_abilities).map(
+							(a) => a.name
+						)
+				}));
+
 				eventAgent
-					.evaluateEvents(
+					.evaluatePartyEvents(
 						historyMessagesState.value.slice(-6).map((m) => m.content),
-						characterStatsState.value.spells_and_abilities.map((a) => a.name)
+						partyMembersForEvaluation
 					)
 					.then((evaluation) => {
-						applyGameEventEvaluation(evaluation.event_evaluation);
-						thoughtsState.value.eventThoughts = evaluation.thoughts;
+						evaluation.events_by_member.forEach((ev) =>
+							applyGameEventEvaluationForMember(ev.character_id, {
+								character_changed: ev.character_changed,
+								abilities_learned: ev.abilities_learned
+							})
+						);
+						const perCharThoughts = evaluation.events_by_member
+							.map((ev) => `${ev.character_name}: ${ev.reasoning || ''}`)
+							.join('\n');
+						thoughtsState.value.eventThoughts = evaluation.thoughts + '\n' + perCharThoughts;
 					});
 
 				// Generate the next set of actions.
@@ -1637,6 +1686,9 @@
 		confirmed: boolean
 	) {
 		eventEvaluationState.value.character_changed!.showEventConfirmationDialog = false;
+		// Sync mapping immediately (dialog closed)
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		if (confirmed === undefined) {
 			return;
 		}
@@ -1681,7 +1733,7 @@
 				//generate new actions considering resources might have changed
 				regenerateActions();
 				additionalStoryInputState.value +=
-					'\n After transformation make sure that stats_update refer to the new resources from now on!\n' +
+					'\n After transformation make sure that stats_update refer to the new resources from now on for character ' + characterState.value.name + '!\n' +
 					stringifyPretty(characterStatsState.value.resources);
 			}
 
@@ -1702,6 +1754,8 @@
 			playerCharactersGameState = updatedPlayerCharactersGameState;
 		}
 		eventEvaluationState.value.character_changed!.aiProcessingComplete = true;
+		// Persist updated processing flag
+		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		isAiGeneratingState = false;
 	}
 
@@ -1710,6 +1764,8 @@
 		if (!abilities) {
 			return;
 		}
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		eventEvaluationState.value.abilities_learned!.aiProcessingComplete = true;
 		if (abilities.length === 0) {
 			return;
@@ -1886,6 +1942,9 @@
 				}
 			}
 		}
+					// Load per-member event evaluation state for UI
+			eventEvaluationState.value =
+				eventEvaluationByMemberState.value[activeId] || initialEventEvaluationState;
 
 		// If a generation is already running for this character and no cached actions yet, just bail.
 		if (actionGenerationInFlight[activeId]) {
