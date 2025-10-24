@@ -52,14 +52,11 @@
 	let actionAgent: ActionAgent;
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM(
-			{
-				temperature: temperatureState.value,
-				language: aiLanguage.value,
-				apiKey: apiKeyState.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		const llm = LLMProvider.provideLLM({
+			temperature: temperatureState.value,
+			language: aiLanguage.value,
+			apiKey: apiKeyState.value
+		});
 		actionAgent = new ActionAgent(llm);
 
 		isGeneratingState = true;

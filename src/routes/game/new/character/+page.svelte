@@ -111,14 +111,11 @@
 
 	onMount(() => {
 		characterAgent = new CharacterAgent(
-			LLMProvider.provideLLM(
-				{
-					temperature: 1.3,
-					apiKey: apiKeyState.value,
-					language: aiLanguage.value
-				},
-				aiConfigState.value?.useFallbackLlmState
-			)
+			LLMProvider.provideLLM({
+				temperature: 1.3,
+				apiKey: apiKeyState.value,
+				language: aiLanguage.value
+			})
 		);
 		let playerCharacterId = getCharacterTechnicalId(
 			playerCharactersIdToNamesMapState.value,

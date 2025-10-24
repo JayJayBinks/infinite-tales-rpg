@@ -319,14 +319,11 @@
 		// 		}
 		// 	}
 		// });
-		const llm = LLMProvider.provideLLM(
-			{
-				temperature: temperatureState.value,
-				language: aiLanguage.value,
-				apiKey: apiKeyState.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		const llm = LLMProvider.provideLLM({
+			temperature: temperatureState.value,
+			language: aiLanguage.value,
+			apiKey: apiKeyState.value
+		});
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);
 		combatAgent = new CombatAgent(llm);

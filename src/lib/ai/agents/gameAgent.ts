@@ -221,7 +221,10 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent,
 			returnFallbackProperty: true,
-			model: GEMINI_MODELS.FLASH_2_5
+			model: GEMINI_MODELS.PRO,
+			thinkingConfig: {
+				thinkingBudget: THINKING_BUDGET.DEFAULT
+			}
 		};
 		const time = new Date().toLocaleTimeString();
 		console.log('Starting game agent:', time);

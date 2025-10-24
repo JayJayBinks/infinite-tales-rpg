@@ -11,7 +11,6 @@
 	// --- State Management ---
 	// Assuming a default structure for AIConfig
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
-		useFallbackLlmState: false,
 		disableImagesState: false,
 		disableAudioState: false
 	});

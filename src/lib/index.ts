@@ -3,5 +3,4 @@
 export type AIConfig = {
 	disableAudioState: boolean;
 	disableImagesState: boolean;
-	useFallbackLlmState: boolean;
 };

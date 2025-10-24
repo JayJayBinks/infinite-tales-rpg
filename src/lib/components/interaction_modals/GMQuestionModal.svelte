@@ -72,14 +72,11 @@
 	let isGeneratingState: boolean = $state(false);
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM(
-			{
-				temperature: 0.7,
-				language: aiLanguage.value,
-				apiKey: apiKeyState.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		const llm = LLMProvider.provideLLM({
+			temperature: 0.7,
+			language: aiLanguage.value,
+			apiKey: apiKeyState.value
+		});
 		gameAgent = new GameAgent(llm);
 		const summaryAgent = new SummaryAgent(llm);
 		isGeneratingState = true;

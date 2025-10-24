@@ -10,21 +10,19 @@ export const defaultLLMConfig: LLMconfig = {
 };
 
 export class LLMProvider {
-	static provideLLM(llmConfig: LLMconfig, useFallback: boolean = false): LLM {
+	static provideLLM(llmConfig: LLMconfig): LLM {
 		const configToUse: LLMconfig = { ...defaultLLMConfig, ...llmConfig };
 		if (configToUse.provider === 'pollinations') {
-			return new PollinationsProvider({ ...configToUse, model: 'openai' });
-		} else {
-			//fallback to flash-exp if thinking-exp fails
-			return new GeminiProvider(
-				configToUse,
-				new GeminiProvider(
-					{ ...configToUse, model: GEMINI_MODELS.FLASH_LITE_2_5 },
-					!useFallback
-						? undefined
-						: new GeminiProvider({ ...configToUse, model: GEMINI_MODELS.FLASH_THINKING_2_0 })
-				)
-			);
+			// Cast to LLM interface for compatibility
+			return new PollinationsProvider({ ...configToUse, model: 'openai' }) as unknown as LLM;
 		}
+		// Always enable full fallback chain
+		return new GeminiProvider(
+			configToUse,
+			new GeminiProvider(
+				{ ...configToUse, model: GEMINI_MODELS.FLASH_LITE_2_5 },
+				new GeminiProvider({ ...configToUse, model: GEMINI_MODELS.FLASH_THINKING_2_0 })
+			)
+		);
 	}
 }

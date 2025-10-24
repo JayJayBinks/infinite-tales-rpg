@@ -33,8 +33,7 @@
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
-		disableImagesState: false,
-		useFallbackLlmState: false
+		disableImagesState: false
 	});
 	let showGenerationSettingsModal = $state<boolean>(false);
 	let showOutputFeaturesModal = $state<boolean>(false);
@@ -92,14 +91,11 @@
 	});
 
 	const provideLLM = () => {
-		llm = LLMProvider.provideLLM(
-			{
-				temperature: 1.3,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		llm = LLMProvider.provideLLM({
+			temperature: 1.3,
+			apiKey: apiKeyState.value,
+			language: aiLanguage.value
+		});
 		storyAgent = new StoryAgent(llm);
 	};
 
