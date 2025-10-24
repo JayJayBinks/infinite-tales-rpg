@@ -1,6 +1,7 @@
 <script lang="ts">
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import type { Story, StoryAgent } from '$lib/ai/agents/storyAgent';
+	import type { unescape } from 'querystring';
 
 	let {
 		onclose,
@@ -13,7 +14,7 @@
 	} = $props();
 	let storyDescription: string | undefined = $state(undefined);
 	let partyDescription: string | undefined = $state(undefined);
-	let partyMemberCount: number = $state(1);
+	let partyMemberCount: number | undefined = $state(undefined);
 	let storyState: Story | undefined = $state(undefined);
 	let isGenerating = $state(false);
 
@@ -32,16 +33,19 @@
 		if (storyState) {
 			storyDescription = undefined;
 		}
-		if (storyDescription) {
+		if (storyDescription || partyDescription || partyMemberCount) {
 			overwriteStory = {
 				adventure_and_main_event: storyDescription,
-				character_simple_description: partyDescription || storyDescription
+				party_description: partyDescription || storyDescription,
+				party_count: partyMemberCount?.toString() || ''
 			};
 		}
 		const generated = await storyAgent!.generateRandomStorySettings(overwriteStory);
 		if (generated) {
 			storyDescription = generated.game + '\n' + generated.adventure_and_main_event;
 			storyState = generated;
+			partyDescription = generated.party_description;
+			partyMemberCount = parseInt(generated.party_count) || undefined;
 		}
 		isGenerating = false;
 	}

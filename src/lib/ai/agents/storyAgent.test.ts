@@ -38,7 +38,7 @@ describe('StoryAgent', () => {
 			game: 'Dungeons & Dragons',
 			world_details: 'A realm of magic and monsters.',
 			adventure_and_main_event: 'A quest to defeat the Lich King.',
-			character_simple_description: 'A brave hero.',
+			party_description: 'A brave hero.',
 			general_image_prompt: 'fantasy medieval battle',
 			theme: 'High Fantasy',
 			tonality: 'Epic'
@@ -103,7 +103,7 @@ describe('StoryAgent', () => {
 			};
 			const storyWithChar: Story = {
 				...sampleStory,
-				character_simple_description: 'Elara, a cunning rogue, undertakes a daring heist.'
+				party_description: 'Elara, a cunning rogue, undertakes a daring heist.'
 			};
 			mockLLMInstance.generateContent.mockResolvedValue({ content: storyWithChar });
 
@@ -131,7 +131,7 @@ describe('StoryAgent', () => {
 			const storyCombined: Story = {
 				...sampleStory,
 				adventure_and_main_event: sampleText,
-				character_simple_description: 'Gorok, the warrior, joins a group to stop the cataclysm.'
+				party_description: 'Gorok, the warrior, joins a group to stop the cataclysm.'
 			};
 			mockLLMInstance.generateContent.mockResolvedValue({ content: storyCombined });
 

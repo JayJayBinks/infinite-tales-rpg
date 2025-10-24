@@ -51,17 +51,33 @@
 	);
 	let characterAgent: CharacterAgent;
 
-	// Initialize party with 1 member if not exists
+	// Initialize party based on storyState.party_count (auto-create tabs 1-4)
 	$effect(() => {
+		// Ensure at least one member exists
 		if (partyState.value.members.length === 0) {
 			const id = 'player_character_1';
 			partyState.value.members.push({
 				id,
 				character: { ...initialCharacterState }
 			});
-			partyState.value.activeCharacterId = 'player_character_1';
+			partyState.value.activeCharacterId = id;
 			currentCharacterIndex = 0;
 		}
+		// Derive desired party size from storyState.value.party_count (string)
+		const rawCount = storyState.value.party_count;
+		let desiredCount = parseInt(rawCount || '1', 10);
+		if (Number.isNaN(desiredCount)) desiredCount = 1;
+		// Clamp between 1 and 4
+		desiredCount = Math.min(4, Math.max(1, desiredCount));
+		// Add members until we reach desired count
+		while (partyState.value.members.length < desiredCount) {
+			const nextId = `player_character_${partyState.value.members.length + 1}`;
+			partyState.value.members.push({
+				id: nextId,
+				character: { ...initialCharacterState }
+			});
+		}
+		// Do NOT auto-remove if user already added more than desired; user can manually adjust.
 	});
 
 	function addPartyMember() {
@@ -97,7 +113,7 @@
 		characterAgent = new CharacterAgent(
 			LLMProvider.provideLLM(
 				{
-					temperature: 2,
+					temperature: 1.3,
 					apiKey: apiKeyState.value,
 					language: aiLanguage.value
 				},

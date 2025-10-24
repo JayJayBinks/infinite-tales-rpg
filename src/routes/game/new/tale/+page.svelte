@@ -32,7 +32,7 @@
 		storyAgent = new StoryAgent(
 			LLMProvider.provideLLM(
 				{
-					temperature: 2,
+					temperature: 1.3,
 					apiKey: apiKeyState.value,
 					language: aiLanguage.value
 				},

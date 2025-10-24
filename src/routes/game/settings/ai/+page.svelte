@@ -94,7 +94,7 @@
 	const provideLLM = () => {
 		llm = LLMProvider.provideLLM(
 			{
-				temperature: 2,
+				temperature: 1.3,
 				apiKey: apiKeyState.value,
 				language: aiLanguage.value
 			},
@@ -145,7 +145,7 @@
 		let newStoryState;
 		try {
 			const story = data.story || data;
-			const partyDescription = data.partyDescription;
+			const partyDescription = data.partyDescription || '';
 			const partyMemberCount = data.partyMemberCount || 1;
 			
 			if (story && isPlainObject(story)) {
@@ -153,7 +153,8 @@
 			} else {
 				const overwriteStory = !story ? {} : { 
 					adventure_and_main_event: story as string,
-					character_simple_description: partyDescription || (story as string)
+					partyDescription: partyDescription || (story as string),
+					partyCount: partyMemberCount
 				};
 				newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 			}

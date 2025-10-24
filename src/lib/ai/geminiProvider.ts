@@ -27,6 +27,7 @@ import { requestLLMJsonStream } from './jsonStreamHelper';
 import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 export const GEMINI_MODELS = {
+	PRO: 'gemini-2.5-pro',
 	FLASH_LITE_2_5: 'gemini-flash-lite-latest',
 	FLASH_2_5: 'gemini-flash-latest',
 	FLASH_THINKING_2_0: 'gemini-2.0-flash-thinking-exp-01-21',
@@ -209,15 +210,16 @@ export class GeminiProvider extends LLM {
 	}
 
 	isThinkingModel(model: string): boolean {
-		return model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
+		return model === GEMINI_MODELS.PRO || model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
 	}
 
 	supportsThinkingBudget(model: string): boolean {
-		return model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
+		return model === GEMINI_MODELS.PRO || model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
 	}
 
 	supportsReturnThoughts(model: string): boolean {
 		return (
+			model === GEMINI_MODELS.PRO ||
 			model === GEMINI_MODELS.FLASH_THINKING_2_0 ||
 			model === GEMINI_MODELS.FLASH_LITE_2_5 ||
 			model === GEMINI_MODELS.FLASH_2_5
