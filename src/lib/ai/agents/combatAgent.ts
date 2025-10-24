@@ -163,6 +163,9 @@ export class CombatAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story
 	): Promise<NPCAction[]> {
+		if( npcsList.length === 0){
+			return [];
+		}
 		const agent = [
 			"You are RPG combat agent, you decide which actions the NPCs take in response to the active party member's action and the outcomes of these actions. Remember that other party members may also be present." +
 				'\n For deciding the outcome simulate if the NPC action can be successfull based on the circumstances.' +

@@ -116,7 +116,7 @@
 		updatePlayerCharactersIdToNamesMapForParty,
 		switchActiveCharacter
 	} from './partyLogic';
-	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/dice/diceRollLogic';
+	import { getDiceRollPromptAddition, type DiceRollResult } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
 	import SimpleDiceRoller from '$lib/components/interaction_modals/dice/SimpleDiceRoller.svelte';
 	import StoryProgressionWithImage, {
@@ -289,6 +289,12 @@
 	let customActionImpossibleReasonState: 'not_enough_resource' | 'not_plausible' | undefined =
 		$state(undefined);
 
+	// New combat dice roll + locking state
+	// Stores dice roll prompt additions per selected combat action (not yet applied until confirm)
+	let selectedCombatActionsDiceAdditionsState: Record<string, string> = $state({});
+	// Stores whether a combat action selection for a member is locked (cannot be changed)
+	let selectedCombatActionsLockedState: Record<string, boolean> = $state({});
+
 	let gmQuestionState: string = $state('');
 	let customDiceRollNotation: string = $state('');
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
@@ -422,7 +428,7 @@
 			);
 		gameActionsState.value = updatedGameActionsState;
 		playerCharactersGameState = updatedPlayerCharactersGameState;
-		tick().then(() => customActionInput.scrollIntoView(false));
+		tick().then(() => customActionInput && customActionInput.scrollIntoView(false));
 		if (characterActionsState.value.length === 0) {
 			// Get current resources for the active character
 			const currentResources = getCurrentCharacterGameState();
@@ -470,7 +476,7 @@
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog();
+			openDiceRollDialog(undefined, undefined, undefined, undefined);
 		}
 		checkForLevelUp();
 	}
@@ -594,24 +600,31 @@
 		}
 	};
 	function openDiceRollDialog(
-		waitForFunction?: Promise<void>,
-		waitForActionsResult?: Promise<void>,
-		deadNPCs?: Array<string>
-	) {
-		//TODO showModal can not be used because it hides the dice roll
-		didAIProcessDiceRollActionState.value = false;
-		diceRollDialog.show();
-		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
-			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
-			const result = diceRollDialog.returnValue;
+			waitForFunction?: Promise<void>,
+			waitForActionsResult?: Promise<void>,
+			deadNPCs?: Array<string>,
+			onResultCallback?: (result: DiceRollResult | undefined) => void
+		) {
 
-			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
-			if (skillName) {
-				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
+		didAIProcessDiceRollActionState.value = false;
+		diceRollDialog?.show();
+		diceRollDialog?.addEventListener('close', function handleDiceModalClose() {
+			diceRollDialog?.removeEventListener('close', handleDiceModalClose);
+			const diceRollResult = diceRollDialog?.returnValue as DiceRollResult | undefined;
+			const dice_roll_addition_text = getDiceRollPromptAddition(diceRollResult);
+
+				// Callback path (combat immediate roll). We do not send the action yet.
+				if (onResultCallback) {
+					onResultCallback(diceRollResult);
+				didAIProcessDiceRollActionState.value = true;
+				return;
 			}
 
-			const dice_roll_addition_text = getDiceRollPromptAddition(result);
-			// Add dice roll addition text if available.
+			// Original single-action flow: apply skill progression + send immediately.
+			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
+			if (skillName && diceRollResult) {
+				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(diceRollResult);
+			}
 			additionalStoryInputState.value += '\n' + dice_roll_addition_text + '\n';
 			sendAction(
 				chosenActionState.value,
@@ -626,7 +639,7 @@
 
 	function handleAIError() {
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog();
+				openDiceRollDialog(undefined, undefined, undefined, undefined);
 		}
 	}
 
@@ -660,7 +673,7 @@
 			additionalStoryInputState.value += costString;
 			await sendAction(chosenActionState.value, true);
 		}
-		customActionInput.value = '';
+		customActionInput && (customActionInput.value = '');
 		customActionImpossibleReasonState = undefined;
 	}
 
@@ -774,71 +787,38 @@
 	}
 	
 	async function confirmCombatActions() {
-		if (!currentGameActionState.is_character_in_combat) {
-			return;
-		}
-		
+		if (!currentGameActionState.is_character_in_combat) return;
+
 		isAiGeneratingState = true;
-		
-		// Check if any selected actions require dice rolls
-		for (const member of partyState.value.members) {
-			const selectedAction = selectedCombatActionsByMemberState.value[member.id];
-			if (selectedAction && mustRollDice(selectedAction, true)) {
-				// Show dice modal with character name
-				didAIProcessDiceRollActionState.value = false;
-				customDiceRollNotation = '';
-				gmQuestionState = '';
-				customActionReceiver = 'Dice Roll';
-				chosenActionState.value = selectedAction;
-				
-				// Store information about which character is rolling
-				const diceRollMessage = `Rolling for ${member.character.name}'s action: ${selectedAction.text}`;
-				
-				// Show dice roll modal
-				if (diceRollDialog) {
-					diceRollDialog.showModal();
-				}
-				
-				// Wait for dice roll to complete
-				await new Promise<void>((resolve) => {
-					const checkInterval = setInterval(() => {
-						if (didAIProcessDiceRollActionState.value) {
-							clearInterval(checkInterval);
-							resolve();
-						}
-					}, 100);
-				});
-			}
-		}
-		
-		// Build combat actions prompt for all party members
+
+		// Aggregate combat actions with inline dice outcomes
 		let combatActionsPrompt = '\n\nPARTY COMBAT ACTIONS:\n';
-		
 		for (const member of partyState.value.members) {
 			const selectedAction = selectedCombatActionsByMemberState.value[member.id];
+			const outcomeText = selectedCombatActionsDiceAdditionsState[member.id];
 			if (selectedAction) {
-				combatActionsPrompt += `- ${member.character.name}: ${selectedAction.text}\n`;
+				// Insert outcome directly after the action sentence if present
+				combatActionsPrompt += `- ${member.character.name}: ${selectedAction.text}; ${outcomeText}\n`;
 			} else {
-				combatActionsPrompt += `- ${member.character.name}: [AI should choose an appropriate action for this character]\n`;
+				combatActionsPrompt += `- ${member.character.name}: [AI choose an appropriate action]\n`;
 			}
 		}
-		
 		combatActionsPrompt += '\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
-		
-		// Create a combined action representing the party's turn
+
 		const partyAction: Action = {
-			characterName: partyState.value.members.map(m => m.character.name).join(', '),
+			characterName: partyState.value.members.map((m) => m.character.name).join(', '),
 			text: combatActionsPrompt,
 			type: 'Party Combat Turn'
 		};
-		
-		// Clear selected actions after confirmation
-		selectedCombatActionsByMemberState.value = {};
-		
-		// Send the party action
+
 		chosenActionState.value = $state.snapshot(partyAction);
 		await sendAction(chosenActionState.value, false);
-		
+
+		// Reset combat selection states
+		selectedCombatActionsByMemberState.value = {};
+		selectedCombatActionsDiceAdditionsState = {};
+		selectedCombatActionsLockedState = {};
+
 		isAiGeneratingState = false;
 	}
 	
@@ -905,12 +885,13 @@
 			additionalStoryInput += GameAgent.getCraftingPrompt();
 		}
 		// Add any extra side effects that should modify the story input.
+		// Use neutral regular_success to avoid triggering failure/critical branches pre-confirm.
 		additionalStoryInput = gameLogic.addAdditionsFromActionSideeffects(
 			action,
 			additionalStoryInput,
 			gameSettingsState.value.randomEventsHandling,
 			currentGameActionState.is_character_in_combat,
-			diceRollDialog.returnValue //TODO better way to pass the result ?, its string here
+			'regular_success'
 		);
 		if (!additionalStoryInput.includes('sudo')) {
 			additionalStoryInput +=
@@ -1238,7 +1219,7 @@
 							relatedActionGroundTruthState.value = groundTruth;
 						});
 				}
-				openDiceRollDialog(waitForGroundTruthResult, waitForActionsResult, deadNPCs);
+				openDiceRollDialog(waitForGroundTruthResult, waitForActionsResult, deadNPCs, undefined);
 			} else {
 				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
@@ -1349,6 +1330,7 @@
 
 		// Get active character ID for resource checks
 		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const isLocked = is_character_in_combat && selectedCombatActionsLockedState[activeId];
 		
 		if (
 			!isEnoughResource(
@@ -1359,24 +1341,35 @@
 		) {
 			button.disabled = true;
 		}
-		
+
 		// Check if this action is selected for this character in combat
-		const isSelected = is_character_in_combat && 
-			selectedCombatActionsByMemberState.value[activeId] === action;
-		
-		if (isSelected) {
-			button.className += ' btn-accent';
-		}
-		
+		const isSelected =
+			is_character_in_combat && selectedCombatActionsByMemberState.value[activeId] === action;
+		if (isSelected) button.className += ' btn-accent';
+		if (isLocked) button.disabled = true;
+
 		button.addEventListener('click', () => {
 			if (is_character_in_combat) {
-				// In combat, just select the action for this character
+				// Prevent changes after lock
+				if (selectedCombatActionsLockedState[activeId]) return;
 				selectedCombatActionsByMemberState.value[activeId] = action;
-				// Re-render to show selection
-				if (actionsDiv) actionsDiv.innerHTML = '';
-				renderGameState(currentGameActionState, characterActionsState.value);
+				// If dice roll required open dialog with callback, else lock immediately
+				if (mustRollDice(action, true)) {
+					chosenActionState.value = $state.snapshot(action);
+					openDiceRollDialog(undefined, undefined, undefined, (result) => {
+						selectedCombatActionsDiceAdditionsState[activeId] = getDiceRollPromptAddition(result);
+						selectedCombatActionsLockedState[activeId] = true;
+						// Re-render to reflect lock
+						if (actionsDiv) actionsDiv.innerHTML = '';
+						renderGameState(currentGameActionState, characterActionsState.value);
+					});
+				} else {
+					selectedCombatActionsLockedState[activeId] = true;
+					if (actionsDiv) actionsDiv.innerHTML = '';
+					renderGameState(currentGameActionState, characterActionsState.value);
+				}
 			} else {
-				// Outside combat, send action immediately
+				// Outside combat original behavior
 				chosenActionState.value = $state.snapshot(action);
 				sendAction(
 					chosenActionState.value,
@@ -1458,7 +1451,7 @@
 	};
 	const onCustomDiceRollClosed = () => {
 		customDiceRollNotation = '';
-		customActionInput.value = '';
+		customActionInput && (customActionInput.value = '');
 	};
 	const onLevelUpModalClosed = (aiLevelUp: AiLevelUp) => {
 		if (aiLevelUp) {
@@ -1932,7 +1925,9 @@
 			if (actionsDiv) actionsDiv.innerHTML = '';
 		}
 
+		const currentCharacter = partyState.value.members.find(m => m.id === activeId)?.character;
 		const currentStats = partyStatsState.value.members.find(m => m.id === activeId)?.stats;
+
 
 		let thoughts, actions;
 		try {
@@ -1940,7 +1935,7 @@
 			currentGameActionState,
 			historyMessagesState.value,
 			storyState.value,
-			characterState.value,
+			currentCharacter!,
 			currentStats!,
 			inventoryState.value,
 			systemInstructionsState.value.generalSystemInstruction,
@@ -2125,7 +2120,6 @@
 			<button
 				onclick={() => confirmCombatActions()}
 				class="text-md btn btn-success mb-3 w-full"
-				disabled={!hasAnySelectedCombatActions() && characterActionsState.value.length === 0}
 				>
 				{#if hasAnySelectedCombatActions()}
 					Confirm Combat Actions ({Object.keys(selectedCombatActionsByMemberState.value).filter(k => selectedCombatActionsByMemberState.value[k]).length}/{partyState.value.members.length} selected)
