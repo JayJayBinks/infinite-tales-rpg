@@ -43,7 +43,12 @@
 </script>
 
 {#if targets}
-	<TargetModal bind:dialogRef={targetModalRef} {targets} action={abilityActionState} {onclose} {party}
+	<TargetModal
+		bind:dialogRef={targetModalRef}
+		{targets}
+		action={abilityActionState}
+		{onclose}
+		{party}
 	></TargetModal>
 {/if}
 <dialog bind:this={dialogRef} class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">

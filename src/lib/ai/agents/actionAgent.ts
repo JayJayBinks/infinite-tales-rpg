@@ -248,7 +248,9 @@ export class ActionAgent {
 			agent.push('Following instructions overrule all others: ' + customActionAgentInstruction);
 		}
 		let userMessage =
-			'Suggest specific actions the currently active party member (' + characterDescription.name + ') can take, considering their personality, skills and items.\n' +
+			'Suggest specific actions the currently active party member (' +
+			characterDescription.name +
+			') can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a tense situation must be resolved.';

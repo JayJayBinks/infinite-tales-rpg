@@ -163,7 +163,7 @@ export class CombatAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story
 	): Promise<NPCAction[]> {
-		if( npcsList.length === 0){
+		if (npcsList.length === 0) {
 			return [];
 		}
 		const agent = [

@@ -1,6 +1,6 @@
 /**
  * EventStateStore - Centralized state management for character events
- * 
+ *
  * This store manages:
  * - Event evaluations (transformations, abilities learned)
  * - Per-member event evaluations

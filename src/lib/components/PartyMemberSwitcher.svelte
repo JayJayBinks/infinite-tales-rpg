@@ -60,17 +60,18 @@
 				class:btn-primary={isActive}
 				class:btn-outline={!isActive}
 				onclick={() => handleSwitch(member.id)}
-				title={(member.character.class || 'No class') + (isRestrained(member.id) ? ' - Restrained' : '')}
+				title={(member.character.class || 'No class') +
+					(isRestrained(member.id) ? ' - Restrained' : '')}
 			>
 				<div class="flex w-full flex-col items-start">
-					<span class="font-bold pr-4"
+					<span class="pr-4 font-bold"
 						>{member.character.name || `Character ${member.id.split('_').pop()}`}</span
 					>
 				</div>
 				{#if isRestrained(member.id)}
 					<button
 						type="button"
-						class="restrained-lock-popover group absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-error/90 p-0.5 text-error-content shadow ring-1 ring-error-content/30 transition hover:scale-110 focus:scale-110 focus:outline-none"
+						class="restrained-lock-popover group absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error/90 p-0.5 text-error-content shadow ring-1 ring-error-content/30 transition hover:scale-110 focus:scale-110 focus:outline-none"
 						aria-label="Character restrained - tap for details"
 						onclick={(e) => toggleLockInfo(member.id, e)}
 					>
@@ -83,10 +84,14 @@
 							aria-hidden="false"
 						>
 							<title>Restrained</title>
-							<path d="M12 2a5 5 0 00-5 5v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7a5 5 0 00-5-5zm-3 8V7a3 3 0 116 0v3H9zm3 4a1.75 1.75 0 011.75 1.75c0 .74-.463 1.374-1.108 1.625L13 19h-2l.358-1.625A1.751 1.751 0 0112 14z" />
+							<path
+								d="M12 2a5 5 0 00-5 5v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7a5 5 0 00-5-5zm-3 8V7a3 3 0 116 0v3H9zm3 4a1.75 1.75 0 011.75 1.75c0 .74-.463 1.374-1.108 1.625L13 19h-2l.358-1.625A1.751 1.751 0 0112 14z"
+							/>
 						</svg>
 						{#if lockInfoOpenFor === member.id}
-							<div class="absolute right-0 top-6 z-30 w-56 max-w-xs rounded-md border border-error/40 bg-base-200 p-2 text-left text-[0.7rem] leading-snug shadow-lg backdrop-blur-sm">
+							<div
+								class="absolute right-0 top-6 z-30 w-56 max-w-xs rounded-md border border-error/40 bg-base-200 p-2 text-left text-[0.7rem] leading-snug shadow-lg backdrop-blur-sm"
+							>
 								<div class="mb-1 font-semibold text-error">Restrained</div>
 								<p class="whitespace-pre-wrap">
 									{restrainedExplanationByMemberState.value[member.id]}
@@ -97,8 +102,8 @@
 									onclick={(e) => {
 										e.stopPropagation();
 										lockInfoOpenFor = null;
-									}}
-								>Close</button>
+									}}>Close</button
+								>
 							</div>
 						{/if}
 					</button>

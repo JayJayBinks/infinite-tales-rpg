@@ -1,10 +1,10 @@
 /**
  * GameStores - Unified facade for all game state stores
- * 
+ *
  * This provides a single entry point for accessing all game state.
  * Instead of importing individual stores, components can import this
  * and access all state through a single object.
- * 
+ *
  * Usage:
  *   const stores = new GameStores()
  *   stores.game.currentGameAction

@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
-	import type { CharacterStats, SkillsProgression, PartyStats } from '$lib/ai/agents/characterStatsAgent.ts';
+	import type {
+		CharacterStats,
+		SkillsProgression,
+		PartyStats
+	} from '$lib/ai/agents/characterStatsAgent.ts';
 	import type { CharacterDescription, Party } from '$lib/ai/agents/characterAgent';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import type { AIConfig } from '$lib';
@@ -13,10 +17,13 @@
 	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
 	const partyState = useLocalStorage<Party>('partyState');
 	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState');
-	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>('skillsProgressionByMemberState', {});
+	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>(
+		'skillsProgressionByMemberState',
+		{}
+	);
 	const storyState = useLocalStorage<Story>('storyState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	
+
 	// Sync character state when active party member changes
 	$effect(() => {
 		if (partyState.value.members.length > 0) {
@@ -28,10 +35,10 @@
 			}
 		}
 	});
-	
+
 	// Get current member skills
 	const currentMemberSkills = $derived(
-		partyState.value.activeCharacterId 
+		partyState.value.activeCharacterId
 			? skillsProgressionState.value[partyState.value.activeCharacterId] || {}
 			: {}
 	);
@@ -39,7 +46,7 @@
 
 {#if characterState.value}
 	<div
-		class="menu-content flex min-h-screen items-center justify-center p-4 text-center flex-col mt-4"
+		class="menu-content mt-4 flex min-h-screen flex-col items-center justify-center p-4 text-center"
 		id="stats"
 	>
 		<!-- Party Switcher -->
@@ -53,7 +60,7 @@
 				/>
 			</div>
 		{/if}
-		
+
 		<div class="character-profile w-full max-w-lg rounded-lg text-white shadow-lg">
 			<h1 id="name" class="class mb-4 border-b border-gray-600 text-center text-3xl font-bold">
 				{characterState.value.name}
@@ -142,17 +149,17 @@
 					{/each}
 				</ul>
 			</div>
-					<!-- Party Switcher -->
-		{#if partyState.value.members.length > 1}
-			<div class="mb-4">
-				<PartyMemberSwitcher
-					party={partyState.value}
-					onSwitch={() => {
-						// Character state is automatically synced via $effect in main game
-					}}
-				/>
-			</div>
-		{/if}
+			<!-- Party Switcher -->
+			{#if partyState.value.members.length > 1}
+				<div class="mb-4">
+					<PartyMemberSwitcher
+						party={partyState.value}
+						onSwitch={() => {
+							// Character state is automatically synced via $effect in main game
+						}}
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}

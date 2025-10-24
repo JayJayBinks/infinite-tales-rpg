@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { handleError, navigate, parseState, initialThoughtsState, type ThoughtsState } from '$lib/util.svelte';
+	import {
+		handleError,
+		navigate,
+		parseState,
+		initialThoughtsState,
+		type ThoughtsState
+	} from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState, type Party } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
@@ -175,29 +181,31 @@
 			const story = data.story || data;
 			const partyDescription = data.partyDescription || '';
 			const partyMemberCount = data.partyMemberCount || 1;
-			
+
 			if (story && isPlainObject(story)) {
 				newStoryState = story as Story;
 			} else {
-				const overwriteStory = !story ? {} : { 
-					adventure_and_main_event: story as string,
-					partyDescription: partyDescription || (story as string),
-					partyCount: partyMemberCount
-				};
+				const overwriteStory = !story
+					? {}
+					: {
+							adventure_and_main_event: story as string,
+							partyDescription: partyDescription || (story as string),
+							partyCount: partyMemberCount
+						};
 				newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 			}
 			if (newStoryState) {
 				storyState.value = newStoryState;
 				const characterAgent = new CharacterAgent(llm);
 				const characterStatsAgent = new CharacterStatsAgent(llm);
-				
+
 				// Generate party
 				const partyDescriptions = await characterAgent.generatePartyDescriptions(
 					$state.snapshot(storyState.value),
 					partyDescription ? [{ background: partyDescription }] : undefined,
 					partyMemberCount
 				);
-				
+
 				if (partyDescriptions && partyDescriptions.length > 0) {
 					// Generate stats for all party members
 					const partyStats = await characterStatsAgent.generatePartyStats(
@@ -211,7 +219,7 @@
 							}
 						}))
 					);
-					
+
 					if (partyStats && partyStats.length === partyDescriptions.length) {
 						// Initialize party state with all generated members
 						const party: Party = {
@@ -221,22 +229,22 @@
 							})),
 							activeCharacterId: 'player_character_1'
 						};
-						
+
 						const partyStatsData: PartyStats = {
 							members: partyStats.map((stats, index) => ({
 								id: `player_character_${index + 1}`,
 								stats
 							}))
 						};
-						
+
 						partyState.value = party;
 						partyStatsState.value = partyStatsData;
-						
+
 						// Set first character as active character
 						characterState.value = partyDescriptions[0];
 						characterStatsState.value = partyStats[0];
 						parseState(characterStatsState.value);
-						
+
 						quickstartModalOpen = false;
 						await goto('/game');
 					}

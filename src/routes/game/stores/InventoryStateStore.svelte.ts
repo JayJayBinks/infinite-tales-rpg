@@ -1,6 +1,6 @@
 /**
  * InventoryStateStore - Centralized state management for inventory
- * 
+ *
  * This store manages:
  * - Inventory items
  * - Item suggestions

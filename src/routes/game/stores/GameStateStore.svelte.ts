@@ -1,6 +1,6 @@
 /**
  * GameStateStore - Centralized state management for game progression
- * 
+ *
  * This store manages the core game state including:
  * - Game actions history
  * - Current game action

@@ -1,6 +1,6 @@
 /**
  * CombatStateStore - Centralized state management for combat-specific state
- * 
+ *
  * This store manages:
  * - NPC state
  * - Combat action selections (per member)

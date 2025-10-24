@@ -77,7 +77,7 @@ Example: A dark fantasy quest to stop a necromancer from raising an undead army.
 			<label class="label">
 				<span class="label-text">Number of Party Members</span>
 			</label>
-			<div class="flex gap-2 justify-center">
+			<div class="flex justify-center gap-2">
 				{#each [1, 2, 3, 4] as count}
 					<button
 						class="btn btn-sm"
@@ -100,7 +100,7 @@ Example: A balanced party with a warrior, mage, rogue, and cleric."
 		>
 		</textarea>
 
-		<div class="mt-3 flex gap-2 w-full">
+		<div class="mt-3 flex w-full gap-2">
 			<button class="btn btn-primary flex-1" onclick={generateIdea}>Generate Idea</button>
 			<button class="btn btn-accent flex-1" onclick={generateStory}>Start</button>
 		</div>

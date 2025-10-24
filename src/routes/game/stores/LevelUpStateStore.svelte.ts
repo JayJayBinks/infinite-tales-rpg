@@ -1,6 +1,6 @@
 /**
  * LevelUpStateStore - Centralized state management for level-up state
- * 
+ *
  * This store manages:
  * - Level-up button state
  * - Level-up dialog state
@@ -45,9 +45,7 @@ export class LevelUpStateStore {
 	 * Check if any party member can level up
 	 */
 	anyMemberCanLevelUp(): boolean {
-		return Object.values(this.levelUpState.value.partyLevelUpStatus || {}).some(
-			(status) => status
-		);
+		return Object.values(this.levelUpState.value.partyLevelUpStatus || {}).some((status) => status);
 	}
 
 	/**

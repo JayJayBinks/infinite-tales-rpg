@@ -157,16 +157,18 @@ export class EventAgent {
 			'You are an RPG EVENT EVALUATION agent. Evaluate recent STORY for EACH party member independently.',
 			'ONLY report events that are explicitly stated or strongly implied. Do NOT infer hypothetical future possibilities.',
 			'For each member decide:',
-			"1. character_changed: Major, likely permanent transformation (profession rank change, species change, possession, crystal power infusion, etc). If none => null.",
-			"2. abilities_learned: New abilities/spells/skills explicitly gained in story (exclude already known abilities). If none => empty array.",
-			"3. restrained_state_explanation: TEMPORARY restraining / controlling effect limiting actions (sleep, paralysis, charm, blindness, illusion, compulsion, magical hold). Provide brief cause explanation if present; else null. Never guess—only if explicitly stated or strongly implied in the provided story excerpt.",
+			'1. character_changed: Major, likely permanent transformation (profession rank change, species change, possession, crystal power infusion, etc). If none => null.',
+			'2. abilities_learned: New abilities/spells/skills explicitly gained in story (exclude already known abilities). If none => empty array.',
+			'3. restrained_state_explanation: TEMPORARY restraining / controlling effect limiting actions (sleep, paralysis, charm, blindness, illusion, compulsion, magical hold). Provide brief cause explanation if present; else null. Never guess—only if explicitly stated or strongly implied in the provided story excerpt.',
 			'You MUST return one entry per provided party member (even if all fields empty/null).',
 			'Party context (DO NOT hallucinate new members): ' + stringifyPretty(partyContext),
 			`${jsonRule}\n` + partyJsonFormat
 		];
 
 		const request: LLMRequest = {
-			userMessage: 'Evaluate party events for STORY PROGRESSION (recent excerpts):\n' + storyHistory.join('\n'),
+			userMessage:
+				'Evaluate party events for STORY PROGRESSION (recent excerpts):\n' +
+				storyHistory.join('\n'),
 			systemInstruction: agent,
 			model: GEMINI_MODELS.FLASH_THINKING_2_0,
 			temperature: 0.1,
@@ -193,17 +195,17 @@ export class EventAgent {
 			restrained_state_explanation: e.restrained_state_explanation ?? null,
 			character_changed: e.character_changed
 				? {
-					...e.character_changed,
-					aiProcessingComplete: true,
-					showEventConfirmationDialog: false
-				}
+						...e.character_changed,
+						aiProcessingComplete: true,
+						showEventConfirmationDialog: false
+					}
 				: undefined,
 			abilities_learned: e.abilities_learned
 				? {
-					...e.abilities_learned,
-					aiProcessingComplete: true,
-					showEventConfirmationDialog: false
-				}
+						...e.abilities_learned,
+						aiProcessingComplete: true,
+						showEventConfirmationDialog: false
+					}
 				: undefined
 		};
 	}

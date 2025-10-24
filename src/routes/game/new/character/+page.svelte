@@ -82,7 +82,7 @@
 
 	function addPartyMember() {
 		if (partyState.value.members.length >= 4) return;
-		
+
 		const nextId = `player_character_${partyState.value.members.length + 1}`;
 		partyState.value.members.push({
 			id: nextId,
@@ -92,19 +92,19 @@
 
 	function removePartyMember(index: number) {
 		if (partyState.value.members.length <= 1) return;
-		
+
 		partyState.value.members.splice(index, 1);
-		
+
 		// Adjust current index if needed
 		if (currentCharacterIndex >= partyState.value.members.length) {
 			currentCharacterIndex = partyState.value.members.length - 1;
 		}
-		
+
 		// Update active character if we removed the active one
 		if (partyState.value.activeCharacterId === `player_character_${index + 1}`) {
 			partyState.value.activeCharacterId = partyState.value.members[currentCharacterIndex].id;
 		}
-		
+
 		// Load the current character
 		characterState.value = partyState.value.members[currentCharacterIndex].character;
 	}
@@ -232,7 +232,7 @@
 
 <!-- Party Member Tabs -->
 <div class="mt-4 flex flex-col items-center gap-2">
-	<div class="tabs tabs-boxed flex justify-center flex-wrap">
+	<div class="tabs-boxed tabs flex flex-wrap justify-center">
 		{#each partyState.value.members as member, index}
 			<button
 				class="tab"
@@ -254,11 +254,9 @@
 			</button>
 		{/each}
 	</div>
-	<div class="flex gap-2 items-center">
+	<div class="flex items-center gap-2">
 		{#if partyState.value.members.length < 4}
-			<button class="btn btn-sm btn-primary" onclick={addPartyMember}>
-				+ Add Party Member
-			</button>
+			<button class="btn btn-primary btn-sm" onclick={addPartyMember}> + Add Party Member </button>
 		{/if}
 		<span class="text-sm text-gray-500">
 			{partyState.value.members.length}/4 party members
@@ -267,7 +265,12 @@
 </div>
 
 <form class="m-6 grid items-center gap-2 text-center">
-	<p>Generate party of {partyState.value.members.length} character{partyState.value.members.length > 1 ? 's' : ''}, or customize each character individually</p>
+	<p>
+		Generate party of {partyState.value.members.length} character{partyState.value.members.length >
+		1
+			? 's'
+			: ''}, or customize each character individually
+	</p>
 	<button
 		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
 		disabled={isGeneratingState}

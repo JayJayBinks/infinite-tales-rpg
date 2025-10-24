@@ -1,6 +1,6 @@
 /**
  * CharacterStateStore - Centralized state management for character and party data
- * 
+ *
  * This store manages:
  * - Character descriptions (single & party)
  * - Character stats (single & party)
@@ -10,23 +10,14 @@
  */
 
 import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-import type {
-	CharacterDescription,
-	Party
-} from '$lib/ai/agents/characterAgent';
-import type {
-	CharacterStats,
-	PartyStats
-} from '$lib/ai/agents/characterStatsAgent';
+import type { CharacterDescription, Party } from '$lib/ai/agents/characterAgent';
+import type { CharacterStats, PartyStats } from '$lib/ai/agents/characterStatsAgent';
 import type {
 	Action,
 	PlayerCharactersIdToNamesMap,
 	PlayerCharactersGameState
 } from '$lib/ai/agents/gameAgent';
-import {
-	initialCharacterState,
-	initialPartyState
-} from '$lib/ai/agents/characterAgent';
+import { initialCharacterState, initialPartyState } from '$lib/ai/agents/characterAgent';
 import {
 	initialCharacterStatsState,
 	initialPartyStatsState,
@@ -78,7 +69,10 @@ export class CharacterStateStore {
 		$effect(() => {
 			if (this.party.value.members.length > 0) {
 				const activeMember = getActivePartyMember(this.party.value);
-				const activeMemberStats = getActivePartyMemberStats(this.party.value, this.partyStats.value);
+				const activeMemberStats = getActivePartyMemberStats(
+					this.party.value,
+					this.partyStats.value
+				);
 				if (activeMember && activeMemberStats) {
 					this.character.value = activeMember.character;
 					this.characterStats.value = activeMemberStats;

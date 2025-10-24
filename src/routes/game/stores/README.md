@@ -33,12 +33,12 @@ const currentAction = stores.game.currentGameAction;
 
 // Check if in party mode
 if (stores.character.isPartyMode) {
-  // Party-specific logic
+	// Party-specific logic
 }
 
 // Check combat state
 if (stores.combat.hasAnySelectedCombatActions()) {
-  // Process combat
+	// Process combat
 }
 ```
 
@@ -59,6 +59,7 @@ gameStore.addGameAction(newAction);
 ### GameStateStore
 
 Manages core game progression:
+
 - Game actions history
 - Current game action (derived)
 - Chosen action
@@ -66,12 +67,14 @@ Manages core game progression:
 - Story chunk (ephemeral UI state)
 
 **Key Methods:**
+
 - `addGameAction(action)` - Add action to history
 - `updateCurrentGameAction(updates)` - Partial update
 - `resetGameState()` - Reset all state
 - `resetAfterActionProcessed()` - Reset ephemeral state
 
 **Properties:**
+
 - `gameActions` - Persisted action history
 - `currentGameAction` - Getter for latest action
 - `isGameEnded` - Game end state
@@ -80,6 +83,7 @@ Manages core game progression:
 ### CharacterStateStore
 
 Manages character and party data:
+
 - Character descriptions (single & party)
 - Character stats (single & party)
 - Player character ID mapping
@@ -87,11 +91,13 @@ Manages character and party data:
 - Skills progression (per member)
 
 **Key Methods:**
+
 - `syncActiveCharacter()` - Call in $effect to sync party state
 - `getActiveCharacterId(fallback)` - Get active character ID
 - `resetCharacterState()` - Reset all character state
 
 **Properties:**
+
 - `character` - Current character description
 - `characterStats` - Current character stats
 - `party` - Party state
@@ -102,17 +108,20 @@ Manages character and party data:
 ### CombatStateStore
 
 Manages combat-specific state:
+
 - NPC state
 - Combat action selections (per member)
 - Dice roll states
 - Restraining states
 
 **Key Methods:**
+
 - `hasAnySelectedCombatActions()` - Check if any selected
 - `resetCombatSelections()` - Reset after combat turn
 - `resetCombatState()` - Reset all combat state
 
 **Properties:**
+
 - `npcState` - NPC data
 - `selectedCombatActionsByMember` - Combat selections
 - `selectedCombatActionsDiceAdditions` - Dice outcomes (ephemeral)
@@ -121,16 +130,19 @@ Manages combat-specific state:
 ### AIStateStore
 
 Manages AI configuration and state:
+
 - API key, temperature, language
 - System instructions
 - AI processing state
 - Thoughts state
 
 **Key Methods:**
+
 - `setGenerating(bool)` - Set AI generating state
 - `resetAIState()` - Reset AI state
 
 **Properties:**
+
 - `apiKey` - API key for LLM
 - `temperature` - LLM temperature
 - `systemInstructions` - System instruction config
@@ -140,6 +152,7 @@ Manages AI configuration and state:
 ### StoryStateStore
 
 Manages story and narrative state:
+
 - Story state
 - Campaign state & chapters
 - History messages
@@ -147,10 +160,12 @@ Manages story and narrative state:
 - Custom memories & GM notes
 
 **Key Methods:**
+
 - `resetStoryState()` - Reset all story state
 - `resetHistoryAfterAction()` - Reset ephemeral history
 
 **Properties:**
+
 - `story` - Story state
 - `campaign` - Campaign data
 - `currentChapter` - Current chapter number
@@ -160,48 +175,58 @@ Manages story and narrative state:
 ### InventoryStateStore
 
 Manages inventory:
+
 - Inventory items
 - Item suggestions (ephemeral)
 
 **Key Methods:**
+
 - `resetInventoryState()` - Reset inventory
 
 **Properties:**
+
 - `inventory` - Inventory items
 - `itemForSuggestActions` - Item for suggestions (ephemeral)
 
 ### EventStateStore
 
 Manages character events:
+
 - Event evaluations (transformations, abilities)
 - Per-member event evaluations
 
 **Key Methods:**
+
 - `resetEventState()` - Reset event state
 
 **Properties:**
+
 - `eventEvaluation` - Current character event evaluation
 - `eventEvaluationByMember` - Per-member evaluations
 
 ### LevelUpStateStore
 
 Manages level-up state:
+
 - Level-up button state
 - Level-up dialog state
 - Party-wide level-up status
 
 **Key Methods:**
+
 - `setButtonEnabled(bool)` - Enable/disable button
 - `setMemberLevelUpStatus(id, bool)` - Set member status
 - `anyMemberCanLevelUp()` - Check if any can level up
 - `resetLevelUpState()` - Reset state
 
 **Properties:**
+
 - `levelUpState` - Level-up state
 
 ## Benefits Over Previous Approach
 
 ### Before (God Class)
+
 ```typescript
 // 50+ scattered state variables in +page.svelte
 const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
@@ -212,26 +237,29 @@ const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 ```
 
 **Problems:**
+
 - No organization
 - Hard to understand relationships
 - Difficult to reset related state
 - No encapsulation
 
 ### After (Stores)
+
 ```typescript
 // Organized, encapsulated stores
 const stores = new GameStores();
 
 // Clear domain boundaries
-stores.game.currentGameAction
-stores.character.isPartyMode
-stores.combat.hasAnySelectedCombatActions()
+stores.game.currentGameAction;
+stores.character.isPartyMode;
+stores.combat.hasAnySelectedCombatActions();
 
 // Easy to reset related state
-stores.resetAfterActionProcessed() // Resets game, character, story ephemeral state
+stores.resetAfterActionProcessed(); // Resets game, character, story ephemeral state
 ```
 
 **Benefits:**
+
 - Clear organization by domain
 - Encapsulated logic
 - Easy to test
@@ -247,6 +275,7 @@ npm run test:unit -- src/routes/game/stores/
 ```
 
 Tests cover:
+
 - State initialization
 - State mutations
 - Derived properties
@@ -258,12 +287,14 @@ Tests cover:
 To migrate existing code to use stores:
 
 ### Step 1: Import stores
+
 ```typescript
 import { GameStores } from './stores';
 const stores = new GameStores();
 ```
 
 ### Step 2: Replace direct state access
+
 ```typescript
 // Before
 const currentAction = gameActionsState.value[gameActionsState.value.length - 1];
@@ -273,6 +304,7 @@ const currentAction = stores.game.currentGameAction;
 ```
 
 ### Step 3: Replace state mutations
+
 ```typescript
 // Before
 gameActionsState.value = [...gameActionsState.value, newAction];
@@ -282,6 +314,7 @@ stores.game.addGameAction(newAction);
 ```
 
 ### Step 4: Replace reset logic
+
 ```typescript
 // Before
 chosenActionState.reset();
@@ -303,6 +336,7 @@ stores.resetAfterActionProcessed();
 ## Performance
 
 Stores are lightweight and have minimal overhead:
+
 - Reactive primitives use Svelte 5 runes
 - No unnecessary re-renders
 - Derived properties are computed efficiently
@@ -311,6 +345,7 @@ Stores are lightweight and have minimal overhead:
 ## TypeScript Support
 
 All stores have full TypeScript support:
+
 - Type-safe properties
 - Type-safe methods
 - IntelliSense for all members

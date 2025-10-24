@@ -10,7 +10,9 @@ export function mapGameState(state: GameActionState) {
 }
 
 export function mapStatsUpdates(object: Pick<GameActionState, 'stats_update'>) {
-	object.stats_update = Array.isArray(object.stats_update) ? object.stats_update.map((statUpdate) => mapStatsUpdate(statUpdate)) : [];
+	object.stats_update = Array.isArray(object.stats_update)
+		? object.stats_update.map((statUpdate) => mapStatsUpdate(statUpdate))
+		: [];
 }
 
 export function mapStatsUpdate(stats_update): StatsUpdate {

@@ -116,7 +116,10 @@
 		updatePlayerCharactersIdToNamesMapForParty,
 		switchActiveCharacter
 	} from './partyLogic';
-	import { getDiceRollPromptAddition, type DiceRollResult } from '$lib/components/interaction_modals/dice/diceRollLogic';
+	import {
+		getDiceRollPromptAddition,
+		type DiceRollResult
+	} from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
 	import SimpleDiceRoller from '$lib/components/interaction_modals/dice/SimpleDiceRoller.svelte';
 	import StoryProgressionWithImage, {
@@ -158,13 +161,19 @@
 	//game state
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
 	const characterActionsState = useLocalStorage<Action[]>('characterActionsState', []);
-	const characterActionsByMemberState = useLocalStorage<Record<string, Action[]>>('characterActionsByMemberState', {});
+	const characterActionsByMemberState = useLocalStorage<Record<string, Action[]>>(
+		'characterActionsByMemberState',
+		{}
+	);
 	// Per-member restrained explanation state (party-aware). Value is explanation string or null.
 	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
 		'restrainedExplanationByMemberState',
 		{}
 	);
-	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, Action | null>>('selectedCombatActionsByMemberState', {});
+	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, Action | null>>(
+		'selectedCombatActionsByMemberState',
+		{}
+	);
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
 	const characterState = useLocalStorage<CharacterDescription>(
 		'characterState',
@@ -232,10 +241,8 @@
 		const effectiveId =
 			id ||
 			partyState.value.activeCharacterId ||
-			(getCharacterTechnicalId(
-				playerCharactersIdToNamesMapState.value,
-				characterState.value.name
-			) || '');
+			getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
+			'';
 		return playerCharactersGameState[effectiveId];
 	};
 
@@ -447,20 +454,20 @@
 						key,
 						{
 							...resource,
-							current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+							current_value:
+								currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
 						}
 					])
 				)
 			};
-			
 
-					const restrainingStateForActive = getActiveRestrainingState(
-						partyState.value,
-						playerCharactersIdToNamesMapState.value,
-						characterState.value.name,
-						restrainedExplanationByMemberState.value,
-						currentGameActionState
-					);
+			const restrainingStateForActive = getActiveRestrainingState(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value,
+				characterState.value.name,
+				restrainedExplanationByMemberState.value,
+				currentGameActionState
+			);
 			const { thoughts, actions } = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
@@ -483,7 +490,7 @@
 			);
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
-			
+
 			if (activeId) {
 				characterActionsByMemberState.value[activeId] = actions;
 			}
@@ -576,7 +583,7 @@
 			if (!skillsProgressionState.value[activeId][skillName]) {
 				skillsProgressionState.value[activeId][skillName] = 0;
 			}
-			
+
 			if (skillsProgressionState.value[activeId][skillName] >= requiredSkillProgression) {
 				console.log('Advancing skill ' + skillName + ' by 1 for character ' + activeId);
 				characterStatsState.value.skills[skillName] += 1;
@@ -587,9 +594,9 @@
 					value: { result: skillName },
 					type: 'skill_increased'
 				});
-				
+
 				// Update party stats for the active member
-				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
+				const memberStats = partyStatsState.value.members.find((m) => m.id === activeId);
 				if (memberStats) {
 					memberStats.stats.skills[skillName] = characterStatsState.value.skills[skillName];
 				}
@@ -609,17 +616,23 @@
 			if (!skillsProgressionState.value[activeId][skillName]) {
 				skillsProgressionState.value[activeId][skillName] = 0;
 			}
-			console.log('Adding skill progression for ' + skillName + ': ' + skillProgression + ' to character ' + activeId);
+			console.log(
+				'Adding skill progression for ' +
+					skillName +
+					': ' +
+					skillProgression +
+					' to character ' +
+					activeId
+			);
 			skillsProgressionState.value[activeId][skillName] += skillProgression;
 		}
 	};
 	function openDiceRollDialog(
-			waitForFunction?: Promise<void>,
-			waitForActionsResult?: Promise<void>,
-			deadNPCs?: Array<string>,
-			onResultCallback?: (result: DiceRollResult | undefined) => void
-		) {
-
+		waitForFunction?: Promise<void>,
+		waitForActionsResult?: Promise<void>,
+		deadNPCs?: Array<string>,
+		onResultCallback?: (result: DiceRollResult | undefined) => void
+	) {
 		didAIProcessDiceRollActionState.value = false;
 		diceRollDialog?.show();
 		diceRollDialog?.addEventListener('close', function handleDiceModalClose() {
@@ -627,9 +640,9 @@
 			const diceRollResult = diceRollDialog?.returnValue as DiceRollResult | undefined;
 			const dice_roll_addition_text = getDiceRollPromptAddition(diceRollResult);
 
-				// Callback path (combat immediate roll). We do not send the action yet.
-				if (onResultCallback) {
-					onResultCallback(diceRollResult);
+			// Callback path (combat immediate roll). We do not send the action yet.
+			if (onResultCallback) {
+				onResultCallback(diceRollResult);
 				didAIProcessDiceRollActionState.value = true;
 				return;
 			}
@@ -653,7 +666,7 @@
 
 	function handleAIError() {
 		if (!didAIProcessDiceRollActionState.value) {
-				openDiceRollDialog(undefined, undefined, undefined, undefined);
+			openDiceRollDialog(undefined, undefined, undefined, undefined);
 		}
 	}
 
@@ -695,12 +708,12 @@
 	async function checkGameEnded() {
 		// Check if ALL party members are dead (for party mode)
 		if (partyState.value.members.length > 0) {
-			const allDead = partyState.value.members.every(member => {
+			const allDead = partyState.value.members.every((member) => {
 				const memberState = playerCharactersGameState[member.id];
 				const emptyKeys = getEmptyCriticalResourceKeys(memberState);
 				return emptyKeys.length > 0;
 			});
-			
+
 			if (!isGameEnded.value && allDead) {
 				isGameEnded.value = true;
 				await sendAction({
@@ -769,14 +782,14 @@
 
 	function checkForLevelUp() {
 		// Check level-up for all party members
-		partyState.value.members.forEach(member => {
+		partyState.value.members.forEach((member) => {
 			const memberGameState = playerCharactersGameState[member.id];
-			const memberStats = partyStatsState.value.members.find(m => m.id === member.id);
-			
+			const memberStats = partyStatsState.value.members.find((m) => m.id === member.id);
+
 			if (memberGameState && memberStats) {
 				const neededXP = getXPNeededForLevel(memberStats.stats.level);
 				const canLevelUp = neededXP && memberGameState.XP.current_value >= neededXP;
-				
+
 				// Store level-up availability per member
 				if (!levelUpState.value.partyLevelUpStatus) {
 					levelUpState.value.partyLevelUpStatus = {};
@@ -784,22 +797,21 @@
 				levelUpState.value.partyLevelUpStatus[member.id] = canLevelUp || false;
 			}
 		});
-		
+
 		// Enable button if ANY party member can level up
-		const anyCanLevelUp = Object.values(levelUpState.value.partyLevelUpStatus || {}).some(status => status);
+		const anyCanLevelUp = Object.values(levelUpState.value.partyLevelUpStatus || {}).some(
+			(status) => status
+		);
 		levelUpState.value.buttonEnabled = anyCanLevelUp;
-		
+
 		// For active character (for backward compatibility)
 		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
-		if (
-			neededXP &&
-			playerCharactersGameState[activeId]?.XP.current_value >= neededXP
-		) {
+		if (neededXP && playerCharactersGameState[activeId]?.XP.current_value >= neededXP) {
 			levelUpState.value.buttonEnabled = true;
 		}
 	}
-	
+
 	async function confirmCombatActions() {
 		if (!currentGameActionState.is_character_in_combat) return;
 
@@ -817,7 +829,8 @@
 				combatActionsPrompt += `- ${member.character.name}: [AI choose an appropriate action]\n`;
 			}
 		}
-		combatActionsPrompt += '\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
+		combatActionsPrompt +=
+			'\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
 
 		const partyAction: Action = {
 			characterName: partyState.value.members.map((m) => m.character.name).join(', '),
@@ -835,9 +848,11 @@
 
 		isAiGeneratingState = false;
 	}
-	
+
 	function hasAnySelectedCombatActions(): boolean {
-		return Object.values(selectedCombatActionsByMemberState.value).some(action => action !== null && action !== undefined);
+		return Object.values(selectedCombatActionsByMemberState.value).some(
+			(action) => action !== null && action !== undefined
+		);
 	}
 
 	async function addCampaignAdditionalStoryInput(action: Action, additionalStoryInput: string) {
@@ -920,59 +935,60 @@
 	}
 
 	const applyGameEventEvaluationForMember = (memberId: string, evaluated: EventEvaluation) => {
-				if (!evaluated) return;
-				const currentStored = eventEvaluationByMemberState.value[memberId] || initialEventEvaluationState;
-				let updated: EventEvaluation = { ...currentStored };
+		if (!evaluated) return;
+		const currentStored =
+			eventEvaluationByMemberState.value[memberId] || initialEventEvaluationState;
+		let updated: EventEvaluation = { ...currentStored };
 
-				// Character transformation detection
-				const changeInto = evaluated?.character_changed?.changed_into;
-				if (changeInto && changeInto !== currentStored.character_changed?.changed_into) {
-					updated = {
-						...updated,
-						character_changed: {
-							...evaluated.character_changed!,
-							aiProcessingComplete: false,
-							showEventConfirmationDialog: false
-						}
-					};
+		// Character transformation detection
+		const changeInto = evaluated?.character_changed?.changed_into;
+		if (changeInto && changeInto !== currentStored.character_changed?.changed_into) {
+			updated = {
+				...updated,
+				character_changed: {
+					...evaluated.character_changed!,
+					aiProcessingComplete: false,
+					showEventConfirmationDialog: false
 				}
+			};
+		}
 
-				// Abilities learned filtering (exclude already known & duplicates in stored state)
-				const abilities = evaluated?.abilities_learned?.abilities
-					?.filter(
-						(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
+		// Abilities learned filtering (exclude already known & duplicates in stored state)
+		const abilities = evaluated?.abilities_learned?.abilities
+			?.filter(
+				(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
+			)
+			.filter(
+				(newAbility) =>
+					!currentStored.abilities_learned?.abilities?.some(
+						(existing) =>
+							existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
+							existing.name === newAbility.name
 					)
-					.filter(
-						(newAbility) =>
-							!currentStored.abilities_learned?.abilities?.some(
-								(existing) =>
-									existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
-									existing.name === newAbility.name
-								)
-						);
-				if (abilities && abilities.length > 0) {
-					updated = {
-						...updated,
-						abilities_learned: {
-							...updated.abilities_learned,
-							abilities: abilities,
-							aiProcessingComplete: false,
-							showEventConfirmationDialog: false
-						}
-					};
+			);
+		if (abilities && abilities.length > 0) {
+			updated = {
+				...updated,
+				abilities_learned: {
+					...updated.abilities_learned,
+					abilities: abilities,
+					aiProcessingComplete: false,
+					showEventConfirmationDialog: false
 				}
+			};
+		}
 
-				// Persist in mapping
-				eventEvaluationByMemberState.value = {
-					...eventEvaluationByMemberState.value,
-					[memberId]: updated
-				};
-				// If active member, reflect in single-character reactive state for existing UI compatibility
-				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
-				if (memberId === activeId) {
-					eventEvaluationState.value = updated;
-				}
-			}
+		// Persist in mapping
+		eventEvaluationByMemberState.value = {
+			...eventEvaluationByMemberState.value,
+			[memberId]: updated
+		};
+		// If active member, reflect in single-character reactive state for existing UI compatibility
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		if (memberId === activeId) {
+			eventEvaluationState.value = updated;
+		}
+	};
 
 	// Helper to process the AI story progression and update game state accordingly.
 	async function processStoryProgression(
@@ -1031,16 +1047,17 @@
 				getRelatedHistoryForStory();
 				getRelatedHistoryForStory();
 				// Build party evaluation input (fallback to single active character if party not initialized)
-				const partyMembersForEvaluation = (partyState.value.members.length
-					? partyState.value.members
-					: [{ id: playerCharacterIdState, character: characterState.value }]
+				const partyMembersForEvaluation = (
+					partyState.value.members.length
+						? partyState.value.members
+						: [{ id: playerCharacterIdState, character: characterState.value }]
 				).map((m) => ({
 					id: m.id,
 					name: m.character.name,
-					known_abilities:
-						(partyStatsState.value.members.find((ms) => ms.id === m.id)?.stats.spells_and_abilities || characterStatsState.value.spells_and_abilities).map(
-							(a) => a.name
-						)
+					known_abilities: (
+						partyStatsState.value.members.find((ms) => ms.id === m.id)?.stats
+							.spells_and_abilities || characterStatsState.value.spells_and_abilities
+					).map((a) => a.name)
 				}));
 
 				eventAgent
@@ -1082,12 +1099,12 @@
 						relatedHistory,
 						gameSettingsState.value?.aiIntroducesSkills,
 						getActiveRestrainingState(
-								partyState.value,
-								playerCharactersIdToNamesMapState.value,
-								characterState.value.name,
-								restrainedExplanationByMemberState.value,
-								newState
-							),
+							partyState.value,
+							playerCharactersIdToNamesMapState.value,
+							characterState.value.name,
+							restrainedExplanationByMemberState.value,
+							newState
+						),
 						additionalActionInputState.value
 					)
 					.then(({ thoughts, actions }) => {
@@ -1132,11 +1149,11 @@
 					newState.story || '',
 					action,
 					partyState.value.members.length > 0
-						? partyState.value.members.map(m => m.character.name)
+						? partyState.value.members.map((m) => m.character.name)
 						: getCharacterKnownNames(
 								playerCharactersIdToNamesMapState.value,
 								characterState.value.name
-						  ),
+							),
 					playerCharactersGameState[playerCharacterIdState],
 					gameLogic.getAllTargetsAsList(currentGameActionState.currently_present_npcs),
 					systemInstructionsState.value.generalSystemInstruction,
@@ -1402,14 +1419,8 @@
 		// Get active character ID for resource checks
 		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const isLocked = is_character_in_combat && selectedCombatActionsLockedState[activeId];
-		
-		if (
-			!isEnoughResource(
-				action,
-				playerCharactersGameState[activeId],
-				inventoryState.value
-			)
-		) {
+
+		if (!isEnoughResource(action, playerCharactersGameState[activeId], inventoryState.value)) {
 			button.disabled = true;
 		}
 
@@ -1613,13 +1624,7 @@
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
 			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
-			if (
-				!isEnoughResource(
-					action,
-					playerCharactersGameState[activeId],
-					inventoryState.value
-				)
-			) {
+			if (!isEnoughResource(action, playerCharactersGameState[activeId], inventoryState.value)) {
 				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
@@ -1742,7 +1747,7 @@
 
 			if (transformedCharacter) {
 				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
-				
+
 				// Update character ID mapping
 				addCharacterToPlayerCharactersIdToNamesMap(
 					playerCharactersIdToNamesMapState.value,
@@ -1750,27 +1755,29 @@
 					transformedCharacter.name
 				);
 				characterState.value = transformedCharacter;
-				
+
 				// Update party member if in party mode
-				const partyMember = partyState.value.members.find(m => m.id === activeId);
+				const partyMember = partyState.value.members.find((m) => m.id === activeId);
 				if (partyMember) {
 					partyMember.character = transformedCharacter;
 				}
 			}
 			if (transformedCharacterStats) {
 				characterStatsState.value = transformedCharacterStats;
-				
+
 				// Update party stats if in party mode
 				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
-				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
+				const memberStats = partyStatsState.value.members.find((m) => m.id === activeId);
 				if (memberStats) {
 					memberStats.stats = transformedCharacterStats;
 				}
-				
+
 				//generate new actions considering resources might have changed
 				regenerateActions();
 				additionalStoryInputState.value +=
-					'\n After transformation make sure that stats_update refer to the new resources from now on for character ' + characterState.value.name + '!\n' +
+					'\n After transformation make sure that stats_update refer to the new resources from now on for character ' +
+					characterState.value.name +
+					'!\n' +
 					stringifyPretty(characterStatsState.value.resources);
 			}
 
@@ -1966,7 +1973,6 @@
 		}
 	}
 
-
 	// Track in-flight generations so we don't start duplicate calls for same character
 	let actionGenerationInFlight: Record<string, boolean> = {};
 
@@ -1986,9 +1992,9 @@
 				}
 			}
 		}
-					// Load per-member event evaluation state for UI
-			eventEvaluationState.value =
-				eventEvaluationByMemberState.value[activeId] || initialEventEvaluationState;
+		// Load per-member event evaluation state for UI
+		eventEvaluationState.value =
+			eventEvaluationByMemberState.value[activeId] || initialEventEvaluationState;
 
 		// If a generation is already running for this character and no cached actions yet, just bail.
 		if (actionGenerationInFlight[activeId]) {
@@ -1998,7 +2004,7 @@
 		// Persist current visible actions with the previously active character id
 		if (characterActionsState.value.length > 0) {
 			const prevId = Object.keys(characterActionsByMemberState.value).find(
-				id => characterActionsByMemberState.value[id] === characterActionsState.value
+				(id) => characterActionsByMemberState.value[id] === characterActionsState.value
 			);
 			if (prevId && prevId !== activeId) {
 				characterActionsByMemberState.value[prevId] = characterActionsState.value;
@@ -2025,9 +2031,8 @@
 			if (actionsDiv) actionsDiv.innerHTML = '';
 		}
 
-		const currentCharacter = partyState.value.members.find(m => m.id === activeId)?.character;
-		const currentStats = partyStatsState.value.members.find(m => m.id === activeId)?.stats;
-
+		const currentCharacter = partyState.value.members.find((m) => m.id === activeId)?.character;
+		const currentStats = partyStatsState.value.members.find((m) => m.id === activeId)?.stats;
 
 		let thoughts, actions;
 		try {
@@ -2063,8 +2068,7 @@
 			console.warn('Action generation failed for character', activeId, e);
 			actionGenerationInFlight[activeId] = false;
 			return; // Do not proceed
-		}
-		finally {
+		} finally {
 			// Nothing here yet; keep for future cleanup.
 		}
 
@@ -2210,7 +2214,7 @@
 			></TTSComponent>
 		</div>
 	{/if}
-	
+
 	<!-- Party Member Switcher above actions -->
 	{#if partyState.value.members.length > 1 && !isGameEnded.value}
 		<div class="mt-4">
@@ -2220,24 +2224,23 @@
 			/>
 		</div>
 	{/if}
-	
+
 	<div id="actions" bind:this={actionsDiv} class="mt-2 p-4 pb-0 pt-0"></div>
-	
+
 	{#if currentGameActionState.is_character_in_combat && !isGameEnded.value}
 		<div class="p-4 pb-0 pt-0">
-			<button
-				onclick={() => confirmCombatActions()}
-				class="text-md btn btn-success mb-3 w-full"
-				>
+			<button onclick={() => confirmCombatActions()} class="text-md btn btn-success mb-3 w-full">
 				{#if hasAnySelectedCombatActions()}
-					Confirm Combat Actions ({Object.keys(selectedCombatActionsByMemberState.value).filter(k => selectedCombatActionsByMemberState.value[k]).length}/{partyState.value.members.length} selected)
+					Confirm Combat Actions ({Object.keys(selectedCombatActionsByMemberState.value).filter(
+						(k) => selectedCombatActionsByMemberState.value[k]
+					).length}/{partyState.value.members.length} selected)
 				{:else}
 					Confirm Combat Actions (Let AI choose for all)
 				{/if}
 			</button>
 		</div>
 	{/if}
-	
+
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}
 			{#if characterActionsState.value?.length === 0}

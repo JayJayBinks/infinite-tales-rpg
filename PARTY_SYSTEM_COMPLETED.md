@@ -7,6 +7,7 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 ## ✅ Completed Features
 
 ### 1. Flexible Party Management
+
 **Status:** ✅ Complete
 
 - **Start with 1 member** (not 4 as originally)
@@ -16,11 +17,13 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - **Party state cleared** when local storage cleared
 
 **Files Modified:**
+
 - `src/routes/game/new/character/+page.svelte`
 - `src/lib/ai/agents/characterAgent.ts`
 - `src/routes/game/settings/ai/+page.svelte`
 
 ### 2. UI Reorganization
+
 **Status:** ✅ Complete
 
 - **Party switcher moved** above actions section (as requested)
@@ -30,11 +33,13 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - **Skills progression** updated to per-member display
 
 **Files Modified:**
+
 - `src/routes/game/+page.svelte`
 - `src/routes/game/+layout.svelte`
 - `src/routes/game/party/+page.svelte` (created)
 
 ### 3. Quickstart Tale Enhancement
+
 **Status:** ✅ Complete
 
 - **Party description** textarea field
@@ -43,10 +48,12 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - **Appropriate party size** generated in quickstart
 
 **Files Modified:**
+
 - `src/lib/components/interaction_modals/QuickstartStoryGenerationModal.svelte`
 - `src/routes/game/settings/ai/+page.svelte`
 
 ### 4. Character Stats Builder
+
 **Status:** ✅ Complete
 
 - **Supports building stats** for whole party at once
@@ -55,10 +62,12 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - **Syncs party stats state** with variable party sizes
 
 **Files Modified:**
+
 - `src/routes/game/new/characterStats/+page.svelte`
 - `src/lib/ai/agents/characterStatsAgent.ts`
 
 ### 5. Party Member Switching
+
 **Status:** ✅ Complete
 
 - **Per-member action state** tracking (`characterActionsByMemberState`)
@@ -68,13 +77,16 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - **Skills progression** structure updated per member
 
 **Files Modified:**
+
 - `src/routes/game/+page.svelte`
 - `src/routes/game/party/+page.svelte`
 
 ### 6. AI Prompts for Party Support
+
 **Status:** ✅ Complete - Major Agents Updated
 
 #### gameAgent (✅ Complete)
+
 - Detects party vs single character
 - References "party members" when multiple characters
 - Shows resources for all party members
@@ -83,23 +95,27 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - Game end prompt handles party member death
 
 #### actionAgent (✅ Complete)
+
 - Actions suggested for "currently active party member"
 - Mentions other party members may assist
 - References party inventory
 - Character name included in prompts
 
 #### combatAgent (✅ Complete)
+
 - Updated for "active party member's action"
 - Notes other party members may be present
 - References "party's shared inventory"
 - Both combat methods updated
 
 **Files Modified:**
+
 - `src/lib/ai/agents/gameAgent.ts`
 - `src/lib/ai/agents/actionAgent.ts`
 - `src/lib/ai/agents/combatAgent.ts`
 
 ### 7. Data Structures & Logic
+
 **Status:** ✅ Complete
 
 - **Party types** defined (Party, PartyMember, PartyStats, PartyMemberStats)
@@ -109,6 +125,7 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - **Per-member action storage**
 
 **Files Created:**
+
 - `src/routes/game/partyLogic.ts`
 - `src/lib/components/PartyMemberSwitcher.svelte`
 - `src/routes/game/party/+page.svelte`
@@ -118,67 +135,83 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 ### High Priority
 
 #### 1. Level-Up System for All Members
+
 **Current:** Only checks active character
 **Needed:**
+
 - Check XP for all party members
 - Show "Level Up Available" indicator for each
 - Allow leveling any member
 - Update level-up modal to show which member
 
 **Files to Update:**
+
 - `src/routes/game/levelLogic.ts`
 - `src/lib/components/interaction_modals/LevelUpModal.svelte`
 - Main game page level-up logic
 
 #### 2. Character Transformation for Party
+
 **Current:** Works for single character
 **Needed:**
+
 - Specify which party member transforms
 - Update transformation logic in `characterLogic.ts`
 - Update party state when member transforms
 - Handle transformation events per member
 
 **Files to Update:**
+
 - `src/routes/game/characterLogic.ts`
 - Event handling for character_changed
 
 #### 3. Skills Progression Integration
+
 **Current:** Structure updated, needs full integration
 **Needed:**
+
 - Update skill progression tracking in actions
 - Ensure skills tracked per member ID
 - Update all skill progression displays
 
 **Files to Update:**
+
 - Main game page skill progression logic
 - Character/Party sheet skill display
 
 ### Medium Priority
 
 #### 4. Additional AI Prompts
+
 **Agents to Review:**
+
 - `imagePromptAgent.ts` - Include party member info in image prompts
 - `summaryAgent.ts` - Summarize for party context
 - `eventAgent.ts` - Handle events affecting party members
 
 #### 5. Inventory Management
+
 **Current:** Party-wide inventory (good!)
 **Enhancement:** Consider per-character equipment slots
 
 #### 6. Action Generation Improvements
+
 **Enhancement:** Generate actions considering all party members' abilities
 
 ### Low Priority
 
 #### 7. Party Member Status Indicators
+
 **Enhancement:** Show health bars for all members near switcher
 
 #### 8. Migration Logic
+
 **Enhancement:** Auto-migrate old single-character saves to party format
 
 ## Testing Checklist
 
 ### ✅ Completed Tests
+
 - [x] Generate party of variable sizes (1-4)
 - [x] Add/remove party members
 - [x] Quickstart with party configuration
@@ -186,6 +219,7 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 - [x] Navigate to party page
 
 ### 🔲 Remaining Tests
+
 - [ ] Switch between party members during gameplay
 - [ ] Actions saved per member
 - [ ] Resources tracked per member
@@ -199,16 +233,19 @@ Successfully implemented comprehensive party system refactoring as requested, tr
 ### Key Design Patterns
 
 1. **Active Character Sync**
+
    - `characterState` syncs with active party member via `$effect`
    - Minimizes changes to existing code
 
 2. **Resource Tracking**
+
    - Uses existing `playerCharactersGameState` keyed by ID
    - Already supported multiple characters
 
 3. **Party Detection**
+
    ```typescript
-   const isParty = Object.keys(playerCharactersGameState).length > 1
+   const isParty = Object.keys(playerCharactersGameState).length > 1;
    ```
 
 4. **Backward Compatibility**
@@ -233,18 +270,21 @@ skillsProgressionByMemberState: Record<string, SkillsProgression>
 ## Code Statistics
 
 ### Changes Made
+
 - **Files Created:** 4
 - **Files Modified:** 10+
 - **Lines Added:** ~1000
 - **Commits Made:** 9
 
 ### Files Created
+
 1. `src/routes/game/partyLogic.ts` - Party helper functions
 2. `src/lib/components/PartyMemberSwitcher.svelte` - UI component
 3. `src/routes/game/party/+page.svelte` - Party overview page
-4. Documentation files (PARTY_SYSTEM_*.md)
+4. Documentation files (PARTY*SYSTEM*\*.md)
 
 ### Key Files Modified
+
 1. `src/lib/ai/agents/characterAgent.ts` - Party generation
 2. `src/lib/ai/agents/characterStatsAgent.ts` - Party stats
 3. `src/lib/ai/agents/gameAgent.ts` - Party-aware prompts
@@ -264,6 +304,7 @@ skillsProgressionByMemberState: Record<string, SkillsProgression>
 ## Breaking Changes
 
 **None** - Fully backward compatible:
+
 - Single character parties work as before
 - Old functionality preserved
 - Gradual adoption possible
@@ -277,12 +318,14 @@ skillsProgressionByMemberState: Record<string, SkillsProgression>
 ## Recommendations
 
 ### Immediate Next Steps
+
 1. Complete level-up for all members (1-2 hours)
 2. Update character transformation (1 hour)
 3. Finish skills progression integration (1 hour)
 4. End-to-end testing (2 hours)
 
 ### Future Enhancements
+
 1. Party formation during gameplay (recruit NPCs)
 2. Per-character equipment slots
 3. Party-based encounters and challenges
@@ -291,6 +334,7 @@ skillsProgressionByMemberState: Record<string, SkillsProgression>
 ## Success Metrics
 
 ### ✅ Achieved
+
 - Users can create parties of 1-4 members
 - Users can add/remove party members
 - Users can switch between party members
@@ -299,6 +343,7 @@ skillsProgressionByMemberState: Record<string, SkillsProgression>
 - Actions tracked per member
 
 ### 🔲 To Achieve
+
 - Users can level up any party member
 - Users can see all party member statuses
 - Skills progress per member

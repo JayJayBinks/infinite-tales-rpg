@@ -98,7 +98,7 @@
 			while (partyStatsState.value.members.length > partyState.value.members.length) {
 				partyStatsState.value.members.pop();
 			}
-			
+
 			for (let i = 0; i < partyStats.length; i++) {
 				partyStatsState.value.members[i].stats = partyStats[i];
 			}
@@ -364,7 +364,7 @@
 <!-- Party Member Tabs -->
 {#if partyState.value.members.length > 0}
 	<div class="mt-4 flex flex-col items-center gap-2">
-		<div class="tabs tabs-boxed flex justify-center flex-wrap">
+		<div class="tabs-boxed tabs flex flex-wrap justify-center">
 			{#each partyState.value.members as member, index}
 				<button
 					class="tab"
@@ -379,7 +379,11 @@
 {/if}
 
 <form class="m-6 grid items-center gap-2 text-center">
-	<p>Generate stats for {partyState.value.members.length > 0 ? `party of ${partyState.value.members.length}` : 'your character'}, or customize each character individually</p>
+	<p>
+		Generate stats for {partyState.value.members.length > 0
+			? `party of ${partyState.value.members.length}`
+			: 'your character'}, or customize each character individually
+	</p>
 	{#if partyState.value.members.length > 1}
 		<button
 			class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
@@ -390,8 +394,12 @@
 		</button>
 		<div class="divider">OR</div>
 	{/if}
-	<p>Customize Current Character ({partyState.value.members.length > 0 && partyState.value.members[currentCharacterIndex]?.character.name || `Character ${currentCharacterIndex + 1}`})</p>
-	
+	<p>
+		Customize Current Character ({(partyState.value.members.length > 0 &&
+			partyState.value.members[currentCharacterIndex]?.character.name) ||
+			`Character ${currentCharacterIndex + 1}`})
+	</p>
+
 	{@render navigation()}
 	<div class="form-control m-auto w-full">
 		<div class="flex items-center justify-center">

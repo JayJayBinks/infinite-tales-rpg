@@ -295,7 +295,10 @@ export class GameAgent {
 			);
 		}
 		// New: party-wide restrained states mapping (per-member explanations)
-		if (restrained_explanations_by_member && Object.keys(restrained_explanations_by_member).length > 0) {
+		if (
+			restrained_explanations_by_member &&
+			Object.keys(restrained_explanations_by_member).length > 0
+		) {
 			// Filter out empty / null entries to reduce prompt noise
 			const filtered = Object.fromEntries(
 				Object.entries(restrained_explanations_by_member).filter(([, v]) => v)
@@ -350,7 +353,8 @@ export class GameAgent {
 	) {
 		// Determine if this is a party game state (nested resources objects)
 		const firstValue = Object.values(playerCharactersGameState)[0] as unknown;
-		const isSingleCharacter = !!firstValue && typeof firstValue === 'object' && 'current_value' in (firstValue as any);
+		const isSingleCharacter =
+			!!firstValue && typeof firstValue === 'object' && 'current_value' in (firstValue as any);
 		const isParty = !isSingleCharacter; // If the first level values don't have current_value, assume party mapping
 
 		let partyResourcesPresentation = '';

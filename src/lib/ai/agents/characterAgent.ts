@@ -99,7 +99,7 @@ export class CharacterAgent {
 		const partyPrompt = Array(partySize).fill(characterDescriptionForPrompt).join(',\n');
 		const agentInstruction = [
 			`You are RPG character agent, creating a party of ${partySize} diverse character${partySize > 1 ? 's' : ''} for an RPG adventure.\n` +
-				(partySize > 1 
+				(partySize > 1
 					? `Create ${partySize} unique characters that complement each other with different classes, races, and personalities.\n` +
 						'Ensure the party has a good balance of combat, magic, support, and social skills.\n'
 					: 'Create a unique character suitable for solo adventuring.\n') +
@@ -114,8 +114,7 @@ export class CharacterAgent {
 				stringifyPretty(storyState) +
 				'\n\nMake sure to create characters that fit the following description:\n' +
 				storyState.party_description +
-				(preset ? '\n\nParty overwrites:\n' +
-				stringifyPretty(preset) : ''),
+				(preset ? '\n\nParty overwrites:\n' + stringifyPretty(preset) : ''),
 			systemInstruction: agentInstruction
 		};
 		return (await this.llm.generateContent(request))?.content as CharacterDescription[];

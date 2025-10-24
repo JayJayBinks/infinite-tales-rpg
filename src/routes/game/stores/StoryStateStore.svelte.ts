@@ -1,6 +1,6 @@
 /**
  * StoryStateStore - Centralized state management for story and narrative state
- * 
+ *
  * This store manages:
  * - Story state
  * - Campaign state
@@ -26,10 +26,9 @@ export class StoryStateStore {
 
 	// History and memory
 	readonly historyMessages = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
-	readonly relatedStoryHistory = useLocalStorage<RelatedStoryHistory>(
-		'relatedStoryHistoryState',
-		{ relatedDetails: [] }
-	);
+	readonly relatedStoryHistory = useLocalStorage<RelatedStoryHistory>('relatedStoryHistoryState', {
+		relatedDetails: []
+	});
 	readonly relatedActionHistory = useLocalStorage<string[]>('relatedActionHistoryState', []);
 	readonly relatedActionGroundTruth = useLocalStorage<TruthOracleResult | null>(
 		'relatedActionGroundTruthState'

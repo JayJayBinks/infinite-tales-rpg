@@ -1,6 +1,6 @@
 /**
  * AIStateStore - Centralized state management for AI configuration and state
- * 
+ *
  * This store manages:
  * - AI configuration (API key, temperature, language)
  * - System instructions

@@ -131,9 +131,9 @@ export class GeminiProvider extends LLM {
 			}
 			if (this.fallbackLLM) {
 				console.log('Fallback LLM for error: ', e.message);
-				if(modelToUse === GEMINI_MODELS.PRO) {
-					request.model = GEMINI_MODELS.FLASH_2_5
-				}else{
+				if (modelToUse === GEMINI_MODELS.PRO) {
+					request.model = GEMINI_MODELS.FLASH_2_5;
+				} else {
 					request.model = this.fallbackLLM.llmConfig.model;
 				}
 				const fallbackResult = await fallbackMethod(request);
@@ -206,11 +206,19 @@ export class GeminiProvider extends LLM {
 	}
 
 	isThinkingModel(model: string): boolean {
-		return model === GEMINI_MODELS.PRO || model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
+		return (
+			model === GEMINI_MODELS.PRO ||
+			model === GEMINI_MODELS.FLASH_2_5 ||
+			model === GEMINI_MODELS.FLASH_LITE_2_5
+		);
 	}
 
 	supportsThinkingBudget(model: string): boolean {
-		return model === GEMINI_MODELS.PRO || model === GEMINI_MODELS.FLASH_2_5 || model === GEMINI_MODELS.FLASH_LITE_2_5;
+		return (
+			model === GEMINI_MODELS.PRO ||
+			model === GEMINI_MODELS.FLASH_2_5 ||
+			model === GEMINI_MODELS.FLASH_LITE_2_5
+		);
 	}
 
 	supportsReturnThoughts(model: string): boolean {
