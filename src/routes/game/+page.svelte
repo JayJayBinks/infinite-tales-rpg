@@ -125,6 +125,7 @@
 	import { ImagePromptAgent } from '$lib/ai/agents/imagePromptAgent';
 	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
 	import PartyMemberSwitcher from '$lib/components/PartyMemberSwitcher.svelte';
+	import { getActiveRestrainingState } from './restrainingLogic';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog,
 		useSpellsAbilitiesModal,
@@ -158,6 +159,11 @@
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
 	const characterActionsState = useLocalStorage<Action[]>('characterActionsState', []);
 	const characterActionsByMemberState = useLocalStorage<Record<string, Action[]>>('characterActionsByMemberState', {});
+	// Per-member restrained explanation state (party-aware). Value is explanation string or null.
+	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
+		'restrainedExplanationByMemberState',
+		{}
+	);
 	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, Action | null>>('selectedCombatActionsByMemberState', {});
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
 	const characterState = useLocalStorage<CharacterDescription>(
@@ -447,6 +453,14 @@
 				)
 			};
 			
+
+					const restrainingStateForActive = getActiveRestrainingState(
+						partyState.value,
+						playerCharactersIdToNamesMapState.value,
+						characterState.value.name,
+						restrainedExplanationByMemberState.value,
+						currentGameActionState
+					);
 			const { thoughts, actions } = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
@@ -464,14 +478,12 @@
 					customMemoriesState.value
 				),
 				gameSettingsState.value?.aiIntroducesSkills,
-				currentGameActionState.is_character_restrained_explanation,
+				restrainingStateForActive,
 				additionalActionInputState.value
 			);
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
 			
-			// Save actions for current character
-			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 			if (activeId) {
 				characterActionsByMemberState.value[activeId] = actions;
 			}
@@ -1037,12 +1049,19 @@
 						partyMembersForEvaluation
 					)
 					.then((evaluation) => {
-						evaluation.events_by_member.forEach((ev) =>
+						evaluation.events_by_member.forEach((ev) => {
 							applyGameEventEvaluationForMember(ev.character_id, {
 								character_changed: ev.character_changed,
 								abilities_learned: ev.abilities_learned
-							})
-						);
+							});
+							// Apply per-member restraining state if provided by EventAgent
+							if (typeof ev.restrained_state_explanation !== 'undefined') {
+								restrainedExplanationByMemberState.value = {
+									...restrainedExplanationByMemberState.value,
+									[ev.character_id]: ev.restrained_state_explanation || null
+								};
+							}
+						});
 						const perCharThoughts = evaluation.events_by_member
 							.map((ev) => `${ev.character_name}: ${ev.reasoning || ''}`)
 							.join('\n');
@@ -1062,7 +1081,13 @@
 						systemInstructionsState.value.actionAgentInstruction,
 						relatedHistory,
 						gameSettingsState.value?.aiIntroducesSkills,
-						newState.is_character_restrained_explanation,
+						getActiveRestrainingState(
+								partyState.value,
+								playerCharactersIdToNamesMapState.value,
+								characterState.value.name,
+								restrainedExplanationByMemberState.value,
+								newState
+							),
 						additionalActionInputState.value
 					)
 					.then(({ thoughts, actions }) => {
@@ -1468,7 +1493,13 @@
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation,
+			getActiveRestrainingState(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value,
+				characterState.value.name,
+				restrainedExplanationByMemberState.value,
+				currentGameActionState
+			),
 			additionalActionInputState.value
 		);
 		if (generatedAction) {
@@ -1565,7 +1596,13 @@
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation,
+			getActiveRestrainingState(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value,
+				characterState.value.name,
+				restrainedExplanationByMemberState.value,
+				currentGameActionState
+			),
 			additionalActionInputState.value
 		);
 		console.log('generatedAction', stringifyPretty(generatedAction));
@@ -1806,6 +1843,13 @@
 		characterActionsState.reset();
 		if (actionsDiv) actionsDiv.innerHTML = '';
 
+		const restrainingStateForActive = getActiveRestrainingState(
+			partyState.value,
+			playerCharactersIdToNamesMapState.value,
+			characterState.value.name,
+			restrainedExplanationByMemberState.value,
+			currentGameActionState
+		);
 		const { thoughts, actions } = await actionAgent.generateActions(
 			currentGameActionState,
 			historyMessagesState.value,
@@ -1823,7 +1867,7 @@
 				customMemoriesState.value
 			),
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation,
+			restrainingStateForActive,
 			additionalActionInputState.value
 		);
 		characterActionsState.value = actions;
@@ -1987,25 +2031,32 @@
 
 		let thoughts, actions;
 		try {
+			const restrainingStateForActive = getActiveRestrainingState(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value,
+				currentCharacter!.name,
+				restrainedExplanationByMemberState.value,
+				currentGameActionState
+			);
 			({ thoughts, actions } = await actionAgent.generateActions(
-			currentGameActionState,
-			historyMessagesState.value,
-			storyState.value,
-			currentCharacter!,
-			currentStats!,
-			inventoryState.value,
-			systemInstructionsState.value.generalSystemInstruction,
-			systemInstructionsState.value.actionAgentInstruction,
-			await getRelatedHistory(
-				summaryAgent,
-				undefined,
-				undefined,
-				relatedStoryHistoryState.value,
-				customMemoriesState.value
-			),
-			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation,
-			additionalActionInputState.value
+				currentGameActionState,
+				historyMessagesState.value,
+				storyState.value,
+				currentCharacter!,
+				currentStats!,
+				inventoryState.value,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.actionAgentInstruction,
+				await getRelatedHistory(
+					summaryAgent,
+					undefined,
+					undefined,
+					relatedStoryHistoryState.value,
+					customMemoriesState.value
+				),
+				gameSettingsState.value?.aiIntroducesSkills,
+				restrainingStateForActive,
+				additionalActionInputState.value
 			));
 		} catch (e) {
 			// On failure clear in-flight flag and rethrow/log
@@ -2048,6 +2099,7 @@
 			onclose={onGMQuestionClosed}
 			question={gmQuestionState}
 			{playerCharactersGameState}
+			restrainedExplanationByMemberState={restrainedExplanationByMemberState.value}
 		/>
 	{/if}
 	{#if eventEvaluationState.value.character_changed?.showEventConfirmationDialog && !eventEvaluationState.value.character_changed?.aiProcessingComplete}

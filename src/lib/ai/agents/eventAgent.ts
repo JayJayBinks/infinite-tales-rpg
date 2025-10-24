@@ -49,6 +49,7 @@ export interface CharacterEventEvaluation extends EventEvaluation {
 	character_id: string;
 	character_name: string;
 	reasoning?: string; // optional per-character reasoning from model
+	restrained_state_explanation?: string | null; // per-member restraining state explanation
 }
 
 export interface PartyEventEvaluationResponse {
@@ -58,7 +59,8 @@ export interface PartyEventEvaluationResponse {
 const jsonFormat = `{
 	"reasoning": "string; Briefly explain how the character changed from the CURRENT CHARACTER DESCRIPTION and how abilities learned if any",
 	"character_changed": null | {"changed_into": "string; single word only what the character transformed into", "description": string},
-	"abilities_learned": [{"uniqueTechnicalId": string, "name": string, "effect": string}, ...]
+	"abilities_learned": [{"uniqueTechnicalId": string, "name": string, "effect": string}, ...],
+	"restrained_state_explanation": null | "Brief explanation if the character is currently under a TEMPORARY restraining or controlling effect that significantly limits available actions (sleep, paralysis, charm, blindness, illusion, compulsion, etc). Only if explicitly stated or strongly implied in recent story; else null."
 }`;
 
 export class EventAgent {
@@ -145,7 +147,8 @@ export class EventAgent {
 			"character_name": "string; reuse provided name",
 			"reasoning": "Brief reasoning for this specific character (1-2 sentences)",
 			"character_changed": null | {"changed_into": "string; single word only what the character transformed into", "description": string},
-			"abilities_learned": [{"uniqueTechnicalId": string, "name": string, "effect": string}, ...]
+			"abilities_learned": [{"uniqueTechnicalId": string, "name": string, "effect": string}, ...],
+			"restrained_state_explanation": null | "Brief explanation if character is currently under a TEMPORARY restraining or controlling effect (sleep, paralysis, charm, blindness, illusion, compulsion etc). Only include if explicitly described or strongly implied in the recent story excerpt."
 		}, ... one object per party member, keep order of input
 	]
 }`;
@@ -156,7 +159,8 @@ export class EventAgent {
 			'For each member decide:',
 			"1. character_changed: Major, likely permanent transformation (profession rank change, species change, possession, crystal power infusion, etc). If none => null.",
 			"2. abilities_learned: New abilities/spells/skills explicitly gained in story (exclude already known abilities). If none => empty array.",
-			'You MUST return one entry per provided party member (even if both fields empty/null).',
+			"3. restrained_state_explanation: TEMPORARY restraining / controlling effect limiting actions (sleep, paralysis, charm, blindness, illusion, compulsion, magical hold). Provide brief cause explanation if present; else null. Never guess—only if explicitly stated or strongly implied in the provided story excerpt.",
+			'You MUST return one entry per provided party member (even if all fields empty/null).',
 			'Party context (DO NOT hallucinate new members): ' + stringifyPretty(partyContext),
 			`${jsonRule}\n` + partyJsonFormat
 		];
@@ -186,6 +190,7 @@ export class EventAgent {
 			character_id: e.character_id,
 			character_name: e.character_name,
 			reasoning: e.reasoning,
+			restrained_state_explanation: e.restrained_state_explanation ?? null,
 			character_changed: e.character_changed
 				? {
 					...e.character_changed,

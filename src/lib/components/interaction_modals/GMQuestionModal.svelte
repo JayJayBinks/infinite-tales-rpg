@@ -28,11 +28,13 @@
 	let {
 		onclose,
 		question,
-		playerCharactersGameState
+		playerCharactersGameState,
+		restrainedExplanationByMemberState
 	}: {
 		onclose?;
 		question: string;
 		playerCharactersGameState: PlayerCharactersGameState;
+		restrainedExplanationByMemberState: Record<string, string | null>;
 	} = $props();
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -103,7 +105,8 @@
 			gameSettingsState.value,
 			getCurrentCampaignChapter(),
 			customGMNotesState.value,
-			currentGameActionState.is_character_restrained_explanation
+			undefined,
+			restrainedExplanationByMemberState
 		);
 		gmAnswerState = answer;
 		gmThoughtsState = thoughts;

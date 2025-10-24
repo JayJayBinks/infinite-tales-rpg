@@ -83,6 +83,10 @@
 		'characterActionsByMemberState',
 		{}
 	);
+	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
+		'restrainedExplanationByMemberState',
+		{}
+	);
 	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, any>>(
 		'selectedCombatActionsByMemberState',
 		{}
@@ -153,6 +157,7 @@
 		partyStatsState.reset();
 		// Newly added party / multi-member states
 		characterActionsByMemberState.reset();
+		restrainedExplanationByMemberState.reset();
 		selectedCombatActionsByMemberState.reset();
 		eventEvaluationByMemberState.reset();
 		chosenActionState.reset();
