@@ -807,17 +807,20 @@
 
 		// Aggregate combat actions with inline dice outcomes
 		let combatActionsPrompt = '\n\nPARTY COMBAT ACTIONS:\n';
+		let actionsCount = 0
 		for (const member of partyState.value.members) {
 			const selectedAction = selectedCombatActionsByMemberState.value[member.id];
 			const outcomeText = selectedCombatActionsDiceAdditionsState[member.id];
 			if (selectedAction) {
 				// Insert outcome directly after the action sentence if present
 				combatActionsPrompt += `- ${member.character.name}: ${selectedAction.text}; ${outcomeText}\n`;
+				actionsCount += 1;
 			} else {
 				combatActionsPrompt += `- ${member.character.name}: [AI choose an appropriate action]\n`;
 			}
 		}
-		combatActionsPrompt += '\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
+		combatActionsPrompt += actionsCount >= partyState.value.members.length ? '' 
+		:'\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
 
 		const partyAction: Action = {
 			characterName: partyState.value.members.map((m) => m.character.name).join(', '),
@@ -1128,16 +1131,18 @@
 
 		const statsUpdatesPromise = (async () => {
 			try {
+				const partyResourcesByName = partyState.value.members.length > 0
+					? Object.fromEntries(
+							partyState.value.members.map(m => [
+								m.character.name,
+								playerCharactersGameState[m.id] || {}
+							])
+					  )
+					: { [characterState.value.name]: playerCharactersGameState[playerCharacterIdState] };
 				const generated = await combatAgent.generateStatsUpdatesFromStory(
 					newState.story || '',
 					action,
-					partyState.value.members.length > 0
-						? partyState.value.members.map(m => m.character.name)
-						: getCharacterKnownNames(
-								playerCharactersIdToNamesMapState.value,
-								characterState.value.name
-						  ),
-					playerCharactersGameState[playerCharacterIdState],
+					partyResourcesByName,
 					gameLogic.getAllTargetsAsList(currentGameActionState.currently_present_npcs),
 					systemInstructionsState.value.generalSystemInstruction,
 					currentGameActionState.is_character_in_combat

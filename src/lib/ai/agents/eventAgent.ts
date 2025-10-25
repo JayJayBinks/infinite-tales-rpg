@@ -148,7 +148,7 @@ export class EventAgent {
 			"reasoning": "Brief reasoning for this specific character (1-2 sentences)",
 			"character_changed": null | {"changed_into": "string; single word only what the character transformed into", "description": string},
 			"abilities_learned": [{"uniqueTechnicalId": string, "name": string, "effect": string}, ...],
-			"restrained_state_explanation": null | "Brief explanation if character is currently under a TEMPORARY restraining or controlling effect (sleep, paralysis, charm, blindness, illusion, compulsion etc). Only include if explicitly described or strongly implied in the recent story excerpt."
+			"restrained_state_explanation": null | "Brief explanation if character is currently under a MAJOR TEMPORARY restraining or controlling effect (sleep, paralysis, charm, blindness, illusion, compulsion etc). Only include if explicitly described or strongly implied in the recent story excerpt."
 		}, ... one object per party member, keep order of input
 	]
 }`;
@@ -159,7 +159,7 @@ export class EventAgent {
 			'For each member decide:',
 			"1. character_changed: Major, likely permanent transformation (profession rank change, species change, possession, crystal power infusion, etc). If none => null.",
 			"2. abilities_learned: New abilities/spells/skills explicitly gained in story (exclude already known abilities). If none => empty array.",
-			"3. restrained_state_explanation: TEMPORARY restraining / controlling effect limiting actions (sleep, paralysis, charm, blindness, illusion, compulsion, magical hold). Provide brief cause explanation if present; else null. Never guess—only if explicitly stated or strongly implied in the provided story excerpt.",
+			"3. restrained_state_explanation: MAJOR TEMPORARY restraining / controlling effect limiting actions (sleep, paralysis, charm, blindness, illusion, compulsion, magical hold). Provide brief cause explanation if present; else null. Never guess—only if explicitly stated or strongly implied in the provided story excerpt.",
 			'You MUST return one entry per provided party member (even if all fields empty/null).',
 			'Party context (DO NOT hallucinate new members): ' + stringifyPretty(partyContext),
 			`${jsonRule}\n` + partyJsonFormat
