@@ -27,20 +27,21 @@ export async function quickstartWithParty(page: Page, partySize: number = 4) {
   await page.goto('/game/settings/ai');
   await page.waitForTimeout(500);
   
-  // Click quickstart button
+  // Click quickstart button - button text includes "Quickstart:<br />New Tale"
   const quickstartButton = page.getByRole('button', { name: /quickstart/i });
   await quickstartButton.click();
   await page.waitForTimeout(500);
   
-  // Modal should appear - set party size if needed and generate
-  const partySizeInput = page.locator('input[type="number"]');
-  if (await partySizeInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await partySizeInput.fill(partySize.toString());
+  // Modal should appear - select party size using the button group
+  const partySizeButton = page.getByRole('button', { name: partySize.toString() });
+  if (await partySizeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await partySizeButton.click();
+    await page.waitForTimeout(300);
   }
   
-  // Click generate/confirm in modal
-  const generateButton = page.getByRole('button', { name: /generate|confirm|start/i }).first();
-  await generateButton.click();
+  // Click "Start" button in modal to generate and start the tale
+  const startButton = page.getByRole('button', { name: /^start$/i });
+  await startButton.click();
   
   // Wait for generation to complete and navigation to /game
   await page.waitForURL('**/game', { timeout: 30000 });
