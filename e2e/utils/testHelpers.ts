@@ -10,16 +10,13 @@ import { expect } from '@playwright/test';
  */
 export async function setupApiKey(page: Page, apiKey: string = 'test-api-key-mock') {
   await page.goto('/game/settings/ai');
+  await page.waitForTimeout(500);
   
-  // Find and fill the API key input
-  const apiKeyInput = page.locator('input[type="password"]').first();
+  // Find and fill the API key input (it's type="text", id="apikey")
+  const apiKeyInput = page.locator('#apikey');
   await apiKeyInput.fill(apiKey);
   
-  // Save the key
-  const saveButton = page.getByRole('button', { name: /save/i });
-  await saveButton.click();
-  
-  // Wait for success indication (adjust based on actual UI)
+  // Wait for the value to be saved (it uses bind:value, so it's immediate)
   await page.waitForTimeout(500);
 }
 
@@ -27,32 +24,27 @@ export async function setupApiKey(page: Page, apiKey: string = 'test-api-key-moc
  * Navigate to quickstart and create a default party
  */
 export async function quickstartWithParty(page: Page, partySize: number = 4) {
-  await page.goto('/game/new/tale');
+  await page.goto('/game/settings/ai');
+  await page.waitForTimeout(500);
   
   // Click quickstart button
   const quickstartButton = page.getByRole('button', { name: /quickstart/i });
   await quickstartButton.click();
+  await page.waitForTimeout(500);
   
-  // Wait for tale generation
-  await page.waitForTimeout(2000);
-  
-  // Navigate to party creation
-  await page.goto('/game/new/character');
-  
-  // Generate party
-  const generatePartyButton = page.getByRole('button', { name: /generate.*party/i });
-  if (await generatePartyButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await generatePartyButton.click();
-    await page.waitForTimeout(2000);
+  // Modal should appear - set party size if needed and generate
+  const partySizeInput = page.locator('input[type="number"]');
+  if (await partySizeInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await partySizeInput.fill(partySize.toString());
   }
   
-  // Start tale
-  const startButton = page.getByRole('button', { name: /start.*tale/i });
-  await startButton.click();
+  // Click generate/confirm in modal
+  const generateButton = page.getByRole('button', { name: /generate|confirm|start/i }).first();
+  await generateButton.click();
   
-  // Wait for game to load
-  await page.waitForURL('**/game', { timeout: 10000 });
-  await page.waitForTimeout(1000);
+  // Wait for generation to complete and navigation to /game
+  await page.waitForURL('**/game', { timeout: 30000 });
+  await page.waitForTimeout(2000);
 }
 
 /**
@@ -158,9 +150,17 @@ export async function elementContainsText(locator: Locator, text: string): Promi
  * Clear all localStorage (reset game state)
  */
 export async function clearGameState(page: Page) {
-  await page.evaluate(() => {
-    localStorage.clear();
-  });
+  // Navigate to the app first to ensure localStorage is accessible
+  try {
+    await page.goto('/');
+    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      localStorage.clear();
+    });
+  } catch (error) {
+    // If localStorage is not accessible, just continue
+    console.log('Could not clear localStorage:', error);
+  }
 }
 
 /**
