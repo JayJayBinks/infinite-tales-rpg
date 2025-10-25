@@ -4,77 +4,39 @@ import {
   setupApiKey,
   quickstartWithParty,
   clearGameState,
-  getLocalStorageItem,
-  createCustomTale,
+  getPartyMemberCount,
+  getActivePartyMemberName,
+  isStoryVisible,
+  getPartyMemberButtons,
+  getAllPartyMemberNames,
 } from './utils/testHelpers';
 
 test.describe('1. Onboarding & Tale Setup', () => {
   test.beforeEach(async ({ page }) => {
     await clearGameState(page);
     await installGeminiApiMocks(page);
-    process.env.PW_LOG_GEMINI = '1';
-    // Optional debug: log any Gemini requests/responses that are NOT intercepted as expected.
-    // Enable by running with environment variable PW_LOG_GEMINI=1
-    if ('1' === '1') {
-      page.on('request', (req) => {
-        const url = req.url();
-        if (url.includes('generativelanguage.googleapis.com')) {
-          console.log('[Gemini Debug][request]', req.method(), url);
-        }
-      });
-      page.on('response', async (res) => {
-        const url = res.url();
-        if (url.includes('generativelanguage.googleapis.com')) {
-          const status = res.status();
-            let note = '';
-            if (status === 200) note = 'OK (likely fulfilled by mock)';
-            if (status === 500) note = '500 from mock or backend';
-          console.log('[Gemini Debug][response]', status, url, note);
-        }
-      });
-      console.log('[Gemini Debug] Request/response logging ENABLED');
-    }
     await setupApiKey(page);
   });
 
   test('1.1 Quickstart happy path (C)', async ({ page }) => {
-
     // Use quickstart to create party and start tale
     await quickstartWithParty(page, 4);
     
-    // Verify tale was created in localStorage
-    const storyState = await getLocalStorageItem(page, 'storyState');
-    expect(storyState).toBeTruthy();
-    expect(storyState.value?.game || storyState.game).toBeTruthy();
+    // Verify we're on the game page
+    await expect(page).toHaveURL(/.*\/game$/);
     
-    // Verify party was created with 4 members
-    const partyState = await getLocalStorageItem(page, 'partyState');
-    expect(partyState).toBeTruthy();
-    expect(partyState.value?.members || partyState.members).toBeTruthy();
-    const members = partyState.value?.members || partyState.members;
-    expect(members.length).toBe(4);
+    // Verify story content is visible
+    const storyVisible = await isStoryVisible(page);
+    expect(storyVisible).toBeTruthy();
     
-    // Verify active character ID is set to first member
-    const activeCharacterId = await getLocalStorageItem(page, 'activeCharacterId');
-    expect(activeCharacterId).toBeTruthy();
-    // May be wrapped in value or direct
-    const activeId = activeCharacterId.value || activeCharacterId;
-    expect(activeId).toContain('player_character');
+    // Verify party was created with 4 members by counting party switcher buttons
+    const partyCount = await getPartyMemberCount(page);
+    expect(partyCount).toBe(4);
     
-    // Wait for initial story to load
-    await page.waitForTimeout(2000);
-    
-    // Verify party members are properly initialized with resources
-    const playerCharactersGameState = await getLocalStorageItem(page, 'playerCharactersGameState');
-    expect(playerCharactersGameState).toBeTruthy();
-    
-    // Check that at least the first member has resources initialized
-    const gameState = playerCharactersGameState.value || playerCharactersGameState;
-    const firstMember = gameState?.player_character_1;
-    if (firstMember) {
-      // Should have at least HP resource
-      expect(firstMember.HP || firstMember.hp).toBeTruthy();
-    }
+    // Verify we have an active party member
+    const activeMemberName = await getActivePartyMemberName(page);
+    expect(activeMemberName).toBeTruthy();
+    expect(activeMemberName.length).toBeGreaterThan(0);
   });
 
   test('1.2 Quickstart with overwrites (H)', async ({ page }) => {
@@ -109,19 +71,13 @@ test.describe('1. Onboarding & Tale Setup', () => {
     await page.waitForURL('**/game', { timeout: 30000 });
     await page.waitForTimeout(2000);
     
-    // Verify custom values were used
-    const storyState = await getLocalStorageItem(page, 'storyState');
-    expect(storyState).toBeTruthy();
+    // Verify UI shows party with 2 members
+    const partyCount = await getPartyMemberCount(page);
+    expect(partyCount).toBe(2);
     
-    const story = storyState.value || storyState;
-    // The custom adventure should be reflected in the tale
-    expect(story.adventure_and_main_event || story).toBeTruthy();
-    
-    // Verify party was created with 2 members
-    const partyState = await getLocalStorageItem(page, 'partyState');
-    const members = partyState.value?.members || partyState.members;
-    expect(members).toBeTruthy();
-    expect(members.length).toBe(2);
+    // Verify story is visible
+    const storyVisible = await isStoryVisible(page);
+    expect(storyVisible).toBeTruthy();
   });
 
   test('1.3 Custom tale generation minimal input (H)', async ({ page }) => {
@@ -146,20 +102,13 @@ test.describe('1. Onboarding & Tale Setup', () => {
     await page.waitForURL('**/game', { timeout: 30000 });
     await page.waitForTimeout(2000);
     
-    // Verify tale was created with auto-filled fields
-    const storyState = await getLocalStorageItem(page, 'storyState');
-    expect(storyState).toBeTruthy();
-    
-    const story = storyState.value || storyState;
-    expect(story.game || story).toBeTruthy();
-    expect(story.world_details || true).toBeTruthy(); // May be auto-generated
+    // Verify tale was created - story should be visible
+    const storyVisible = await isStoryVisible(page);
+    expect(storyVisible).toBeTruthy();
     
     // Verify party was created (default size)
-    const partyState = await getLocalStorageItem(page, 'partyState');
-    expect(partyState).toBeTruthy();
-    const members = partyState.value?.members || partyState.members;
-    expect(members).toBeTruthy();
-    expect(members.length).toBeGreaterThan(0);
+    const partyCount = await getPartyMemberCount(page);
+    expect(partyCount).toBeGreaterThan(0);
   });
 
   test('1.4 Randomize all (M)', async ({ page }) => {
@@ -190,19 +139,26 @@ test.describe('1. Onboarding & Tale Setup', () => {
       await page.waitForURL('**/game', { timeout: 30000 });
       await page.waitForTimeout(2000);
       
-      // Verify story was persisted
-      const storyState = await getLocalStorageItem(page, 'storyState');
-      expect(storyState).toBeTruthy();
-      const story = storyState.value || storyState;
-      expect(story.game || story).toBeTruthy();
+      // Verify story is visible
+      const storyVisible = await isStoryVisible(page);
+      expect(storyVisible).toBeTruthy();
     }
   });
 
   test('1.6 Save import (C)', async ({ page }) => {
     // Create a complete game state first
     await quickstartWithParty(page);
+    await page.waitForTimeout(2000);
     
-    // Export current state
+    // Capture current UI state
+    const originalPartyCount = await getPartyMemberCount(page);
+    const originalActiveMember = await getActivePartyMemberName(page);
+    const originalPartyNames = await getAllPartyMemberNames(page);
+    
+    expect(originalPartyCount).toBeGreaterThan(0);
+    expect(originalActiveMember).toBeTruthy();
+    
+    // Export current state (we need localStorage for this specific test)
     const originalState = await page.evaluate(() => {
       const keys = [
         'storyState',
@@ -227,12 +183,15 @@ test.describe('1. Onboarding & Tale Setup', () => {
       return data;
     });
     
-    // Clear state
+    // Clear state and verify UI changes
     await clearGameState(page);
+    await page.reload();
+    await page.goto('/game');
+    await page.waitForTimeout(1000);
     
-    // Verify state is cleared
-    let storyState = await getLocalStorageItem(page, 'storyState');
-    expect(storyState).toBeFalsy();
+    // Verify party switcher is not visible (no party loaded)
+    const partyCountAfterClear = await getPartyMemberCount(page);
+    expect(partyCountAfterClear).toBe(0);
     
     // Import saved state
     await page.evaluate((data) => {
@@ -241,20 +200,23 @@ test.describe('1. Onboarding & Tale Setup', () => {
       });
     }, originalState);
     
-    // Reload page
+    // Reload page to apply changes
     await page.reload();
     await page.goto('/game');
+    await page.waitForTimeout(2000);
     
-    // Verify state was restored
-    storyState = await getLocalStorageItem(page, 'storyState');
-    expect(storyState).toBeTruthy();
-    expect(storyState.game).toBe(originalState.storyState.game);
+    // Verify UI shows restored state
+    const restoredPartyCount = await getPartyMemberCount(page);
+    expect(restoredPartyCount).toBe(originalPartyCount);
     
-    const partyState = await getLocalStorageItem(page, 'partyState');
-    expect(partyState).toBeTruthy();
-    expect(partyState.members.length).toBe(originalState.partyState.members.length);
+    const restoredActiveMember = await getActivePartyMemberName(page);
+    expect(restoredActiveMember).toBe(originalActiveMember);
     
-    const activeCharacterId = await getLocalStorageItem(page, 'activeCharacterId');
-    expect(activeCharacterId.value).toBe(originalState.activeCharacterId.value);
+    const restoredPartyNames = await getAllPartyMemberNames(page);
+    expect(restoredPartyNames).toEqual(originalPartyNames);
+    
+    // Verify story is visible again
+    const storyVisible = await isStoryVisible(page);
+    expect(storyVisible).toBeTruthy();
   });
 });

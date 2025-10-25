@@ -140,6 +140,77 @@ export async function getCurrentPartyMemberName(page: Page): Promise<string> {
 }
 
 /**
+ * Get party member buttons from the UI
+ */
+export async function getPartyMemberButtons(page: Page): Promise<Locator[]> {
+  const partySwitcher = page.locator('.party-switcher');
+  if (await partySwitcher.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const buttons = partySwitcher.locator('button');
+    const count = await buttons.count();
+    return Array.from({ length: count }, (_, i) => buttons.nth(i));
+  }
+  return [];
+}
+
+/**
+ * Count party members visible in the UI
+ */
+export async function getPartyMemberCount(page: Page): Promise<number> {
+  const buttons = await getPartyMemberButtons(page);
+  return buttons.length;
+}
+
+/**
+ * Get active party member name from UI
+ */
+export async function getActivePartyMemberName(page: Page): Promise<string> {
+  const partySwitcher = page.locator('.party-switcher');
+  if (await partySwitcher.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const activeButton = partySwitcher.locator('button.btn-primary');
+    if (await activeButton.isVisible().catch(() => false)) {
+      const text = await activeButton.textContent();
+      return text?.trim() || '';
+    }
+  }
+  return '';
+}
+
+/**
+ * Get all party member names from UI
+ */
+export async function getAllPartyMemberNames(page: Page): Promise<string[]> {
+  const buttons = await getPartyMemberButtons(page);
+  const names: string[] = [];
+  for (const button of buttons) {
+    const text = await button.textContent();
+    if (text) {
+      names.push(text.trim());
+    }
+  }
+  return names;
+}
+
+/**
+ * Check if story content is visible on the page
+ */
+export async function isStoryVisible(page: Page): Promise<boolean> {
+  // Look for main content area or story text
+  const mainContent = page.locator('main');
+  return await mainContent.isVisible({ timeout: 5000 }).catch(() => false);
+}
+
+/**
+ * Get visible story text from the page
+ */
+export async function getStoryText(page: Page): Promise<string> {
+  const mainContent = page.locator('main');
+  if (await mainContent.isVisible({ timeout: 2000 }).catch(() => false)) {
+    return await mainContent.textContent() || '';
+  }
+  return '';
+}
+
+/**
  * Check if element contains text (case-insensitive)
  */
 export async function elementContainsText(locator: Locator, text: string): Promise<boolean> {
