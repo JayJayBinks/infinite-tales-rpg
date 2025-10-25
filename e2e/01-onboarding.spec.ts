@@ -81,15 +81,41 @@ test.describe('1. Onboarding & Tale Setup', () => {
   });
 
   test('1.3 Custom tale generation minimal input (H)', async ({ page }) => {
-    // Simplified: rely on standardized helper to avoid modal flakiness
-    await quickstartWithParty(page, 1);
-    await page.waitForTimeout(500);
+    // Navigate to custom tale creation
+    await page.goto('/game/new/tale');
+    await page.waitForTimeout(1000);
 
-    const storyVisible = await isStoryVisible(page);
-    expect(storyVisible).toBeTruthy();
+    // Find the game textarea by looking for textarea with placeholder or value containing "game"
+    const gameTextarea = page.locator('textarea').filter({ hasText: /pathfinder|call of cthulhu/i }).or(
+      page.locator('textarea').nth(0)
+    );
+    await expect(gameTextarea).toBeVisible({ timeout: 5000 });
+    await gameTextarea.fill('D&D 5e');
+    await page.waitForTimeout(300);
 
-    const partyCount = await getPartyMemberCount(page);
-    expect(partyCount).toBe(1);
+    // Click "Randomize All" button to generate full tale
+    const randomizeButton = page.getByRole('button', { name: /randomize all/i });
+    await expect(randomizeButton).toBeVisible({ timeout: 5000 });
+    await randomizeButton.click();
+    await page.waitForTimeout(4000);
+
+    // Verify other fields were auto-filled
+    const textareas = page.locator('textarea');
+    const count = await textareas.count();
+    expect(count).toBeGreaterThan(1);
+    
+    // Check that at least one other textarea has content
+    const worldTextarea = textareas.nth(1);
+    const worldValue = await worldTextarea.inputValue();
+    expect(worldValue.length).toBeGreaterThan(0);
+
+    // Click "Next Step: Customize Character" button (use first one)
+    const nextButton = page.getByRole('button', { name: /next.*character/i }).first();
+    await nextButton.click();
+    await page.waitForTimeout(1000);
+
+    // Should now be on character creation page
+    await expect(page).toHaveURL(/\/character/);
   });
 
   test('1.4 Randomize all (M)', async ({ page }) => {

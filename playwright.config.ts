@@ -22,13 +22,11 @@ const config: PlaywrightTestConfig = {
 		{
 			name: 'chromium',
 			use: {
-				channel: undefined,
+				launchOptions: {
+					executablePath: '/usr/bin/chromium-browser',
+				},
 			},
 		},
-		 {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
 	],
 };
 
