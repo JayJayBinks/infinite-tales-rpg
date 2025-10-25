@@ -59,12 +59,29 @@ This directory contains end-to-end (E2E) tests for the Infinite Tales RPG applic
    - Game settings configuration
    - AI settings and output toggles
 
-8. **settings.spec.ts** - Settings Page (existing)
-   - API key entry and validation
-   - Settings persistence
+8. **character-events.spec.ts** - Character Transformation & Abilities
+   - Transformation button appearance after events
+   - Character transformation preserves old abilities
+   - Stats and description changes after transformation
+   - Resource cost handling when resources change
+   - Learn abilities button and modal workflow
+   - Learned abilities have proper resource costs
+   - Learned abilities appear in spells modal and are usable
 
-9. **daisyui.spec.ts** - Theme Integration (existing)
-   - DaisyUI theme application
+9. **settings.spec.ts** - Settings Page
+   - API key entry and validation
+   - Settings persistence across page reloads
+   - Clear API key functionality
+   - Navigation to AI settings
+   - Export/Import settings visibility
+
+10. **daisyui.spec.ts** - Theme Integration
+    - DaisyUI theme application verification
+    - Button styling with DaisyUI classes
+    - Modal styling with DaisyUI classes
+    - Form controls styling
+    - Color scheme consistency
+    - Responsive utilities
 
 ## Running Tests
 
@@ -104,10 +121,11 @@ npx playwright test --debug
 
 ## Test Configuration
 
-- **Browser**: Chromium (mobile Chrome viewport - Pixel 5)
-- **Base URL**: `http://localhost:5173` (default Vite dev server)
-- **Retries**: 2 retries in CI, 0 locally
-- **Workers**: 1 in CI, parallel locally
+- **Browser**: Chromium
+- **Base URL**: `http://localhost:4173` (Vite preview server)
+- **Web Server**: Automatically builds and starts preview server before tests
+- **Test Directory**: `e2e/`
+- **Test Pattern**: `*.spec.ts` and `*.test.ts`
 
 Configuration can be found in `playwright.config.ts`.
 
