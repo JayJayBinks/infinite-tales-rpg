@@ -142,7 +142,7 @@ export class ActionAgent {
 		}
 
 		let userMessage =
-			'The player wants to perform following action, you must use these exact words as action text: ' +
+			action.characterName + ' wants to perform following action, you must use these exact words as action text: ' +
 			action.text +
 			'\nDetermine the difficulty and resource cost with considering their personality, skills, items, story summary and following game state\n' +
 			stringifyPretty(currentGameStateMapped);
@@ -167,8 +167,9 @@ export class ActionAgent {
 			userMessage,
 			historyMessages,
 			systemInstruction: agent,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
-				thinkingBudget: THINKING_BUDGET.FAST
+				thinkingBudget: THINKING_BUDGET.DEFAULT
 			}
 		};
 		console.log('action generate start time: ', new Date());

@@ -483,10 +483,9 @@
 			);
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
-			
-			if (activeId) {
-				characterActionsByMemberState.value[activeId] = actions;
-			}
+			// Cache generated actions for active character
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			characterActionsByMemberState.value[activeId] = actions;
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
 		if (!didAIProcessDiceRollActionState.value) {
@@ -685,11 +684,43 @@
 				costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
 			}
 			additionalStoryInputState.value += costString;
-			await sendAction(chosenActionState.value, true);
+			await handleActionSelection(chosenActionState.value, { forceRollDice: true });
 		}
 		customActionInput && (customActionInput.value = '');
 		customActionImpossibleReasonState = undefined;
 	}
+
+    // Centralized handler to either queue a combat action (with optional dice roll) or immediately send it when not in combat.
+    // Options:
+    //  - forceRollDice: always trigger dice roll dialog even if mustRollDice() returns false (used for impossible actions retry)
+    //  - skipDice: never open dice dialog (even if mustRollDice would require) – default false
+    async function handleActionSelection(action: Action, options?: { forceRollDice?: boolean; skipDice?: boolean }) {
+        const inCombat = currentGameActionState.is_character_in_combat;
+        const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+        if (inCombat) {
+            // Queue action for party combat turn
+            selectedCombatActionsByMemberState.value[activeId] = action;
+            const needsDice = !options?.skipDice && (options?.forceRollDice || mustRollDice(action, true));
+            if (needsDice) {
+                // Open dice dialog and store outcome when resolved
+                chosenActionState.value = $state.snapshot(action);
+                openDiceRollDialog(undefined, undefined, undefined, (result) => {
+                    selectedCombatActionsDiceAdditionsState[activeId] = getDiceRollPromptAddition(result);
+                    selectedCombatActionsLockedState[activeId] = true;
+                    if (actionsDiv) actionsDiv.innerHTML = '';
+                    renderGameState(currentGameActionState, characterActionsState.value);
+                });
+            } else {
+                selectedCombatActionsLockedState[activeId] = true;
+                if (actionsDiv) actionsDiv.innerHTML = '';
+                renderGameState(currentGameActionState, characterActionsState.value);
+            }
+        } else {
+            // Immediate resolution path
+            chosenActionState.value = $state.snapshot(action);
+            await sendAction(action, mustRollDice(action, false));
+        }
+    }
 
 	//TODO sendAction should not be handled here so it can be externally called
 	async function checkGameEnded() {
@@ -1048,7 +1079,7 @@
 
 				eventAgent
 					.evaluatePartyEvents(
-						historyMessagesState.value.slice(-6).map((m) => m.content),
+						historyMessagesState.value.slice(-1).map((m) => m.content),
 						partyMembersForEvaluation
 					)
 					.then((evaluation) => {
@@ -1575,17 +1606,7 @@
 		additionalStoryInputState.value =
 			targetAddition + abilityAddition + (additionalStoryInputState.value || '');
 		
-		// If in combat, add this action to selected combat actions (combat-locked)
-		if (currentGameActionState.is_character_in_combat) {
-			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
-			selectedCombatActionsByMemberState.value[activeId] = action;
-			selectedCombatActionsLockedState[activeId] = true;
-		}
-		
-		await sendAction(
-			action,
-			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
-		);
+		await handleActionSelection(action);
 		isAiGeneratingState = false;
 	};
 	const onCustomDiceRollClosed = () => {
@@ -1615,21 +1636,15 @@
 		checkForLevelUp();
 	};
 
-	const onSuggestItemActionClosed = (action?: Action) => {
+	const onSuggestItemActionClosed = async (action?: Action) => {
 		if (action) {
-			// If in combat, add this action to selected combat actions (combat-locked)
-			if (currentGameActionState.is_character_in_combat) {
-				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
-				selectedCombatActionsByMemberState.value[activeId] = action;
-				selectedCombatActionsLockedState[activeId] = true;
-			}
+			
 			
 			if (action.is_custom_action) {
 				generateActionFromCustomInput(action);
 			} else {
-				chosenActionState.value = $state.snapshot(action);
 				addSkillsIfApplicable([action]);
-				sendAction(action, mustRollDice(action, currentGameActionState.is_character_in_combat));
+				await handleActionSelection(action);
 			}
 		}
 		itemForSuggestActionsState = undefined;
@@ -1692,10 +1707,7 @@
 				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
-				await sendAction(
-					action,
-					gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
-				);
+				await handleActionSelection(action);
 			}
 		}
 		isAiGeneratingState = false;
@@ -2009,6 +2021,12 @@
 		checkForLevelUp();
 	}
 
+	// Derived convenience flags for disabling further selections when combat action is locked
+	const activeMemberId = $derived(partyState.value.activeCharacterId || playerCharacterIdState);
+	const isActiveCombatActionLocked = $derived(
+		currentGameActionState.is_character_in_combat && selectedCombatActionsLockedState[activeMemberId]
+	);
+
 	async function handleStateCommand(action: Action) {
 		isAiGeneratingState = true;
 		action.text += SUDO_COMMAND + '\nOnly apply the mentioned state updates, but nothing else.';
@@ -2193,6 +2211,7 @@
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
 		party={partyState.value}
+		disableSelection={isActiveCombatActionLocked}
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
@@ -2206,6 +2225,7 @@
 			}
 		}}
 		onclose={onItemUseChosen}
+		disableSelection={isActiveCombatActionLocked}
 	></UseItemsModal>
 	{#if itemForSuggestActionsState}
 		<SuggestedActionsModal
@@ -2391,11 +2411,15 @@
 					type="text"
 					bind:this={customActionInput}
 					class="input input-bordered w-full"
+					disabled={isActiveCombatActionLocked && customActionReceiver === 'Character Action'}
+					title={isActiveCombatActionLocked && customActionReceiver === 'Character Action' ? 'Combat action already chosen for this round' : ''}
 					id="user-input"
 					placeholder={getCustomActionPlaceholder(customActionReceiver)}
 				/>
 				<button
 					onclick={() => onCustomActionSubmitted(customActionInput.value)}
+					disabled={isActiveCombatActionLocked && customActionReceiver === 'Character Action'}
+					title={isActiveCombatActionLocked && customActionReceiver === 'Character Action' ? 'Combat action already chosen for this round' : ''}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
 					>Submit
