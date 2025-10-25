@@ -65,11 +65,21 @@ export async function requestLLMJsonStream(
 		};
 	});
 
-	const geminiStreamResult = (await llm.generateContent(
-		request
-	)) as unknown as AsyncGenerator<GenerateContentResponse>;
-	if (!geminiStreamResult || typeof geminiStreamResult[Symbol.asyncIterator] !== 'function') {
-		throw new Error('Invalid stream response from LLM.');
+	// The upstream Gemini SDK (and our mocks) may return either:
+	// 1. An async iterable directly (legacy expectation in our code), OR
+	// 2. An object with a `.stream` property that is the async iterable (official SDK pattern).
+	// Support both to make mocking simpler (tests can now just: return { stream } ).
+	const geminiStreamRaw: any = await llm.generateContent(request);
+	let geminiStreamResult: AsyncGenerator<GenerateContentResponse> | undefined = undefined;
+	if (geminiStreamRaw && typeof geminiStreamRaw[Symbol.asyncIterator] === 'function') {
+		geminiStreamResult = geminiStreamRaw as AsyncGenerator<GenerateContentResponse>;
+	} else if (
+		geminiStreamRaw?.stream &&
+		typeof geminiStreamRaw.stream[Symbol.asyncIterator] === 'function'
+	) {
+		geminiStreamResult = geminiStreamRaw.stream as AsyncGenerator<GenerateContentResponse>;
+	} else {
+		throw new Error('Invalid stream response from LLM. Expected async iterator or { stream }.');
 	}
 
 	// Remove try/catch: let all errors propagate

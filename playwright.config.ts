@@ -2,7 +2,7 @@ import { devices, type PlaywrightTestConfig } from '@playwright/test';
 
 const config: PlaywrightTestConfig = {
 	webServer: {
-		command: 'npm run build && npm run preview',
+		command: 'npm run preview',
 		port: 4173,
 		timeout: 20 * 1000,
 		reuseExistingServer: !process.env.CI,
