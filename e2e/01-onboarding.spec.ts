@@ -103,27 +103,26 @@ test.describe('1. Onboarding & Tale Setup', () => {
     
     // Click "Generate Idea" button to randomize
     const generateIdeaButton = page.getByRole('button', { name: /generate.*idea/i });
-    if (await generateIdeaButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await generateIdeaButton.click();
-      await page.waitForTimeout(3000); // Wait for generation
-      
-      // Verify fields are populated in the modal
-      const adventureTextarea = page.locator('textarea').first();
-      const content = await adventureTextarea.inputValue();
-      expect(content).toBeTruthy();
-      expect(content.length).toBeGreaterThan(0);
-      
-      // Now start the tale
-      const startButton = page.getByRole('button', { name: /^start$/i });
-      await startButton.click();
-      
-      await page.waitForURL('**/game', { timeout: 30000 });
-      await page.waitForTimeout(2000);
-      
-      // Verify story is visible
-      const storyVisible = await isStoryVisible(page);
-      expect(storyVisible).toBeTruthy();
-    }
+    await expect(generateIdeaButton).toBeVisible({ timeout: 2000 });
+    await generateIdeaButton.click();
+    await page.waitForTimeout(3000); // Wait for generation
+    
+    // Verify fields are populated in the modal
+    const adventureTextarea = page.locator('textarea').first();
+    const content = await adventureTextarea.inputValue();
+    expect(content).toBeTruthy();
+    expect(content.length).toBeGreaterThan(0);
+    
+    // Now start the tale
+    const startButton = page.getByRole('button', { name: /^start$/i });
+    await startButton.click();
+    
+    await page.waitForURL('**/game', { timeout: 30000 });
+    await page.waitForTimeout(2000);
+    
+    // Verify story is visible
+    const storyVisible = await isStoryVisible(page);
+    expect(storyVisible).toBeTruthy();
   });
 
   test('1.6 Save import (C)', async ({ page }) => {
