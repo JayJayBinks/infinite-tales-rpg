@@ -12,10 +12,33 @@ test.describe('1. Onboarding & Tale Setup', () => {
   test.beforeEach(async ({ page }) => {
     await clearGameState(page);
     await installGeminiApiMocks(page);
+    process.env.PW_LOG_GEMINI = '1';
+    // Optional debug: log any Gemini requests/responses that are NOT intercepted as expected.
+    // Enable by running with environment variable PW_LOG_GEMINI=1
+    if ('1' === '1') {
+      page.on('request', (req) => {
+        const url = req.url();
+        if (url.includes('generativelanguage.googleapis.com')) {
+          console.log('[Gemini Debug][request]', req.method(), url);
+        }
+      });
+      page.on('response', async (res) => {
+        const url = res.url();
+        if (url.includes('generativelanguage.googleapis.com')) {
+          const status = res.status();
+            let note = '';
+            if (status === 200) note = 'OK (likely fulfilled by mock)';
+            if (status === 500) note = '500 from mock or backend';
+          console.log('[Gemini Debug][response]', status, url, note);
+        }
+      });
+      console.log('[Gemini Debug] Request/response logging ENABLED');
+    }
     await setupApiKey(page);
   });
 
   test('1.1 Quickstart happy path (C)', async ({ page }) => {
+
     // Use quickstart to create party and start tale
     await quickstartWithParty(page, 4);
     

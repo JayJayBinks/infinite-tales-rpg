@@ -10,9 +10,9 @@ const config: PlaywrightTestConfig = {
 	testDir: 'e2e',
 	testMatch: /(.+\.)?(test|spec)\.[jt]s/,
 	timeout: 10 * 1000,
-	use: {
+  use: {
 		baseURL: 'http://localhost:4173',
-	},
+  },
 	reporter: 'list',
 	fullyParallel: true,
   forbidOnly: !!process.env.CI,

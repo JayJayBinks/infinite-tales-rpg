@@ -153,7 +153,7 @@ export async function elementContainsText(locator: Locator, text: string): Promi
 export async function clearGameState(page: Page) {
   // Navigate to the app first to ensure localStorage is accessible
   try {
-    await page.goto('/');
+    await page.goto('/game/settings/ai');
     await page.waitForTimeout(500);
     await page.evaluate(() => {
       localStorage.clear();
