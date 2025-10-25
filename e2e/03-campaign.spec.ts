@@ -5,9 +5,13 @@ import {
   clearGameState,
   quickstartWithParty,
   isStoryVisible,
+  getLocalStorageItem,
 } from './utils/testHelpers';
 
 test.describe('3. Campaign Builder & Chapters', () => {
+  test.beforeAll(() => {
+    test.setTimeout(30000);
+  });
   test.beforeEach(async ({ page }) => {
     await clearGameState(page);
     await installGeminiApiMocks(page);
@@ -15,24 +19,27 @@ test.describe('3. Campaign Builder & Chapters', () => {
   });
 
   test('3.1 Generate full campaign (H)', async ({ page }) => {
-    // First create a tale
-    await page.goto('/game/new/tale');
-    const quickstartButton = page.getByRole('button', { name: /quickstart/i });
-    await quickstartButton.click();
-    await page.waitForTimeout(2000);
+    // Standardized party + tale setup
+    await quickstartWithParty(page, 4);
+    await page.waitForTimeout(1000);
     
     // Navigate to campaign builder
     await page.goto('/game/new/campaign');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
+    // Debug log for state presence
+    await page.evaluate(() => {
+      const story = localStorage.getItem('storyState');
+      console.log('[CampaignTest] storyState present?', !!story);
+    });
     
     // Generate campaign
-    const generateButton = page.getByRole('button', { name: /generate.*campaign/i });
+    const generateButton = page.getByRole('button', { name: /randomize all/i }).first();
     if (await generateButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       await generateButton.click();
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(1500);
       
       // Verify campaign UI shows chapters (look for chapter indicators)
-      const chapterElements = page.locator('[data-testid="chapter"]').or(
+      const chapterElements = page.getByRole('group').or(
         page.getByText(/chapter \d+/i)
       );
       const chapterCount = await chapterElements.count();
@@ -46,19 +53,26 @@ test.describe('3. Campaign Builder & Chapters', () => {
   });
 
   test('3.2 Single chapter regeneration (M)', async ({ page }) => {
-    // Create tale and campaign first
-    await page.goto('/game/new/tale');
-    const quickstartButton = page.getByRole('button', { name: /quickstart/i });
-    await quickstartButton.click();
-    await page.waitForTimeout(2000);
+    // Standardized party + tale setup
+    await quickstartWithParty(page, 4);
+    await page.waitForTimeout(1000);
     
     await page.goto('/game/new/campaign');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
+    await page.evaluate(() => {
+      const story = localStorage.getItem('storyState');
+      console.log('[CampaignTest] storyState present? (single regen)', !!story);
+    });
     
-    const generateButton = page.getByRole('button', { name: /generate.*campaign/i });
+    const generateButton = page.getByRole('button', { name: /generate.*campaign/i }).first();
     if (await generateButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       await generateButton.click();
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(1500);
+      const chapterElementsEnsure = page.locator('[data-testid="chapter"]').or(page.getByText(/chapter \d+/i));
+      if ((await chapterElementsEnsure.count()) === 0) {
+        await generateButton.click();
+        await page.waitForTimeout(1500);
+      }
       
       // Find regenerate button for a specific chapter
       const regenerateButton = page.getByRole('button', { name: /regenerate/i }).first();

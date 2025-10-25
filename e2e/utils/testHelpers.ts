@@ -228,6 +228,7 @@ export async function clearGameState(page: Page) {
     await page.waitForTimeout(500);
     await page.evaluate(() => {
       localStorage.clear();
+      localStorage.setItem('apiKeyState', JSON.stringify('state-was-deleted-for-tests'));
     });
   } catch (error) {
     // If localStorage is not accessible, just continue

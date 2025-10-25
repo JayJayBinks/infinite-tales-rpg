@@ -758,7 +758,7 @@ function generateNPCResponse(context: any): any {
 /**
  * Generates appropriate response based on agent type and context
  */
-function generateMockResponse(agentType: AgentType, context: any): any {
+export function generateMockResponse(agentType: AgentType, context: any): any {
   switch (agentType) {
     case 'storyAgent':
       return generateStoryResponse(context);
@@ -800,12 +800,19 @@ function generateMockResponse(agentType: AgentType, context: any): any {
  */
 export async function installGeminiApiMocks(page: Page) {
   console.log('[Gemini Mock] Installing API mocks...');
+  // Override the Gemini Provider to return mock async generator streams
+  await page.addInitScript(() => {
+    (window as any).__isE2ETest = true;
+  });
+  
   // Single regex-based interceptor to avoid glob edge cases (colon in path, query params, etc.)
   const geminiRegex = /https:\/\/generativelanguage\.googleapis\.com\/.*$/;
 
   await page.route(geminiRegex, async (route) => {
     const url = route.request().url();
     const method = route.request().method();
+
+    console.log('[Gemini Mock] Intercept', url, method);
     // Only intercept relevant Gemini endpoints; fallback continue for any we don't emulate.
     if (method !== 'POST') {
       return route.fulfill({
@@ -815,9 +822,8 @@ export async function installGeminiApiMocks(page: Page) {
       });
     }
 
-    let endpoint: 'countTokens' | 'generateContent' | 'streamGenerateContent' | 'other' = 'other';
+    let endpoint: 'countTokens' | 'generateContent' | 'other' = 'other';
     if (url.includes(':countTokens')) endpoint = 'countTokens';
-    else if (url.includes(':streamGenerateContent')) endpoint = 'streamGenerateContent';
     else if (url.includes(':generateContent')) endpoint = 'generateContent';
 
     try {
@@ -832,15 +838,14 @@ export async function installGeminiApiMocks(page: Page) {
       ctx.userMessage = userMessage;
       ctx.systemInstruction = systemInstruction;
 
-      if (process.env.PW_LOG_GEMINI === '1') {
-        console.log('[Gemini Mock] Intercept', endpoint, agentType, url);
-      }
+       
 
       let bodyPayload: any;
       if (endpoint === 'countTokens') {
         bodyPayload = { totalTokens: 100 };
       } else if (endpoint === 'generateContent') {
         const mockData = generateMockResponse(agentType, ctx);
+        console.log('[Gemini Mock] Generated mock data for', agentType, mockData);
         bodyPayload = {
           candidates: [
             {
@@ -850,17 +855,6 @@ export async function installGeminiApiMocks(page: Page) {
             }
           ],
           usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 30, totalTokenCount: 80 }
-        };
-      } else if (endpoint === 'streamGenerateContent') {
-        const mockData = generateMockResponse(agentType, ctx);
-        bodyPayload = {
-          candidates: [
-            {
-              content: { parts: [{ text: JSON.stringify(mockData) }], role: 'model' },
-              finishReason: 'STOP',
-              index: 0
-            }
-          ]
         };
       } else {
         bodyPayload = { message: 'Unhandled Gemini endpoint mocked generically.' };

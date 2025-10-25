@@ -172,6 +172,7 @@
 		isGeneratingState = true;
 		let newStoryState;
 		try {
+			console.log('[Quickstart] Start quickstart flow', data);
 			const story = data.story || data;
 			const partyDescription = data.partyDescription || '';
 			const partyMemberCount = data.partyMemberCount || 1;
@@ -179,14 +180,17 @@
 			if (story && isPlainObject(story)) {
 				newStoryState = story as Story;
 			} else {
-				const overwriteStory = !story ? {} : { 
-					adventure_and_main_event: story as string,
-					partyDescription: partyDescription || (story as string),
-					partyCount: partyMemberCount
-				};
+				const overwriteStory = !story
+					? {}
+					: {
+						adventure_and_main_event: story as string,
+						party_description: partyDescription || (story as string),
+						party_count: (partyMemberCount || 1).toString()
+					};
 				newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 			}
 			if (newStoryState) {
+				console.log('[Quickstart] Generated story state');
 				storyState.value = newStoryState;
 				const characterAgent = new CharacterAgent(llm);
 				const characterStatsAgent = new CharacterStatsAgent(llm);
@@ -194,9 +198,12 @@
 				// Generate party
 				const partyDescriptions = await characterAgent.generatePartyDescriptions(
 					$state.snapshot(storyState.value),
-					partyDescription ? [{ background: partyDescription }] : undefined,
+					partyDescription
+						? [{ background: partyDescription }]
+						: undefined,
 					partyMemberCount
 				);
+				console.log('[Quickstart] Party descriptions', partyDescriptions?.length);
 				
 				if (partyDescriptions && partyDescriptions.length > 0) {
 					// Generate stats for all party members
@@ -211,6 +218,7 @@
 							}
 						}))
 					);
+					console.log('[Quickstart] Party stats generated', partyStats?.length);
 					
 					if (partyStats && partyStats.length === partyDescriptions.length) {
 						// Initialize party state with all generated members
@@ -238,6 +246,7 @@
 						parseState(characterStatsState.value);
 						
 						quickstartModalOpen = false;
+						console.log('[Quickstart] Navigating to /game');
 						await goto('/game');
 					}
 				}

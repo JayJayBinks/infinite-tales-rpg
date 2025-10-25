@@ -6,6 +6,7 @@ import {
   clearGameState,
   isStoryVisible,
   getStoryText,
+  getLocalStorageItem,
 } from './utils/testHelpers';
 
 test.describe('4. Game Loop Core Actions', () => {
@@ -41,9 +42,6 @@ test.describe('4. Game Loop Core Actions', () => {
       // Verify story is still visible
       const storyVisible = await isStoryVisible(page);
       expect(storyVisible).toBeTruthy();
-    }
-  });
-      }
     }
   });
 

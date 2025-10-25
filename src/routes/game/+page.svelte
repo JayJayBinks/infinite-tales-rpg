@@ -1651,7 +1651,7 @@
 	};
 
 	const getCurrentCampaignChapter = (): CampaignChapter | undefined =>
-		campaignState.value?.chapters.find(
+		campaignState.value?.chapters?.find(
 			(chapter) => chapter.chapterId === currentChapterState.value
 		);
 
