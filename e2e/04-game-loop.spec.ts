@@ -24,7 +24,7 @@ test.describe('4. Game Loop Core Actions', () => {
     const initialStory = await getStoryText(page);
     
     // Execute a custom action
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I look around cautiously');
     
@@ -72,7 +72,7 @@ test.describe('4. Game Loop Core Actions', () => {
     const initialStory = await getStoryText(page);
     
     // Execute action for first member
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('Action for member 1');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();

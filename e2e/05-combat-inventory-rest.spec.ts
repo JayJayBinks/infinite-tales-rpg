@@ -22,7 +22,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     const initialStory = await getStoryText(page);
     
     // Trigger combat via action
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I attack the enemy');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -53,7 +53,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     const initialStory = await getStoryText(page);
     
     // Start combat with multiple NPCs
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('Multiple enemies appear');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -71,7 +71,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     const initialStory = await getStoryText(page);
     
     // Trigger AOE attack
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I use an area attack on all enemies');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -89,7 +89,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     const initialStory = await getStoryText(page);
     
     // Find item via action
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I find a healing potion');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -121,7 +121,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     const initialStory = await getStoryText(page);
     
     // Add item through narration
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I discover a magical sword');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -169,7 +169,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     await page.waitForTimeout(3000);
     
     // Start combat
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('Combat begins');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();

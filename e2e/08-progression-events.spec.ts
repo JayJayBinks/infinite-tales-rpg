@@ -38,7 +38,7 @@ test.describe('8. Progression & Events', () => {
     const initialStory = await getStoryText(page);
     
     // Perform action to gain XP
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I complete a challenging task');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -62,7 +62,7 @@ test.describe('8. Progression & Events', () => {
     const initialStory = await getStoryText(page);
     
     // Perform action that could trigger ability learning
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I train intensely and learn a new ability');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -80,7 +80,7 @@ test.describe('8. Progression & Events', () => {
     const initialStory = await getStoryText(page);
     
     // Trigger transformation event
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I undergo a magical transformation into a dragon');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -107,7 +107,7 @@ test.describe('8. Progression & Events', () => {
     const initialStory = await getStoryText(page);
     
     // Perform action affecting entire party
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('The entire party gains a new ability');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -125,7 +125,7 @@ test.describe('8. Progression & Events', () => {
     const initialStory = await getStoryText(page);
     
     // Trigger restrained state
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I become restrained by magical bonds');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();

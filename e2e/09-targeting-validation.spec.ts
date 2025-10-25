@@ -21,7 +21,7 @@ test.describe('9. Targeting & Validation', () => {
     const initialStory = await getStoryText(page);
     
     // Start combat to populate targets
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I engage the enemies in combat');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
@@ -99,7 +99,7 @@ test.describe('9. Targeting & Validation', () => {
     const initialStory = await getStoryText(page);
     
     // Perform action that modifies resources
-    const actionInput = page.locator('input[placeholder*="action" i], textarea[placeholder*="action" i]').first();
+    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
     await actionInput.fill('I take damage from a trap');
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
