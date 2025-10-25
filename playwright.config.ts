@@ -1,22 +1,23 @@
-import type { PlaywrightTestConfig } from '@playwright/test';
+import { devices, type PlaywrightTestConfig } from '@playwright/test';
 
 const config: PlaywrightTestConfig = {
 	webServer: {
 		command: 'npm run build && npm run preview',
 		port: 4173,
-		timeout: 120000,
+		timeout: 20 * 1000,
 		reuseExistingServer: !process.env.CI,
 	},
 	testDir: 'e2e',
 	testMatch: /(.+\.)?(test|spec)\.[jt]s/,
-	timeout: 60000,
+	timeout: 10 * 1000,
 	use: {
 		baseURL: 'http://localhost:4173',
-		// Use system chromium if available
-		launchOptions: {
-			executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
-		},
 	},
+	reporter: 'list',
+	fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
 	projects: [
 		{
 			name: 'chromium',
@@ -24,6 +25,10 @@ const config: PlaywrightTestConfig = {
 				channel: undefined,
 			},
 		},
+		 {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
 	],
 };
 

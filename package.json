@@ -15,6 +15,7 @@
 		"format": "prettier --write .",
 		"test:e2e": "playwright test",
 		"test:unit": "vitest",
+		"test:e2e:ui": "playwright test --ui",
 		"release": "release-it"
 	},
 	"devDependencies": {
