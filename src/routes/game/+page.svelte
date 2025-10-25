@@ -1071,40 +1071,87 @@
 						thoughtsState.value.eventThoughts = evaluation.thoughts + '\n' + perCharThoughts;
 					});
 
-				// Generate the next set of actions.
-				actionAgent
-					.generateActions(
-						currentGameActionState,
-						historyMessagesState.value,
-						storyState.value,
-						characterState.value,
-						characterStatsState.value,
-						inventoryState.value,
-						systemInstructionsState.value.generalSystemInstruction,
-						systemInstructionsState.value.actionAgentInstruction,
-						relatedHistory,
-						gameSettingsState.value?.aiIntroducesSkills,
-						getActiveRestrainingState(
+				// Generate the next set of actions for all party members
+				const generateActionsForAllMembers = async () => {
+					const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+					
+					// Generate actions for all party members concurrently
+					const actionsPromises = partyState.value.members.map(async (member) => {
+						// Skip if actions already exist for this member
+						if (characterActionsByMemberState.value[member.id]) {
+							return null;
+						}
+						
+						try {
+							const memberStats = partyStatsState.value.members.find(m => m.id === member.id);
+							if (!memberStats) return null;
+							
+							// Get current resources for this member
+							const currentResources = playerCharactersGameState[member.id];
+							const memberStatsWithCurrentResources = {
+								...memberStats.stats,
+								resources: Object.fromEntries(
+									Object.entries(memberStats.stats.resources).map(([key, resource]) => [
+										key,
+										{
+											...resource,
+											current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+										}
+									])
+								)
+							};
+							
+							const memberRestrainingState = getActiveRestrainingState(
 								partyState.value,
 								playerCharactersIdToNamesMapState.value,
-								characterState.value.name,
+								member.character.name,
 								restrainedExplanationByMemberState.value,
 								newState
-							),
-						additionalActionInputState.value
-					)
-					.then(({ thoughts, actions }) => {
-						if (actions) {
-							console.log(stringifyPretty(actions));
-							const activeid = partyState.value.activeCharacterId || playerCharacterIdState;
-							characterActionsState.value = actions;
-							characterActionsByMemberState.value[activeid] = actions;
-							renderGameState(currentGameActionState, actions);
-							addSkillsIfApplicable(actions);
+							);
+							
+							const { thoughts, actions } = await actionAgent.generateActions(
+								currentGameActionState,
+								historyMessagesState.value,
+								storyState.value,
+								member.character,
+								memberStatsWithCurrentResources,
+								inventoryState.value,
+								systemInstructionsState.value.generalSystemInstruction,
+								systemInstructionsState.value.actionAgentInstruction,
+								relatedHistory,
+								gameSettingsState.value?.aiIntroducesSkills,
+								memberRestrainingState,
+								additionalActionInputState.value
+							);
+							
+							return { memberId: member.id, actions, thoughts, isActive: member.id === activeId };
+						} catch (error) {
+							console.warn(`Failed to generate actions for ${member.character.name}:`, error);
+							return null;
 						}
-						thoughtsState.value.actionsThoughts = thoughts;
-						resetStatesAfterActionsGenerated();
 					});
+					
+					const results = await Promise.all(actionsPromises);
+					
+					// Process results
+					results.forEach(result => {
+						if (result && result.actions) {
+							characterActionsByMemberState.value[result.memberId] = result.actions;
+							
+							// If this is the active character, also update the main state and render
+							if (result.isActive) {
+								characterActionsState.value = result.actions;
+								thoughtsState.value.actionsThoughts = result.thoughts;
+								renderGameState(currentGameActionState, result.actions);
+								addSkillsIfApplicable(result.actions);
+							}
+						}
+					});
+					
+					resetStatesAfterActionsGenerated();
+				};
+				
+				generateActionsForAllMembers();
 				handlePostActionProcessedState();
 			}
 		}
@@ -1527,6 +1574,14 @@
 
 		additionalStoryInputState.value =
 			targetAddition + abilityAddition + (additionalStoryInputState.value || '');
+		
+		// If in combat, add this action to selected combat actions (combat-locked)
+		if (currentGameActionState.is_character_in_combat) {
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			selectedCombatActionsByMemberState.value[activeId] = action;
+			selectedCombatActionsLockedState[activeId] = true;
+		}
+		
 		await sendAction(
 			action,
 			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
@@ -1562,6 +1617,13 @@
 
 	const onSuggestItemActionClosed = (action?: Action) => {
 		if (action) {
+			// If in combat, add this action to selected combat actions (combat-locked)
+			if (currentGameActionState.is_character_in_combat) {
+				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				selectedCombatActionsByMemberState.value[activeId] = action;
+				selectedCombatActionsLockedState[activeId] = true;
+			}
+			
 			if (action.is_custom_action) {
 				generateActionFromCustomInput(action);
 			} else {
