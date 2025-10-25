@@ -1096,7 +1096,9 @@
 					.then(({ thoughts, actions }) => {
 						if (actions) {
 							console.log(stringifyPretty(actions));
+							const activeid = partyState.value.activeCharacterId || playerCharacterIdState;
 							characterActionsState.value = actions;
+							characterActionsByMemberState.value[activeid] = actions;
 							renderGameState(currentGameActionState, actions);
 							addSkillsIfApplicable(actions);
 						}

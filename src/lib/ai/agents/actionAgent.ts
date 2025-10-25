@@ -267,7 +267,12 @@ export class ActionAgent {
 		const request: LLMRequest = {
 			userMessage,
 			historyMessages,
-			systemInstruction: agent
+			systemInstruction: agent,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				includeThoughts: true,
+				thinkingBudget: THINKING_BUDGET.XLARGE
+			}
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 		console.log('actions response: ', response);

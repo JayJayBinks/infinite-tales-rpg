@@ -38,7 +38,9 @@ export const THINKING_BUDGET = {
 	FASTEST: 64,
 	FASTER: 128,
 	FAST: 256,
-	DEFAULT: 512
+	DEFAULT: 512,
+	LARGE: 1024,
+	XLARGE: 2048
 };
 
 const safetySettings: Array<SafetySetting> = [
