@@ -80,6 +80,99 @@ const mockActionResponse = {
   ],
 };
 
+const mockCombatStartResponse = {
+  narration: 'A sky sentry descends from above, weapons drawn. Combat begins!',
+  resource_updates: {},
+  dice_roll_request: null,
+  suggested_actions: [
+    'Attack with weapon',
+    'Use ability',
+    'Defend',
+  ],
+  is_character_in_combat: true,
+  currently_present_npcs: ['sky_sentry'],
+};
+
+const mockCombatEndResponse = {
+  narration: 'The sky sentry falls defeated. You catch your breath as calm returns.',
+  resource_updates: {
+    HP: -5,
+  },
+  dice_roll_request: null,
+  suggested_actions: [
+    'Search the area',
+    'Continue onwards',
+    'Rest',
+  ],
+  is_character_in_combat: false,
+  currently_present_npcs: [],
+};
+
+const mockItemAddResponse = {
+  narration: 'You find a healing potion among the debris.',
+  inventory_update: [
+    { action: 'add_item', item_added: { name: 'Healing Potion', effect: 'Restores 10 HP' } }
+  ],
+  resource_updates: {},
+  dice_roll_request: null,
+  suggested_actions: [
+    'Continue exploring',
+    'Use the potion',
+  ],
+};
+
+const mockItemUseResponse = {
+  narration: 'You drink the healing potion, feeling rejuvenated.',
+  inventory_update: [
+    { action: 'remove_item', item_removed: 'Healing Potion' }
+  ],
+  resource_updates: {
+    HP: 10,
+  },
+  dice_roll_request: null,
+  suggested_actions: [
+    'Continue onwards',
+  ],
+};
+
+const mockRestResponse = {
+  narration: 'You take a short rest, recovering some of your strength.',
+  resource_updates: {
+    HP: 5,
+    STAMINA: 5,
+  },
+  dice_roll_request: null,
+  suggested_actions: [
+    'Continue the tale',
+  ],
+};
+
+const mockCampaign = {
+  chapters: [
+    {
+      chapter_number: 1,
+      theme: 'The Shattered Bridge',
+      gm_notes: 'Introduce the skybridge collapse. Party must cross via makeshift platforms.',
+      key_plot_points: ['skybridge collapse', 'meet guild official'],
+      possible_npcs: ['Guild Master Torren', 'Survivor Mila'],
+    },
+    {
+      chapter_number: 2,
+      theme: 'Forge of Runes',
+      gm_notes: 'Party discovers ancient rune-forge. Must activate it to repair bridge components.',
+      key_plot_points: ['find rune-forge', 'decode ancient runes'],
+      possible_npcs: ['Runecaster Elara', 'Forge Guardian'],
+    },
+    {
+      chapter_number: 3,
+      theme: 'Sky Leviathan Attack',
+      gm_notes: 'A sky leviathan threatens the repair efforts. Climactic battle or negotiation.',
+      key_plot_points: ['leviathan encounter', 'final bridge repair'],
+      possible_npcs: ['Leviathan', 'Bridge Engineer'],
+    },
+  ],
+};
+
 function statsArrayForParty(count: number) {
   return Array.from({ length: count }, (_, i) => ({
     ...mockStats,
@@ -88,10 +181,28 @@ function statsArrayForParty(count: number) {
 }
 
 // Identify intent by simple keyword heuristics from messages
-function classifyPrompt(text: string): 'tale' | 'party' | 'character' | 'party-stats' | 'character-stats' | 'level-up' | 'npcs' | 'abilities' | 'game-action' | 'game-action-with-events' | 'character-transform-description' | 'character-transform-stats' | 'abilities-learned' | 'game-start' | 'other' {
+function classifyPrompt(text: string): 'tale' | 'party' | 'character' | 'party-stats' | 'character-stats' | 'level-up' | 'npcs' | 'abilities' | 'game-action' | 'game-action-with-events' | 'character-transform-description' | 'character-transform-stats' | 'abilities-learned' | 'game-start' | 'campaign' | 'combat-start' | 'combat-end' | 'item-add' | 'item-use' | 'rest' | 'image-prompt' | 'other' {
   const t = text.toLowerCase();
   
   // Order matters - check most specific patterns first
+  
+  // Campaign generation
+  if (t.includes('campaign agent') || t.includes('generate a campaign')) return 'campaign';
+  
+  // Image prompt generation
+  if (t.includes('image prompt agent') || t.includes('generate an image prompt')) return 'image-prompt';
+  
+  // Combat states
+  if (t.includes('combat begins') || t.includes('enters combat') || t.includes('attack') && t.includes('enemy')) return 'combat-start';
+  if (t.includes('combat ends') || t.includes('defeated') || t.includes('enemy falls')) return 'combat-end';
+  
+  // Item actions
+  if (t.includes('find') && (t.includes('item') || t.includes('potion'))) return 'item-add';
+  if (t.includes('use') && (t.includes('item') || t.includes('potion'))) return 'item-use';
+  
+  // Rest actions
+  if (t.includes('rest') || t.includes('recover')) return 'rest';
+  
   // Event evaluation (happens when evaluating if action triggers transformation/learning)
   if (t.includes('evaluate the events for story progression')) return 'game-action-with-events';
   
@@ -229,6 +340,27 @@ export async function installGeminiApiMocks(page: Page) {
         break;
       case 'abilities':
         content = [mockStats.spells_and_abilities[1]];
+        break;
+      case 'campaign':
+        content = mockCampaign;
+        break;
+      case 'combat-start':
+        content = mockCombatStartResponse;
+        break;
+      case 'combat-end':
+        content = mockCombatEndResponse;
+        break;
+      case 'item-add':
+        content = mockItemAddResponse;
+        break;
+      case 'item-use':
+        content = mockItemUseResponse;
+        break;
+      case 'rest':
+        content = mockRestResponse;
+        break;
+      case 'image-prompt':
+        content = 'A dramatic sky scene with floating isles and ancient bridge ruins, painterly Moebius style';
         break;
       case 'game-action':
       case 'game-start':
