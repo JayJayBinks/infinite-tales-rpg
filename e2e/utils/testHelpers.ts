@@ -34,10 +34,10 @@ export async function quickstartWithParty(page: Page, partySize: number = 4) {
   
   // Modal should appear - select party size using the button group
   const partySizeButton = page.getByRole('button', { name: partySize.toString() });
-  if (await partySizeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+  await partySizeButton.isVisible({ timeout: 2000 });
     await partySizeButton.click();
     await page.waitForTimeout(300);
-  }
+  
   
   // Click "Start" button in modal to generate and start the tale
   const startButton = page.getByRole('button', { name: /^start$/i });

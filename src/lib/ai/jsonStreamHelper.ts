@@ -74,10 +74,7 @@ export async function requestLLMJsonStream(
 	if ((window as any).__isE2ETest) {
 		console.log('E2E Test detected - using mock stream result directly', geminiStreamRaw);
 		storyUpdateCallback((geminiStreamRaw as any)?.story, true);
-		return {
-			thoughts: '',
-			content: geminiStreamRaw
-		};
+		return geminiStreamRaw;
 	}
 	if (geminiStreamRaw && typeof geminiStreamRaw[Symbol.asyncIterator] === 'function') {
 		geminiStreamResult = geminiStreamRaw as AsyncGenerator<GenerateContentResponse>;

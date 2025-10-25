@@ -1035,6 +1035,7 @@
 			gameSettingsState.value,
 			simulation
 		);
+		console.log('New game action state:', newState);
 
 		if (newState.story) {
 			await processPostStory(newState, action, simulation);
