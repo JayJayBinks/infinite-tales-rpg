@@ -137,7 +137,7 @@ export class ActionProcessingService {
 	 * Clear all cached actions
 	 */
 	clearAllCachedActions() {
-		const members = partyState.party.value.members;
+		const members = partyState.party.members;
 		members.forEach(member => {
 			this.clearCachedActions(member.id);
 		});
@@ -149,9 +149,9 @@ export class ActionProcessingService {
 	applyGameActionState(gameActionState: GameActionState) {
 		gameLogic.applyGameActionState(
 			gameState.progression.playerCharactersGame,
-			gameState.progression.playerCharactersIdToNamesMap.value,
-			gameState.progression.npcs.value,
-			gameState.progression.inventory.value,
+			gameState.progression.playerCharactersIdToNamesMap,
+			gameState.progression.npcs,
+			gameState.progression.inventory,
 			gameActionState
 		);
 	}

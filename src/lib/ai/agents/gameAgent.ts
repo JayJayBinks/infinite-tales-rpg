@@ -348,10 +348,41 @@ export class GameAgent {
 		customCombatAgentInstruction: string,
 		gameSettings: GameSettings
 	) {
-		// Determine if this is a party game state (nested resources objects)
-		const firstValue = Object.values(playerCharactersGameState)[0] as unknown;
-		const isSingleCharacter = !!firstValue && typeof firstValue === 'object' && 'current_value' in (firstValue as any);
-		const isParty = !isSingleCharacter; // If the first level values don't have current_value, assume party mapping
+		// Defensive: handle undefined or empty resource state gracefully (can happen on very first tick before init)
+		if (!playerCharactersGameState) {
+			playerCharactersGameState = {} as ResourcesWithCurrentValue; // empty fallback
+		}
+
+		// Determine if this is a party game state (nested resources objects) or single character resource map.
+		// Heuristic: party shape => values are objects whose nested values have current_value; single => this object itself has resource entries.
+		let isParty = false;
+		let isSingleCharacter = false;
+		try {
+			const values = Object.values(playerCharactersGameState as any);
+			if (values.length === 0) {
+				// Empty -> assume single character (startup) so prompts remain coherent
+				isSingleCharacter = true;
+			} else {
+				const sample = values[0];
+				// If the sample itself has current_value we are in single-character current resources shape
+				if (sample && typeof sample === 'object' && 'current_value' in sample) {
+					isSingleCharacter = true;
+				} else {
+					// Check nested one level deeper to confirm party mapping
+					const nestedFirst = sample && typeof sample === 'object' ? Object.values(sample as any)[0] : undefined;
+					if (nestedFirst && typeof nestedFirst === 'object' && 'current_value' in (nestedFirst as any)) {
+						isParty = true;
+					} else {
+						// Fallback: treat as single character to avoid bloating prompt erroneously
+						isSingleCharacter = true;
+					}
+				}
+			}
+		} catch (e) {
+			// On any unexpected structure, default to single character to keep prompt minimal
+			isSingleCharacter = true;
+			isParty = false;
+		}
 
 		let partyResourcesPresentation = '';
 		if (isParty) {

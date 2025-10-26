@@ -72,8 +72,8 @@ describe('CombatService', () => {
 			];
 			const stats = [initialCharacterStatsState, initialCharacterStatsState];
 			const { party: newParty, partyStats: newStats } = createPartyFromCharacters(characters, stats);
-			partyState.party.value = newParty;
-			partyState.partyStats.value = newStats;
+			partyState.party = newParty;
+			partyState.partyStats = newStats;
 		});
 
 		it('should check if all party members have selected actions', () => {

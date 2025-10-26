@@ -63,7 +63,7 @@ export class CombatService {
 	 * Check if all party members have selected combat actions
 	 */
 	allPartyMembersHaveSelectedActions(): boolean {
-		const members = partyState.party.value.members;
+		const members = partyState.party.members;
 		return members.every(member => {
 			const action = combatState.getSelectedAction(member.id);
 			return action !== null;
@@ -74,7 +74,7 @@ export class CombatService {
 	 * Check if all party members have locked combat actions
 	 */
 	allPartyMembersHaveLockedActions(): boolean {
-		const members = partyState.party.value.members;
+		const members = partyState.party.members;
 		return members.every(member => combatState.isActionLocked(member.id));
 	}
 	
@@ -83,7 +83,7 @@ export class CombatService {
 	 */
 	getAllSelectedCombatActions(): Map<string, Action> {
 		const actions = new Map<string, Action>();
-		const members = partyState.party.value.members;
+		const members = partyState.party.members;
 		
 		members.forEach(member => {
 			const action = combatState.getSelectedAction(member.id);

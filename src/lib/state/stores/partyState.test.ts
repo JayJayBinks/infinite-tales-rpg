@@ -14,12 +14,12 @@ describe('PartyState', () => {
 
 	describe('Party composition', () => {
 		it('should initialize with empty party', () => {
-			expect(partyState.party.value.members).toEqual([]);
+			expect(partyState.party.members).toEqual([]);
 			expect(partyState.activeCharacterId).toBe('');
 		});
 
 		it('should track party members', () => {
-			partyState.party.value = {
+			partyState.party = {
 				members: [
 					{ id: 'player_1', character: { ...initialCharacterState, name: 'Hero 1' } },
 					{ id: 'player_2', character: { ...initialCharacterState, name: 'Hero 2' } }
@@ -27,12 +27,12 @@ describe('PartyState', () => {
 				activeCharacterId: 'player_1'
 			};
 
-			expect(partyState.party.value.members).toHaveLength(2);
+			expect(partyState.party.members).toHaveLength(2);
 			expect(partyState.activeCharacterId).toBe('player_1');
 		});
 
 		it('should get active member', () => {
-			partyState.party.value = {
+			partyState.party = {
 				members: [
 					{ id: 'player_1', character: { ...initialCharacterState, name: 'Hero 1' } }
 				],
@@ -44,7 +44,7 @@ describe('PartyState', () => {
 		});
 
 		it('should get member by ID', () => {
-			partyState.party.value = {
+			partyState.party = {
 				members: [
 					{ id: 'player_1', character: { ...initialCharacterState, name: 'Hero 1' } },
 					{ id: 'player_2', character: { ...initialCharacterState, name: 'Hero 2' } }
@@ -59,7 +59,7 @@ describe('PartyState', () => {
 		it('should check if party mode is active', () => {
 			expect(partyState.isPartyMode).toBe(false);
 
-			partyState.party.value = {
+			partyState.party = {
 				members: [
 					{ id: 'player_1', character: initialCharacterState },
 					{ id: 'player_2', character: initialCharacterState }
@@ -118,8 +118,8 @@ describe('PartyState', () => {
 	describe('Event evaluations', () => {
 		it('should store event evaluation per member', () => {
 			const mockEvaluation = {
-				character_changed: null,
-				abilities_learned: []
+				character_changed: undefined,
+				abilities_learned: { abilities: [] }
 			};
 
 			partyState.setMemberEventEvaluation('player_1', mockEvaluation);
@@ -136,7 +136,7 @@ describe('PartyState', () => {
 
 	describe('Helper methods', () => {
 		beforeEach(() => {
-			partyState.party.value = {
+			partyState.party = {
 				members: [
 					{ id: 'player_1', character: { ...initialCharacterState, name: 'Hero 1' } },
 					{ id: 'player_2', character: { ...initialCharacterState, name: 'Hero 2' } },
@@ -155,7 +155,7 @@ describe('PartyState', () => {
 	describe('resetPartyState', () => {
 		it('should reset all party state', () => {
 			// Set some values
-			partyState.party.value = {
+			partyState.party = {
 				members: [{ id: 'player_1', character: initialCharacterState }],
 				activeCharacterId: 'player_1'
 			};
@@ -166,7 +166,7 @@ describe('PartyState', () => {
 			partyState.resetPartyState();
 
 			// Verify reset
-			expect(partyState.party.value.members).toEqual([]);
+			expect(partyState.party.members).toEqual([]);
 			expect(partyState.getMemberActions('player_1')).toEqual([]);
 			expect(partyState.getMemberSkillsProgression('player_1')).toEqual({});
 		});

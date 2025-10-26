@@ -9,7 +9,7 @@
 	} from '$lib/ai/agents/characterAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import { getRowsForTextarea, navigate } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
 	import { beforeNavigate, goto } from '$app/navigation';
@@ -28,15 +28,21 @@
 	} from '../../partyLogic';
 
 	let isGeneratingState = $state(false);
-	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const aiLanguage = useLocalStorage<string>('aiLanguage');
-	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
-	const campaignState = useLocalStorage<Campaign>('campaignState');
-	const characterState = useLocalStorage<CharacterDescription>(
-		'characterState',
-		initialCharacterState
-	);
-	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return {
+			get value() { return _v; },
+			set value(val: T) { _v = val; saveToLocalStorage(key, val); },
+			reset() { this.value = initial as T; },
+			resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} }
+		};
+	}
+	const apiKeyState = localState<string>('apiKeyState', '');
+	const aiLanguage = localState<string>('aiLanguage', 'English');
+	const storyState = localState<Story>('storyState', initialStoryState);
+	const campaignState = localState<Campaign>('campaignState', {} as Campaign);
+	const characterState = localState<CharacterDescription>('characterState', initialCharacterState);
+	const partyState = localState<Party>('partyState', initialPartyState);
 
 	// Track which character index we're editing (0-3 for party members)
 	let currentCharacterIndex = $state(0);
@@ -44,11 +50,8 @@
 
 	let characterStateOverwrites: Partial<CharacterDescription> = $state({});
 	let resetImageState = $state(false);
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	const playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
-		'playerCharactersIdToNamesMapState',
-		{}
-	);
+    const aiConfigState = localState<AIConfig>('aiConfigState', { disableAudioState: false, disableImagesState: false } as AIConfig);
+    const playerCharactersIdToNamesMapState = localState<PlayerCharactersIdToNamesMap>('playerCharactersIdToNamesMapState', {});
 	let characterAgent: CharacterAgent;
 
 	// Initialize party based on storyState.party_count (auto-create tabs 1-4)

@@ -7,7 +7,7 @@
 		storyStateForPrompt
 	} from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { getRowsForTextarea, navigate, loadPDF } from '$lib/util.svelte';
 	import isEqual from 'lodash.isequal';
@@ -16,17 +16,19 @@
 	import { type CharacterDescription, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import type { AIConfig } from '$lib';
 	let isGeneratingState = $state(false);
-	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return { get value() { return _v; }, set value(val: T) { _v = val; saveToLocalStorage(key, val); }, reset() { this.value = initial as T; }, resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} } };
+	}
+	const apiKeyState = localState<string>('apiKeyState', '');
+	const aiLanguage = localState<string>('aiLanguage', 'English');
 	let storyAgent: StoryAgent;
 
-	const storyState = useLocalStorage<Story>('storyState', { ...initialStoryState });
+    const storyState = localState<Story>('storyState', { ...initialStoryState });
 	const textAreaRowsDerived = $derived(getRowsForTextarea(storyState.value));
 	let storyStateOverwrites = $state({});
-	const characterState = useLocalStorage<CharacterDescription>('characterState', {
-		...initialCharacterState
-	});
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+    const characterState = localState<CharacterDescription>('characterState', { ...initialCharacterState });
+    const aiConfigState = localState<AIConfig>('aiConfigState', { disableAudioState: false, disableImagesState: false } as AIConfig);
 
 	onMount(() => {
 		storyAgent = new StoryAgent(

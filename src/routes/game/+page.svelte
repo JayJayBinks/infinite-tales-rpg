@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+    // Refactored: removed useLocalStorage in favor of centralized state stores & lightweight wrappers
 	import {
 		getTextForActionButton,
 		handleError,
@@ -8,7 +8,7 @@
 		type ThoughtsState
 	} from '$lib/util.svelte';
 	// Import state stores
-	import { aiStateStore, characterStateStore, storyStateStore } from '$lib/state/stores';
+	import { aiStateStore, characterStateStore, storyStateStore, gameState, partyState, uiState } from '$lib/state/stores';
 	import {
 		type Action,
 		defaultGameSettings,
@@ -72,6 +72,7 @@
 	import { type Campaign, CampaignAgent, type CampaignChapter } from '$lib/ai/agents/campaignAgent';
 	import { ActionAgent, type TruthOracleResult } from '$lib/ai/agents/actionAgent';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import { applyLevelUp, getXPNeededForLevel } from './levelLogic';
 	import LevelUpModal from '$lib/components/interaction_modals/LevelUpModal.svelte';
@@ -145,7 +146,12 @@
 	// );
 	// const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let isAiGeneratingState = $state(false);
-	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
+	// Compatibility wrappers mapping legacy local vars to centralized stores
+	const didAIProcessDiceRollActionState = {
+		get value() { return uiState.loading.didAIProcessDiceRollAction; },
+		set value(v: boolean) { uiState.loading.didAIProcessDiceRollAction = v; },
+		reset() { uiState.loading.resetDidAIProcessDiceRollAction(); }
+	};
 	let didAIProcessActionState = $state<boolean>(true);
 	let imagePromptAgent: ImagePromptAgent;
 	let gameAgent: GameAgent,
@@ -158,16 +164,36 @@
 		eventAgent: EventAgent;
 
 	//game state
-	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
-	const characterActionsState = useLocalStorage<Action[]>('characterActionsState', []);
-	const characterActionsByMemberState = useLocalStorage<Record<string, Action[]>>('characterActionsByMemberState', {});
-	// Per-member restrained explanation state (party-aware). Value is explanation string or null.
-	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
-		'restrainedExplanationByMemberState',
+	// Wrapper factory
+	function wrap<T>(getter: () => T, setter: (v: T) => void, resetValue: T | (() => T)) {
+		return {
+			get value() { return getter(); },
+			set value(v: T) { setter(v); },
+			reset() { setter(typeof resetValue === 'function' ? (resetValue as () => T)() : resetValue as T); }
+		};
+	}
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return { get value() { return _v; }, set value(val: T) { _v = val; saveToLocalStorage(key, val); }, reset() { this.value = initial as T; }, resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} } };
+	}
+	const gameActionsState = wrap<GameActionState[]>(() => gameState.progression.gameActions, v => gameState.progression.gameActions = v, []);
+	const characterActionsState = wrap<Action[]>(() => uiState.selection.characterActions, v => uiState.selection.characterActions = v, []);
+	const characterActionsByMemberState = wrap<Record<string, Action[]>>(
+		() => partyState.characterActionsByMember,
+		v => partyState.characterActionsByMember = v,
 		{}
 	);
-	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, Action | null>>('selectedCombatActionsByMemberState', {});
-	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
+	const restrainedExplanationByMemberState = wrap<Record<string, string | null>>(
+		() => partyState.restrainedExplanationByMember,
+		v => partyState.restrainedExplanationByMember = v,
+		{}
+	);
+	const selectedCombatActionsByMemberState = wrap<Record<string, Action | null>>(
+		() => partyState.selectedCombatActionsByMember,
+		v => partyState.selectedCombatActionsByMember = v,
+		{}
+	);
+	const historyMessagesState = wrap<LLMMessage[]>(() => gameState.memory.historyMessages, v => gameState.memory.historyMessages = v, []);
 	// Character state - now using characterStateStore
 	// const characterState = useLocalStorage<CharacterDescription>(
 	// 	'characterState',
@@ -177,8 +203,8 @@
 	// 	'characterStatsState',
 	// 	initialCharacterStatsState
 	// );
-	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
-	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
+    // Party wrappers
+    const partyStatsState = wrap<PartyStats>(() => partyState.partyStats, v => partyState.partyStats = v, initialPartyStatsState);
 
 	// Sync character state with active party member
 	$effect(() => {
@@ -191,39 +217,53 @@
 			}
 		}
 	});
-	let storyChunkState = $state<string>('');
-	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
+    let storyChunkState = $state<string>('');
+    const thoughtsState = wrap<ThoughtsState>(() => uiState.storyDisplay.thoughts, v => uiState.storyDisplay.thoughts = v, initialThoughtsState);
 
 	// Skills progression - now per party member
-	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>(
-		'skillsProgressionByMemberState',
+	const skillsProgressionState = wrap<Record<string, SkillsProgression>>(
+		() => partyState.skillsProgressionByMember,
+		v => partyState.skillsProgressionByMember = v,
 		{}
 	);
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
-	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
+    const inventoryState = wrap<InventoryState>(() => gameState.progression.inventory, v => gameState.progression.inventory = v, {});
 	// Story state - now using storyStateStore
 	// const storyState = useLocalStorage<Story>('storyState', initialStoryState);
 	// const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
 	// 	'relatedStoryHistoryState',
 	// 	{ relatedDetails: [] }
 	// );
-	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
-	const relatedActionGroundTruthState = useLocalStorage<TruthOracleResult | null>(
-		'relatedActionGroundTruthState'
+	const relatedActionHistoryState = wrap<string[]>(() => gameState.memory.relatedActionHistory, v => gameState.memory.relatedActionHistory = v, []);
+	const relatedActionGroundTruthState = wrap<TruthOracleResult | null>(
+		() => gameState.memory.relatedActionGroundTruth,
+		v => gameState.memory.relatedActionGroundTruth = v,
+		() => null
 	);
-	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
+	const relatedNPCActionsState = wrap<NPCAction[]>(() => gameState.memory.relatedNPCActions, v => gameState.memory.relatedNPCActions = v, []);
+	// Compatibility alias objects for legacy references expecting .story and .reset()
+	const relatedActionHistoryStateStore = {
+		get story() { return relatedActionHistoryState.value; },
+		set story(v: string[]) { relatedActionHistoryState.value = v; }
+	};
+	const relatedStoryHistoryStateStore = {
+		get story() { return storyStateStore.relatedStoryHistory; },
+		set story(v: RelatedStoryHistory) { storyStateStore.relatedStoryHistory = v; },
+		reset() { storyStateStore.relatedStoryHistory = { relatedDetails: [] } as RelatedStoryHistory; }
+	};
 	// const customMemoriesState = useLocalStorage<string>('customMemoriesState');
 	// const customGMNotesState = useLocalStorage<string>('customGMNotesState');
-	const currentChapterState = useLocalStorage<number>('currentChapterState');
-	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
+    const currentChapterState = wrap<number>(() => gameState.campaign.currentChapter, v => gameState.campaign.currentChapter = v, 0);
+    const campaignState = wrap<Campaign>(() => gameState.campaign.campaign, v => gameState.campaign.campaign = v, {} as Campaign);
 
-	const npcState = useLocalStorage<NPCState>('npcState', {});
-	const chosenActionState = useLocalStorage<Action>('chosenActionState', {} as Action);
-	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState', '');
-	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState', '');
-	const isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
-	let playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
-		'playerCharactersIdToNamesMapState',
+	const npcState = wrap<NPCState>(() => gameState.progression.npcs, v => gameState.progression.npcs = v, {});
+	const chosenActionState = wrap<Action>(() => uiState.selection.chosenAction, v => uiState.selection.chosenAction = v, {} as Action);
+	const additionalStoryInputState = wrap<string>(() => gameState.input.additionalStoryInput, v => gameState.input.additionalStoryInput = v, '');
+	const additionalActionInputState = wrap<string>(() => gameState.input.additionalActionInput, v => gameState.input.additionalActionInput = v, '');
+	const isGameEnded = wrap<boolean>(() => gameState.progression.isGameEnded, v => gameState.progression.isGameEnded = v, false);
+	let playerCharactersIdToNamesMapState = wrap<PlayerCharactersIdToNamesMap>(
+		() => gameState.progression.playerCharactersIdToNamesMap,
+		v => gameState.progression.playerCharactersIdToNamesMap = v,
 		{}
 	);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
@@ -243,16 +283,11 @@
 		return playerCharactersGameState[effectiveId];
 	};
 
-	let levelUpState = useLocalStorage<{
-		buttonEnabled: boolean;
-		dialogOpened: boolean;
-		playerName: string;
-		partyLevelUpStatus?: Record<string, boolean>;
-	}>('levelUpState', {
-		buttonEnabled: false,
-		dialogOpened: false,
-		playerName: ''
-	});
+    let levelUpState = wrap<{ buttonEnabled: boolean; dialogOpened: boolean; playerName: string; partyLevelUpStatus?: Record<string, boolean>; }>(
+        () => uiState.modals.levelUpDialog,
+        v => uiState.modals.levelUpDialog = v,
+        { buttonEnabled: false, dialogOpened: false, playerName: '' }
+    );
 	const currentGameActionState: GameActionState = $derived(
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
 			({} as GameActionState)
@@ -308,21 +343,21 @@
 	let gmQuestionState: string = $state('');
 	let customDiceRollNotation: string = $state('');
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
-	const eventEvaluationState = useLocalStorage<EventEvaluation>(
+	const eventEvaluationState = localState<EventEvaluation>(
 		'eventEvaluationState',
 		initialEventEvaluationState
 	);
 	// NEW: Per-party-member event evaluations (mapping id -> EventEvaluation)
-	const eventEvaluationByMemberState = useLocalStorage<Record<string, EventEvaluation>>(
+	const eventEvaluationByMemberState = localState<Record<string, EventEvaluation>>(
 		'eventEvaluationByMemberState',
 		{}
 	);
 
 	//feature toggles
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	let useDynamicCombat = useLocalStorage('useDynamicCombat', false);
-	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
-	const ttsVoiceState = useLocalStorage<string>('ttsVoice');
+	const aiConfigState = localState<AIConfig>('aiConfigState');
+	const useDynamicCombat = localState<boolean>('useDynamicCombat', false);
+	const gameSettingsState = localState<GameSettings>('gameSettingsState', defaultGameSettings());
+	const ttsVoiceState = localState<string>('ttsVoice');
 
 	onMount(async () => {
 		// TODO for some reason does not work, as its also shown on custom action despite everything being loaded already
@@ -394,19 +429,26 @@
 			// Set character ID to active party member
 			characterId = partyState.value.activeCharacterId;
 		} else if (!characterId) {
-			// Fallback to old single character system
+			// Fallback single-character initialization WITH normalized current_value before any sendAction
 			characterId = getFreeCharacterTechnicalId(playerCharactersIdToNamesMapState.value);
 			addCharacterToPlayerCharactersIdToNamesMap(
 				playerCharactersIdToNamesMapState.value,
 				characterId,
 				currentCharacterName
 			);
-
-			// Initialize the player's resource state if it doesn't exist.
-			playerCharactersGameState[characterId] = {
-				...$state.snapshot(characterStateStore.characterStats.resources),
-				XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
-			};
+			import('$lib/game/resourceUtils').then(({ normalizeResources }) => {
+				playerCharactersGameState[characterId] = normalizeResources(
+					$state.snapshot(characterStateStore.characterStats.resources)
+				);
+				// Ensure XP pseudo resource present
+				if (!playerCharactersGameState[characterId].XP) {
+					playerCharactersGameState[characterId].XP = {
+						max_value: 0,
+						current_value: 0,
+						game_ends_when_zero: false
+					};
+				}
+			});
 		}
 		if (relatedStoryHistoryStateStore.story.relatedDetails.length === 0) {
 			getRelatedHistoryForStory();
@@ -499,10 +541,20 @@
 	}
 
 	async function initializeGame() {
-		await sendAction({
-			characterName: characterStateStore.character.name,
-			text: GameAgent.getStartingPrompt()
-		});
+		// Ensure single-character fallback resources normalized synchronously (import already queued above)
+		if (partyState.value.members.length === 0) {
+			// If normalization via dynamic import not yet resolved, perform minimal inline normalization
+			const activeId = playerCharacterIdState;
+			const current = playerCharactersGameState[activeId];
+			if (current && !('current_value' in Object.values(current)[0] as any)) {
+				Object.entries(current).forEach(([k, v]: any) => {
+					if (v && typeof v === 'object' && 'max_value' in v && !('current_value' in v)) {
+						(v as any).current_value = v.start_value ?? v.max_value;
+					}
+				});
+			}
+		}
+		await sendAction({ characterName: characterStateStore.character.name, text: GameAgent.getStartingPrompt() });
 		if (gameActionsState.value.length === 0) return;
 		// Initialize all resources when the game is first started.
 
@@ -763,7 +815,7 @@
 		additionalStoryInputState.reset();
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
-		storyStateStore.relatedStoryHistory.reset();
+		relatedStoryHistoryStateStore.reset();
 		relatedNPCActionsState.reset();
 		relatedActionGroundTruthState.reset();
 		skillsProgressionForCurrentActionState = undefined;
@@ -1033,7 +1085,8 @@
 			historyMessagesState.value,
 			storyStateStore.story,
 			characterStateStore.character,
-			playerCharactersGameState[playerCharacterIdState],
+			// Use a safe accessor that falls back to current character state to avoid undefined on first tick
+			getCurrentCharacterGameState() || ({} as any),
 			inventoryState.value,
 			relatedHistory,
 			gameSettingsState.value,
@@ -1288,7 +1341,7 @@
 				if (relatedHistory) {
 					relatedStoryHistoryStateStore.story = relatedHistory;
 				} else {
-					storyStateStore.relatedStoryHistory.reset();
+					relatedStoryHistoryStateStore.reset();
 				}
 			});
 	}

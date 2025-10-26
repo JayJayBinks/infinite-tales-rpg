@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import type { CharacterStats, SkillsProgression, PartyStats } from '$lib/ai/agents/characterStatsAgent.ts';
 	import type { CharacterDescription, Party } from '$lib/ai/agents/characterAgent';
@@ -9,13 +9,22 @@
 	import PartyMemberSwitcher from '$lib/components/PartyMemberSwitcher.svelte';
 	import { getActivePartyMember, getActivePartyMemberStats } from '../partyLogic';
 
-	const characterState = useLocalStorage<CharacterDescription>('characterState');
-	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
-	const partyState = useLocalStorage<Party>('partyState');
-	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState');
-	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>('skillsProgressionByMemberState', {});
-	const storyState = useLocalStorage<Story>('storyState');
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return {
+			get value() { return _v; },
+			set value(val: T) { _v = val; saveToLocalStorage(key, val); },
+			reset() { this.value = initial as T; },
+			resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} }
+		};
+	}
+	const characterState = localState<CharacterDescription>('characterState', {} as CharacterDescription);
+	const characterStatsState = localState<CharacterStats>('characterStatsState', {} as CharacterStats);
+	const partyState = localState<Party>('partyState', { members: [], activeCharacterId: '' } as Party);
+	const partyStatsState = localState<PartyStats>('partyStatsState', { members: [] } as PartyStats);
+	const skillsProgressionState = localState<Record<string, SkillsProgression>>('skillsProgressionByMemberState', {});
+	const storyState = localState<Story>('storyState', {} as Story);
+	const aiConfigState = localState<AIConfig>('aiConfigState', { disableAudioState: false, disableImagesState: false } as AIConfig);
 	
 	// Sync character state when active party member changes
 	$effect(() => {

@@ -3,7 +3,7 @@
  * Consolidates all core game-related state that was previously scattered across useLocalStorage calls
  */
 
-import { useLocalStorage } from '../useLocalStorage.svelte';
+import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 import type {
 	GameActionState,
 	InventoryState,
@@ -22,36 +22,42 @@ import type { Story } from '$lib/ai/agents/storyAgent';
  * Core game progression state
  */
 export class GameProgressionState {
-	// Game actions history
-	gameActions = useLocalStorage<GameActionState[]>('gameActionsState', []);
-	
-	// Story state
-	story = useLocalStorage<Story>('storyState', {} as Story);
-	storyChunk = $state<string>('');
-	
-	// Inventory
-	inventory = useLocalStorage<InventoryState>('inventoryState', {});
-	
-	// NPCs
-	npcs = useLocalStorage<NPCState>('npcState', {});
-	
-	// Player character mappings
-	playerCharactersIdToNamesMap = useLocalStorage<PlayerCharactersIdToNamesMap>(
-		'playerCharactersIdToNamesMapState',
-		{}
+	private _gameActions = $state<GameActionState[]>(
+		getFromLocalStorage('gameActionsState', [])
 	);
-	
-	// Player characters game state (resources, etc.)
+	private _story = $state<Story>(getFromLocalStorage('storyState', {} as Story));
+	storyChunk = $state<string>('');
+	private _inventory = $state<InventoryState>(getFromLocalStorage('inventoryState', {}));
+	private _npcs = $state<NPCState>(getFromLocalStorage('npcState', {}));
+	private _playerCharactersIdToNamesMap = $state<PlayerCharactersIdToNamesMap>(
+		getFromLocalStorage('playerCharactersIdToNamesMapState', {})
+	);
 	playerCharactersGame = $state<PlayerCharactersGameState>({});
-	
-	// Game ended flag
-	isGameEnded = useLocalStorage<boolean>('isGameEnded', false);
+	private _isGameEnded = $state<boolean>(getFromLocalStorage('isGameEnded', false));
+
+	get gameActions() { return this._gameActions; }
+	set gameActions(v: GameActionState[]) { this._gameActions = v; saveToLocalStorage('gameActionsState', v); }
+
+	get story() { return this._story; }
+	set story(v: Story) { this._story = v; saveToLocalStorage('storyState', v); }
+
+	get inventory() { return this._inventory; }
+	set inventory(v: InventoryState) { this._inventory = v; saveToLocalStorage('inventoryState', v); }
+
+	get npcs() { return this._npcs; }
+	set npcs(v: NPCState) { this._npcs = v; saveToLocalStorage('npcState', v); }
+
+	get playerCharactersIdToNamesMap() { return this._playerCharactersIdToNamesMap; }
+	set playerCharactersIdToNamesMap(v: PlayerCharactersIdToNamesMap) { this._playerCharactersIdToNamesMap = v; saveToLocalStorage('playerCharactersIdToNamesMapState', v); }
+
+	get isGameEnded() { return this._isGameEnded; }
+	set isGameEnded(v: boolean) { this._isGameEnded = v; saveToLocalStorage('isGameEnded', v); }
 	
 	/**
 	 * Get the current (latest) game action state
 	 */
 	get currentGameAction(): GameActionState {
-		return (this.gameActions.value && this.gameActions.value[this.gameActions.value.length - 1]) || 
+		return (this.gameActions && this.gameActions[this.gameActions.length - 1]) || 
 			({} as GameActionState);
 	}
 	
@@ -67,48 +73,74 @@ export class GameProgressionState {
  * Memory and history state
  */
 export class MemoryState {
-	// History messages for LLM context
-	historyMessages = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
-	
-	// Related story history
-	relatedStoryHistory = useLocalStorage<RelatedStoryHistory>(
-		'relatedStoryHistoryState',
-		{ relatedDetails: [] }
+	private _historyMessages = $state<LLMMessage[]>(getFromLocalStorage('historyMessagesState', []));
+	private _relatedStoryHistory = $state<RelatedStoryHistory>(
+		getFromLocalStorage('relatedStoryHistoryState', { relatedDetails: [] })
 	);
-	
-	// Related action history
-	relatedActionHistory = useLocalStorage<string[]>('relatedActionHistoryState', []);
-	
-	// Ground truth for related actions
-	relatedActionGroundTruth = useLocalStorage<TruthOracleResult | null>(
-		'relatedActionGroundTruthState',
-		null
+	private _relatedActionHistory = $state<string[]>(
+		getFromLocalStorage('relatedActionHistoryState', [])
 	);
-	
-	// Related NPC actions
-	relatedNPCActions = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
-	
-	// Custom memories
-	customMemories = useLocalStorage<string>('customMemoriesState', '');
-	
-	// Custom GM notes
-	customGMNotes = useLocalStorage<string>('customGMNotesState', '');
+	private _relatedActionGroundTruth = $state<TruthOracleResult | null>(
+		getFromLocalStorage('relatedActionGroundTruthState', null)
+	);
+	private _relatedNPCActions = $state<NPCAction[]>(
+		getFromLocalStorage('relatedNPCActionsState', [])
+	);
+	private _customMemories = $state<string>(getFromLocalStorage('customMemoriesState', ''));
+	private _customGMNotes = $state<string>(getFromLocalStorage('customGMNotesState', ''));
+
+	get historyMessages() { return this._historyMessages; }
+	set historyMessages(v: LLMMessage[]) { this._historyMessages = v; saveToLocalStorage('historyMessagesState', v); }
+
+	get relatedStoryHistory() { return this._relatedStoryHistory; }
+	set relatedStoryHistory(v: RelatedStoryHistory) { this._relatedStoryHistory = v; saveToLocalStorage('relatedStoryHistoryState', v); }
+
+	get relatedActionHistory() { return this._relatedActionHistory; }
+	set relatedActionHistory(v: string[]) { this._relatedActionHistory = v; saveToLocalStorage('relatedActionHistoryState', v); }
+
+	get relatedActionGroundTruth() { return this._relatedActionGroundTruth; }
+	set relatedActionGroundTruth(v: TruthOracleResult | null) { this._relatedActionGroundTruth = v; saveToLocalStorage('relatedActionGroundTruthState', v); }
+
+	get relatedNPCActions() { return this._relatedNPCActions; }
+	set relatedNPCActions(v: NPCAction[]) { this._relatedNPCActions = v; saveToLocalStorage('relatedNPCActionsState', v); }
+
+	get customMemories() { return this._customMemories; }
+	set customMemories(v: string) { this._customMemories = v; saveToLocalStorage('customMemoriesState', v); }
+
+	get customGMNotes() { return this._customGMNotes; }
+	set customGMNotes(v: string) { this._customGMNotes = v; saveToLocalStorage('customGMNotesState', v); }
 }
 
 /**
  * Campaign state
  */
 export class CampaignState {
-	campaign = useLocalStorage<Campaign>('campaignState', {} as Campaign);
-	currentChapter = useLocalStorage<number>('currentChapterState', 0);
+	private _campaign = $state<Campaign>(getFromLocalStorage('campaignState', {} as Campaign));
+	private _currentChapter = $state<number>(getFromLocalStorage('currentChapterState', 0));
+
+	get campaign() { return this._campaign; }
+	set campaign(v: Campaign) { this._campaign = v; saveToLocalStorage('campaignState', v); }
+
+	get currentChapter() { return this._currentChapter; }
+	set currentChapter(v: number) { this._currentChapter = v; saveToLocalStorage('currentChapterState', v); }
 }
 
 /**
  * Additional input state for actions and story
  */
 export class InputState {
-	additionalStoryInput = useLocalStorage<string>('additionalStoryInputState', '');
-	additionalActionInput = useLocalStorage<string>('additionalActionInputState', '');
+	private _additionalStoryInput = $state<string>(
+		getFromLocalStorage('additionalStoryInputState', '')
+	);
+	private _additionalActionInput = $state<string>(
+		getFromLocalStorage('additionalActionInputState', '')
+	);
+
+	get additionalStoryInput() { return this._additionalStoryInput; }
+	set additionalStoryInput(v: string) { this._additionalStoryInput = v; saveToLocalStorage('additionalStoryInputState', v); }
+
+	get additionalActionInput() { return this._additionalActionInput; }
+	set additionalActionInput(v: string) { this._additionalActionInput = v; saveToLocalStorage('additionalActionInputState', v); }
 }
 
 /**
@@ -125,27 +157,27 @@ export class GameState {
 	 * Reset all game state (for new game)
 	 */
 	resetGameState() {
-		this.progression.gameActions.reset();
-		this.progression.story.reset();
+		this.progression.gameActions = [];
+		this.progression.story = {} as Story;
 		this.progression.storyChunk = '';
-		this.progression.inventory.reset();
-		this.progression.npcs.reset();
-		this.progression.isGameEnded.reset();
+		this.progression.inventory = {};
+		this.progression.npcs = {};
+		this.progression.isGameEnded = false;
 		this.progression.playerCharactersGame = {};
-		
-		this.memory.historyMessages.reset();
-		this.memory.relatedStoryHistory.reset();
-		this.memory.relatedActionHistory.reset();
-		this.memory.relatedActionGroundTruth.reset();
-		this.memory.relatedNPCActions.reset();
-		this.memory.customMemories.reset();
-		this.memory.customGMNotes.reset();
-		
-		this.campaign.campaign.reset();
-		this.campaign.currentChapter.reset();
-		
-		this.input.additionalStoryInput.reset();
-		this.input.additionalActionInput.reset();
+
+		this.memory.historyMessages = [];
+		this.memory.relatedStoryHistory = { relatedDetails: [] };
+		this.memory.relatedActionHistory = [];
+		this.memory.relatedActionGroundTruth = null;
+		this.memory.relatedNPCActions = [];
+		this.memory.customMemories = '';
+		this.memory.customGMNotes = '';
+
+		this.campaign.campaign = {} as Campaign;
+		this.campaign.currentChapter = 0;
+
+		this.input.additionalStoryInput = '';
+		this.input.additionalActionInput = '';
 	}
 }
 

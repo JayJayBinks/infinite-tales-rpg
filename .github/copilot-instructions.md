@@ -4,108 +4,61 @@ globs:
 alwaysApply: true
 ---
 
-<!-- Updated AI / Copilot Instructions: Project-Specific Engineering Guide -->
+<!-- Condensed & Actionable AI Agent Guide (Do not bloat; keep under ~60 lines) -->
 
-# Infinite Tales RPG – AI Coding Agent Guide
+THERE IS NOT SINGLE  CHARACTER MODE ANYMORE, ONLY PARTY MODE. ALWAYS HANDLE MULTIPLE CHARACTERS. REMOVE ANY LEGACY SINGLE-CHARACTER LOGIC.
 
-Concise, opinionated rules so an AI can contribute productively without rediscovering architecture. Keep answers ACTIONABLE, project‑specific, and use existing patterns.
+# Infinite Tales RPG – Copilot Runtime Rules
 
-## Tech + Framework Essentials
-SvelteKit 2 / Svelte 5 with runes ($state, $derived, $effect). Tailwind + DaisyUI (no ad‑hoc CSS unless unavoidable). TypeScript everywhere. Vite build.
+## 1. Stack & Conventions
+SvelteKit 2 / Svelte 5 runes ($state/$derived/$effect). Tailwind + DaisyUI only (no ad‑hoc CSS). TypeScript everywhere. All persistent/global state goes through a localStorage wrapper (see `wrap()` / prior `useLocalStorage`). Mutate via `.value` or wrapped setters—never reassign the wrapper variable.
 
-## Core Game Architecture (Data Flow)
-Player Action -> GameAgent (story + structured JSON) -> gameActionsState[] -> CombatAgent (post story stats_update) -> gameLogic.applyGameActionState (mutates resources, XP, inventory) -> UI renders via derived runes.
-AI Sub‑agents live in `src/lib/ai/agents/`: 
-- GameAgent: primary story progression & JSON game state.
-- ActionAgent: proposes next actions; single vs batch.
-- CombatAgent: derives stats_update after narration (post-processing).
-- EventAgent: detects transformations & new abilities (now party‑aware).
-- CharacterAgent / CharacterStatsAgent: descriptions + stats & level-ups.
-- SummaryAgent: history condensation.
-- CampaignAgent: chapter progression.
-- ImagePromptAgent: scene image prompt.
+## 2. Core Flow (Authoritative Data Path)
+Player Action → GameAgent (streams story + initial JSON) → (post) CombatAgent adds/normalizes `stats_update` → `gameLogic.applyGameActionState()` mutates ONLY: resources, XP, inventory → Derived UI renders → ActionAgent proposes next actions → EventAgent evaluates per‑member events → optional ImagePromptAgent. Never mutate `playerCharactersGameState` / inventory directly; always funnel through a synthetic `GameActionState` + apply.
 
-## Party System Principles
-- Party state: `partyState` (descriptions) & `partyStatsState` (stats) plus per-member resources in `playerCharactersGameState` keyed by technical id (e.g. player_character_1).
-- Active character drives immediate UI; per-member caches: actions (`characterActionsByMemberState`), event evaluations (`eventEvaluationByMemberState`), combat selections, skill progression.
-- Never treat party members as NPCs; they are excluded from `currently_present_npcs`.
+## 3. Agents (dir: `src/lib/ai/agents/`)
+GameAgent (story + structured state), ActionAgent (options), CombatAgent (derive stat diffs), EventAgent (transformations/abilities/restrain), CharacterAgent / CharacterStatsAgent (descriptions & stats), SummaryAgent (history slicing), CampaignAgent (chapters), ImagePromptAgent (scene prompt). Only GameAgent uses streaming.
 
-## Persistent State Pattern
-All global/persistent game state uses `useLocalStorage<T>(key, initial)` wrappers; mutate through `.value`; when switching members, load that member’s slice into the single-character compatibility state (e.g. `eventEvaluationState`).
+## 4. Party Model
+Party descriptions: `partyState`; stats: `partyStatsState`; runtime per‑member resources: `playerCharactersGameState[technicalId]` (values are `{max_value,current_value,game_ends_when_zero}`). Party members must NEVER appear in `currently_present_npcs`. UI often reflects the active member; caches per‑member actions/events in mapping states (e.g. `characterActionsByMemberState`).
 
-When introducing new state make sure to reset it at new tale at src\routes\game\settings\ai\+page.svelte !
+## 5. Resources, XP, Level
+Refill via `refillResourcesFully()` creating proper `stats_update`; don’t preseed `current_value` manually except during initial bootstrap. XP is a pseudo resource (`XP`); level ups emit `now_level_X` and deduct XP. Color/render logic downstream depends on consistent `_gained` / `_lost` suffixes.
 
-## Stats & Resources
-- Resources structure: { max_value, start_value, current_value?, game_ends_when_zero } -> runtime state adds current_value under `playerCharactersGameState`.
-- Refill logic: use `refillResourcesFully()` – don’t pre‑mutate playerCharactersGameState manually; let helper produce stats_update diff.
-- XP: always on a pseudo resource `XP`; level ups produce `now_level_X` stats_update & deduct XP.
+## 6. Image Prompt + Chapter
+After story stream completes: advance chapter first, then build image prompt with trimmed (~1200–1500 chars) recent story + chapter theme + `general_image_prompt`. Exclude future chapters, dice/meta, or unconfirmed transformations. On failure: leave empty string (no retries). Do NOT describe the player’s character appearance—environment + NPC visuals only.
 
-## Applying Updates
-- Only authoritative mutation path for combat/story changes: `gameLogic.applyGameActionState` (or its batch variant). Don’t hand-edit resources elsewhere; instead generate a synthetic GameActionState if needed.
+## 7. Prompt Assembly Rules
+System instruction arrays: (a) role & guardrails, (b) minimal serialized slices (`stringifyPretty`), (c) JSON schema string prefixed by `jsonRule`. Keep context narrow—pull related history via SummaryAgent instead of dumping entire logs. Always post‑validate: shape, arrays vs objects, remove hallucinated members/resources/abilities.
 
-## Event & Ability Evaluation
-Use new `EventAgent.evaluatePartyEvents` passing recent story slices + per-member known abilities; store per-member evaluations; reflect active member into legacy single view to keep existing modals working.
+## 8. Event / Ability Evaluation
+Use `EventAgent.evaluatePartyEvents(recentStoryChunks, partyMembers)` → store per‑member results in mapping; mirror the active member into legacy single-character state for existing modals. Each learned ability or transformation flagged with `showEventConfirmationDialog` + `aiProcessingComplete=false` until user confirms.
 
-## Prompt / LLM Interaction Conventions
-- Every agent builds a systemInstruction array: high‑level role, contextual state snapshots (stringifyPretty), then a JSON schema prefixed by `jsonRule`.
-- Streaming only for GameAgent story (generateContentStream with chunk callbacks); others synchronous.
-- Always guard model outputs: array vs object vs null; map & normalize (e.g., ensure ability resource_cost shape).
+## 9. Mutation & Rendering
+Only mutate gameplay via: `applyGameActionState()` or `applyGameActionStates()` (batch). Inventory adds/removals appear in `inventory_update`. To introduce a manual effect, fabricate a `GameActionState` with just `stats_update` / `inventory_update` and pass it through apply.
 
-## UI Conventions
-- Use semantic buttons with Tailwind + DaisyUI; long action lists injected dynamically (see addActionButton).
-- Keep transformations & abilities confirmation modal gating via flags: `showEventConfirmationDialog`, `aiProcessingComplete`.
+## 10. Error Handling
+LLM failures: `console.warn` + graceful early return (never crash UI). Truncate `additionalStoryInput` to last 10k chars. Guard all optional arrays before `Object.values/entries` (recent fix). Fallback models when `returnFallbackProperty` present.
 
-## Error / Resilience Patterns
-- LLM failures -> console.warn + early return (do not crash UI). Use fallback model when `returnFallbackProperty` provided.
-- Large additionalStoryInput truncated to last 10k chars to protect prompt size.
+## 11. Testing Discipline
+Deterministic logic (resource math, level/XP, render mapping, inventory, dice helpers) should use synthetic `GameActionState`s in unit tests (`vitest`). Full flows & regression: Playwright e2e (Gemini mocked in `e2e/utils/geminiMocks.ts`). Run: `npm run test` (unit+e2e), or `npm run test:unit`, `npm run test:e2e`. Type check: `npm run check`.
 
-## Adding New Agent Logic
-1. Define data contract (JSON schema string) + run through `jsonRule`.
-2. Provide minimal, explicit context slices (avoid dumping whole history—use SummaryAgent for trimming).
-3. Post-validate: strip unknown members/resources, no hallucinated keys.
-4. Route side effects ONLY through gameActionsState or dedicated per-member mapping state.
+## 12. Adding A New Status / Resource (Pattern)
+1. Extend stats schema (CharacterStatsAgent output) with `{ max_value, start_value, game_ends_when_zero }`.
+2. During initialization ensure per‑member resource object created (bootstrap code in `+page.svelte`).
+3. Produce diff via CombatAgent or synthetic action: emit `<resource>_gained|_lost` with positive `value.result`.
+4. Allow rendering: no custom color? Provide key so `getColorForStatUpdate` can infer (game_ends_when_zero → red else blue).
 
-## Testing Focus Areas
-- Deterministic post-processors (mappers, resource math, level logic) are testable without LLM.
-- Favor constructing synthetic `GameActionState` objects in tests for edge cases (multi-target damage, resource depletion, party wipe conditions).
+## 13. DO / AVOID
+DO: Use existing helpers (`refillResourcesFully`, `mergeUpdatedGameActions`, `renderStatUpdates`). AVOID: Direct state mutation, dumping entire history into prompts, inserting party members into NPC lists, inventing schema keys. NEVER: Add meta (dice schema, JSON template) into narrative or image prompt.
 
-## Common Pitfalls to Avoid
-- Don’t mix party members into NPC arrays.
-- Don’t mutate playerCharactersGameState shape (must stay ResourcesWithCurrentValue objects).
-- Don’t bypass applyGameActionState for resource/XP changes.
-- Don’t assume single character mode; every new feature must degrade gracefully to solo play.
+## 14. Common Scripts
+Dev: `npm run dev` | Typecheck: `npm run check` | Unit: `npm run test:unit` | E2E: `npm run test:e2e` | Lint fix: `npm run lint:fix` | Build: `npm run build`.
 
-## Example: Adding a Party-Wide Status Effect
-1. Detect in story via CombatAgent extension (new status keyword).
-2. Emit one stats_update per affected member (no grouped names).
-3. Apply through applyGameActionState (color coding derives automatically in rendering).
-
-## Svelte 5 Runes Basics (Project Use)
-Use $state for mutable local store, $derived for computed, $effect for side effects; import from 'svelte'. Event handlers are plain DOM attributes (onclick=...). No legacy `on:` directives.
+## 15. When Unsure
+Ask for: exact JSON contract, which state wrapper to use, or where to reset new persisted state (new tale reset page). Keep diffs minimal & localized.
 
 ---
-Need clarification or missing pattern? Ask for: data contract (JSON shape), prompt inclusion rules, or state persistence key naming.
-
-## Image Prompt & Campaign Chapter Interaction
-Flow:
-1. Story streaming completes (use the final concatenated story text; ignore partial chunks).
-2. Run chapter advancement check (`advanceChapterIfApplicable`). If the chapter changes, commit new chapter state BEFORE building the image prompt.
-3. Build image prompt with: (a) trimmed recent story slice, (b) current chapter theme + active GM notes, (c) optional persistent general image style (`storyState.general_image_prompt`).
-4. Call `ImagePromptAgent` (non‑streaming) in parallel with stats update generation.
-
-Guardrails:
-- Never include future (not yet advanced) chapter seeds, dice roll mechanics, JSON schemas, or unconfirmed transformation/ability scaffolding.
-- Truncate story context for the prompt (target ~1200–1500 chars) to keep salient visual cues and protect token budget.
-- Deduplicate repeated adjectives; keep one canonical character name + 1–2 distinctive traits per party member (no long bios).
-- If multiple events (e.g., transformation + chapter advance) occur, use the POST‑advance chapter but exclude unconfirmed character form changes until confirmed.
-
-Error Handling:
-- On image prompt failure, leave `image_prompt` empty; UI should gracefully omit image.
-- Do not auto‑retry more than once; allow manual user regeneration if added later.
-
-Why it matters:
-- Prevents visual drift or spoilers from future chapters.
-- Preserves model tokens for narrative quality.
-- Keeps prompts stable and non‑hallucinatory by banning meta / system artifacts.
+Feedback welcome: If a pattern here does not match current implementation, request clarification before introducing divergent logic.
 
 

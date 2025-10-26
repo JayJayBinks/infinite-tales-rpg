@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { initialThoughtsState, stringifyPretty, type ThoughtsState } from '$lib/util.svelte';
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import type { LLMMessage } from '$lib/ai/llm';
 
-	const gameActionsState = useLocalStorage('gameActionsState');
-	const npcState = useLocalStorage('npcState', {});
-	const characterActionsState = useLocalStorage('characterActionsState', {});
-	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
-	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return { get value() { return _v; }, set value(val: T) { _v = val; saveToLocalStorage(key, val); }, reset() { this.value = initial as T; }, resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} } };
+	}
+	const gameActionsState = localState<any[]>('gameActionsState', []);
+	const npcState = localState<Record<string, any>>('npcState', {});
+	const characterActionsState = localState<Record<string, any>>('characterActionsState', {});
+	const historyMessagesState = localState<LLMMessage[]>('historyMessagesState', []);
+	let thoughtsState = localState<ThoughtsState>('thoughtsState', initialThoughtsState);
 </script>
 
 <details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">

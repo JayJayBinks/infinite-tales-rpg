@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import { handleError, navigate, parseState, initialThoughtsState, type ThoughtsState } from '$lib/util.svelte';
 	import { CharacterAgent, initialCharacterState, type Party } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
@@ -31,10 +31,10 @@
 	import { aiStateStore } from '$lib/state/stores';
 
 	// Use AI state store instead of individual useLocalStorage calls
-	// const apiKeyState = useLocalStorage<string>('apiKeyState');
-	// const aiLanguage = useLocalStorage<string>('aiLanguage');
+	// const apiKeyState = localState<string>('apiKeyState');
+	// const aiLanguage = localState<string>('aiLanguage');
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
+	const aiConfigState = localState<AIConfig>('aiConfigState', {
 		disableAudioState: false,
 		disableImagesState: false
 	});
@@ -42,67 +42,89 @@
 	let showOutputFeaturesModal = $state<boolean>(false);
 	let showSystemPromptsModal = $state<boolean>(false);
 
-	const gameActionsState = useLocalStorage('gameActionsState', []);
-	const historyMessagesState = useLocalStorage('historyMessagesState', []);
-	const characterState = useLocalStorage('characterState', initialCharacterState);
-	const inventoryState = useLocalStorage('inventoryState', {});
-	const characterImageState = useLocalStorage('characterImageState');
-	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
-	const npcState = useLocalStorage('npcState', []);
-	const storyState = useLocalStorage('storyState', initialStoryState);
-	const isGameEnded = useLocalStorage('isGameEnded', false);
-	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
-	const campaignState = useLocalStorage('campaignState', initialCampaignState);
-	const currentChapterState = useLocalStorage('currentChapterState');
-	const characterActionsState = useLocalStorage('characterActionsState');
-	const levelUpState = useLocalStorage('levelUpState');
-	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
-	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
-	const skillsProgressionState = useLocalStorage('skillsProgressionState', {});
-	const characterTransformState = useLocalStorage<CharacterChangedInto>(
+	const gameActionsState = localState('gameActionsState', []);
+	const historyMessagesState = localState('historyMessagesState', []);
+	const characterState = localState('characterState', initialCharacterState);
+	const inventoryState = localState('inventoryState', {});
+	const characterImageState = localState('characterImageState');
+	const characterStatsState = localState('characterStatsState', initialCharacterStatsState);
+	const npcState = localState('npcState', []);
+	const storyState = localState('storyState', initialStoryState);
+	const isGameEnded = localState('isGameEnded', false);
+	const rollDifferenceHistoryState = localState('rollDifferenceHistoryState', []);
+	const campaignState = localState('campaignState', initialCampaignState);
+	const currentChapterState = localState('currentChapterState');
+	const characterActionsState = localState('characterActionsState');
+	const levelUpState = localState('levelUpState');
+	const customMemoriesState = localState<string>('customMemoriesState');
+	const customGMNotesState = localState<string>('customGMNotesState');
+	const skillsProgressionState = localState('skillsProgressionState', {});
+	const characterTransformState = localState<CharacterChangedInto>(
 		'characterTransformState',
 		initialCharacterTransformState
 	);
 
-	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
+	const relatedStoryHistoryState = localState<RelatedStoryHistory>(
 		'relatedStoryHistoryState',
 		{ relatedDetails: [] }
 	);
-	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
-	const eventEvaluationState = useLocalStorage<EventEvaluation>(
+	const relatedActionHistoryState = localState<string[]>('relatedActionHistoryState', []);
+	const eventEvaluationState = localState<EventEvaluation>(
 		'eventEvaluationState',
 		initialEventEvaluationState
 	);
-	const playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
+	const playerCharactersIdToNamesMapState = localState<PlayerCharactersIdToNamesMap>(
 		'playerCharactersIdToNamesMapState',
 		{}
 	);
-	const relatedActionGroundTruthState = useLocalStorage('relatedActionGroundTruthState');
-	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
-	const partyState = useLocalStorage('partyState');
-	const partyStatsState = useLocalStorage('partyStatsState');
+	const relatedActionGroundTruthState = localState('relatedActionGroundTruthState');
+	const relatedNPCActionsState = localState<NPCAction[]>('relatedNPCActionsState', []);
+	const partyState = localState('partyState');
+	const partyStatsState = localState('partyStatsState');
 	// Additional per-party / per-tale states (must be cleared on new tale)
-	const characterActionsByMemberState = useLocalStorage<Record<string, any>>(
+	const characterActionsByMemberState = localState<Record<string, any>>(
 		'characterActionsByMemberState',
 		{}
 	);
-	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
+	const restrainedExplanationByMemberState = localState<Record<string, string | null>>(
 		'restrainedExplanationByMemberState',
 		{}
 	);
-	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, any>>(
+	const selectedCombatActionsByMemberState = localState<Record<string, any>>(
 		'selectedCombatActionsByMemberState',
 		{}
 	);
-	const eventEvaluationByMemberState = useLocalStorage<Record<string, EventEvaluation>>(
+	const eventEvaluationByMemberState = localState<Record<string, EventEvaluation>>(
 		'eventEvaluationByMemberState',
 		{}
 	);
-	const chosenActionState = useLocalStorage('chosenActionState');
-	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState', '');
-	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState', '');
-	const thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
-	const didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
+	const chosenActionState = localState('chosenActionState');
+	const additionalStoryInputState = localState<string>('additionalStoryInputState', '');
+	const additionalActionInputState = localState<string>('additionalActionInputState', '');
+	const thoughtsState = localState<ThoughtsState>('thoughtsState', initialThoughtsState);
+	const didAIProcessDiceRollActionState = localState<boolean>('didAIProcessDiceRollAction');
+
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return {
+			get value() {
+				return _v;
+			},
+			set value(val: T) {
+				_v = val;
+				saveToLocalStorage(key, val);
+			},
+			reset() {
+				this.value = initial as T;
+			},
+			resetProperty(prop: keyof T) {
+				if (typeof _v === 'object' && _v !== null && initial) {
+					(_v as any)[prop] = (initial as any)[prop];
+					saveToLocalStorage(key, _v);
+				}
+			}
+		};
+	}
 
 	let isGeneratingState = $state(false);
 	let quickstartModalOpen = $state(false);

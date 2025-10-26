@@ -5,28 +5,9 @@
 
 import type { EventEvaluation } from '$lib/ai/agents/eventAgent';
 import { initialEventEvaluationState } from '$lib/ai/agents/eventAgent';
+import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 
-/**
- * Helper to get value from localStorage with fallback
- */
-function getFromLocalStorage<T>(key: string, defaultValue: T): T {
-	if (typeof window === 'undefined') return defaultValue;
-	const stored = localStorage.getItem(key);
-	if (stored === null) return defaultValue;
-	try {
-		return JSON.parse(stored) as T;
-	} catch {
-		return defaultValue;
-	}
-}
-
-/**
- * Helper to save value to localStorage
- */
-function saveToLocalStorage<T>(key: string, value: T): void {
-	if (typeof window === 'undefined') return;
-	localStorage.setItem(key, JSON.stringify(value));
-}
+// (helpers centralized in localStorageUtil.ts)
 
 /**
  * Event state store

@@ -31,7 +31,7 @@ describe('GameSessionService', () => {
 		beforeEach(() => {
 			service.initialize(aiService, actionService);
 			// Reset game state before each test
-			gameState.progression.isGameEnded.value = false;
+			gameState.progression.isGameEnded = false;
 		});
 
 		it('should start a new game', async () => {

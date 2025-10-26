@@ -18,7 +18,7 @@
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { type Story, initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import { navigate, parseState, removeEmptyValues } from '$lib/util.svelte';
 	import { onMount } from 'svelte';
 	import cloneDeep from 'lodash/cloneDeep';
@@ -29,21 +29,24 @@
 	import AbilityEditor from '$lib/components/interaction_modals/character/AbilityEditor.svelte';
 
 	let isGeneratingState = $state(false);
-	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return {
+			get value() { return _v; },
+			set value(val: T) { _v = val; saveToLocalStorage(key, val); },
+			reset() { this.value = initial as T; },
+			resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} }
+		};
+	}
+	const apiKeyState = localState<string>('apiKeyState', '');
+	const aiLanguage = localState<string>('aiLanguage', 'English');
 
 	let characterStatsAgent: CharacterStatsAgent;
-	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
-	const characterState = useLocalStorage<CharacterDescription>(
-		'characterState',
-		initialCharacterState
-	);
-	const characterStatsState = useLocalStorage<CharacterStats>(
-		'characterStatsState',
-		initialCharacterStatsState
-	);
-	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
-	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
+    const storyState = localState<Story>('storyState', initialStoryState);
+    const characterState = localState<CharacterDescription>('characterState', initialCharacterState);
+    const characterStatsState = localState<CharacterStats>('characterStatsState', initialCharacterStatsState);
+    const partyState = localState<Party>('partyState', initialPartyState);
+    const partyStatsState = localState<PartyStats>('partyStatsState', initialPartyStatsState);
 
 	// Track which character we're editing
 	let currentCharacterIndex = $state(0);
@@ -60,12 +63,9 @@
 		}
 	});
 
-	const campaignState = useLocalStorage<Campaign>('campaignState');
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	const gameSettingsState = useLocalStorage<GameSettings>(
-		'gameSettingsState',
-		defaultGameSettings()
-	);
+    const campaignState = localState<Campaign>('campaignState', {} as Campaign);
+    const aiConfigState = localState<AIConfig>('aiConfigState', { disableAudioState: false, disableImagesState: false } as AIConfig);
+    const gameSettingsState = localState<GameSettings>('gameSettingsState', defaultGameSettings());
 
 	let characterStatsStateOverwrites = $state(cloneDeep(initialCharacterStatsState));
 

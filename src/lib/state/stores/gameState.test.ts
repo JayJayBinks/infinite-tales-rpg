@@ -12,18 +12,23 @@ describe('GameState', () => {
 
 	describe('GameProgressionState', () => {
 		it('should initialize with empty game actions', () => {
-			expect(gameState.progression.gameActions.value).toEqual([]);
+			expect(gameState.progression.gameActions).toEqual([]);
 		});
 
 		it('should track current game action', () => {
 			const mockAction: GameActionState = {
+				id: '1',
 				story: 'Test story',
 				stats_update: [],
 				inventory_update: {},
-				currently_present_npcs: { hostile: [], neutral: [], friendly: [] }
+				currently_present_npcs: { hostile: [], neutral: [], friendly: [] },
+				currentPlotPoint: '',
+				nextPlotPoint: '',
+				image_prompt: '',
+				is_character_in_combat: false
 			} as GameActionState;
 
-			gameState.progression.gameActions.value = [mockAction];
+			gameState.progression.gameActions = [mockAction];
 
 			expect(gameState.progression.currentGameAction).toEqual(mockAction);
 		});
@@ -44,85 +49,88 @@ describe('GameState', () => {
 		});
 
 		it('should track game ended state', () => {
-			expect(gameState.progression.isGameEnded.value).toBe(false);
+			expect(gameState.progression.isGameEnded).toBe(false);
 			
-			gameState.progression.isGameEnded.value = true;
-			expect(gameState.progression.isGameEnded.value).toBe(true);
+			gameState.progression.isGameEnded = true;
+			expect(gameState.progression.isGameEnded).toBe(true);
 		});
 	});
 
 	describe('MemoryState', () => {
 		it('should initialize with empty history messages', () => {
-			expect(gameState.memory.historyMessages.value).toEqual([]);
+			expect(gameState.memory.historyMessages).toEqual([]);
 		});
 
 		it('should track custom memories', () => {
 			const testMemory = 'Remember the dragon\'s weakness';
-			gameState.memory.customMemories.value = testMemory;
+			gameState.memory.customMemories = testMemory;
 			
-			expect(gameState.memory.customMemories.value).toBe(testMemory);
+			expect(gameState.memory.customMemories).toBe(testMemory);
 		});
 
 		it('should track custom GM notes', () => {
 			const testNotes = 'The party is heading towards the castle';
-			gameState.memory.customGMNotes.value = testNotes;
+			gameState.memory.customGMNotes = testNotes;
 			
-			expect(gameState.memory.customGMNotes.value).toBe(testNotes);
+			expect(gameState.memory.customGMNotes).toBe(testNotes);
 		});
 
 		it('should manage related story history', () => {
 			const relatedHistory = {
-				relatedDetails: ['Detail 1', 'Detail 2']
+				relatedDetails: [
+					{ storyReference: 'Detail 1', relevanceScore: 0.9 },
+					{ storyReference: 'Detail 2', relevanceScore: 0.8 }
+				]
 			};
 
-			gameState.memory.relatedStoryHistory.value = relatedHistory;
-			expect(gameState.memory.relatedStoryHistory.value).toEqual(relatedHistory);
+			gameState.memory.relatedStoryHistory = relatedHistory;
+			expect(gameState.memory.relatedStoryHistory).toEqual(relatedHistory);
 		});
 	});
 
 	describe('CampaignState', () => {
 		it('should initialize with current chapter 0', () => {
-			expect(gameState.campaign.currentChapter.value).toBe(0);
+			expect(gameState.campaign.currentChapter).toBe(0);
 		});
 
 		it('should track campaign progression', () => {
-			gameState.campaign.currentChapter.value = 3;
-			expect(gameState.campaign.currentChapter.value).toBe(3);
+			gameState.campaign.currentChapter = 3;
+			expect(gameState.campaign.currentChapter).toBe(3);
 		});
 	});
 
 	describe('InputState', () => {
 		it('should track additional story input', () => {
 			const input = 'Add more tension to the scene';
-			gameState.input.additionalStoryInput.value = input;
+			gameState.input.additionalStoryInput = input;
 			
-			expect(gameState.input.additionalStoryInput.value).toBe(input);
+			expect(gameState.input.additionalStoryInput).toBe(input);
 		});
 
 		it('should track additional action input', () => {
 			const input = 'Focus on stealth';
-			gameState.input.additionalActionInput.value = input;
+			gameState.input.additionalActionInput = input;
 			
-			expect(gameState.input.additionalActionInput.value).toBe(input);
+			expect(gameState.input.additionalActionInput).toBe(input);
 		});
 	});
 
 	describe('resetGameState', () => {
 		it('should reset all game state', () => {
 			// Set some values
-			gameState.progression.gameActions.value = [{} as GameActionState];
-			gameState.memory.customMemories.value = 'Some memory';
-			gameState.campaign.currentChapter.value = 5;
-			gameState.input.additionalStoryInput.value = 'Some input';
+			gameState.progression.gameActions = [{} as GameActionState];
+			gameState.memory.customMemories = 'Some memory';
+			gameState.campaign.currentChapter = 5;
+			gameState.input.additionalStoryInput = 'Some input';
 
 			// Reset
 			gameState.resetGameState();
 
 			// Verify reset
-			expect(gameState.progression.gameActions.value).toEqual([]);
-			expect(gameState.memory.customMemories.value).toBe('');
-			expect(gameState.campaign.currentChapter.value).toBe(0);
-			expect(gameState.input.additionalStoryInput.value).toBe('');
+			expect(gameState.progression.gameActions).toEqual([]);
+			expect(gameState.memory.customMemories).toBe('');
+			expect(gameState.campaign.currentChapter).toBe(0);
+			expect(gameState.input.additionalStoryInput).toBe('');
 		});
 	});
 });

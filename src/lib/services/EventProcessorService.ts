@@ -31,7 +31,7 @@ export class EventProcessorService {
 		storyContext: string[]
 	): Promise<Map<string, EventEvaluation>> {
 		const evaluations = new Map<string, EventEvaluation>();
-		const members = partyState.party.value.members;
+		const members = partyState.party.members;
 		
 		// Evaluate events for each party member
 		for (const member of members) {
@@ -44,8 +44,8 @@ export class EventProcessorService {
 				// This would call eventAgent.evaluatePartyEvents() or similar
 				// For now, use placeholder evaluation
 				const evaluation: EventEvaluation = {
-					character_changed: null,
-					abilities_learned: []
+					character_changed: undefined,
+					abilities_learned: { abilities: [] }
 				};
 				
 				evaluations.set(member.id, evaluation);
@@ -81,9 +81,9 @@ export class EventProcessorService {
 			return;
 		}
 		
-		partyState.party.value = {
-			...partyState.party.value,
-			members: partyState.party.value.members.map(m =>
+		partyState.party = {
+			...partyState.party,
+			members: partyState.party.members.map(m =>
 				m.id === characterId
 					? { ...m, character: newCharacter }
 					: m
@@ -111,7 +111,12 @@ export class EventProcessorService {
 		// Add new abilities to existing ones
 		const updatedAbilities = [
 			...(memberStats.spells_and_abilities || []),
-			...newAbilities.map(name => ({ name, effect: 'New ability' }))
+			...newAbilities.map(name => ({
+				name,
+				effect: 'New ability',
+				resource_cost: { resource_key: undefined, cost: 0 },
+				image_prompt: ''
+			}))
 		];
 		
 		const updatedStats: CharacterStats = {
@@ -120,9 +125,9 @@ export class EventProcessorService {
 		};
 		
 		// Update party stats
-		partyState.partyStats.value = {
-			...partyState.partyStats.value,
-			members: partyState.partyStats.value.members.map(m =>
+		partyState.partyStats = {
+			...partyState.partyStats,
+			members: partyState.partyStats.members.map(m =>
 				m.id === characterId
 					? { ...m, stats: updatedStats }
 					: m

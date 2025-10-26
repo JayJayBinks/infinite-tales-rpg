@@ -53,14 +53,14 @@ export class GameSessionService {
 	 * Check if the game has ended
 	 */
 	isGameEnded(): boolean {
-		return gameState.progression.isGameEnded.value;
+		return gameState.progression.isGameEnded;
 	}
 	
 	/**
 	 * Mark the game as ended
 	 */
 	endGame(reason?: string) {
-		gameState.progression.isGameEnded.value = true;
+		gameState.progression.isGameEnded = true;
 		console.log('Game ended:', reason || 'Unknown reason');
 	}
 	
@@ -75,15 +75,15 @@ export class GameSessionService {
 	 * Get history messages for AI context
 	 */
 	getHistoryMessages(): LLMMessage[] {
-		return gameState.memory.historyMessages.value;
+		return gameState.memory.historyMessages;
 	}
 	
 	/**
 	 * Add a new game action to history
 	 */
 	addGameAction(action: GameActionState) {
-		gameState.progression.gameActions.value = [
-			...gameState.progression.gameActions.value,
+		gameState.progression.gameActions = [
+			...gameState.progression.gameActions,
 			action
 		];
 	}
@@ -92,7 +92,7 @@ export class GameSessionService {
 	 * Update history messages
 	 */
 	updateHistoryMessages(messages: LLMMessage[]) {
-		gameState.memory.historyMessages.value = messages;
+		gameState.memory.historyMessages = messages;
 	}
 	
 	/**
@@ -106,7 +106,7 @@ export class GameSessionService {
 	 * Get all party members
 	 */
 	getPartyMembers() {
-		return partyState.party.value.members;
+		return partyState.party.members;
 	}
 	
 	/**
@@ -120,7 +120,7 @@ export class GameSessionService {
 	 * Get the party size
 	 */
 	getPartySize(): number {
-		return partyState.party.value.members.length;
+		return partyState.party.members.length;
 	}
 	
 	/**
