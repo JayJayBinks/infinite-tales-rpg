@@ -8,7 +8,7 @@
 		type ThoughtsState
 	} from '$lib/util.svelte';
 	// Import state stores
-	import { aiStateStore, characterStateStore } from '$lib/state/stores';
+	import { aiStateStore, characterStateStore, storyStateStore } from '$lib/state/stores';
 	import {
 		type Action,
 		defaultGameSettings,
@@ -201,18 +201,19 @@
 	);
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
-	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
-	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
-		'relatedStoryHistoryState',
-		{ relatedDetails: [] }
-	);
+	// Story state - now using storyStateStore
+	// const storyState = useLocalStorage<Story>('storyState', initialStoryState);
+	// const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
+	// 	'relatedStoryHistoryState',
+	// 	{ relatedDetails: [] }
+	// );
 	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
 	const relatedActionGroundTruthState = useLocalStorage<TruthOracleResult | null>(
 		'relatedActionGroundTruthState'
 	);
 	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
-	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
-	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
+	// const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	// const customGMNotesState = useLocalStorage<string>('customGMNotesState');
 	const currentChapterState = useLocalStorage<number>('currentChapterState');
 	const campaignState = useLocalStorage<Campaign>('campaignState', {} as Campaign);
 
@@ -280,7 +281,7 @@
 			: getRenderedGameUpdates(currentGameActionState, playerCharacterIdState),
 		imagePrompt: storyChunkState
 			? ''
-			: [currentGameActionState.image_prompt, storyState.value.general_image_prompt].join(' '),
+			: [currentGameActionState.image_prompt, storyStateStore.story.value.general_image_prompt].join(' '),
 		stream_finished: !storyChunkState
 	});
 	let latestStoryProgressionTextComponent = $state<HTMLElement | undefined>();
@@ -407,7 +408,7 @@
 				XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
 			};
 		}
-		if (relatedStoryHistoryState.value.relatedDetails.length === 0) {
+		if (relatedStoryHistoryStateStore.story.value.relatedDetails.length === 0) {
 			getRelatedHistoryForStory();
 		}
 
@@ -467,7 +468,7 @@
 			const { thoughts, actions } = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
-				storyState.value,
+				storyStateStore.story.value,
 				characterStateStore.character.value,
 				characterStatsWithCurrentResources,
 				inventoryState.value,
@@ -477,8 +478,8 @@
 					summaryAgent,
 					undefined,
 					undefined,
-					relatedStoryHistoryState.value,
-					customMemoriesState.value
+					relatedStoryHistoryStateStore.story.value,
+					storyStateStore.customMemories.value
 				),
 				gameSettingsState.value?.aiIntroducesSkills,
 				restrainingStateForActive,
@@ -762,7 +763,7 @@
 		additionalStoryInputState.reset();
 		characterActionsState.reset();
 		relatedActionHistoryState.reset();
-		relatedStoryHistoryState.reset();
+		storyStateStore.relatedStoryHistory.reset();
 		relatedNPCActionsState.reset();
 		relatedActionGroundTruthState.reset();
 		skillsProgressionForCurrentActionState = undefined;
@@ -780,7 +781,7 @@
 		if (newNPCsIds.length > 0) {
 			characterStatsAgent
 				.generateNPCStats(
-					storyState.value,
+					storyStateStore.story.value,
 					getLatestStoryMessages(),
 					newNPCsIds.map((id) => id.uniqueTechnicalNameId),
 					characterStateStore.characterStats.value,
@@ -900,10 +901,10 @@
 				const { prompt, updatedStory } = getNextChapterPrompt(
 					campaignState.value,
 					currentChapterState.value,
-					storyState.value
+					storyStateStore.story.value
 				);
 				additionalStoryInput += prompt;
-				storyState.value = updatedStory;
+				storyStateStore.story.value = updatedStory;
 			}
 		}
 		return additionalStoryInput;
@@ -927,8 +928,8 @@
 			getCurrentCampaignChapter(),
 			currentGameActionState.currentPlotPoint
 		);
-		if (customGMNotesState.value) {
-			gmNotes.unshift(customGMNotesState.value);
+		if (storyStateStore.customGMNotes.value) {
+			gmNotes.unshift(storyStateStore.customGMNotes.value);
 		}
 		additionalStoryInput += GameAgent.getPromptForGameMasterNotes(gmNotes);
 
@@ -1030,7 +1031,7 @@
 			aiStateStore.systemInstructions.value.storyAgentInstruction,
 			isCharacterInCombat ? aiStateStore.systemInstructions.value.combatAgentInstruction : '',
 			historyMessagesState.value,
-			storyState.value,
+			storyStateStore.story.value,
 			characterStateStore.character.value,
 			playerCharactersGameState[playerCharacterIdState],
 			inventoryState.value,
@@ -1157,7 +1158,7 @@
 							const { thoughts, actions } = await actionAgent.generateActions(
 								currentGameActionState,
 								historyMessagesState.value,
-								storyState.value,
+								storyStateStore.story.value,
 								member.character,
 								memberStatsWithCurrentResources,
 								inventoryState.value,
@@ -1285,9 +1286,9 @@
 			.retrieveRelatedHistory(currentGameActionState.story, gameActionsState.value, 2)
 			.then((relatedHistory) => {
 				if (relatedHistory) {
-					relatedStoryHistoryState.value = relatedHistory;
+					relatedStoryHistoryStateStore.story.value = relatedHistory;
 				} else {
-					relatedStoryHistoryState.reset();
+					storyStateStore.relatedStoryHistory.reset();
 				}
 			});
 	}
@@ -1349,7 +1350,7 @@
 				aiStateStore.systemInstructions.value.generalSystemInstruction,
 				aiStateStore.systemInstructions.value.combatAgentInstruction,
 				getLatestStoryMessages(),
-				storyState.value,
+				storyStateStore.story.value,
 				combatAgent
 			).then((actions) => {
 				relatedNPCActionsState.value = actions;
@@ -1357,15 +1358,15 @@
 		}
 		try {
 			if (rollDice) {
-				if (relatedActionHistoryState.value.length === 0) {
+				if (relatedActionHistoryStateStore.story.value.length === 0) {
 					getRelatedHistory(
 						summaryAgent,
 						action,
 						gameActionsState.value,
-						$state.snapshot(relatedStoryHistoryState.value),
-						$state.snapshot(customMemoriesState.value)
+						$state.snapshot(relatedStoryHistoryStateStore.story.value),
+						$state.snapshot(storyStateStore.customMemories.value)
 					).then((relatedHistory) => {
-						relatedActionHistoryState.value = relatedHistory;
+						relatedActionHistoryStateStore.story.value = relatedHistory;
 					});
 				}
 				//determine if the game state yields an outcome (trap even present etc.)
@@ -1375,14 +1376,14 @@
 						.get_ground_truth(
 							action,
 							getLatestStoryMessages(5),
-							$state.snapshot(storyState.value),
+							$state.snapshot(storyStateStore.story.value),
 							await getRelatedHistory(
 								undefined,
 								undefined,
 								undefined,
 								// never actually await cause no action
-								$state.snapshot(relatedStoryHistoryState.value),
-								$state.snapshot(customMemoriesState.value)
+								$state.snapshot(relatedStoryHistoryStateStore.story.value),
+								$state.snapshot(storyStateStore.customMemories.value)
 							)
 						)
 						.then((groundTruth) => {
@@ -1407,13 +1408,13 @@
 					);
 				}
 
-				if (relatedActionHistoryState.value.length === 0) {
-					relatedActionHistoryState.value = await getRelatedHistory(
+				if (relatedActionHistoryStateStore.story.value.length === 0) {
+					relatedActionHistoryStateStore.story.value = await getRelatedHistory(
 						summaryAgent,
 						action,
 						gameActionsState.value,
-						$state.snapshot(relatedStoryHistoryState.value),
-						$state.snapshot(customMemoriesState.value)
+						$state.snapshot(relatedStoryHistoryStateStore.story.value),
+						$state.snapshot(storyStateStore.customMemories.value)
 					);
 				}
 				let simulationToUse = stringifyPretty(
@@ -1447,7 +1448,7 @@
 				await processStoryProgression(
 					action,
 					finalAdditionalStoryInput,
-					relatedActionHistoryState.value,
+					relatedActionHistoryStateStore.story.value,
 					currentGameActionState.is_character_in_combat,
 					simulationToUse
 				);
@@ -1573,24 +1574,24 @@
 			targetAddition = targets?.length === 0 ? '' : gameLogic.getTargetPromptAddition(targets);
 		}
 		action.text += targetAddition;
-		relatedActionHistoryState.value = await getRelatedHistory(
+		relatedActionHistoryStateStore.story.value = await getRelatedHistory(
 			summaryAgent,
 			action,
 			gameActionsState.value,
-			$state.snapshot(relatedStoryHistoryState.value),
-			$state.snapshot(customMemoriesState.value)
+			$state.snapshot(relatedStoryHistoryStateStore.story.value),
+			$state.snapshot(storyStateStore.customMemories.value)
 		);
 		const generatedAction = await actionAgent.generateSingleAction(
 			action,
 			currentGameActionState,
 			getLatestStoryMessages(),
-			storyState.value,
+			storyStateStore.story.value,
 			characterStateStore.character.value,
 			characterStateStore.characterStats.value,
 			inventoryState.value,
 			aiStateStore.systemInstructions.value.generalSystemInstruction,
 			aiStateStore.systemInstructions.value.actionAgentInstruction,
-			relatedActionHistoryState.value,
+			relatedActionHistoryStateStore.story.value,
 			gameSettingsState.value?.aiIntroducesSkills,
 			getActiveRestrainingState(
 				partyState.value,
@@ -1671,28 +1672,28 @@
 
 	const generateActionFromCustomInput = async (action: Action) => {
 		isAiGeneratingState = true;
-		relatedActionHistoryState.value = await getRelatedHistory(
+		relatedActionHistoryStateStore.story.value = await getRelatedHistory(
 			summaryAgent,
 			action,
 			gameActionsState.value,
-			$state.snapshot(relatedStoryHistoryState.value),
-			$state.snapshot(customMemoriesState.value)
+			$state.snapshot(relatedStoryHistoryStateStore.story.value),
+			$state.snapshot(storyStateStore.customMemories.value)
 		);
 		console.log(
 			'relatedHistoryDetails',
-			stringifyPretty($state.snapshot(relatedStoryHistoryState.value))
+			stringifyPretty($state.snapshot(relatedStoryHistoryStateStore.story.value))
 		);
 		const generatedAction = await actionAgent.generateSingleAction(
 			action,
 			currentGameActionState,
 			historyMessagesState.value,
-			storyState.value,
+			storyStateStore.story.value,
 			characterStateStore.character.value,
 			characterStateStore.characterStats.value,
 			inventoryState.value,
 			aiStateStore.systemInstructions.value.generalSystemInstruction,
 			aiStateStore.systemInstructions.value.actionAgentInstruction,
-			relatedActionHistoryState.value,
+			relatedActionHistoryStateStore.story.value,
 			gameSettingsState.value?.aiIntroducesSkills,
 			getActiveRestrainingState(
 				partyState.value,
@@ -1828,7 +1829,7 @@
 			isAiGeneratingState = true;
 			const { transformedCharacter, transformedCharacterStats } = await applyCharacterChange(
 				changedInto,
-				$state.snapshot(storyState.value),
+				$state.snapshot(storyStateStore.story.value),
 				$state.snapshot(characterStateStore.character.value),
 				$state.snapshot(characterStateStore.characterStats.value),
 				characterAgent,
@@ -1948,7 +1949,7 @@
 		const { thoughts, actions } = await actionAgent.generateActions(
 			currentGameActionState,
 			historyMessagesState.value,
-			storyState.value,
+			storyStateStore.story.value,
 			characterStateStore.character.value,
 			characterStateStore.characterStats.value,
 			inventoryState.value,
@@ -1958,8 +1959,8 @@
 				summaryAgent,
 				undefined,
 				undefined,
-				relatedStoryHistoryState.value,
-				customMemoriesState.value
+				relatedStoryHistoryStateStore.story.value,
+				storyStateStore.customMemories.value
 			),
 			gameSettingsState.value?.aiIntroducesSkills,
 			restrainingStateForActive,
@@ -2144,7 +2145,7 @@
 			({ thoughts, actions } = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
-				storyState.value,
+				storyStateStore.story.value,
 				currentCharacter!,
 				currentStats!,
 				inventoryState.value,
@@ -2154,8 +2155,8 @@
 					summaryAgent,
 					undefined,
 					undefined,
-					relatedStoryHistoryState.value,
-					customMemoriesState.value
+					relatedStoryHistoryStateStore.story.value,
+					storyStateStore.customMemories.value
 				),
 				gameSettingsState.value?.aiIntroducesSkills,
 				restrainingStateForActive,
@@ -2223,7 +2224,7 @@
 		playerName={characterStateStore.character.value.name}
 		resources={playerCharactersGameState[playerCharacterIdState]}
 		abilities={characterStateStore.characterStats.value?.spells_and_abilities}
-		storyImagePrompt={storyState.value.general_image_prompt}
+		storyImagePrompt={storyStateStore.story.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
 		party={partyState.value}
@@ -2234,7 +2235,7 @@
 		{onDeleteItem}
 		playerName={characterStateStore.character.value.name}
 		inventoryState={inventoryState.value}
-		storyImagePrompt={storyState.value.general_image_prompt}
+		storyImagePrompt={storyStateStore.story.value.general_image_prompt}
 		oncrafting={(craftingPrompt) => {
 			if (craftingPrompt) {
 				onCustomActionSubmitted(craftingPrompt, true);
@@ -2283,7 +2284,7 @@
 			{#each !latestStoryProgressionState.stream_finished ? [currentGameActionState] : gameActionsState.value.slice(-2 + showXLastStoryPrgressions * -1, -1) as gameActionState (gameActionState.id)}
 				<StoryProgressionWithImage
 					story={gameActionState.story}
-					imagePrompt="{gameActionState.image_prompt} {storyState.value.general_image_prompt}"
+					imagePrompt="{gameActionState.image_prompt} {storyStateStore.story.value.general_image_prompt}"
 					gameUpdates={getRenderedGameUpdates(gameActionState, playerCharacterIdState)}
 				/>
 				{#if gameActionState['fallbackUsed']}
