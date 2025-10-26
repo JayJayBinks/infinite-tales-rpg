@@ -1,4 +1,5 @@
 <!-- src/lib/components/CustomBehaviorModal.svelte -->
+import { aiStateStore } from '$lib/state/stores';
 <script lang="ts">
 	import { initialSystemInstructionsState, type SystemInstructionsState } from '$lib/ai/llm';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
@@ -24,7 +25,7 @@
 		<label class="form-control mt-5 w-full">
 			Story Agent Instruction (GM, NPCs, World)
 			<textarea
-				bind:value={systemInstructionsState.value.storyAgentInstruction}
+				bind:value={aiStateStore.systemInstructions.value.storyAgentInstruction}
 				placeholder="Focus on narrative style. E.g., 'Describe environments vividly. Make NPCs quirky.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>
@@ -37,7 +38,7 @@
 		<label class="form-control mt-5 w-full">
 			Action Agent Instruction
 			<textarea
-				bind:value={systemInstructionsState.value.actionAgentInstruction}
+				bind:value={aiStateStore.systemInstructions.value.actionAgentInstruction}
 				placeholder="Focus on action resolution. E.g., 'Make skill checks easy. Always provide one funny, nonsensical action.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>
@@ -50,7 +51,7 @@
 		<label class="form-control mt-5 w-full">
 			Combat Agent Instruction
 			<textarea
-				bind:value={systemInstructionsState.value.combatAgentInstruction}
+				bind:value={aiStateStore.systemInstructions.value.combatAgentInstruction}
 				placeholder="Focus on combat style. E.g., 'Player Character only takes half damage. Enemies fight tactically.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>
@@ -61,7 +62,7 @@
 		<label class="form-control mt-5 w-full">
 			General System Instruction
 			<textarea
-				bind:value={systemInstructionsState.value.generalSystemInstruction}
+				bind:value={aiStateStore.systemInstructions.value.generalSystemInstruction}
 				placeholder="Overall guidance. E.g., 'Maintain a serious tone. The world is dangerous.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>

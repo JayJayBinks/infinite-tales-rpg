@@ -7,6 +7,8 @@
 		stringifyPretty,
 		type ThoughtsState
 	} from '$lib/util.svelte';
+	// Import state stores
+	import { aiStateStore } from '$lib/state/stores';
 	import {
 		type Action,
 		defaultGameSettings,
@@ -134,14 +136,14 @@
 		actionsDiv,
 		customActionInput;
 
-	//ai state
-	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const temperatureState = useLocalStorage<number>('temperatureState');
-	const systemInstructionsState = useLocalStorage<SystemInstructionsState>(
-		'systemInstructionsState',
-		initialSystemInstructionsState
-	);
-	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	//ai state - now using aiStateStore
+	// const apiKeyState = useLocalStorage<string>('apiKeyState');
+	// const temperatureState = useLocalStorage<number>('temperatureState');
+	// const systemInstructionsState = useLocalStorage<SystemInstructionsState>(
+	// 	'systemInstructionsState',
+	// 	initialSystemInstructionsState
+	// );
+	// const aiLanguage = useLocalStorage<string>('aiLanguage');
 	let isAiGeneratingState = $state(false);
 	let didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
 	let didAIProcessActionState = $state<boolean>(true);
@@ -331,9 +333,9 @@
 		// 	}
 		// });
 		const llm = LLMProvider.provideLLM({
-			temperature: temperatureState.value,
-			language: aiLanguage.value,
-			apiKey: apiKeyState.value
+			temperature: aiStateStore.temperature.value,
+			language: aiStateStore.language.value,
+			apiKey: aiStateStore.apiKey.value
 		});
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);
@@ -468,8 +470,8 @@
 				characterState.value,
 				characterStatsWithCurrentResources,
 				inventoryState.value,
-				systemInstructionsState.value.generalSystemInstruction,
-				systemInstructionsState.value.actionAgentInstruction,
+				aiStateStore.systemInstructions.value.generalSystemInstruction,
+				aiStateStore.systemInstructions.value.actionAgentInstruction,
 				await getRelatedHistory(
 					summaryAgent,
 					undefined,
@@ -781,7 +783,7 @@
 					getLatestStoryMessages(),
 					newNPCsIds.map((id) => id.uniqueTechnicalNameId),
 					characterStatsState.value,
-					systemInstructionsState.value.generalSystemInstruction
+					aiStateStore.systemInstructions.value.generalSystemInstruction
 				)
 				.then((newNPCState: NPCState) => {
 					if (newNPCState) {
@@ -1023,9 +1025,9 @@
 			onThoughtStreamUpdate,
 			action,
 			additionalStoryInput,
-			systemInstructionsState.value.generalSystemInstruction,
-			systemInstructionsState.value.storyAgentInstruction,
-			isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
+			aiStateStore.systemInstructions.value.generalSystemInstruction,
+			aiStateStore.systemInstructions.value.storyAgentInstruction,
+			isCharacterInCombat ? aiStateStore.systemInstructions.value.combatAgentInstruction : '',
 			historyMessagesState.value,
 			storyState.value,
 			characterState.value,
@@ -1158,8 +1160,8 @@
 								member.character,
 								memberStatsWithCurrentResources,
 								inventoryState.value,
-								systemInstructionsState.value.generalSystemInstruction,
-								systemInstructionsState.value.actionAgentInstruction,
+								aiStateStore.systemInstructions.value.generalSystemInstruction,
+								aiStateStore.systemInstructions.value.actionAgentInstruction,
 								relatedHistory,
 								gameSettingsState.value?.aiIntroducesSkills,
 								memberRestrainingState,
@@ -1235,9 +1237,9 @@
 					action,
 					partyResourcesByName,
 					gameLogic.getAllTargetsAsList(currentGameActionState.currently_present_npcs),
-					systemInstructionsState.value.generalSystemInstruction,
+					aiStateStore.systemInstructions.value.generalSystemInstruction,
 					currentGameActionState.is_character_in_combat
-						? systemInstructionsState.value.combatAgentInstruction
+						? aiStateStore.systemInstructions.value.combatAgentInstruction
 						: ''
 				);
 				return generated;
@@ -1343,8 +1345,8 @@
 				currentGameActionState,
 				npcState.value,
 				inventoryState.value,
-				systemInstructionsState.value.generalSystemInstruction,
-				systemInstructionsState.value.combatAgentInstruction,
+				aiStateStore.systemInstructions.value.generalSystemInstruction,
+				aiStateStore.systemInstructions.value.combatAgentInstruction,
 				getLatestStoryMessages(),
 				storyState.value,
 				combatAgent
@@ -1585,8 +1587,8 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			systemInstructionsState.value.generalSystemInstruction,
-			systemInstructionsState.value.actionAgentInstruction,
+			aiStateStore.systemInstructions.value.generalSystemInstruction,
+			aiStateStore.systemInstructions.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
 			getActiveRestrainingState(
@@ -1687,8 +1689,8 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			systemInstructionsState.value.generalSystemInstruction,
-			systemInstructionsState.value.actionAgentInstruction,
+			aiStateStore.systemInstructions.value.generalSystemInstruction,
+			aiStateStore.systemInstructions.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
 			getActiveRestrainingState(
@@ -1949,8 +1951,8 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			systemInstructionsState.value.generalSystemInstruction,
-			systemInstructionsState.value.actionAgentInstruction,
+			aiStateStore.systemInstructions.value.generalSystemInstruction,
+			aiStateStore.systemInstructions.value.actionAgentInstruction,
 			await getRelatedHistory(
 				summaryAgent,
 				undefined,
@@ -2145,8 +2147,8 @@
 				currentCharacter!,
 				currentStats!,
 				inventoryState.value,
-				systemInstructionsState.value.generalSystemInstruction,
-				systemInstructionsState.value.actionAgentInstruction,
+				aiStateStore.systemInstructions.value.generalSystemInstruction,
+				aiStateStore.systemInstructions.value.actionAgentInstruction,
 				await getRelatedHistory(
 					summaryAgent,
 					undefined,

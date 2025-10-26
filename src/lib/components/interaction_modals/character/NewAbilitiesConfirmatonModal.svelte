@@ -1,4 +1,5 @@
 <script lang="ts">
+import { aiStateStore } from '$lib/state/stores';
 	import { CharacterStatsAgent, type Ability } from '$lib/ai/agents/characterStatsAgent';
 	import { onMount } from 'svelte';
 	import AbilityComponent from '../AbilityComponent.svelte';
@@ -34,7 +35,7 @@
 		characterStatsAgent = new CharacterStatsAgent(
 			LLMProvider.provideLLM({
 				temperature: 0.5,
-				apiKey: apiKeyState.value,
+				apiKey: aiStateStore.apiKey.value,
 				language: aiLanguage.value
 			})
 		);

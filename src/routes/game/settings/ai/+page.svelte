@@ -27,9 +27,12 @@
 	import AiGenerationSettings from '$lib/components/interaction_modals/settings/AiGenerationSettings.svelte';
 	import OutputFeaturesModal from '$lib/components/interaction_modals/settings/OutputFeaturesModal.svelte';
 	import SystemPromptsModal from '$lib/components/interaction_modals/settings/SystemPromptsModal.svelte';
+	// Import state stores
+	import { aiStateStore } from '$lib/state/stores';
 
-	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	// Use AI state store instead of individual useLocalStorage calls
+	// const apiKeyState = useLocalStorage<string>('apiKeyState');
+	// const aiLanguage = useLocalStorage<string>('aiLanguage');
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
@@ -107,7 +110,7 @@
 	let storyAgent: StoryAgent | undefined = $state();
 
 	onMount(async () => {
-		if (apiKeyState.value) {
+		if (aiStateStore.apiKey.value) {
 			provideLLM();
 		}
 	});
@@ -115,15 +118,15 @@
 	const provideLLM = () => {
 		llm = LLMProvider.provideLLM({
 			temperature: 1.3,
-			apiKey: apiKeyState.value,
-			language: aiLanguage.value
+			apiKey: aiStateStore.apiKey.value,
+			language: aiStateStore.language.value
 		});
 		storyAgent = new StoryAgent(llm);
 	};
 
 	const onQuickstartClicked = () => {
 		provideLLM();
-		if (apiKeyState.value) {
+		if (aiStateStore.apiKey.value) {
 			quickstartModalOpen = true;
 		}
 	};
@@ -285,7 +288,7 @@
 		<input
 			type="text"
 			id="apikey"
-			bind:value={apiKeyState.value}
+			bind:value={aiStateStore.apiKey.value}
 			placeholder="Copy your API Key from Google AI Studio and paste here"
 			class="input input-bordered mt-2"
 		/>
@@ -306,7 +309,7 @@
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!apiKeyState.value}
+		disabled={!aiStateStore.apiKey.value}
 		onclick={onStartCustom}
 	>
 		New Custom Tale
@@ -314,7 +317,7 @@
 	<small class="m-auto mt-2">Customize your Tale with a brief, open-ended plot</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!apiKeyState.value}
+		disabled={!aiStateStore.apiKey.value}
 		onclick={onNewCampaign}
 	>
 		New Campaign

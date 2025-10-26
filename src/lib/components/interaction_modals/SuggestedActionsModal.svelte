@@ -1,4 +1,5 @@
 <script lang="ts">
+import { aiStateStore } from '$lib/state/stores';
 	import { type CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 	import { onMount } from 'svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
@@ -64,9 +65,9 @@
 
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM({
-			temperature: temperatureState.value,
+			temperature: aiStateStore.temperature.value,
 			language: aiLanguage.value,
-			apiKey: apiKeyState.value
+			apiKey: aiStateStore.apiKey.value
 		});
 		actionAgent = new ActionAgent(llm);
 
