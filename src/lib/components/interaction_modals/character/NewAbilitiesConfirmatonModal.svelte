@@ -35,7 +35,7 @@ import { aiStateStore } from '$lib/state/stores';
 		characterStatsAgent = new CharacterStatsAgent(
 			LLMProvider.provideLLM({
 				temperature: 0.5,
-				apiKey: aiStateStore.apiKey.value,
+				apiKey: aiStateStore.apiKey,
 				language: aiLanguage.value
 			})
 		);

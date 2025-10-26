@@ -12,10 +12,10 @@ describe('AIStateStore', () => {
 
 	describe('Initialization', () => {
 		it('should initialize with default values', () => {
-			expect(store.apiKey.value).toBe('');
-			expect(store.temperature.value).toBe(0.7);
-			expect(store.systemInstructions.value).toEqual(initialSystemInstructionsState);
-			expect(store.language.value).toBe('English');
+			expect(store.apiKey).toBe('');
+			expect(store.temperature).toBe(0.7);
+			expect(store.systemInstructions).toEqual(initialSystemInstructionsState);
+			expect(store.language).toBe('English');
 		});
 
 		it('should not be configured initially', () => {
@@ -38,24 +38,24 @@ describe('AIStateStore', () => {
 	describe('API key management', () => {
 		it('should update API key', () => {
 			store.updateApiKey('my-api-key');
-			expect(store.apiKey.value).toBe('my-api-key');
+			expect(store.apiKey).toBe('my-api-key');
 		});
 	});
 
 	describe('Temperature management', () => {
 		it('should update temperature', () => {
 			store.updateTemperature(0.5);
-			expect(store.temperature.value).toBe(0.5);
+			expect(store.temperature).toBe(0.5);
 		});
 
 		it('should clamp temperature to 0-1 range (upper bound)', () => {
 			store.updateTemperature(1.5);
-			expect(store.temperature.value).toBe(1);
+			expect(store.temperature).toBe(1);
 		});
 
 		it('should clamp temperature to 0-1 range (lower bound)', () => {
 			store.updateTemperature(-0.5);
-			expect(store.temperature.value).toBe(0);
+			expect(store.temperature).toBe(0);
 		});
 	});
 
@@ -66,14 +66,14 @@ describe('AIStateStore', () => {
 				generalSystemInstruction: 'Custom instruction'
 			};
 			store.updateSystemInstructions(newInstructions);
-			expect(store.systemInstructions.value.generalSystemInstruction).toBe('Custom instruction');
+			expect(store.systemInstructions.generalSystemInstruction).toBe('Custom instruction');
 		});
 	});
 
 	describe('Language management', () => {
 		it('should update language', () => {
 			store.updateLanguage('German');
-			expect(store.language.value).toBe('German');
+			expect(store.language).toBe('German');
 		});
 	});
 
@@ -85,9 +85,9 @@ describe('AIStateStore', () => {
 
 			store.reset();
 
-			expect(store.apiKey.value).toBe('');
-			expect(store.temperature.value).toBe(0.7);
-			expect(store.language.value).toBe('English');
+			expect(store.apiKey).toBe('');
+			expect(store.temperature).toBe(0.7);
+			expect(store.language).toBe('English');
 		});
 	});
 });

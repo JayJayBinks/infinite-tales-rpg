@@ -65,9 +65,9 @@ import { aiStateStore } from '$lib/state/stores';
 
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM({
-			temperature: aiStateStore.temperature.value,
+			temperature: aiStateStore.temperature,
 			language: aiLanguage.value,
-			apiKey: aiStateStore.apiKey.value
+			apiKey: aiStateStore.apiKey
 		});
 		actionAgent = new ActionAgent(llm);
 

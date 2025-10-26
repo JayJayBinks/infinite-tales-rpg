@@ -21,7 +21,7 @@ import { aiStateStore } from '$lib/state/stores';
 
 		<!-- Temperature -->
 		<label class="form-control mt-5 w-full sm:w-2/3">
-			Temperature: {aiStateStore.temperature.value.toFixed(2)}
+			Temperature: {aiStateStore.temperature.toFixed(2)}
 			<!-- Show formatted value -->
 			<input
 				type="range"
@@ -29,7 +29,7 @@ import { aiStateStore } from '$lib/state/stores';
 				max="2"
 				step="0.05"
 				id="temperature"
-				bind:value={aiStateStore.temperature.value}
+				bind:value={aiStateStore.temperature}
 				class="range range-info mt-2"
 			/>
 			<small class="m-auto mt-2 text-xs text-base-content/70">

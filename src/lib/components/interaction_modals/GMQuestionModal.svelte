@@ -78,7 +78,7 @@ import { aiStateStore } from '$lib/state/stores';
 		const llm = LLMProvider.provideLLM({
 			temperature: 0.7,
 			language: aiLanguage.value,
-			apiKey: aiStateStore.apiKey.value
+			apiKey: aiStateStore.apiKey
 		});
 		gameAgent = new GameAgent(llm);
 		const summaryAgent = new SummaryAgent(llm);
@@ -95,7 +95,7 @@ import { aiStateStore } from '$lib/state/stores';
 		const { thoughts, answer } = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
 			thoughtsState.value,
-			aiStateStore.systemInstructions.value,
+			aiStateStore.systemInstructions,
 			historyMessagesState.value,
 			storyState.value,
 			characterState.value,

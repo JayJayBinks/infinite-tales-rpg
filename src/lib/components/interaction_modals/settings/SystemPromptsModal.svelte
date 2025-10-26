@@ -25,7 +25,7 @@ import { aiStateStore } from '$lib/state/stores';
 		<label class="form-control mt-5 w-full">
 			Story Agent Instruction (GM, NPCs, World)
 			<textarea
-				bind:value={aiStateStore.systemInstructions.value.storyAgentInstruction}
+				bind:value={aiStateStore.systemInstructions.storyAgentInstruction}
 				placeholder="Focus on narrative style. E.g., 'Describe environments vividly. Make NPCs quirky.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>
@@ -38,7 +38,7 @@ import { aiStateStore } from '$lib/state/stores';
 		<label class="form-control mt-5 w-full">
 			Action Agent Instruction
 			<textarea
-				bind:value={aiStateStore.systemInstructions.value.actionAgentInstruction}
+				bind:value={aiStateStore.systemInstructions.actionAgentInstruction}
 				placeholder="Focus on action resolution. E.g., 'Make skill checks easy. Always provide one funny, nonsensical action.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>
@@ -51,7 +51,7 @@ import { aiStateStore } from '$lib/state/stores';
 		<label class="form-control mt-5 w-full">
 			Combat Agent Instruction
 			<textarea
-				bind:value={aiStateStore.systemInstructions.value.combatAgentInstruction}
+				bind:value={aiStateStore.systemInstructions.combatAgentInstruction}
 				placeholder="Focus on combat style. E.g., 'Player Character only takes half damage. Enemies fight tactically.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>
@@ -62,7 +62,7 @@ import { aiStateStore } from '$lib/state/stores';
 		<label class="form-control mt-5 w-full">
 			General System Instruction
 			<textarea
-				bind:value={aiStateStore.systemInstructions.value.generalSystemInstruction}
+				bind:value={aiStateStore.systemInstructions.generalSystemInstruction}
 				placeholder="Overall guidance. E.g., 'Maintain a serious tone. The world is dangerous.'"
 				class="textarea textarea-bordered mt-2 h-24"
 			></textarea>

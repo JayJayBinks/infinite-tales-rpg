@@ -12,8 +12,8 @@ describe('EventStateStore', () => {
 
 	describe('Initialization', () => {
 		it('should initialize with default event evaluation', () => {
-			expect(store.eventEvaluation.value).toEqual(initialEventEvaluationState);
-			expect(store.eventEvaluationByMember.value).toEqual({});
+			expect(store.eventEvaluation).toEqual(initialEventEvaluationState);
+			expect(store.eventEvaluationByMember).toEqual({});
 			expect(store.aiProcessingComplete).toBe(false);
 			expect(store.showEventConfirmationDialog).toBe(false);
 		});
@@ -33,13 +33,13 @@ describe('EventStateStore', () => {
 		it('should set event evaluation for member', () => {
 			const evaluation = { character_changed: null, abilities_learned: ['Fireball'] };
 			store.setEventEvaluation('player_1', evaluation);
-			expect(store.eventEvaluationByMember.value['player_1']).toEqual(evaluation);
+			expect(store.eventEvaluationByMember['player_1']).toEqual(evaluation);
 		});
 
 		it('should update active event evaluation', () => {
 			const evaluation = { character_changed: null, abilities_learned: ['Ice Shield'] };
 			store.updateEventEvaluation(evaluation);
-			expect(store.eventEvaluation.value).toEqual(evaluation);
+			expect(store.eventEvaluation).toEqual(evaluation);
 		});
 	});
 
@@ -77,8 +77,8 @@ describe('EventStateStore', () => {
 
 			store.reset();
 
-			expect(store.eventEvaluation.value).toEqual(initialEventEvaluationState);
-			expect(store.eventEvaluationByMember.value).toEqual({});
+			expect(store.eventEvaluation).toEqual(initialEventEvaluationState);
+			expect(store.eventEvaluationByMember).toEqual({});
 			expect(store.aiProcessingComplete).toBe(false);
 			expect(store.showEventConfirmationDialog).toBe(false);
 		});

@@ -3,9 +3,30 @@
  * Manages event evaluation and transformations
  */
 
-import { useLocalStorage } from '../useLocalStorage.svelte';
 import type { EventEvaluation } from '$lib/ai/agents/eventAgent';
 import { initialEventEvaluationState } from '$lib/ai/agents/eventAgent';
+
+/**
+ * Helper to get value from localStorage with fallback
+ */
+function getFromLocalStorage<T>(key: string, defaultValue: T): T {
+	if (typeof window === 'undefined') return defaultValue;
+	const stored = localStorage.getItem(key);
+	if (stored === null) return defaultValue;
+	try {
+		return JSON.parse(stored) as T;
+	} catch {
+		return defaultValue;
+	}
+}
+
+/**
+ * Helper to save value to localStorage
+ */
+function saveToLocalStorage<T>(key: string, value: T): void {
+	if (typeof window === 'undefined') return;
+	localStorage.setItem(key, JSON.stringify(value));
+}
 
 /**
  * Event state store
@@ -13,15 +34,13 @@ import { initialEventEvaluationState } from '$lib/ai/agents/eventAgent';
  */
 export class EventStateStore {
 	// Current event evaluation (single-character compatibility)
-	eventEvaluation = useLocalStorage<EventEvaluation>(
-		'eventEvaluationState',
-		initialEventEvaluationState
+	private _eventEvaluation = $state<EventEvaluation>(
+		getFromLocalStorage('eventEvaluationState', initialEventEvaluationState)
 	);
 	
 	// Per-member event evaluations (party mode)
-	eventEvaluationByMember = useLocalStorage<Record<string, EventEvaluation>>(
-		'eventEvaluationByMemberState',
-		{}
+	private _eventEvaluationByMember = $state<Record<string, EventEvaluation>>(
+		getFromLocalStorage('eventEvaluationByMemberState', {})
 	);
 	
 	// AI processing complete flag
@@ -30,19 +49,37 @@ export class EventStateStore {
 	// Show event confirmation dialog
 	showEventConfirmationDialog = $state<boolean>(false);
 	
+	get eventEvaluation() {
+		return this._eventEvaluation;
+	}
+	
+	set eventEvaluation(value: EventEvaluation) {
+		this._eventEvaluation = value;
+		saveToLocalStorage('eventEvaluationState', value);
+	}
+	
+	get eventEvaluationByMember() {
+		return this._eventEvaluationByMember;
+	}
+	
+	set eventEvaluationByMember(value: Record<string, EventEvaluation>) {
+		this._eventEvaluationByMember = value;
+		saveToLocalStorage('eventEvaluationByMemberState', value);
+	}
+	
 	/**
 	 * Get event evaluation for a member
 	 */
 	getEventEvaluation(memberId: string): EventEvaluation | undefined {
-		return this.eventEvaluationByMember.value[memberId];
+		return this._eventEvaluationByMember[memberId];
 	}
 	
 	/**
 	 * Set event evaluation for a member
 	 */
 	setEventEvaluation(memberId: string, evaluation: EventEvaluation) {
-		this.eventEvaluationByMember.value = {
-			...this.eventEvaluationByMember.value,
+		this.eventEvaluationByMember = {
+			...this._eventEvaluationByMember,
 			[memberId]: evaluation
 		};
 	}
@@ -51,7 +88,7 @@ export class EventStateStore {
 	 * Update active event evaluation (single-character mode)
 	 */
 	updateEventEvaluation(evaluation: EventEvaluation) {
-		this.eventEvaluation.value = evaluation;
+		this.eventEvaluation = evaluation;
 	}
 	
 	/**
@@ -86,8 +123,8 @@ export class EventStateStore {
 	 * Reset event state
 	 */
 	reset() {
-		this.eventEvaluation.reset();
-		this.eventEvaluationByMember.reset();
+		this.eventEvaluation = initialEventEvaluationState;
+		this.eventEvaluationByMember = {};
 		this.aiProcessingComplete = false;
 		this.showEventConfirmationDialog = false;
 	}

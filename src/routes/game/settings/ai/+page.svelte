@@ -110,7 +110,7 @@
 	let storyAgent: StoryAgent | undefined = $state();
 
 	onMount(async () => {
-		if (aiStateStore.apiKey.value) {
+		if (aiStateStore.apiKey) {
 			provideLLM();
 		}
 	});
@@ -118,15 +118,15 @@
 	const provideLLM = () => {
 		llm = LLMProvider.provideLLM({
 			temperature: 1.3,
-			apiKey: aiStateStore.apiKey.value,
-			language: aiStateStore.language.value
+			apiKey: aiStateStore.apiKey,
+			language: aiStateStore.language
 		});
 		storyAgent = new StoryAgent(llm);
 	};
 
 	const onQuickstartClicked = () => {
 		provideLLM();
-		if (aiStateStore.apiKey.value) {
+		if (aiStateStore.apiKey) {
 			quickstartModalOpen = true;
 		}
 	};
@@ -288,7 +288,7 @@
 		<input
 			type="text"
 			id="apikey"
-			bind:value={aiStateStore.apiKey.value}
+			bind:value={aiStateStore.apiKey}
 			placeholder="Copy your API Key from Google AI Studio and paste here"
 			class="input input-bordered mt-2"
 		/>
@@ -309,7 +309,7 @@
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!aiStateStore.apiKey.value}
+		disabled={!aiStateStore.apiKey}
 		onclick={onStartCustom}
 	>
 		New Custom Tale
@@ -317,7 +317,7 @@
 	<small class="m-auto mt-2">Customize your Tale with a brief, open-ended plot</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!aiStateStore.apiKey.value}
+		disabled={!aiStateStore.apiKey}
 		onclick={onNewCampaign}
 	>
 		New Campaign

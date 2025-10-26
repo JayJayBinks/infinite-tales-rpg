@@ -13,19 +13,19 @@ describe('CharacterStateStore', () => {
 
 	describe('Initialization', () => {
 		it('should initialize with default character state', () => {
-			expect(store.character.value).toEqual(initialCharacterState);
-			expect(store.characterStats.value).toEqual(initialCharacterStatsState);
+			expect(store.character).toEqual(initialCharacterState);
+			expect(store.characterStats).toEqual(initialCharacterStatsState);
 		});
 	});
 
 	describe('Character properties', () => {
 		it('should get character name', () => {
-			store.character.value = { ...initialCharacterState, name: 'Test Hero' };
+			store.character = { ...initialCharacterState, name: 'Test Hero' };
 			expect(store.characterName).toBe('Test Hero');
 		});
 
 		it('should get character level', () => {
-			store.characterStats.value = { ...initialCharacterStatsState, level: 5 };
+			store.characterStats = { ...initialCharacterStatsState, level: 5 };
 			expect(store.level).toBe(5);
 		});
 
@@ -33,7 +33,7 @@ describe('CharacterStateStore', () => {
 			const mockResources = {
 				HP: { max_value: 100, start_value: 100, game_ends_when_zero: true }
 			};
-			store.characterStats.value = { ...initialCharacterStatsState, resources: mockResources };
+			store.characterStats = { ...initialCharacterStatsState, resources: mockResources };
 			expect(store.resources).toEqual(mockResources);
 		});
 
@@ -41,7 +41,7 @@ describe('CharacterStateStore', () => {
 			const mockAbilities = [
 				{ name: 'Fireball', effect: 'Deals fire damage' }
 			];
-			store.characterStats.value = { ...initialCharacterStatsState, spells_and_abilities: mockAbilities };
+			store.characterStats = { ...initialCharacterStatsState, spells_and_abilities: mockAbilities };
 			expect(store.abilities).toEqual(mockAbilities);
 		});
 	});
@@ -50,25 +50,25 @@ describe('CharacterStateStore', () => {
 		it('should update character description', () => {
 			const newCharacter = { ...initialCharacterState, name: 'Updated Hero' };
 			store.updateCharacter(newCharacter);
-			expect(store.character.value.name).toBe('Updated Hero');
+			expect(store.character.name).toBe('Updated Hero');
 		});
 
 		it('should update character stats', () => {
 			const newStats = { ...initialCharacterStatsState, level: 10 };
 			store.updateStats(newStats);
-			expect(store.characterStats.value.level).toBe(10);
+			expect(store.characterStats.level).toBe(10);
 		});
 	});
 
 	describe('Reset', () => {
 		it('should reset character state', () => {
-			store.character.value = { ...initialCharacterState, name: 'Test' };
-			store.characterStats.value = { ...initialCharacterStatsState, level: 5 };
+			store.character = { ...initialCharacterState, name: 'Test' };
+			store.characterStats = { ...initialCharacterStatsState, level: 5 };
 
 			store.reset();
 
-			expect(store.character.value).toEqual(initialCharacterState);
-			expect(store.characterStats.value).toEqual(initialCharacterStatsState);
+			expect(store.character).toEqual(initialCharacterState);
+			expect(store.characterStats).toEqual(initialCharacterStatsState);
 		});
 	});
 });

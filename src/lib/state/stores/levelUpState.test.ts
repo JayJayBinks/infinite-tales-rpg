@@ -48,7 +48,7 @@ describe('LevelUpStateStore', () => {
 		it('should set party level up status', () => {
 			const status = { player_1: true, player_2: false };
 			store.setPartyLevelUpStatus(status);
-			expect(store.levelUpState.value.partyLevelUpStatus).toEqual(status);
+			expect(store.levelUpState.partyLevelUpStatus).toEqual(status);
 		});
 
 		it('should get member level up status', () => {
