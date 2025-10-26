@@ -1,14 +1,12 @@
 name: Playwright Tests
 
 # Expanded triggers: still reacts to successful Vercel deployment via repository_dispatch,
-# plus standard push / pull_request to validate before deploy.
+# plus standard push to validate before deploy.
 on:
   repository_dispatch:
     types: [vercel.deployment.success]
   push:
     branches: [ main, develop, feature/**, copilot/** ]
-  pull_request:
-    branches: [ main, develop ]
 
 concurrency:
   group: playwright-${{ github.ref }}
