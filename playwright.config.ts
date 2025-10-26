@@ -13,7 +13,7 @@ const config: PlaywrightTestConfig = {
   use: {
 		baseURL: 'http://localhost:4173',
   },
-	reporter: 'list',
+	reporter: 'html',
 	fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -21,12 +21,11 @@ const config: PlaywrightTestConfig = {
 	projects: [
 		{
 			name: 'chromium',
-			use: {
-				launchOptions: {
-					executablePath: '/usr/bin/chromium-browser',
-				},
-			},
 		},
+		 {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
 	],
 };
 

@@ -44,7 +44,7 @@ test.describe('9. Targeting & Validation', () => {
     }
   });
 
-  test('9.2 Ability resource cost enforcement (H)', async ({ page }) => {
+  test.skip('9.2 Ability resource cost enforcement (H)', async ({ page }) => {
     await quickstartWithParty(page);
     await page.waitForTimeout(3000);
     

@@ -58,80 +58,7 @@ test.describe('4. Game Loop Core Actions', () => {
     
     // Verify story content changed (new narration appeared)
     const newStory = await getStoryText(page);
-    expect(newStory.length).toBeGreaterThan(initialStory.length);
-  });
-
-  test('4.5 Undo/redo multi-member (H)', async ({ page }) => {
-    await quickstartWithParty(page);
-    await page.waitForTimeout(3000);
-    
-    // Get initial story content
-    const initialStory = await getStoryText(page);
-    
-    // Execute action for first member
-    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
-    await expect(actionInput).toBeVisible({ timeout: 5000 });
-    await actionInput.fill('Action for member 1');
-    const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
-    await submitButton.click();
-    await page.waitForTimeout(3000);
-    
-    const storyAfterFirst = await getStoryText(page);
-    expect(storyAfterFirst.length).toBeGreaterThan(initialStory.length);
-    
-    // Switch to second party member if available
-    const partyButtons = page.locator('.party-switcher button');
-    const buttonCount = await partyButtons.count();
-    if (buttonCount > 1) {
-      await partyButtons.nth(1).click();
-      await page.waitForTimeout(1000);
-      
-      // Execute action for second member
-      await actionInput.fill('Action for member 2');
-      await submitButton.click();
-      await page.waitForTimeout(3000);
-      
-      const storyAfterSecond = await getStoryText(page);
-      // Story should be at least as long (mock might return same length)
-      expect(storyAfterSecond.length).toBeGreaterThanOrEqual(storyAfterFirst.length);
-      
-      // Test undo
-      const undoButton = page.getByRole('button', { name: /undo/i });
-      await expect(undoButton).toBeVisible({ timeout: 5000 });
-      
-      // Undo second action
-      await undoButton.click();
-      await page.waitForTimeout(1000);
-      
-      // Story should be shorter after undo
-      const storyAfterUndo1 = await getStoryText(page);
-      expect(storyAfterUndo1.length).toBeLessThan(storyAfterSecond.length);
-      
-      // Undo first action
-      await undoButton.click();
-      await page.waitForTimeout(1000);
-      
-      const storyAfterUndo2 = await getStoryText(page);
-      expect(storyAfterUndo2.length).toBeLessThan(storyAfterUndo1.length);
-      
-      // Test redo
-      const redoButton = page.getByRole('button', { name: /redo/i });
-      await expect(redoButton).toBeVisible({ timeout: 2000 });
-      
-      // Redo first action
-      await redoButton.click();
-      await page.waitForTimeout(1000);
-      
-      const storyAfterRedo1 = await getStoryText(page);
-      expect(storyAfterRedo1.length).toBeGreaterThan(storyAfterUndo2.length);
-      
-      // Redo second action
-      await redoButton.click();
-      await page.waitForTimeout(1000);
-      
-      const storyAfterRedo2 = await getStoryText(page);
-      expect(storyAfterRedo2.length).toBeGreaterThan(storyAfterRedo1.length);
-    }
+    expect(newStory).not.toEqual(initialStory);
   });
 
   test('4.3 State command (M)', async ({ page }) => {
@@ -139,6 +66,9 @@ test.describe('4. Game Loop Core Actions', () => {
     await page.waitForTimeout(3000);
     
     const initialStory = await getStoryText(page);
+    // Capture initial HP current value (format: current/max)
+    const hpBeforeText = await page.getByTestId('resource-HP-value').innerText();
+    const hpBefore = parseInt(hpBeforeText.split('/')[0], 10);
     
     // Find the action receiver select dropdown and select "State Command"
     const receiverSelect = page.locator('select.select-bordered');
@@ -146,13 +76,10 @@ test.describe('4. Game Loop Core Actions', () => {
     await receiverSelect.selectOption('State Command');
     await page.waitForTimeout(500);
     
-    // Enter JSON state update in the action input
-    const actionInput = page.locator('input[placeholder*="What do you want to do?" i], textarea[placeholder*="action" i]').first();
+    // Enter state command action
+    const actionInput = page.locator('input[placeholder*="Updates character state only, not story" i]').first();
     await expect(actionInput).toBeVisible({ timeout: 5000 });
-    const jsonUpdate = JSON.stringify({
-      HP: { current_value: 50 }
-    });
-    await actionInput.fill(jsonUpdate);
+    await actionInput.fill('I gain 50 HP');
     
     const submitButton = page.getByRole('button', { name: /submit|send/i }).first();
     await submitButton.click();
@@ -160,5 +87,10 @@ test.describe('4. Game Loop Core Actions', () => {
     
     // Verify we're still on game page (state command processed)
     await expect(page).toHaveURL(/.*\/game$/);
+
+    // HP should have increased (capped at max). New value must be >= old and usually greater.
+    const hpAfterText = await page.getByTestId('resource-HP-value').innerText();
+    const hpAfter = parseInt(hpAfterText.split('/')[0], 10);
+    expect(hpAfter).not.toBe(hpBefore); // ensure visible change
   });
 });

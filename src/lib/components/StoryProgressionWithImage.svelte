@@ -1,3 +1,13 @@
+<script context="module" lang="ts">
+	// Export types from a module context so they can be imported elsewhere without causing Svelte compile errors
+	export type StoryProgressionWithImageProps = {
+		storyTextRef?: HTMLElement;
+		story: string;
+		gameUpdates?: Array<import('../../routes/game/gameLogic').RenderedGameUpdate | undefined>;
+		imagePrompt?: string;
+		stream_finished?: boolean;
+	};
+</script>
 <script lang="ts">
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { marked } from 'marked';
@@ -5,14 +15,6 @@
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import TTSComponent from '$lib/components/TTSComponent.svelte';
 	import type { AIConfig } from '$lib';
-
-	export type StoryProgressionWithImageProps = {
-		storyTextRef?: HTMLElement;
-		story: string;
-		gameUpdates?: Array<RenderedGameUpdate | undefined>;
-		imagePrompt?: string;
-		stream_finished?: boolean;
-	};
 	let {
 		storyTextRef = $bindable(),
 		story,

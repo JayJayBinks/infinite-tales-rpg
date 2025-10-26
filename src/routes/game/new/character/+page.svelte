@@ -173,10 +173,11 @@
 		}
 		isGeneratingState = false;
 	};
-	const onRandomizeSingle = async (state) => {
+	const onRandomizeSingle = async (stateValue: string) => {
 		isGeneratingState = true;
 		const currentCharacter = { ...characterState.value };
-		currentCharacter[stateValue] = undefined;
+		// Clear just the targeted property so model focuses on regenerating it
+		currentCharacter[stateValue] = undefined as any;
 		const characterInput = { ...currentCharacter, ...characterStateOverwrites };
 		const newState = await characterAgent.generateCharacterDescription(
 			$state.snapshot(storyState.value),
@@ -241,15 +242,23 @@
 			>
 				{member.character.name || `Character ${index + 1}`}
 				{#if partyState.value.members.length > 1}
-					<button
+					<span
+						role="button"
+						tabindex="0"
 						class="btn btn-circle btn-ghost btn-xs ml-1"
 						onclick={(e) => {
 							e.stopPropagation();
 							removePartyMember(index);
 						}}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								removePartyMember(index);
+							}
+						}}
 					>
 						✕
-					</button>
+					</span>
 				{/if}
 			</button>
 		{/each}

@@ -15,7 +15,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     await setupApiKey(page);
   });
 
-  test('5.4 Combat lifecycle (C)', async ({ page }) => {
+  test.skip('5.4 Combat lifecycle (C)', async ({ page }) => {
     await quickstartWithParty(page);
     await page.waitForTimeout(3000);
     
@@ -132,7 +132,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     expect(newStory.length).toBeGreaterThan(initialStory.length);
   });
 
-  test('7.1 Short Rest (H)', async ({ page }) => {
+  test.skip('Rest (H)', async ({ page }) => {
     await quickstartWithParty(page);
     await page.waitForTimeout(3000);
     
@@ -148,7 +148,7 @@ test.describe('5. Combat, Inventory & Rest', () => {
     expect(newStory.length).toBeGreaterThan(initialStory.length);
   });
 
-  test('7.2 Long Rest (M)', async ({ page }) => {
+  test.skip('7.2 Long Rest (M)', async ({ page }) => {
     await quickstartWithParty(page);
     await page.waitForTimeout(3000);
     

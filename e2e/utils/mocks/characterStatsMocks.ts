@@ -3,7 +3,8 @@ import type { CharacterStats } from '$lib/ai/agents/characterStatsAgent';
 export const MOCK_CHARACTER_STATS: CharacterStats = {
   level: 1,
   resources: {
-    HP: { max_value: 26, start_value: 26, game_ends_when_zero: true },
+    // Start slightly below max so state command HP gains are visible in UI tests
+    HP: { max_value: 26, start_value: 20, game_ends_when_zero: true },
     STAMINA: { max_value: 10, start_value: 10, game_ends_when_zero: false },
     MANA: { max_value: 8, start_value: 8, game_ends_when_zero: false },
     XP: { max_value: 100, start_value: 0, game_ends_when_zero: false }

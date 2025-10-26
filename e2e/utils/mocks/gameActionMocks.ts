@@ -133,8 +133,50 @@ export const MOCK_REST_ACTIONS = {
 
 const IMAGE_PROMPT = 'A dramatic fantasy scene showing floating sky islands with broken magical bridges, heroes standing at the edge looking determined, painterly Moebius art style with vibrant colors';
 
-export function generateGameActionResponse(context: { isCombat?: boolean; isRest?: boolean; isItem?: boolean }): GameActionState {
+// Counter to allow successive "Continue the Tale" actions to yield distinct story text
+let continueTaleCounter = 0;
+
+export function generateGameActionResponse(context: { isCombat?: boolean; isRest?: boolean; isItem?: boolean; isContinue?: boolean; isStateCommand?: boolean; isRestrained?: boolean; userMessage?: string }): GameActionState {
   const storyMeta = { game: 'Dungeons & Dragons 5th Edition' };
+      if (context.isRestrained) {
+        return {
+          story: 'Glowing ethereal chains coil around your limbs, tightening with a faint hum of arcane power.',
+          is_character_in_combat: false,
+          currently_present_npcs: MOCK_GAME_ACTIONS.default.currently_present_npcs,
+          inventory_update: [],
+          stats_update: [],
+          is_character_restrained_explanation: 'Magical bonds limit movement and complex gestures until broken.',
+          story_memory_explanation: 'Character became restrained by magical bonds. LONG_TERM_IMPACT: LOW',
+          image_prompt: IMAGE_PROMPT,
+          ...storyMeta
+        } as GameActionState;
+      }
+    if (context.isStateCommand) {
+      // Parse simple pattern like "I gain 50 HP" (case-insensitive)
+      const msg = (context.userMessage || '').toLowerCase();
+      let gained = 0;
+      const gainMatch = msg.match(/gain\s+(\d+)\s+hp/);
+      if (gainMatch) gained = parseInt(gainMatch[1], 10);
+      // Default to small gain if not parsable
+      if (!gained) gained = 3;
+      return {
+        story: '', // no story change for pure state command
+        is_character_in_combat: false,
+        currently_present_npcs: MOCK_GAME_ACTIONS.default.currently_present_npcs,
+        inventory_update: [],
+        stats_update: [
+          {
+            targetName: 'player_character_1',
+            type: 'HP_gained',
+            value: { result: gained },
+            explanation: 'State command applied manual HP gain'
+          }
+        ],
+        story_memory_explanation: `State command applied: HP +${gained}. LONG_TERM_IMPACT: LOW`,
+        image_prompt: IMAGE_PROMPT,
+        ...storyMeta
+      } as GameActionState;
+    }
   
   if (context.isCombat) {
     return { ...MOCK_GAME_ACTIONS.combat, image_prompt: IMAGE_PROMPT, ...storyMeta } as GameActionState;
@@ -150,6 +192,20 @@ export function generateGameActionResponse(context: { isCombat?: boolean; isRest
     return {
       ...MOCK_INVENTORY_ACTIONS.found,
       image_prompt: IMAGE_PROMPT,
+      ...storyMeta
+    } as GameActionState;
+  }
+
+  // Handle static "Continue the Tale" action to simulate progressive narrative chunks
+  if (context.isContinue) {
+    continueTaleCounter += 1;
+    const base = MOCK_GAME_ACTIONS.default;
+    const progressiveStory = `${base.story} \n\nFurther developments unfold as the investigation deepens (segment ${continueTaleCounter}). A subtle change in the wind hints at shifting island alignments.`;
+    return {
+      ...base,
+      story: progressiveStory,
+      image_prompt: IMAGE_PROMPT,
+      story_memory_explanation: `Progressed tale segment ${continueTaleCounter}. LONG_TERM_IMPACT: LOW`,
       ...storyMeta
     } as GameActionState;
   }
