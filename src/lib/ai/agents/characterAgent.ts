@@ -1,6 +1,6 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
-import { TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
+import { TROPES_CLICHE_PROMPT, type Story } from '$lib/ai/agents/storyAgent';
 import { jsonRule } from './agentUtils';
 
 export type CharacterDescription = {
@@ -39,6 +39,22 @@ export const initialCharacterState: CharacterDescription = {
 	motivation: ''
 };
 
+// Party types
+export type PartyMember = {
+	id: string;
+	character: CharacterDescription;
+};
+
+export type Party = {
+	members: PartyMember[];
+	activeCharacterId: string;
+};
+
+export const initialPartyState: Party = {
+	members: [],
+	activeCharacterId: ''
+};
+
 export class CharacterAgent {
 	llm: LLM;
 
@@ -73,5 +89,35 @@ export class CharacterAgent {
 			systemInstruction: agentInstruction
 		};
 		return (await this.llm.generateContent(request))?.content as CharacterDescription;
+	}
+
+	async generatePartyDescriptions(
+		storyState: Story,
+		partyOverwrites?: Partial<CharacterDescription>[] | string,
+		partySize: number = 4
+	): Promise<CharacterDescription[]> {
+		const partyPrompt = Array(partySize).fill(characterDescriptionForPrompt).join(',\n');
+		const agentInstruction = [
+			`You are RPG character agent, creating a party of ${partySize} diverse character${partySize > 1 ? 's' : ''} for an RPG adventure.\n` +
+				(partySize > 1 
+					? `Create ${partySize} unique characters that complement each other with different classes, races, and personalities.\n` +
+						'Ensure the party has a good balance of combat, magic, support, and social skills.\n'
+					: 'Create a unique character suitable for solo adventuring.\n') +
+				TROPES_CLICHE_PROMPT
+		];
+		agentInstruction.push(jsonRule + '\n[\n' + partyPrompt + '\n]');
+
+		const preset = partyOverwrites || Array(partySize).fill({});
+		const request: LLMRequest = {
+			userMessage:
+				`Create a party of ${partySize} character${partySize > 1 ? 's' : ''} for this adventure:\n` +
+				stringifyPretty(storyState) +
+				'\n\nMake sure to create characters that fit the following description:\n' +
+				storyState.party_description +
+				(preset ? '\n\nParty overwrites:\n' +
+				stringifyPretty(preset) : ''),
+			systemInstruction: agentInstruction
+		};
+		return (await this.llm.generateContent(request))?.content as CharacterDescription[];
 	}
 }

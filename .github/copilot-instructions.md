@@ -4,207 +4,108 @@ globs:
 alwaysApply: true
 ---
 
-Modible Project Standards
+<!-- Updated AI / Copilot Instructions: Project-Specific Engineering Guide -->
 
-Version Numbers
+# Infinite Tales RPG – AI Coding Agent Guide
 
-SvelteKit: 2.x (which uses Svelte 5.x)
-TypeScript: 5.x
-Vite: 5.x
+Concise, opinionated rules so an AI can contribute productively without rediscovering architecture. Keep answers ACTIONABLE, project‑specific, and use existing patterns.
 
-As a Senior Frontend Developer, you are now tasked with providing expert answers related to Svelte, SvelteKit, JavaScript, TypeScript, TailwindCSS, DaisyUI, HTML, and CSS. When responding to questions, follow the Chain of Thought method. First, outline a detailed pseudocode plan step by step, then confirm it, and proceed to write the code.
+## Tech + Framework Essentials
+SvelteKit 2 / Svelte 5 with runes ($state, $derived, $effect). Tailwind + DaisyUI (no ad‑hoc CSS unless unavoidable). TypeScript everywhere. Vite build.
 
-Remember the following important mindset when providing code:
+## Core Game Architecture (Data Flow)
+Player Action -> GameAgent (story + structured JSON) -> gameActionsState[] -> CombatAgent (post story stats_update) -> gameLogic.applyGameActionState (mutates resources, XP, inventory) -> UI renders via derived runes.
+AI Sub‑agents live in `src/lib/ai/agents/`: 
+- GameAgent: primary story progression & JSON game state.
+- ActionAgent: proposes next actions; single vs batch.
+- CombatAgent: derives stats_update after narration (post-processing).
+- EventAgent: detects transformations & new abilities (now party‑aware).
+- CharacterAgent / CharacterStatsAgent: descriptions + stats & level-ups.
+- SummaryAgent: history condensation.
+- CampaignAgent: chapter progression.
+- ImagePromptAgent: scene image prompt.
 
-Simplicity
-Readability
-Performance
-Maintainability
-Testability
-Reusability
+## Party System Principles
+- Party state: `partyState` (descriptions) & `partyStatsState` (stats) plus per-member resources in `playerCharactersGameState` keyed by technical id (e.g. player_character_1).
+- Active character drives immediate UI; per-member caches: actions (`characterActionsByMemberState`), event evaluations (`eventEvaluationByMemberState`), combat selections, skill progression.
+- Never treat party members as NPCs; they are excluded from `currently_present_npcs`.
 
-Adhere to the following guidelines in your code:
+## Persistent State Pattern
+All global/persistent game state uses `useLocalStorage<T>(key, initial)` wrappers; mutate through `.value`; when switching members, load that member’s slice into the single-character compatibility state (e.g. `eventEvaluationState`).
 
-Utilize early returns for code readability.
-Use Tailwind classes and DaisyUI for styling HTML elements instead of CSS or <style> tags.
-Prefer "class:" instead of the tertiary operator in class tags when possible.
-Employ descriptive variable and function/const names, and prefix event functions with "handle," such as "handleClick" for onClick and "handleKeyDown" for onKeyDown.
-Implement accessibility features on elements, including tabindex="0", aria-label, and similar attributes for tags like <button>.
-Use consts instead of functions, and define a type if possible.
+When introducing new state make sure to reset it at new tale at src\routes\game\settings\ai\+page.svelte !
 
-Your responses should focus on providing correct, best practice, DRY principle (Don't Repeat Yourself), bug-free, fully functional, and working code aligned with the listed rules above. Prioritize easy and readable code over performance and fully implement all requested functionality. Ensure that the code is complete and thoroughly verified, including all required imports and proper naming of key components. Be prepared to answer questions specifically about Svelte, SvelteKit, JavaScript, TypeScript, TailwindCSS, DaisyUI, HTML, and CSS. Your responses should align with the provided coding environment and implementation guidelines.
+## Stats & Resources
+- Resources structure: { max_value, start_value, current_value?, game_ends_when_zero } -> runtime state adds current_value under `playerCharactersGameState`.
+- Refill logic: use `refillResourcesFully()` – don’t pre‑mutate playerCharactersGameState manually; let helper produce stats_update diff.
+- XP: always on a pseudo resource `XP`; level ups produce `now_level_X` stats_update & deduct XP.
 
-Preferred Syntax and Patterns
+## Applying Updates
+- Only authoritative mutation path for combat/story changes: `gameLogic.applyGameActionState` (or its batch variant). Don’t hand-edit resources elsewhere; instead generate a synthetic GameActionState if needed.
 
-Svelte Components
+## Event & Ability Evaluation
+Use new `EventAgent.evaluatePartyEvents` passing recent story slices + per-member known abilities; store per-member evaluations; reflect active member into legacy single view to keep existing modals working.
 
-Use .svelte extension for Svelte components
-Use TypeScript syntax in <script> tags:
-svelteCopy
+## Prompt / LLM Interaction Conventions
+- Every agent builds a systemInstruction array: high‑level role, contextual state snapshots (stringifyPretty), then a JSON schema prefixed by `jsonRule`.
+- Streaming only for GameAgent story (generateContentStream with chunk callbacks); others synchronous.
+- Always guard model outputs: array vs object vs null; map & normalize (e.g., ensure ability resource_cost shape).
 
-<script lang="ts">
-  // TypeScript code here
-</script>
+## UI Conventions
+- Use semantic buttons with Tailwind + DaisyUI; long action lists injected dynamically (see addActionButton).
+- Keep transformations & abilities confirmation modal gating via flags: `showEventConfirmationDialog`, `aiProcessingComplete`.
 
-State Management
+## Error / Resilience Patterns
+- LLM failures -> console.warn + early return (do not crash UI). Use fallback model when `returnFallbackProperty` provided.
+- Large additionalStoryInput truncated to last 10k chars to protect prompt size.
 
-I have a function useLocalStorage for global state that needs to be persisted:
-typescriptCopy
-const myVariableState = useLocalStorage<type>('myVariableState', initialValue);
+## Adding New Agent Logic
+1. Define data contract (JSON schema string) + run through `jsonRule`.
+2. Provide minimal, explicit context slices (avoid dumping whole history—use SummaryAgent for trimming).
+3. Post-validate: strip unknown members/resources, no hallucinated keys.
+4. Route side effects ONLY through gameActionsState or dedicated per-member mapping state.
 
-Typing
+## Testing Focus Areas
+- Deterministic post-processors (mappers, resource math, level logic) are testable without LLM.
+- Favor constructing synthetic `GameActionState` objects in tests for edge cases (multi-target damage, resource depletion, party wipe conditions).
 
-Use TypeScript for type definitions
-Create interfaces or types for component props:
-typescriptCopy
-interface MyComponentProps {
-someValue: string;
-optionalValue?: number;
-}
+## Common Pitfalls to Avoid
+- Don’t mix party members into NPC arrays.
+- Don’t mutate playerCharactersGameState shape (must stay ResourcesWithCurrentValue objects).
+- Don’t bypass applyGameActionState for resource/XP changes.
+- Don’t assume single character mode; every new feature must degrade gracefully to solo play.
 
-Imports
+## Example: Adding a Party-Wide Status Effect
+1. Detect in story via CombatAgent extension (new status keyword).
+2. Emit one stats_update per affected member (no grouped names).
+3. Apply through applyGameActionState (color coding derives automatically in rendering).
 
-Use aliased imports where applicable (as defined in svelte.config.js):
-typescriptCopy
-import SomeComponent from '$lib/components/SomeComponent.svelte';
-import { someUtil } from '$lib/utils';
+## Svelte 5 Runes Basics (Project Use)
+Use $state for mutable local store, $derived for computed, $effect for side effects; import from 'svelte'. Event handlers are plain DOM attributes (onclick=...). No legacy `on:` directives.
 
-Async Operations
+---
+Need clarification or missing pattern? Ask for: data contract (JSON shape), prompt inclusion rules, or state persistence key naming.
 
-Prefer async/await syntax over .then() chains
-Use onMount for component initialization that requires async operations
+## Image Prompt & Campaign Chapter Interaction
+Flow:
+1. Story streaming completes (use the final concatenated story text; ignore partial chunks).
+2. Run chapter advancement check (`advanceChapterIfApplicable`). If the chapter changes, commit new chapter state BEFORE building the image prompt.
+3. Build image prompt with: (a) trimmed recent story slice, (b) current chapter theme + active GM notes, (c) optional persistent general image style (`storyState.general_image_prompt`).
+4. Call `ImagePromptAgent` (non‑streaming) in parallel with stats update generation.
 
-Styling
+Guardrails:
+- Never include future (not yet advanced) chapter seeds, dice roll mechanics, JSON schemas, or unconfirmed transformation/ability scaffolding.
+- Truncate story context for the prompt (target ~1200–1500 chars) to keep salient visual cues and protect token budget.
+- Deduplicate repeated adjectives; keep one canonical character name + 1–2 distinctive traits per party member (no long bios).
+- If multiple events (e.g., transformation + chapter advance) occur, use the POST‑advance chapter but exclude unconfirmed character form changes until confirmed.
 
-Use Tailwind CSS and DaisyUI for styling
-Utilize Tailwind's utility classes directly in the markup
-For complex components, consider using Tailwind's @apply directive in a scoped <style> block
-Use dynamic classes with template literals when necessary:
-svelteCopy
+Error Handling:
+- On image prompt failure, leave `image_prompt` empty; UI should gracefully omit image.
+- Do not auto‑retry more than once; allow manual user regeneration if added later.
 
-<div class={`bg-blue-500 p-4 ${isActive ? 'opacity-100' : 'opacity-50'}`}></div>
+Why it matters:
+- Prevents visual drift or spoilers from future chapters.
+- Preserves model tokens for narrative quality.
+- Keeps prompts stable and non‑hallucinatory by banning meta / system artifacts.
 
-File Structure
 
-Group related components in subdirectories under src/lib/components/
-Keep pages in src/routes/
-Use +page.svelte for page components and +layout.svelte for layouts
-Place reusable utility functions in src/lib/utils/
-Store types and interfaces in src/lib/types/
-
-Component Design
-
-Follow the single responsibility principle
-Create small, reusable components
-Use props for component configuration
-Utilize Svelte's slot system for flexible component composition
-
-Performance Optimization
-
-Lazy load components and modules when possible
-Use Svelte's transition API for smooth UI animations
-Implement proper caching strategies for API requests
-
-Testing
-
-Write unit tests for utility functions and complex logic
-Create component tests using a testing library compatible with Svelte (e.g., Svelte Testing Library)
-Implement end-to-end tests for critical user flows
-
-Accessibility
-
-Ensure proper semantic HTML structure
-Use ARIA attributes when necessary
-Implement keyboard navigation for interactive elements
-Maintain sufficient color contrast ratios
-
-Code Quality
-
-Use ESLint with the recommended Svelte and TypeScript configurations
-Implement Prettier for consistent code formatting
-Conduct regular code reviews to maintain code quality and consistency
-
-Documentation
-
-Maintain up-to-date README files for the project and major components
-Use JSDoc comments for functions and complex logic
-Keep inline comments concise and meaningful
-
-I'm using svelte 5 instead of svelte 4 here is an overview of the changes.
-
-# .cursorrunes for Svelte 5
-
-## Overview of Changes
-
-Svelte 5 introduces runes, a set of advanced primitives for controlling reactivity. The runes replace certain non-runes features and provide more explicit control over state and effects.
-
-Snippets, along with render tags, help create reusable chunks of markup inside your components, reducing duplication and enhancing maintainability.
-
-## Event Handlers in Svelte 5
-
-In Svelte 5, event handlers are treated as standard HTML properties rather than Svelte-specific directives, simplifying their use and integrating them more closely with the rest of the properties in the component.
-
-### Svelte 4 vs. Svelte 5:
-
-**Before (Svelte 4):**
-
-```html
-<script>
-	let count = 0;
-	$: double = count * 2;
-	$: {
-		if (count > 10) alert('Too high!');
-	}
-</script>
-<button on:click="{()" ="">count++}> {count} / {double}</button>
-```
-
-**After (Svelte 5):**
-
-```html
-<script>
-	import { $state, $effect, $derived } from 'svelte';
-
-	// Define state with runes
-	let count = $state(0);
-
-	// Option 1: Using $derived for computed values
-	let double = $derived(count * 2);
-
-	// Reactive effects using runes
-	$effect(() => {
-		if (count > 10) alert('Too high!');
-	});
-</script>
-
-<!-- Standard HTML event attributes instead of Svelte directives -->
-<button onclick="{()" ="">count++}> {count} / {double}</button>
-
-<!-- Alternatively, you can compute values inline -->
-<!-- <button onclick={() => count++}>
-  {count} / {count * 2}
-</button> -->
-```
-
-## Key Differences:
-
-1. **Reactivity is Explicit**:
-
-   - Svelte 5 uses `$state()` to explicitly mark reactive variables
-   - `$derived()` replaces `$:` for computed values
-   - `$effect()` replaces `$: {}` blocks for side effects
-
-2. **Event Handling is Standardized**:
-
-   - Svelte 4: `on:click={handler}`
-   - Svelte 5: `onclick={handler}`
-
-3. **Import Runes**:
-
-   - All runes must be imported from 'svelte': `import { $state, $effect, $derived, $props, $slots } from 'svelte';`
-
-4. **No More Event Modifiers**:
-   - Svelte 4: `on:click|preventDefault={handler}`
-   - Svelte 5: `onclick={e => { e.preventDefault(); handler(e); }}`
-
-This creates clearer, more maintainable components compared to Svelte 4's previous syntax by making reactivity explicit and using standardized web platform features.

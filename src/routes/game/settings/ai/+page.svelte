@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { handleError, navigate, parseState } from '$lib/util.svelte';
-	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
+	import { handleError, navigate, parseState, initialThoughtsState, type ThoughtsState } from '$lib/util.svelte';
+	import { CharacterAgent, initialCharacterState, type Party } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		CharacterStatsAgent,
-		initialCharacterStatsState
+		initialCharacterStatsState,
+		type PartyStats
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import { onMount } from 'svelte';
@@ -32,8 +33,7 @@
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
-		disableImagesState: false,
-		useFallbackLlmState: false
+		disableImagesState: false
 	});
 	let showGenerationSettingsModal = $state<boolean>(false);
 	let showOutputFeaturesModal = $state<boolean>(false);
@@ -76,6 +76,30 @@
 	);
 	const relatedActionGroundTruthState = useLocalStorage('relatedActionGroundTruthState');
 	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
+	const partyState = useLocalStorage('partyState');
+	const partyStatsState = useLocalStorage('partyStatsState');
+	// Additional per-party / per-tale states (must be cleared on new tale)
+	const characterActionsByMemberState = useLocalStorage<Record<string, any>>(
+		'characterActionsByMemberState',
+		{}
+	);
+	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
+		'restrainedExplanationByMemberState',
+		{}
+	);
+	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, any>>(
+		'selectedCombatActionsByMemberState',
+		{}
+	);
+	const eventEvaluationByMemberState = useLocalStorage<Record<string, EventEvaluation>>(
+		'eventEvaluationByMemberState',
+		{}
+	);
+	const chosenActionState = useLocalStorage('chosenActionState');
+	const additionalStoryInputState = useLocalStorage<string>('additionalStoryInputState', '');
+	const additionalActionInputState = useLocalStorage<string>('additionalActionInputState', '');
+	const thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
+	const didAIProcessDiceRollActionState = useLocalStorage<boolean>('didAIProcessDiceRollAction');
 
 	let isGeneratingState = $state(false);
 	let quickstartModalOpen = $state(false);
@@ -89,14 +113,11 @@
 	});
 
 	const provideLLM = () => {
-		llm = LLMProvider.provideLLM(
-			{
-				temperature: 2,
-				apiKey: apiKeyState.value,
-				language: aiLanguage.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		llm = LLMProvider.provideLLM({
+			temperature: 1.3,
+			apiKey: apiKeyState.value,
+			language: aiLanguage.value
+		});
 		storyAgent = new StoryAgent(llm);
 	};
 
@@ -132,44 +153,100 @@
 		playerCharactersIdToNamesMapState.reset();
 		relatedActionGroundTruthState.reset();
 		relatedNPCActionsState.reset();
+		partyState.reset();
+		partyStatsState.reset();
+		// Newly added party / multi-member states
+		characterActionsByMemberState.reset();
+		restrainedExplanationByMemberState.reset();
+		selectedCombatActionsByMemberState.reset();
+		eventEvaluationByMemberState.reset();
+		chosenActionState.reset();
+		additionalStoryInputState.reset();
+		additionalActionInputState.reset();
+		thoughtsState.reset();
+		didAIProcessDiceRollActionState.reset();
 	}
 
-	async function onQuickstartNew(story: string | Story | undefined) {
+	async function onQuickstartNew(data: any) {
 		clearStates();
 		isGeneratingState = true;
 		let newStoryState;
 		try {
+			console.log('[Quickstart] Start quickstart flow', data);
+			const story = data.story || data;
+			const partyDescription = data.partyDescription || '';
+			const partyMemberCount = data.partyMemberCount || 1;
+			
 			if (story && isPlainObject(story)) {
 				newStoryState = story as Story;
 			} else {
-				const overwriteStory = !story ? {} : { adventure_and_main_event: story as string };
+				const overwriteStory = !story
+					? {}
+					: {
+						adventure_and_main_event: story as string,
+						party_description: partyDescription || (story as string),
+						party_count: (partyMemberCount || 1).toString()
+					};
 				newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 			}
 			if (newStoryState) {
+				console.log('[Quickstart] Generated story state');
 				storyState.value = newStoryState;
 				const characterAgent = new CharacterAgent(llm);
-				const newCharacterState = await characterAgent.generateCharacterDescription(
-					$state.snapshot(storyState.value)
+				const characterStatsAgent = new CharacterStatsAgent(llm);
+				
+				// Generate party
+				const partyDescriptions = await characterAgent.generatePartyDescriptions(
+					$state.snapshot(storyState.value),
+					partyDescription
+						? [{ background: partyDescription }]
+						: undefined,
+					partyMemberCount
 				);
-				if (newCharacterState) {
-					characterState.value = newCharacterState;
-					const characterStatsAgent = new CharacterStatsAgent(llm);
-					const newCharacterStatsState = await characterStatsAgent.generateCharacterStats(
+				console.log('[Quickstart] Party descriptions', partyDescriptions?.length);
+				
+				if (partyDescriptions && partyDescriptions.length > 0) {
+					// Generate stats for all party members
+					const partyStats = await characterStatsAgent.generatePartyStats(
 						storyState.value,
-						characterState.value,
-						{
+						partyDescriptions,
+						partyDescriptions.map(() => ({
 							level: 1,
 							resources: {
 								HP: { max_value: 0, game_ends_when_zero: true },
 								MP: { max_value: 0, game_ends_when_zero: false }
 							}
-						},
-						true
+						}))
 					);
-					parseState(newCharacterStatsState);
-					if (newCharacterStatsState) {
-						characterStatsState.value = newCharacterStatsState;
+					console.log('[Quickstart] Party stats generated', partyStats?.length);
+					
+					if (partyStats && partyStats.length === partyDescriptions.length) {
+						// Initialize party state with all generated members
+						const party: Party = {
+							members: partyDescriptions.map((desc, index) => ({
+								id: `player_character_${index + 1}`,
+								character: desc
+							})),
+							activeCharacterId: 'player_character_1'
+						};
+						
+						const partyStatsData: PartyStats = {
+							members: partyStats.map((stats, index) => ({
+								id: `player_character_${index + 1}`,
+								stats
+							}))
+						};
+						
+						partyState.value = party;
+						partyStatsState.value = partyStatsData;
+						
+						// Set first character as active character
+						characterState.value = partyDescriptions[0];
+						characterStatsState.value = partyStats[0];
+						parseState(characterStatsState.value);
+						
 						quickstartModalOpen = false;
+						console.log('[Quickstart] Navigating to /game');
 						await goto('/game');
 					}
 				}

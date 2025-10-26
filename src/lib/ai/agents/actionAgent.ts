@@ -142,7 +142,7 @@ export class ActionAgent {
 		}
 
 		let userMessage =
-			'The player wants to perform following action, you must use these exact words as action text: ' +
+			action.characterName + ' wants to perform following action, you must use these exact words as action text: ' +
 			action.text +
 			'\nDetermine the difficulty and resource cost with considering their personality, skills, items, story summary and following game state\n' +
 			stringifyPretty(currentGameStateMapped);
@@ -167,8 +167,9 @@ export class ActionAgent {
 			userMessage,
 			historyMessages,
 			systemInstruction: agent,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
-				thinkingBudget: THINKING_BUDGET.FAST
+				thinkingBudget: THINKING_BUDGET.DEFAULT
 			}
 		};
 		console.log('action generate start time: ', new Date());
@@ -210,18 +211,18 @@ export class ActionAgent {
 
 		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
 		const agent = [
-			'You are RPG action agent, you are given a RPG story and then suggest actions the player character can take, considering the story, currently_present_npcs and character stats.',
+			'You are RPG action agent, you are given a RPG story and then suggest actions for the currently active party member, considering the story, currently_present_npcs and character stats. Remember that other party members may also be present and could assist or interact.',
 			this.actionRules,
 			'The suggested actions must fit to the setting of the story:' +
 				'\n' +
 				stringifyPretty(storySettingsMapped),
-			'Suggest actions according to the following description of the character temper, e.g. acting smart or with force, ...' +
+			'Suggest actions according to the following description of the currently active character temper, e.g. acting smart or with force, ...' +
 				'\n' +
 				stringifyPretty(characterDescription),
-			'As an action, the character can make use of items from the inventory:' +
+			'As an action, the character can make use of items from the party inventory:' +
 				'\n' +
 				stringifyPretty(inventoryState),
-			'dice_roll modifier can be applied based on high or low resources:' +
+			'dice_roll modifier can be applied based on high or low resources of the active character:' +
 				'\n' +
 				stringifyPretty(characterStats.resources),
 			`${jsonRule}
@@ -248,7 +249,7 @@ export class ActionAgent {
 			agent.push('Following instructions overrule all others: ' + customActionAgentInstruction);
 		}
 		let userMessage =
-			'Suggest specific actions the CHARACTER can take, considering their personality, skills and items.\n' +
+			'Suggest specific actions the currently active party member (' + characterDescription.name + ') can take, considering their personality, skills and items.\n' +
 			'Each action must clearly outline what the character does and how they do it. \n The actions must be directly related to the current story: ' +
 			stringifyPretty(currentGameStateMapped) +
 			'\nThe actions must be plausible in the current situation, e.g. before investigating, a tense situation must be resolved.';
@@ -267,7 +268,12 @@ export class ActionAgent {
 		const request: LLMRequest = {
 			userMessage,
 			historyMessages,
-			systemInstruction: agent
+			systemInstruction: agent,
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			thinkingConfig: {
+				includeThoughts: true,
+				thinkingBudget: THINKING_BUDGET.XLARGE
+			}
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 		console.log('actions response: ', response);

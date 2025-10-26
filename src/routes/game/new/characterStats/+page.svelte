@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { Campaign } from '$lib/ai/agents/campaignAgent';
-	import { initialCharacterState, type CharacterDescription } from '$lib/ai/agents/characterAgent';
+	import {
+		initialCharacterState,
+		type CharacterDescription,
+		type Party,
+		initialPartyState
+	} from '$lib/ai/agents/characterAgent';
 	import {
 		CharacterStatsAgent,
 		initialCharacterStatsState,
 		type CharacterStats,
 		type Ability,
-		type Resource
+		type Resource,
+		type PartyStats,
+		initialPartyStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { type Story, initialStoryState } from '$lib/ai/agents/storyAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
@@ -35,6 +42,24 @@
 		'characterStatsState',
 		initialCharacterStatsState
 	);
+	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
+	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
+
+	// Track which character we're editing
+	let currentCharacterIndex = $state(0);
+
+	// Initialize party stats if needed
+	$effect(() => {
+		if (partyState.value.members.length > 0 && partyStatsState.value.members.length === 0) {
+			for (let i = 0; i < partyState.value.members.length; i++) {
+				partyStatsState.value.members.push({
+					id: partyState.value.members[i].id,
+					stats: { ...initialCharacterStatsState }
+				});
+			}
+		}
+	});
+
 	const campaignState = useLocalStorage<Campaign>('campaignState');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 	const gameSettingsState = useLocalStorage<GameSettings>(
@@ -46,31 +71,78 @@
 
 	onMount(() => {
 		characterStatsAgent = new CharacterStatsAgent(
-			LLMProvider.provideLLM(
-				{
-					temperature: 2,
-					apiKey: apiKeyState.value,
-					language: aiLanguage.value
-				},
-				aiConfigState.value?.useFallbackLlmState
-			)
+			LLMProvider.provideLLM({
+				temperature: 1.3,
+				apiKey: apiKeyState.value,
+				language: aiLanguage.value
+			})
 		);
 	});
+
+	const onRandomizePartyStats = async () => {
+		isGeneratingState = true;
+		const partyCharacters = partyState.value.members.map((m) => m.character);
+		const partyStats = await characterStatsAgent.generatePartyStats(
+			$state.snapshot(storyState.value),
+			partyCharacters
+		);
+		if (partyStats && partyStats.length === partyState.value.members.length) {
+			// Ensure we have the right number of members in partyStatsState
+			while (partyStatsState.value.members.length < partyState.value.members.length) {
+				partyStatsState.value.members.push({
+					id: partyState.value.members[partyStatsState.value.members.length].id,
+					stats: { ...initialCharacterStatsState }
+				});
+			}
+			// Remove extra members if party shrunk
+			while (partyStatsState.value.members.length > partyState.value.members.length) {
+				partyStatsState.value.members.pop();
+			}
+			
+			for (let i = 0; i < partyStats.length; i++) {
+				partyStatsState.value.members[i].stats = partyStats[i];
+			}
+			// Set first character stats as active
+			characterStatsState.value = partyStatsState.value.members[0].stats;
+		}
+		isGeneratingState = false;
+	};
 
 	const onRandomize = async () => {
 		isGeneratingState = true;
 		const filteredOverwrites = removeEmptyValues($state.snapshot(characterStatsStateOverwrites));
+		const currentCharacter =
+			partyState.value.members.length > 0
+				? partyState.value.members[currentCharacterIndex].character
+				: characterState.value;
+
 		const newState = await characterStatsAgent.generateCharacterStats(
 			$state.snapshot(storyState.value),
-			$state.snapshot(characterState.value),
+			currentCharacter,
 			filteredOverwrites
 		);
 		if (newState) {
 			console.log(newState);
 			parseState(newState);
 			characterStatsState.value = newState;
+			// Update party stats if we're using party mode
+			if (partyState.value.members.length > 0) {
+				partyStatsState.value.members[currentCharacterIndex].stats = newState;
+			}
 		}
 		isGeneratingState = false;
+	};
+
+	const switchToCharacterStats = (index: number) => {
+		// Save current stats
+		if (partyState.value.members.length > 0) {
+			partyStatsState.value.members[currentCharacterIndex].stats = characterStatsState.value;
+		}
+
+		// Switch to new character
+		currentCharacterIndex = index;
+		characterStatsState.value = partyStatsState.value.members[index].stats;
+		characterStatsStateOverwrites = cloneDeep(initialCharacterStatsState);
 	};
 
 	const onRandomizeAttributes = async () => {
@@ -288,7 +360,38 @@
 {#if isGeneratingState}
 	<LoadingModal />
 {/if}
+
+<!-- Party Member Tabs -->
+{#if partyState.value.members.length > 0}
+	<div class="mt-4 flex flex-col items-center gap-2">
+		<div class="tabs tabs-boxed flex justify-center flex-wrap">
+			{#each partyState.value.members as member, index}
+				<button
+					class="tab"
+					class:tab-active={currentCharacterIndex === index}
+					onclick={() => switchToCharacterStats(index)}
+				>
+					{member.character.name || `Character ${index + 1}`}
+				</button>
+			{/each}
+		</div>
+	</div>
+{/if}
+
 <form class="m-6 grid items-center gap-2 text-center">
+	<p>Generate stats for {partyState.value.members.length > 0 ? `party of ${partyState.value.members.length}` : 'your character'}, or customize each character individually</p>
+	{#if partyState.value.members.length > 1}
+		<button
+			class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
+			disabled={isGeneratingState}
+			onclick={onRandomizePartyStats}
+		>
+			Randomize Entire Party Stats
+		</button>
+		<div class="divider">OR</div>
+	{/if}
+	<p>Customize Current Character ({partyState.value.members.length > 0 && partyState.value.members[currentCharacterIndex]?.character.name || `Character ${currentCharacterIndex + 1}`})</p>
+	
 	{@render navigation()}
 	<div class="form-control m-auto w-full">
 		<div class="flex items-center justify-center">

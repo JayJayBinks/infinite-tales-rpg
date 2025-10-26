@@ -1,4 +1,4 @@
-import { THINKING_BUDGET } from '../geminiProvider';
+import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
 import type { LLM, LLMRequest } from '../llm';
 
 export class JsonFixingInterceptorAgent {
@@ -21,8 +21,9 @@ export class JsonFixingInterceptorAgent {
 					content: json
 				}
 			],
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
 			thinkingConfig: {
-				thinkingBudget: THINKING_BUDGET.FAST
+				thinkingBudget: THINKING_BUDGET.DEFAULT
 			},
 			systemInstruction: agent,
 			temperature: 0,

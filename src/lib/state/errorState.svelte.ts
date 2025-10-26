@@ -14,22 +14,18 @@ class ErrorState {
 
 export const errorState = new ErrorState();
 
-let isGeminiThinkingOverloaded = $state(false);
+// --- Gemini model overload tracking (per-model instead of coarse flags) ---
+// Map of model name -> overloaded boolean
+let geminiModelOverloadState = $state<Record<string, boolean>>({});
 
-export const getIsGeminiThinkingOverloaded = () => {
-	return isGeminiThinkingOverloaded;
+export const isGeminiModelOverloaded = (model: string): boolean => {
+	return !!geminiModelOverloadState[model];
 };
 
-export const setIsGeminiThinkingOverloaded = (value: boolean) => {
-	isGeminiThinkingOverloaded = value;
+export const setGeminiModelOverloaded = (model: string, value: boolean = true) => {
+	geminiModelOverloadState[model] = value;
 };
 
-let isGeminiFlashExpOverloaded = $state(false);
-
-export const getIsGeminiFlashExpOverloaded = () => {
-	return isGeminiFlashExpOverloaded;
-};
-
-export const setIsGeminiFlashExpOverloaded = (value: boolean) => {
-	isGeminiFlashExpOverloaded = value;
+export const clearGeminiModelOverloads = () => {
+	geminiModelOverloadState = {};
 };

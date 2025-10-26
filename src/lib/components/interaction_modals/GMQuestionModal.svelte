@@ -28,11 +28,13 @@
 	let {
 		onclose,
 		question,
-		playerCharactersGameState
+		playerCharactersGameState,
+		restrainedExplanationByMemberState
 	}: {
 		onclose?;
 		question: string;
 		playerCharactersGameState: PlayerCharactersGameState;
+		restrainedExplanationByMemberState: Record<string, string | null>;
 	} = $props();
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -72,14 +74,11 @@
 	let isGeneratingState: boolean = $state(false);
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM(
-			{
-				temperature: 0.7,
-				language: aiLanguage.value,
-				apiKey: apiKeyState.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		const llm = LLMProvider.provideLLM({
+			temperature: 0.7,
+			language: aiLanguage.value,
+			apiKey: apiKeyState.value
+		});
 		gameAgent = new GameAgent(llm);
 		const summaryAgent = new SummaryAgent(llm);
 		isGeneratingState = true;
@@ -106,7 +105,8 @@
 			gameSettingsState.value,
 			getCurrentCampaignChapter(),
 			customGMNotesState.value,
-			currentGameActionState.is_character_restrained_explanation
+			undefined,
+			restrainedExplanationByMemberState
 		);
 		gmAnswerState = answer;
 		gmThoughtsState = thoughts;

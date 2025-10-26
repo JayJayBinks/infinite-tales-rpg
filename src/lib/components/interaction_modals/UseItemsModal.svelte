@@ -19,7 +19,8 @@
 		storyImagePrompt,
 		onclose,
 		oncrafting,
-		dialogRef = $bindable()
+		dialogRef = $bindable(),
+		disableSelection = false
 	}: {
 		inventoryState: InventoryState;
 		onDeleteItem: (item_id: string) => void;
@@ -28,6 +29,7 @@
 		onclose;
 		oncrafting: (actionText: string | undefined) => void;
 		dialogRef;
+		disableSelection?: boolean;
 	} = $props();
 
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -79,6 +81,7 @@
 		</form>
 		<button
 			class="components btn btn-neutral no-animation m-auto mt-2"
+			disabled={disableSelection}
 			onclick={() => {
 				craftingDialogState = true;
 				dialogRef.close();
@@ -117,7 +120,10 @@
 								<button
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
+									disabled={disableSelection}
+									title={disableSelection ? 'Action already chosen for this combat round' : ''}
 									onclick={() => {
+										if (disableSelection) return;
 										dialogRef.close();
 										onclose(mapToAction(item_id, item));
 									}}

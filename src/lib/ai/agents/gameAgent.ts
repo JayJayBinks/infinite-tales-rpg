@@ -98,7 +98,6 @@ export type GameActionState = {
 	inventory_update: Array<InventoryUpdate>;
 	stats_update: Array<StatsUpdate>;
 	is_character_in_combat: boolean;
-	is_character_restrained_explanation?: string;
 	currently_present_npcs: Targets;
 	story_memory_explanation: string;
 };
@@ -221,7 +220,10 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent,
 			returnFallbackProperty: true,
-			model: GEMINI_MODELS.FLASH_2_5
+			model: GEMINI_MODELS.PRO,
+			thinkingConfig: {
+				thinkingBudget: THINKING_BUDGET.DEFAULT
+			}
 		};
 		const time = new Date().toLocaleTimeString();
 		console.log('Starting game agent:', time);
@@ -250,14 +252,15 @@ export class GameAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
 		characterState: CharacterDescription,
-		playerCharactersGameState: ResourcesWithCurrentValue,
+		playerCharactersGameState: ResourcesWithCurrentValue | PlayerCharactersGameState,
 		inventoryState: InventoryState,
 		npcState: NPCState,
 		relatedHistory: string[],
 		gameSettings: GameSettings,
 		campaignChapterState?: CampaignChapter,
 		customGmNotes?: string,
-		is_character_restrained_explanation?: string
+		is_character_restrained_explanation?: string,
+		restrained_explanations_by_member?: Record<string, string | null>
 	): Promise<{ thoughts?: string; answer: GameMasterAnswer }> {
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
@@ -290,6 +293,18 @@ export class GameAgent {
 			gameAgent.push(
 				`Character is restrained: ${is_character_restrained_explanation}; consider the implications in your response.`
 			);
+		}
+		// New: party-wide restrained states mapping (per-member explanations)
+		if (restrained_explanations_by_member && Object.keys(restrained_explanations_by_member).length > 0) {
+			// Filter out empty / null entries to reduce prompt noise
+			const filtered = Object.fromEntries(
+				Object.entries(restrained_explanations_by_member).filter(([, v]) => v)
+			);
+			if (Object.keys(filtered).length > 0) {
+				gameAgent.push(
+					'Party restrained states (memberId -> explanation):\n' + stringifyPretty(filtered)
+				);
+			}
 		}
 		gameAgent.push(jsonSystemInstructionForPlayerQuestion);
 		const userMessage =
@@ -326,22 +341,44 @@ export class GameAgent {
 	private getGameAgentSystemInstructionsFromStates(
 		storyState: Story,
 		characterState: CharacterDescription,
-		playerCharactersGameState: ResourcesWithCurrentValue,
+		playerCharactersGameState: ResourcesWithCurrentValue | PlayerCharactersGameState,
 		inventoryState: InventoryState,
 		customSystemInstruction: string,
 		customStoryAgentInstruction: string,
 		customCombatAgentInstruction: string,
 		gameSettings: GameSettings
 	) {
+		// Determine if this is a party game state (nested resources objects)
+		const firstValue = Object.values(playerCharactersGameState)[0] as unknown;
+		const isSingleCharacter = !!firstValue && typeof firstValue === 'object' && 'current_value' in (firstValue as any);
+		const isParty = !isSingleCharacter; // If the first level values don't have current_value, assume party mapping
+
+		let partyResourcesPresentation = '';
+		if (isParty) {
+			// Map to an array for clarity in prompt
+			partyResourcesPresentation = stringifyPretty(
+				Object.entries(playerCharactersGameState as PlayerCharactersGameState).map(
+					([memberId, resources]) => ({ memberId, resources })
+				)
+			);
+		}
+
 		const gameAgent = [
 			systemBehaviour(gameSettings),
 			stringifyPretty(storyState),
-			'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-				'\n' +
-				stringifyPretty(characterState),
-			"The following are the character's CURRENT resources, consider it in your response\n" +
-				stringifyPretty(Object.entries(playerCharactersGameState)),
-			"The following is the character's inventory, check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
+			isParty
+				? 'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story. IMPORTANT: Party members are player characters and should NEVER be added to currently_present_npcs.' +
+					'\n' +
+					stringifyPretty(characterState)
+				: 'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
+					'\n' +
+					stringifyPretty(characterState),
+			isParty
+				? "The following are all party members' CURRENT resources. Consider the party's overall condition in your response.\n" +
+					partyResourcesPresentation
+				: "The following are the character's CURRENT resources, consider it in your response\n" +
+					stringifyPretty(Object.entries(playerCharactersGameState as ResourcesWithCurrentValue)),
+			"The party's shared inventory - check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
 				stringifyPretty(inventoryState)
 		];
 		if (customSystemInstruction) {
@@ -357,15 +394,15 @@ export class GameAgent {
 	}
 
 	static getGameEndedPrompt(emptyResourceKey: string[]) {
-		return `The CHARACTER has fallen to 0 ${emptyResourceKey.join(' and ')}; Describe how the GAME is ending.`;
+		return `A party member has fallen to 0 ${emptyResourceKey.join(' and ')}; Describe the consequences and how this affects the party.`;
 	}
 
 	static getStartingPrompt() {
 		return (
 			'Begin the story by setting the scene in a vivid and detailed manner, describing the environment and atmosphere with rich sensory details.' +
 			'\nAt the beginning do not disclose story secrets, which are meant to be discovered by the player later into the story.' +
-			'\nIf the player character is accompanied by party members, give them names and add them to currently_present_npcs' +
-			'\nCHARACTER starts with some random items.'
+			'\nDo NOT add party members to currently_present_npcs - they are player characters, not NPCs. Only add actual NPCs (non-player characters) to this list.' +
+			'\nThe party starts with some random items.'
 		);
 	}
 
@@ -443,10 +480,10 @@ const storyWordLimit = 'must be between 100 and 160 words, do not exceed this ra
 export const SLOW_STORY_PROMPT =
 	'Ensure that the narrative unfolds gradually, building up anticipation and curiosity before moving towards any major revelations or climactic moments.';
 const systemBehaviour = (gameSettingsState: GameSettings) => `
-You are a Pen & Paper Game Master, crafting captivating, limitless GAME experiences using ADVENTURE_AND_MAIN_EVENT, THEME, TONALITY for CHARACTER.
+You are a Pen & Paper Game Master, crafting captivating, limitless GAME experiences using ADVENTURE_AND_MAIN_EVENT, THEME, TONALITY for ALL the PARTY CHARACTERS.
 
 The Game Master's General Responsibilities Include:
-- Narrate compelling stories in TONALITY for my CHARACTER.
+- Narrate compelling stories in TONALITY for ALL the PARTY CHARACTERS.
 - Generate settings and places, adhering to THEME and TONALITY, and naming GAME elements.
 - Never narrate events briefly or summarize; Always describe detailed scenes with character conversation in direct speech
 - Show, Don't Tell: Do not narrate abstract concepts or the "meaning" of an event. Instead, communicate the theme through tangible, sensory details
@@ -466,19 +503,19 @@ Storytelling
 
 Actions:
 - Let the player guide actions and story relevance.
-- Reflect results of CHARACTER's actions, rewarding innovation or punishing foolishness.
-- Involve other characters' reactions, doubts, or support during the action, encouraging a deeper exploration of relationships and motivations.
-- On each action review the character's inventory and spells_and_abilities for items and skills that have passive effects such as defense or health regeneration and apply them
+- Reflect results of characters' actions, rewarding innovation or punishing foolishness.
+- Involve other characters' and party members' reactions, doubts, or support during the action, encouraging a deeper exploration of relationships and motivations.
+- On each action review the characters' inventory and spells_and_abilities for items and skills that have passive effects such as defense or health regeneration and apply them
 
 Combat:
-- Pace All Challenges Like Combat: All significant challenges—not just combat—are slow-paced and multi-round. Treat tense negotiations, intricate rituals, disarming magical traps, or navigating a collapsing ruin as a series of actions and reactions between the CHARACTER and the environment. Never resolve a complex challenge in one response.
-- Never decide on your own that NPCs or CHARACTER die, apply appropriate damage instead. Only the player will tell you when they die.
-- NPCs and CHARACTER cannot simply be finished off with a single attack.
+- Pace All Challenges Like Combat: All significant challenges—not just combat—are slow-paced and multi-round. Treat tense negotiations, intricate rituals, disarming magical traps, or navigating a collapsing ruin as a series of actions and reactions between the characters and the environment. Never resolve a complex challenge in one response.
+- Never decide on your own that NPCs or characters die, apply appropriate damage instead. Only the player will tell you when they die.
+- NPCs and characters cannot simply be finished off with a single attack.
 
 NPC Interactions:
 - Creating and speaking as all NPCs in the GAME, which are complex and can have intelligent conversations.
 - Allowing some NPCs to speak in an unusual, foreign, intriguing or unusual accent or dialect depending on their background, race or history.
-- Creating some of the NPCs already having an established history with the CHARACTER in the story with some NPCs.
+- Creating some of the NPCs already having an established history with the characters in the story with some NPCs.
 - When the player character interacts with a NPC you must always include the NPC response within the same action
 
 Always review context from system instructions and my last message before responding.`;
@@ -510,10 +547,9 @@ const jsonSystemInstructionForGameAgent = (gameSettingsState: GameSettings) => `
   "story": "depending on If The Action Is A Success Or Failure progress the story further with appropriate consequences. ${!gameSettingsState.detailedNarrationLength ? storyWordLimit : ''} For character speech use single quotes. Format the narration using HTML tags for easier reading.",
   "story_memory_explanation": "Explanation if story progression has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} LONG_TERM_IMPACT: LOW, MEDIUM, HIGH",
   "image_prompt": "Based on the most recent events, generate a a prompt for an image AI, describing the current scene. My character must never be described or shown. Instead, focus entirely on what I see: the environment, objects, and any NPCs. When describing an NPC, never use their name; instead, describe them by their gender and a consistent set of key visual features. Your prompt must weave together the scene's main focus, the setting, the artistic style and mood, the precise lighting and color, and a cinematic composition to vividly capture this specific moment.",
-  "xpGainedExplanation": "Explain why or why nor the CHARACTER gains xp in this situation", 
+  "xpGainedExplanation": "Explain why or why not the CHARACTER gains xp in this situation", 
   ${jsonStoryCharacterStatusPart()},
   "is_character_in_combat": true if CHARACTER is in active combat else false,
-  "is_character_restrained_explanation": null | string; "If not restrained null, else Briefly explain how the character has entered a TEMPORARY state or condition that SIGNIFICANTLY RESTRICTS their available actions, changes how they act, or puts them under external control? (Examples: Put to sleep, paralyzed, charmed, blinded,  affected by an illusion, under a compulsion spell)",
   "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
   "currently_present_npcs": List of NPCs or party members that are present in the current situation. Format: ${currentlyPresentNPCSForPrompt}
 }`;

@@ -78,6 +78,20 @@ export const initialCharacterStatsState: CharacterStats = {
 	spells_and_abilities: []
 };
 
+// Party stats types
+export type PartyMemberStats = {
+	id: string;
+	stats: CharacterStats;
+};
+
+export type PartyStats = {
+	members: PartyMemberStats[];
+};
+
+export const initialPartyStatsState: PartyStats = {
+	members: []
+};
+
 export const npcRank = ['Very Weak', 'Weak', 'Average', 'Strong', 'Boss', 'Legendary'];
 
 export type NPCState = { [uniqueTechnicalNameId: string]: NPCStats };
@@ -172,6 +186,25 @@ export class CharacterStatsAgent {
 		stats.spells_and_abilities = stats.spells_and_abilities.map(this.mapAbility);
 		return stats;
 	};
+
+	async generatePartyStats(
+		storyState: Story,
+		partyCharacters: CharacterDescription[],
+		statsOverwrites?: Partial<CharacterStats>[]
+	): Promise<CharacterStats[]> {
+		const partyStats: CharacterStats[] = [];
+
+		for (let i = 0; i < partyCharacters.length; i++) {
+			const character = partyCharacters[i];
+			const overwrites = statsOverwrites?.[i];
+
+			const stats = await this.generateCharacterStats(storyState, character, overwrites, false);
+
+			partyStats.push(stats);
+		}
+
+		return partyStats;
+	}
 
 	async levelUpCharacter(
 		storyState: Story,

@@ -25,9 +25,12 @@ export function addNPCNamesToState(npcs: Targets, npcState: NPCState) {
 }
 
 // derive relation of a given npc id from Targets (no persistence on npcState)
-export function deriveRelationForNpc(npcs: Targets, npcUniqueId: string): 'hostile' | 'neutral' | 'friendly' | undefined {
-	if (npcs.hostile.some(n => n.uniqueTechnicalNameId === npcUniqueId)) return 'hostile';
-	if (npcs.neutral.some(n => n.uniqueTechnicalNameId === npcUniqueId)) return 'neutral';
-	if (npcs.friendly.some(n => n.uniqueTechnicalNameId === npcUniqueId)) return 'friendly';
+export function deriveRelationForNpc(
+	npcs: Targets,
+	npcUniqueId: string
+): 'hostile' | 'neutral' | 'friendly' | undefined {
+	if (npcs.hostile.some((n) => n.uniqueTechnicalNameId === npcUniqueId)) return 'hostile';
+	if (npcs.neutral.some((n) => n.uniqueTechnicalNameId === npcUniqueId)) return 'neutral';
+	if (npcs.friendly.some((n) => n.uniqueTechnicalNameId === npcUniqueId)) return 'friendly';
 	return undefined;
 }

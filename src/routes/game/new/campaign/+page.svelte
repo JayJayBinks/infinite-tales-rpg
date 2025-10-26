@@ -39,14 +39,11 @@
 
 	onMount(() => {
 		campaignAgent = new CampaignAgent(
-			LLMProvider.provideLLM(
-				{
-					temperature: 2,
-					apiKey: apiKeyState.value,
-					language: aiLanguage.value
-				},
-				aiConfigState.value?.useFallbackLlmState
-			)
+			LLMProvider.provideLLM({
+				temperature: 1.3,
+				apiKey: apiKeyState.value,
+				language: aiLanguage.value
+			})
 		);
 
 		beforeNavigate(() => {
@@ -164,7 +161,8 @@
 		if (taleState) {
 			taleState.adventure_and_main_event = stringifyPretty(currentChapter);
 			taleState.general_image_prompt = campaignState.value.general_image_prompt;
-			taleState.character_simple_description = campaignState.value.character_simple_description;
+			taleState.party_description = campaignState.value.party_description;
+			taleState.party_count = campaignState.value.party_count;
 			taleState.world_details = campaignState.value.world_details;
 			taleState.game = campaignState.value.game;
 			taleState.theme = campaignState.value.theme;

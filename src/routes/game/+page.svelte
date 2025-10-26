@@ -7,21 +7,21 @@
 		stringifyPretty,
 		type ThoughtsState
 	} from '$lib/util.svelte';
-import {
-	type Action,
-	defaultGameSettings,
-	type GameActionState,
-	GameAgent,
-	type GameMasterAnswer,
-	type GameSettings,
-	type InventoryState,
-	type Item,
-	type NPCAction,
-	type PlayerCharactersGameState,
-	type PlayerCharactersIdToNamesMap,
-	SUDO_COMMAND
-} from '$lib/ai/agents/gameAgent';
-import { onMount, tick } from 'svelte';
+	import {
+		type Action,
+		defaultGameSettings,
+		type GameActionState,
+		GameAgent,
+		type GameMasterAnswer,
+		type GameSettings,
+		type InventoryState,
+		type Item,
+		type NPCAction,
+		type PlayerCharactersGameState,
+		type PlayerCharactersIdToNamesMap,
+		SUDO_COMMAND
+	} from '$lib/ai/agents/gameAgent';
+	import { onMount, tick } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 	import { SummaryAgent } from '$lib/ai/agents/summaryAgent';
@@ -33,7 +33,9 @@ import { onMount, tick } from 'svelte';
 		initialCharacterStatsState,
 		type NPCState,
 		type NPCStats,
-		type SkillsProgression
+		type SkillsProgression,
+		type PartyStats,
+		initialPartyStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { errorState } from '$lib/state/errorState.svelte';
 	import ErrorDialog from '$lib/components/interaction_modals/ErrorModal.svelte';
@@ -59,7 +61,9 @@ import { onMount, tick } from 'svelte';
 	import {
 		CharacterAgent,
 		type CharacterDescription,
-		initialCharacterState
+		initialCharacterState,
+		type Party,
+		initialPartyState
 	} from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/interaction_modals/dice/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
@@ -102,7 +106,17 @@ import { onMount, tick } from 'svelte';
 		addCharacterToPlayerCharactersIdToNamesMap,
 		getCharacterKnownNames
 	} from './characterLogic';
-	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/dice/diceRollLogic';
+	import {
+		getActivePartyMember,
+		getActivePartyMemberStats,
+		updatePartyMemberCharacter,
+		updatePartyMemberStats,
+		getPartyMemberByCharacterName,
+		getPartyMemberStatsByCharacterName,
+		updatePlayerCharactersIdToNamesMapForParty,
+		switchActiveCharacter
+	} from './partyLogic';
+	import { getDiceRollPromptAddition, type DiceRollResult } from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
 	import SimpleDiceRoller from '$lib/components/interaction_modals/dice/SimpleDiceRoller.svelte';
 	import StoryProgressionWithImage, {
@@ -110,6 +124,8 @@ import { onMount, tick } from 'svelte';
 	} from '$lib/components/StoryProgressionWithImage.svelte';
 	import { ImagePromptAgent } from '$lib/ai/agents/imagePromptAgent';
 	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
+	import PartyMemberSwitcher from '$lib/components/PartyMemberSwitcher.svelte';
+	import { getActiveRestrainingState } from './restrainingLogic';
 	// eslint-disable-next-line svelte/valid-compile
 	let diceRollDialog,
 		useSpellsAbilitiesModal,
@@ -142,6 +158,13 @@ import { onMount, tick } from 'svelte';
 	//game state
 	const gameActionsState = useLocalStorage<GameActionState[]>('gameActionsState', []);
 	const characterActionsState = useLocalStorage<Action[]>('characterActionsState', []);
+	const characterActionsByMemberState = useLocalStorage<Record<string, Action[]>>('characterActionsByMemberState', {});
+	// Per-member restrained explanation state (party-aware). Value is explanation string or null.
+	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
+		'restrainedExplanationByMemberState',
+		{}
+	);
+	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, Action | null>>('selectedCombatActionsByMemberState', {});
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
 	const characterState = useLocalStorage<CharacterDescription>(
 		'characterState',
@@ -151,10 +174,28 @@ import { onMount, tick } from 'svelte';
 		'characterStatsState',
 		initialCharacterStatsState
 	);
+	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
+	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
+
+	// Sync character state with active party member
+	$effect(() => {
+		if (partyState.value.members.length > 0) {
+			const activeMember = getActivePartyMember(partyState.value);
+			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
+			if (activeMember && activeMemberStats) {
+				characterState.value = activeMember.character;
+				characterStatsState.value = activeMemberStats;
+			}
+		}
+	});
 	let storyChunkState = $state<string>('');
 	let thoughtsState = useLocalStorage<ThoughtsState>('thoughtsState', initialThoughtsState);
 
-	const skillsProgressionState = useLocalStorage<SkillsProgression>('skillsProgressionState', {});
+	// Skills progression - now per party member
+	const skillsProgressionState = useLocalStorage<Record<string, SkillsProgression>>(
+		'skillsProgressionByMemberState',
+		{}
+	);
 	let skillsProgressionForCurrentActionState = $state<number | undefined>(undefined);
 	const inventoryState = useLocalStorage<InventoryState>('inventoryState', {});
 	const storyState = useLocalStorage<Story>('storyState', initialStoryState);
@@ -182,17 +223,27 @@ import { onMount, tick } from 'svelte';
 		{}
 	);
 	let playerCharactersGameState: PlayerCharactersGameState = $state({});
-	const getCurrentCharacterGameState = () => {
-		return playerCharactersGameState[
-			getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
-				''
-		];
+	// Returns the game state (resources etc.) for the requested character id.
+	// Priority:
+	// 1. Explicit id param
+	// 2. Currently active party member id
+	// 3. Derived playerCharacterIdState (fallback single-character mode)
+	const getCurrentCharacterGameState = (id?: string) => {
+		const effectiveId =
+			id ||
+			partyState.value.activeCharacterId ||
+			(getCharacterTechnicalId(
+				playerCharactersIdToNamesMapState.value,
+				characterState.value.name
+			) || '');
+		return playerCharactersGameState[effectiveId];
 	};
 
 	let levelUpState = useLocalStorage<{
 		buttonEnabled: boolean;
 		dialogOpened: boolean;
 		playerName: string;
+		partyLevelUpStatus?: Record<string, boolean>;
 	}>('levelUpState', {
 		buttonEnabled: false,
 		dialogOpened: false,
@@ -213,7 +264,8 @@ import { onMount, tick } from 'svelte';
 			.renderStatUpdates(
 				$state.snapshot(gameState.stats_update),
 				getCurrentCharacterGameState(),
-				playerCharactersIdToNamesMapState.value[playerId]
+				playerCharactersIdToNamesMapState.value[playerId],
+				partyState.value.members.length > 1 // Pass isParty flag
 			)
 			.concat(gameLogic.renderInventoryUpdate($state.snapshot(gameState.inventory_update)));
 
@@ -243,12 +295,23 @@ import { onMount, tick } from 'svelte';
 	let customActionImpossibleReasonState: 'not_enough_resource' | 'not_plausible' | undefined =
 		$state(undefined);
 
+	// New combat dice roll + locking state
+	// Stores dice roll prompt additions per selected combat action (not yet applied until confirm)
+	let selectedCombatActionsDiceAdditionsState: Record<string, string> = $state({});
+	// Stores whether a combat action selection for a member is locked (cannot be changed)
+	let selectedCombatActionsLockedState: Record<string, boolean> = $state({});
+
 	let gmQuestionState: string = $state('');
 	let customDiceRollNotation: string = $state('');
 	let itemForSuggestActionsState: (Item & { item_id: string }) | undefined = $state();
 	const eventEvaluationState = useLocalStorage<EventEvaluation>(
 		'eventEvaluationState',
 		initialEventEvaluationState
+	);
+	// NEW: Per-party-member event evaluations (mapping id -> EventEvaluation)
+	const eventEvaluationByMemberState = useLocalStorage<Record<string, EventEvaluation>>(
+		'eventEvaluationByMemberState',
+		{}
 	);
 
 	//feature toggles
@@ -267,14 +330,11 @@ import { onMount, tick } from 'svelte';
 		// 		}
 		// 	}
 		// });
-		const llm = LLMProvider.provideLLM(
-			{
-				temperature: temperatureState.value,
-				language: aiLanguage.value,
-				apiKey: apiKeyState.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		const llm = LLMProvider.provideLLM({
+			temperature: temperatureState.value,
+			language: aiLanguage.value,
+			apiKey: apiKeyState.value
+		});
 		gameAgent = new GameAgent(llm);
 		characterStatsAgent = new CharacterStatsAgent(llm);
 		combatAgent = new CombatAgent(llm);
@@ -293,19 +353,57 @@ import { onMount, tick } from 'svelte';
 			playerCharactersIdToNamesMapState.value,
 			currentCharacterName
 		);
-		if (!characterId) {
+
+		// Initialize party if it exists
+		if (partyState.value.members.length > 0) {
+			// Initialize resources for all party members
+			for (const member of partyState.value.members) {
+				const memberStats = partyStatsState.value.members.find((m) => m.id === member.id)?.stats;
+				if (memberStats) {
+					// Always reinitialize to ensure all members have resources
+					playerCharactersGameState[member.id] = {};
+
+					// Convert resources to have current_value
+					for (const [key, resource] of Object.entries(memberStats.resources)) {
+						playerCharactersGameState[member.id][key] = {
+							max_value: resource.max_value,
+							current_value: resource.start_value || resource.max_value,
+							game_ends_when_zero: resource.game_ends_when_zero
+						};
+					}
+
+					// Initialize XP
+					playerCharactersGameState[member.id].XP = {
+						max_value: 9999,
+						current_value: 0,
+						game_ends_when_zero: false
+					};
+				}
+			}
+
+			// Update playerCharactersIdToNamesMapState
+			updatePlayerCharactersIdToNamesMapForParty(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value
+			);
+
+			// Set character ID to active party member
+			characterId = partyState.value.activeCharacterId;
+		} else if (!characterId) {
+			// Fallback to old single character system
 			characterId = getFreeCharacterTechnicalId(playerCharactersIdToNamesMapState.value);
 			addCharacterToPlayerCharactersIdToNamesMap(
 				playerCharactersIdToNamesMapState.value,
 				characterId,
 				currentCharacterName
 			);
+
+			// Initialize the player's resource state if it doesn't exist.
+			playerCharactersGameState[characterId] = {
+				...$state.snapshot(characterStatsState.value.resources),
+				XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
+			};
 		}
-		// Initialize the player's resource state if it doesn't exist.
-		playerCharactersGameState[characterId] = {
-			...$state.snapshot(characterStatsState.value.resources),
-			XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
-		};
 		if (relatedStoryHistoryState.value.relatedDetails.length === 0) {
 			getRelatedHistoryForStory();
 		}
@@ -338,14 +436,37 @@ import { onMount, tick } from 'svelte';
 			);
 		gameActionsState.value = updatedGameActionsState;
 		playerCharactersGameState = updatedPlayerCharactersGameState;
-		tick().then(() => customActionInput.scrollIntoView(false));
+		tick().then(() => customActionInput && customActionInput.scrollIntoView(false));
 		if (characterActionsState.value.length === 0) {
+			// Get current resources for the active character
+			const currentResources = getCurrentCharacterGameState();
+			const characterStatsWithCurrentResources = {
+				...characterStatsState.value,
+				resources: Object.fromEntries(
+					Object.entries(characterStatsState.value.resources).map(([key, resource]) => [
+						key,
+						{
+							...resource,
+							current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+						}
+					])
+				)
+			};
+			
+
+					const restrainingStateForActive = getActiveRestrainingState(
+						partyState.value,
+						playerCharactersIdToNamesMapState.value,
+						characterState.value.name,
+						restrainedExplanationByMemberState.value,
+						currentGameActionState
+					);
 			const { thoughts, actions } = await actionAgent.generateActions(
 				currentGameActionState,
 				historyMessagesState.value,
 				storyState.value,
 				characterState.value,
-				characterStatsState.value,
+				characterStatsWithCurrentResources,
 				inventoryState.value,
 				systemInstructionsState.value.generalSystemInstruction,
 				systemInstructionsState.value.actionAgentInstruction,
@@ -357,15 +478,18 @@ import { onMount, tick } from 'svelte';
 					customMemoriesState.value
 				),
 				gameSettingsState.value?.aiIntroducesSkills,
-				currentGameActionState.is_character_restrained_explanation,
+				restrainingStateForActive,
 				additionalActionInputState.value
 			);
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
+			// Cache generated actions for active character
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			characterActionsByMemberState.value[activeId] = actions;
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog();
+			openDiceRollDialog(undefined, undefined, undefined, undefined);
 		}
 		checkForLevelUp();
 	}
@@ -422,7 +546,7 @@ import { onMount, tick } from 'svelte';
 					)
 				};
 			})
-			.filter(npc => npc !== undefined);
+			.filter((npc) => npc !== undefined);
 
 		// Compute the determined combat actions and stats update.
 		const determinedActions = await combatAgent.generateActionsFromContext(
@@ -438,21 +562,36 @@ import { onMount, tick } from 'svelte';
 	}
 
 	const advanceSkillIfApplicable = (skillName: string) => {
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const requiredSkillProgression = getRequiredSkillProgression(
 			skillName,
 			characterStatsState.value
 		);
 		if (requiredSkillProgression) {
-			if (skillsProgressionState.value[skillName] >= requiredSkillProgression) {
-				console.log('Advancing skill ' + skillName + ' by 1');
+			// Initialize member's skills progression if not exists
+			if (!skillsProgressionState.value[activeId]) {
+				skillsProgressionState.value[activeId] = {};
+			}
+			if (!skillsProgressionState.value[activeId][skillName]) {
+				skillsProgressionState.value[activeId][skillName] = 0;
+			}
+			
+			if (skillsProgressionState.value[activeId][skillName] >= requiredSkillProgression) {
+				console.log('Advancing skill ' + skillName + ' by 1 for character ' + activeId);
 				characterStatsState.value.skills[skillName] += 1;
-				skillsProgressionState.value[skillName] = 0;
+				skillsProgressionState.value[activeId][skillName] = 0;
 				gameActionsState.value[gameActionsState.value.length].stats_update.push({
 					sourceName: characterState.value.name,
 					targetName: characterState.value.name,
 					value: { result: skillName },
 					type: 'skill_increased'
 				});
+				
+				// Update party stats for the active member
+				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
+				if (memberStats) {
+					memberStats.stats.skills[skillName] = characterStatsState.value.skills[skillName];
+				}
 			}
 		} else {
 			console.log('No required skill progression found for skill: ' + skillName);
@@ -461,33 +600,45 @@ import { onMount, tick } from 'svelte';
 
 	const addSkillProgression = (skillName: string, skillProgression: number) => {
 		if (skillProgression) {
-			if (!skillsProgressionState.value[skillName]) {
-				skillsProgressionState.value[skillName] = 0;
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			// Initialize member's skills progression if not exists
+			if (!skillsProgressionState.value[activeId]) {
+				skillsProgressionState.value[activeId] = {};
 			}
-			console.log('Adding skill progression for ' + skillName + ': ' + skillProgression);
-			skillsProgressionState.value[skillName] += skillProgression;
+			if (!skillsProgressionState.value[activeId][skillName]) {
+				skillsProgressionState.value[activeId][skillName] = 0;
+			}
+			console.log('Adding skill progression for ' + skillName + ': ' + skillProgression + ' to character ' + activeId);
+			skillsProgressionState.value[activeId][skillName] += skillProgression;
 		}
 	};
 	function openDiceRollDialog(
-		waitForFunction?: Promise<void>,
-		waitForActionsResult?: Promise<void>,
-		deadNPCs?: Array<string>
-	) {
-		//TODO showModal can not be used because it hides the dice roll
-		didAIProcessDiceRollActionState.value = false;
-		diceRollDialog.show();
-		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
-			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
-			const result = diceRollDialog.returnValue;
+			waitForFunction?: Promise<void>,
+			waitForActionsResult?: Promise<void>,
+			deadNPCs?: Array<string>,
+			onResultCallback?: (result: DiceRollResult | undefined) => void
+		) {
 
-			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
-			if (skillName) {
-				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(result);
+		didAIProcessDiceRollActionState.value = false;
+		diceRollDialog?.show();
+		diceRollDialog?.addEventListener('close', function handleDiceModalClose() {
+			diceRollDialog?.removeEventListener('close', handleDiceModalClose);
+			const diceRollResult = diceRollDialog?.returnValue as DiceRollResult | undefined;
+			const dice_roll_addition_text = getDiceRollPromptAddition(diceRollResult);
+
+				// Callback path (combat immediate roll). We do not send the action yet.
+				if (onResultCallback) {
+					onResultCallback(diceRollResult);
+				didAIProcessDiceRollActionState.value = true;
+				return;
 			}
 
-			const dice_roll_addition_text = getDiceRollPromptAddition(result);
-					// Add dice roll addition text if available.
-		additionalStoryInputState.value += '\n' + dice_roll_addition_text + '\n';
+			// Original single-action flow: apply skill progression + send immediately.
+			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
+			if (skillName && diceRollResult) {
+				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(diceRollResult);
+			}
+			additionalStoryInputState.value += '\n' + dice_roll_addition_text + '\n';
 			sendAction(
 				chosenActionState.value,
 				false,
@@ -501,7 +652,7 @@ import { onMount, tick } from 'svelte';
 
 	function handleAIError() {
 		if (!didAIProcessDiceRollActionState.value) {
-			openDiceRollDialog();
+				openDiceRollDialog(undefined, undefined, undefined, undefined);
 		}
 	}
 
@@ -533,23 +684,73 @@ import { onMount, tick } from 'svelte';
 				costString = `\n${chosenActionState.value.resource_cost?.resource_key} cost: 0`;
 			}
 			additionalStoryInputState.value += costString;
-			await sendAction(chosenActionState.value, true);
+			await handleActionSelection(chosenActionState.value, { forceRollDice: true });
 		}
-		customActionInput.value = '';
+		customActionInput && (customActionInput.value = '');
 		customActionImpossibleReasonState = undefined;
 	}
 
+    // Centralized handler to either queue a combat action (with optional dice roll) or immediately send it when not in combat.
+    // Options:
+    //  - forceRollDice: always trigger dice roll dialog even if mustRollDice() returns false (used for impossible actions retry)
+    //  - skipDice: never open dice dialog (even if mustRollDice would require) – default false
+    async function handleActionSelection(action: Action, options?: { forceRollDice?: boolean; skipDice?: boolean }) {
+        const inCombat = currentGameActionState.is_character_in_combat;
+        const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+        if (inCombat) {
+            // Queue action for party combat turn
+            selectedCombatActionsByMemberState.value[activeId] = action;
+            const needsDice = !options?.skipDice && (options?.forceRollDice || mustRollDice(action, true));
+            if (needsDice) {
+                // Open dice dialog and store outcome when resolved
+                chosenActionState.value = $state.snapshot(action);
+                openDiceRollDialog(undefined, undefined, undefined, (result) => {
+                    selectedCombatActionsDiceAdditionsState[activeId] = getDiceRollPromptAddition(result);
+                    selectedCombatActionsLockedState[activeId] = true;
+                    if (actionsDiv) actionsDiv.innerHTML = '';
+                    renderGameState(currentGameActionState, characterActionsState.value);
+                });
+            } else {
+                selectedCombatActionsLockedState[activeId] = true;
+                if (actionsDiv) actionsDiv.innerHTML = '';
+                renderGameState(currentGameActionState, characterActionsState.value);
+            }
+        } else {
+            // Immediate resolution path
+            chosenActionState.value = $state.snapshot(action);
+            await sendAction(action, mustRollDice(action, false));
+        }
+    }
+
 	//TODO sendAction should not be handled here so it can be externally called
 	async function checkGameEnded() {
-		const emptyResourceKeys = getEmptyCriticalResourceKeys(
-			playerCharactersGameState[playerCharacterIdState]
-		);
-		if (!isGameEnded.value && emptyResourceKeys.length > 0) {
-			isGameEnded.value = true;
-			await sendAction({
-				characterName: characterState.value.name,
-				text: GameAgent.getGameEndedPrompt(emptyResourceKeys)
+		// Check if ALL party members are dead (for party mode)
+		if (partyState.value.members.length > 0) {
+			const allDead = partyState.value.members.every(member => {
+				const memberState = playerCharactersGameState[member.id];
+				const emptyKeys = getEmptyCriticalResourceKeys(memberState);
+				return emptyKeys.length > 0;
 			});
+			
+			if (!isGameEnded.value && allDead) {
+				isGameEnded.value = true;
+				await sendAction({
+					characterName: characterState.value.name,
+					text: 'All party members have fallen. The adventure ends here.'
+				});
+			}
+		} else {
+			// Single character mode
+			const emptyResourceKeys = getEmptyCriticalResourceKeys(
+				playerCharactersGameState[playerCharacterIdState]
+			);
+			if (!isGameEnded.value && emptyResourceKeys.length > 0) {
+				isGameEnded.value = true;
+				await sendAction({
+					characterName: characterState.value.name,
+					text: GameAgent.getGameEndedPrompt(emptyResourceKeys)
+				});
+			}
 		}
 	}
 
@@ -565,6 +766,7 @@ import { onMount, tick } from 'svelte';
 		if (actionsDiv) actionsDiv.innerHTML = '';
 		if (customActionInput) customActionInput.value = '';
 		didAIProcessDiceRollActionState.value = true;
+		characterActionsByMemberState.reset();
 	}
 	function resetStatesAfterActionsGenerated() {
 		additionalActionInputState.reset();
@@ -597,15 +799,79 @@ import { onMount, tick } from 'svelte';
 	}
 
 	function checkForLevelUp() {
-		levelUpState.value.buttonEnabled = false;
+		// Check level-up for all party members
+		partyState.value.members.forEach(member => {
+			const memberGameState = playerCharactersGameState[member.id];
+			const memberStats = partyStatsState.value.members.find(m => m.id === member.id);
+			
+			if (memberGameState && memberStats) {
+				const neededXP = getXPNeededForLevel(memberStats.stats.level);
+				const canLevelUp = neededXP && memberGameState.XP.current_value >= neededXP;
+				
+				// Store level-up availability per member
+				if (!levelUpState.value.partyLevelUpStatus) {
+					levelUpState.value.partyLevelUpStatus = {};
+				}
+				levelUpState.value.partyLevelUpStatus[member.id] = canLevelUp || false;
+			}
+		});
+		
+		// Enable button if ANY party member can level up
+		const anyCanLevelUp = Object.values(levelUpState.value.partyLevelUpStatus || {}).some(status => status);
+		levelUpState.value.buttonEnabled = anyCanLevelUp;
+		
+		// For active character (for backward compatibility)
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
-
 		if (
 			neededXP &&
-			playerCharactersGameState[playerCharacterIdState]?.XP.current_value >= neededXP
+			playerCharactersGameState[activeId]?.XP.current_value >= neededXP
 		) {
 			levelUpState.value.buttonEnabled = true;
 		}
+	}
+	
+	async function confirmCombatActions() {
+		if (!currentGameActionState.is_character_in_combat) return;
+
+		isAiGeneratingState = true;
+
+		// Aggregate combat actions with inline dice outcomes
+		let combatActionsPrompt = '\n\nPARTY COMBAT ACTIONS:\n';
+		let actionsCount = 0
+		for (const member of partyState.value.members) {
+			const selectedAction = selectedCombatActionsByMemberState.value[member.id];
+			const outcomeText = selectedCombatActionsDiceAdditionsState[member.id];
+			if (selectedAction) {
+				// Insert outcome directly after the action sentence if present
+				combatActionsPrompt += `- ${member.character.name}: ${selectedAction.text}; ${outcomeText}\n`;
+				actionsCount += 1;
+			} else {
+				combatActionsPrompt += `- ${member.character.name}: [AI choose an appropriate action]\n`;
+			}
+		}
+		combatActionsPrompt += actionsCount >= partyState.value.members.length ? '' 
+		:'\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
+
+		const partyAction: Action = {
+			characterName: partyState.value.members.map((m) => m.character.name).join(', '),
+			text: combatActionsPrompt,
+			type: 'Party Combat Turn'
+		};
+
+		chosenActionState.value = $state.snapshot(partyAction);
+		await sendAction(chosenActionState.value, false);
+
+		// Reset combat selection states
+		selectedCombatActionsByMemberState.value = {};
+		selectedCombatActionsDiceAdditionsState = {};
+		selectedCombatActionsLockedState = {};
+
+		isAiGeneratingState = false;
+	}
+	
+	function hasAnySelectedCombatActions(): boolean {
+		return Object.values(selectedCombatActionsByMemberState.value).some(action => action !== null && action !== undefined);
 	}
 
 	async function addCampaignAdditionalStoryInput(action: Action, additionalStoryInput: string) {
@@ -667,12 +933,13 @@ import { onMount, tick } from 'svelte';
 			additionalStoryInput += GameAgent.getCraftingPrompt();
 		}
 		// Add any extra side effects that should modify the story input.
+		// Use neutral regular_success to avoid triggering failure/critical branches pre-confirm.
 		additionalStoryInput = gameLogic.addAdditionsFromActionSideeffects(
 			action,
 			additionalStoryInput,
 			gameSettingsState.value.randomEventsHandling,
 			currentGameActionState.is_character_in_combat,
-			diceRollDialog.returnValue //TODO better way to pass the result ?, its string here
+			'regular_success'
 		);
 		if (!additionalStoryInput.includes('sudo')) {
 			additionalStoryInput +=
@@ -686,38 +953,60 @@ import { onMount, tick } from 'svelte';
 		return additionalStoryInput;
 	}
 
-	const applyGameEventEvaluation = (evaluated: EventEvaluation) => {
-		if (!evaluated) {
-			return;
-		}
-		const changeInto = evaluated?.character_changed?.changed_into;
-		if (changeInto && changeInto !== eventEvaluationState.value.character_changed?.changed_into) {
-			evaluated.character_changed!.aiProcessingComplete = false;
-			eventEvaluationState.value = {
-				...eventEvaluationState.value,
-				character_changed: evaluated.character_changed
-			};
-		}
-		const abilities = evaluated?.abilities_learned?.abilities
-			?.filter(
-				(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
-			)
-			.filter(
-				(newAbility) =>
-					!eventEvaluationState.value.abilities_learned?.abilities?.some(
-						(existing) =>
-							existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
-							existing.name === newAbility.name
+	const applyGameEventEvaluationForMember = (memberId: string, evaluated: EventEvaluation) => {
+				if (!evaluated) return;
+				const currentStored = eventEvaluationByMemberState.value[memberId] || initialEventEvaluationState;
+				let updated: EventEvaluation = { ...currentStored };
+
+				// Character transformation detection
+				const changeInto = evaluated?.character_changed?.changed_into;
+				if (changeInto && changeInto !== currentStored.character_changed?.changed_into) {
+					updated = {
+						...updated,
+						character_changed: {
+							...evaluated.character_changed!,
+							aiProcessingComplete: false,
+							showEventConfirmationDialog: false
+						}
+					};
+				}
+
+				// Abilities learned filtering (exclude already known & duplicates in stored state)
+				const abilities = evaluated?.abilities_learned?.abilities
+					?.filter(
+						(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
 					)
-			);
-		if (abilities && abilities.length > 0) {
-			evaluated.abilities_learned!.aiProcessingComplete = false;
-			eventEvaluationState.value = {
-				...eventEvaluationState.value,
-				abilities_learned: { ...evaluated?.abilities_learned, abilities }
-			};
-		}
-	};
+					.filter(
+						(newAbility) =>
+							!currentStored.abilities_learned?.abilities?.some(
+								(existing) =>
+									existing.uniqueTechnicalId === newAbility.uniqueTechnicalId ||
+									existing.name === newAbility.name
+								)
+						);
+				if (abilities && abilities.length > 0) {
+					updated = {
+						...updated,
+						abilities_learned: {
+							...updated.abilities_learned,
+							abilities: abilities,
+							aiProcessingComplete: false,
+							showEventConfirmationDialog: false
+						}
+					};
+				}
+
+				// Persist in mapping
+				eventEvaluationByMemberState.value = {
+					...eventEvaluationByMemberState.value,
+					[memberId]: updated
+				};
+				// If active member, reflect in single-character reactive state for existing UI compatibility
+				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				if (memberId === activeId) {
+					eventEvaluationState.value = updated;
+				}
+			}
 
 	// Helper to process the AI story progression and update game state accordingly.
 	async function processStoryProgression(
@@ -746,6 +1035,7 @@ import { onMount, tick } from 'svelte';
 			gameSettingsState.value,
 			simulation
 		);
+		console.log('New game action state:', newState);
 
 		if (newState.story) {
 			await processPostStory(newState, action, simulation);
@@ -774,53 +1064,143 @@ import { onMount, tick } from 'svelte';
 
 			if (!isGameEnded.value) {
 				getRelatedHistoryForStory();
+				getRelatedHistoryForStory();
+				// Build party evaluation input (fallback to single active character if party not initialized)
+				const partyMembersForEvaluation = (partyState.value.members.length
+					? partyState.value.members
+					: [{ id: playerCharacterIdState, character: characterState.value }]
+				).map((m) => ({
+					id: m.id,
+					name: m.character.name,
+					known_abilities:
+						(partyStatsState.value.members.find((ms) => ms.id === m.id)?.stats.spells_and_abilities || characterStatsState.value.spells_and_abilities).map(
+							(a) => a.name
+						)
+				}));
+
 				eventAgent
-					.evaluateEvents(
-						historyMessagesState.value.slice(-6).map((m) => m.content),
-						characterStatsState.value.spells_and_abilities.map((a) => a.name)
+					.evaluatePartyEvents(
+						historyMessagesState.value.slice(-1).map((m) => m.content),
+						partyMembersForEvaluation
 					)
 					.then((evaluation) => {
-						applyGameEventEvaluation(evaluation.event_evaluation);
-						thoughtsState.value.eventThoughts = evaluation.thoughts;
+						console.log('Event evaluation result:', evaluation);
+						evaluation.events_by_member.forEach((ev) => {
+							console.log(`Applying event evaluation for member ${JSON.stringify(ev)}:`, ev);
+							applyGameEventEvaluationForMember(ev.character_id, {
+								character_changed: ev.character_changed,
+								abilities_learned: ev.abilities_learned
+							});
+							// Apply per-member restraining state if provided by EventAgent
+							if (typeof ev.restrained_state_explanation !== 'undefined') {
+								
+								restrainedExplanationByMemberState.value = {
+									...restrainedExplanationByMemberState.value,
+									[ev.character_id]: ev.restrained_state_explanation || null
+								};
+								console.log(`applied event ${JSON.stringify(restrainedExplanationByMemberState.value)}:`, restrainedExplanationByMemberState.value);
+						
+							}else{
+								restrainedExplanationByMemberState.value = {
+									...restrainedExplanationByMemberState.value,
+									[ev.character_id]: null
+								};
+							}
+							});
+						const perCharThoughts = evaluation.events_by_member
+							.map((ev) => `${ev.character_name}: ${ev.reasoning || ''}`)
+							.join('\n');
+						thoughtsState.value.eventThoughts = evaluation.thoughts + '\n' + perCharThoughts;
 					});
 
-				// Generate the next set of actions.
-				actionAgent
-					.generateActions(
-						currentGameActionState,
-						historyMessagesState.value,
-						storyState.value,
-						characterState.value,
-						characterStatsState.value,
-						inventoryState.value,
-						systemInstructionsState.value.generalSystemInstruction,
-						systemInstructionsState.value.actionAgentInstruction,
-						relatedHistory,
-						gameSettingsState.value?.aiIntroducesSkills,
-						newState.is_character_restrained_explanation,
-						additionalActionInputState.value
-					)
-					.then(({ thoughts, actions }) => {
-						if (actions) {
-							console.log(stringifyPretty(actions));
-							characterActionsState.value = actions;
-							renderGameState(currentGameActionState, actions);
-							addSkillsIfApplicable(actions);
+				// Generate the next set of actions for all party members
+				const generateActionsForAllMembers = async () => {
+					const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+					
+					// Generate actions for all party members concurrently
+					const actionsPromises = partyState.value.members.map(async (member) => {
+						// Skip if actions already exist for this member
+						if (characterActionsByMemberState.value[member.id]) {
+							return null;
 						}
-						thoughtsState.value.actionsThoughts = thoughts;
-						resetStatesAfterActionsGenerated();
+						
+						try {
+							const memberStats = partyStatsState.value.members.find(m => m.id === member.id);
+							if (!memberStats) return null;
+							
+							// Get current resources for this member
+							const currentResources = playerCharactersGameState[member.id];
+							const memberStatsWithCurrentResources = {
+								...memberStats.stats,
+								resources: Object.fromEntries(
+									Object.entries(memberStats.stats.resources).map(([key, resource]) => [
+										key,
+										{
+											...resource,
+											current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+										}
+									])
+								)
+							};
+							
+							const memberRestrainingState = getActiveRestrainingState(
+								partyState.value,
+								playerCharactersIdToNamesMapState.value,
+								member.character.name,
+								restrainedExplanationByMemberState.value,
+								newState
+							);
+							
+							const { thoughts, actions } = await actionAgent.generateActions(
+								currentGameActionState,
+								historyMessagesState.value,
+								storyState.value,
+								member.character,
+								memberStatsWithCurrentResources,
+								inventoryState.value,
+								systemInstructionsState.value.generalSystemInstruction,
+								systemInstructionsState.value.actionAgentInstruction,
+								relatedHistory,
+								gameSettingsState.value?.aiIntroducesSkills,
+								memberRestrainingState,
+								additionalActionInputState.value
+							);
+							
+							return { memberId: member.id, actions, thoughts, isActive: member.id === activeId };
+						} catch (error) {
+							console.warn(`Failed to generate actions for ${member.character.name}:`, error);
+							return null;
+						}
 					});
+					
+					const results = await Promise.all(actionsPromises);
+					
+					// Process results
+					results.forEach(result => {
+						if (result && result.actions) {
+							characterActionsByMemberState.value[result.memberId] = result.actions;
+							
+							// If this is the active character, also update the main state and render
+							if (result.isActive) {
+								characterActionsState.value = result.actions;
+								thoughtsState.value.actionsThoughts = result.thoughts;
+								renderGameState(currentGameActionState, result.actions);
+								addSkillsIfApplicable(result.actions);
+							}
+						}
+					});
+					
+					resetStatesAfterActionsGenerated();
+				};
+				
+				generateActionsForAllMembers();
 				handlePostActionProcessedState();
 			}
 		}
 	}
 
 	// Runs post-story async tasks (image prompt + stats generation) concurrently, then applies results.
-	async function processPostStory(
-		newState: GameActionState,
-		action: Action,
-		simulation: string
-	) {
+	async function processPostStory(newState: GameActionState, action: Action, simulation: string) {
 		newState.image_prompt = '';
 		checkForNewNPCs(newState);
 		npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
@@ -842,14 +1222,18 @@ import { onMount, tick } from 'svelte';
 
 		const statsUpdatesPromise = (async () => {
 			try {
+				const partyResourcesByName = partyState.value.members.length > 0
+					? Object.fromEntries(
+							partyState.value.members.map(m => [
+								m.character.name,
+								playerCharactersGameState[m.id] || {}
+							])
+					  )
+					: { [characterState.value.name]: playerCharactersGameState[playerCharacterIdState] };
 				const generated = await combatAgent.generateStatsUpdatesFromStory(
 					newState.story || '',
 					action,
-					getCharacterKnownNames(
-						playerCharactersIdToNamesMapState.value,
-						characterState.value.name
-					),
-					playerCharactersGameState[playerCharacterIdState],
+					partyResourcesByName,
 					gameLogic.getAllTargetsAsList(currentGameActionState.currently_present_npcs),
 					systemInstructionsState.value.generalSystemInstruction,
 					currentGameActionState.is_character_in_combat
@@ -944,30 +1328,30 @@ import { onMount, tick } from 'svelte';
 			//take the last 10000 characters as it is probably the real input
 			additionalStoryInputState.value = additionalStoryInputState.value.slice(-10_000);
 		}
-		if(!deadNPCs){
+		if (!deadNPCs) {
 			deadNPCs = npcLogic.removeDeadNPCs(npcState.value);
 		}
 		// Retrieve combat and NPC-related story additions.
 		if (
-					!waitForActionsResult &&
-					useDynamicCombat.value &&
-					!isGameEnded.value &&
-					currentGameActionState.is_character_in_combat
-				) {
-					waitForActionsResult = getActionPromptForCombat(
-						action,
-						currentGameActionState,
-						npcState.value,
-						inventoryState.value,
-						systemInstructionsState.value.generalSystemInstruction,
-						systemInstructionsState.value.combatAgentInstruction,
-						getLatestStoryMessages(),
-						storyState.value,
-						combatAgent
-					).then((actions) => {
-						relatedNPCActionsState.value = actions;
-					});
-				}
+			!waitForActionsResult &&
+			useDynamicCombat.value &&
+			!isGameEnded.value &&
+			currentGameActionState.is_character_in_combat
+		) {
+			waitForActionsResult = getActionPromptForCombat(
+				action,
+				currentGameActionState,
+				npcState.value,
+				inventoryState.value,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.combatAgentInstruction,
+				getLatestStoryMessages(),
+				storyState.value,
+				combatAgent
+			).then((actions) => {
+				relatedNPCActionsState.value = actions;
+			});
+		}
 		try {
 			if (rollDice) {
 				if (relatedActionHistoryState.value.length === 0) {
@@ -1002,7 +1386,7 @@ import { onMount, tick } from 'svelte';
 							relatedActionGroundTruthState.value = groundTruth;
 						});
 				}
-				openDiceRollDialog(waitForGroundTruthResult, waitForActionsResult, deadNPCs);
+				openDiceRollDialog(waitForGroundTruthResult, waitForActionsResult, deadNPCs, undefined);
 			} else {
 				showXLastStoryPrgressions = 0;
 				isAiGeneratingState = true;
@@ -1033,8 +1417,10 @@ import { onMount, tick } from 'svelte';
 					removeCluesFromSimulationOnFailure(diceRollAdditionText)
 				);
 
-
-				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(relatedNPCActionsState.value, deadNPCs);
+				additionalStoryInputState.value += CombatAgent.getAdditionalStoryInput(
+					relatedNPCActionsState.value,
+					deadNPCs
+				);
 				additionalStoryInputState.value += CombatAgent.getNPCsHealthStatePrompt(deadNPCs);
 
 				// Prepare the additional story input (including combat and chapter info)
@@ -1109,21 +1495,54 @@ import { onMount, tick } from 'svelte';
 		}
 		button.textContent = getTextForActionButton(action);
 
+		// Get active character ID for resource checks
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const isLocked = is_character_in_combat && selectedCombatActionsLockedState[activeId];
+		
 		if (
 			!isEnoughResource(
 				action,
-				playerCharactersGameState[playerCharacterIdState],
+				playerCharactersGameState[activeId],
 				inventoryState.value
 			)
 		) {
 			button.disabled = true;
 		}
+
+		// Check if this action is selected for this character in combat
+		const isSelected =
+			is_character_in_combat && selectedCombatActionsByMemberState.value[activeId] === action;
+		if (isSelected) button.className += ' btn-accent';
+		if (isLocked) button.disabled = true;
+
 		button.addEventListener('click', () => {
-			chosenActionState.value = $state.snapshot(action);
-			sendAction(
-				chosenActionState.value,
-				gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat)
-			);
+			if (is_character_in_combat) {
+				// Prevent changes after lock
+				if (selectedCombatActionsLockedState[activeId]) return;
+				selectedCombatActionsByMemberState.value[activeId] = action;
+				// If dice roll required open dialog with callback, else lock immediately
+				if (mustRollDice(action, true)) {
+					chosenActionState.value = $state.snapshot(action);
+					openDiceRollDialog(undefined, undefined, undefined, (result) => {
+						selectedCombatActionsDiceAdditionsState[activeId] = getDiceRollPromptAddition(result);
+						selectedCombatActionsLockedState[activeId] = true;
+						// Re-render to reflect lock
+						if (actionsDiv) actionsDiv.innerHTML = '';
+						renderGameState(currentGameActionState, characterActionsState.value);
+					});
+				} else {
+					selectedCombatActionsLockedState[activeId] = true;
+					if (actionsDiv) actionsDiv.innerHTML = '';
+					renderGameState(currentGameActionState, characterActionsState.value);
+				}
+			} else {
+				// Outside combat original behavior
+				chosenActionState.value = $state.snapshot(action);
+				sendAction(
+					chosenActionState.value,
+					gameLogic.mustRollDice(chosenActionState.value, is_character_in_combat)
+				);
+			}
 		});
 		actionsDiv.appendChild(button);
 	}
@@ -1170,7 +1589,13 @@ import { onMount, tick } from 'svelte';
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation,
+			getActiveRestrainingState(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value,
+				characterState.value.name,
+				restrainedExplanationByMemberState.value,
+				currentGameActionState
+			),
 			additionalActionInputState.value
 		);
 		if (generatedAction) {
@@ -1191,15 +1616,13 @@ import { onMount, tick } from 'svelte';
 
 		additionalStoryInputState.value =
 			targetAddition + abilityAddition + (additionalStoryInputState.value || '');
-		await sendAction(
-			action,
-			gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
-		);
+		
+		await handleActionSelection(action);
 		isAiGeneratingState = false;
 	};
 	const onCustomDiceRollClosed = () => {
 		customDiceRollNotation = '';
-		customActionInput.value = '';
+		customActionInput && (customActionInput.value = '');
 	};
 	const onLevelUpModalClosed = (aiLevelUp: AiLevelUp) => {
 		if (aiLevelUp) {
@@ -1224,21 +1647,22 @@ import { onMount, tick } from 'svelte';
 		checkForLevelUp();
 	};
 
-	const onSuggestItemActionClosed = (action?: Action) => {
+	const onSuggestItemActionClosed = async (action?: Action) => {
 		if (action) {
+			
+			
 			if (action.is_custom_action) {
 				generateActionFromCustomInput(action);
 			} else {
-				chosenActionState.value = $state.snapshot(action);
 				addSkillsIfApplicable([action]);
-				sendAction(action, mustRollDice(action, currentGameActionState.is_character_in_combat));
+				await handleActionSelection(action);
 			}
 		}
 		itemForSuggestActionsState = undefined;
 	};
 
 	const getCurrentCampaignChapter = (): CampaignChapter | undefined =>
-		campaignState.value?.chapters.find(
+		campaignState.value?.chapters?.find(
 			(chapter) => chapter.chapterId === currentChapterState.value
 		);
 
@@ -1267,7 +1691,13 @@ import { onMount, tick } from 'svelte';
 			systemInstructionsState.value.actionAgentInstruction,
 			relatedActionHistoryState.value,
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation,
+			getActiveRestrainingState(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value,
+				characterState.value.name,
+				restrainedExplanationByMemberState.value,
+				currentGameActionState
+			),
 			additionalActionInputState.value
 		);
 		console.log('generatedAction', stringifyPretty(generatedAction));
@@ -1277,20 +1707,18 @@ import { onMount, tick } from 'svelte';
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 			if (
 				!isEnoughResource(
 					action,
-					playerCharactersGameState[playerCharacterIdState],
+					playerCharactersGameState[activeId],
 					inventoryState.value
 				)
 			) {
 				customActionImpossibleReasonState = 'not_enough_resource';
 			} else {
 				customActionImpossibleReasonState = undefined;
-				await sendAction(
-					action,
-					gameLogic.mustRollDice(action, currentGameActionState.is_character_in_combat)
-				);
+				await handleActionSelection(action);
 			}
 		}
 		isAiGeneratingState = false;
@@ -1387,6 +1815,9 @@ import { onMount, tick } from 'svelte';
 		confirmed: boolean
 	) {
 		eventEvaluationState.value.character_changed!.showEventConfirmationDialog = false;
+		// Sync mapping immediately (dialog closed)
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		if (confirmed === undefined) {
 			return;
 		}
@@ -1402,30 +1833,48 @@ import { onMount, tick } from 'svelte';
 			);
 
 			if (transformedCharacter) {
+				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				
+				// Update character ID mapping
 				addCharacterToPlayerCharactersIdToNamesMap(
 					playerCharactersIdToNamesMapState.value,
-					playerCharacterIdState,
+					activeId,
 					transformedCharacter.name
 				);
 				characterState.value = transformedCharacter;
+				
+				// Update party member if in party mode
+				const partyMember = partyState.value.members.find(m => m.id === activeId);
+				if (partyMember) {
+					partyMember.character = transformedCharacter;
+				}
 			}
 			if (transformedCharacterStats) {
 				characterStatsState.value = transformedCharacterStats;
+				
+				// Update party stats if in party mode
+				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
+				if (memberStats) {
+					memberStats.stats = transformedCharacterStats;
+				}
+				
 				//generate new actions considering resources might have changed
 				regenerateActions();
 				additionalStoryInputState.value +=
-					'\n After transformation make sure that stats_update refer to the new resources from now on!\n' +
+					'\n After transformation make sure that stats_update refer to the new resources from now on for character ' + characterState.value.name + '!\n' +
 					stringifyPretty(characterStatsState.value.resources);
 			}
 
 			//apply new resources
-			playerCharactersGameState[playerCharacterIdState] = {
+			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			playerCharactersGameState[activeId] = {
 				...$state.snapshot(characterStatsState.value.resources),
-				XP: playerCharactersGameState[playerCharacterIdState].XP
+				XP: playerCharactersGameState[activeId].XP
 			};
 			const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
 				$state.snapshot(characterStatsState.value.resources),
-				playerCharacterIdState,
+				activeId,
 				characterState.value.name,
 				$state.snapshot(gameActionsState.value),
 				$state.snapshot(playerCharactersGameState)
@@ -1434,6 +1883,8 @@ import { onMount, tick } from 'svelte';
 			playerCharactersGameState = updatedPlayerCharactersGameState;
 		}
 		eventEvaluationState.value.character_changed!.aiProcessingComplete = true;
+		// Persist updated processing flag
+		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		isAiGeneratingState = false;
 	}
 
@@ -1442,6 +1893,8 @@ import { onMount, tick } from 'svelte';
 		if (!abilities) {
 			return;
 		}
+		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		eventEvaluationState.value.abilities_learned!.aiProcessingComplete = true;
 		if (abilities.length === 0) {
 			return;
@@ -1482,6 +1935,13 @@ import { onMount, tick } from 'svelte';
 		characterActionsState.reset();
 		if (actionsDiv) actionsDiv.innerHTML = '';
 
+		const restrainingStateForActive = getActiveRestrainingState(
+			partyState.value,
+			playerCharactersIdToNamesMapState.value,
+			characterState.value.name,
+			restrainedExplanationByMemberState.value,
+			currentGameActionState
+		);
 		const { thoughts, actions } = await actionAgent.generateActions(
 			currentGameActionState,
 			historyMessagesState.value,
@@ -1499,7 +1959,7 @@ import { onMount, tick } from 'svelte';
 				customMemoriesState.value
 			),
 			gameSettingsState.value?.aiIntroducesSkills,
-			currentGameActionState.is_character_restrained_explanation,
+			restrainingStateForActive,
 			additionalActionInputState.value
 		);
 		characterActionsState.value = actions;
@@ -1572,6 +2032,12 @@ import { onMount, tick } from 'svelte';
 		checkForLevelUp();
 	}
 
+	// Derived convenience flags for disabling further selections when combat action is locked
+	const activeMemberId = $derived(partyState.value.activeCharacterId || playerCharacterIdState);
+	const isActiveCombatActionLocked = $derived(
+		currentGameActionState.is_character_in_combat && selectedCombatActionsLockedState[activeMemberId]
+	);
+
 	async function handleStateCommand(action: Action) {
 		isAiGeneratingState = true;
 		action.text += SUDO_COMMAND + '\nOnly apply the mentioned state updates, but nothing else.';
@@ -1584,8 +2050,10 @@ import { onMount, tick } from 'svelte';
 		);
 		isAiGeneratingState = false;
 		if (customActionInput) customActionInput.value = '';
+	
 		if (newState) {
 			// Apply the new state to the game logic
+			console.log('Generated new state from state command:', stringifyPretty(newState));
 			gameLogic.applyGameActionState(
 				playerCharactersGameState,
 				playerCharactersIdToNamesMapState.value,
@@ -1597,6 +2065,123 @@ import { onMount, tick } from 'svelte';
 			handlePostActionProcessedState();
 		}
 	}
+
+
+	// Track in-flight generations so we don't start duplicate calls for same character
+	let actionGenerationInFlight: Record<string, boolean> = {};
+
+	const onSwitchCharacter = async (characterId: string) => {
+		const activeId = characterId;
+
+		// Update active character id first so resource lookups use the new id.
+		if (partyState.value.activeCharacterId !== activeId) {
+			partyState.value.activeCharacterId = activeId;
+			// Sync character + stats to selected member for immediate UI consistency
+			const member = partyState.value.members.find((m) => m.id === activeId);
+			if (member) {
+				characterState.value = member.character;
+				const memberStats = partyStatsState.value.members.find((m) => m.id === activeId);
+				if (memberStats) {
+					characterStatsState.value = memberStats.stats;
+				}
+			}
+		}
+					// Load per-member event evaluation state for UI
+			eventEvaluationState.value =
+				eventEvaluationByMemberState.value[activeId] || initialEventEvaluationState;
+
+		// If a generation is already running for this character and no cached actions yet, just bail.
+		if (actionGenerationInFlight[activeId]) {
+			return; // Prevent spawning another LLM request
+		}
+
+		// Persist current visible actions with the previously active character id
+		if (characterActionsState.value.length > 0) {
+			const prevId = Object.keys(characterActionsByMemberState.value).find(
+				id => characterActionsByMemberState.value[id] === characterActionsState.value
+			);
+			if (prevId && prevId !== activeId) {
+				characterActionsByMemberState.value[prevId] = characterActionsState.value;
+			}
+		}
+
+		// If cached actions exist, show them immediately (only if still the active character)
+		if (
+			characterActionsByMemberState.value[activeId] &&
+			characterActionsByMemberState.value[activeId].length > 0
+		) {
+			if (partyState.value.activeCharacterId === activeId) {
+				characterActionsState.value = characterActionsByMemberState.value[activeId];
+				if (actionsDiv) actionsDiv.innerHTML = '';
+				renderGameState(currentGameActionState, characterActionsState.value);
+			}
+			checkForLevelUp();
+			return;
+		}
+
+		actionGenerationInFlight[activeId] = true;
+		if (partyState.value.activeCharacterId === activeId) {
+			characterActionsState.reset();
+			if (actionsDiv) actionsDiv.innerHTML = '';
+		}
+
+		const currentCharacter = partyState.value.members.find(m => m.id === activeId)?.character;
+		const currentStats = partyStatsState.value.members.find(m => m.id === activeId)?.stats;
+
+
+		let thoughts, actions;
+		try {
+			const restrainingStateForActive = getActiveRestrainingState(
+				partyState.value,
+				playerCharactersIdToNamesMapState.value,
+				currentCharacter!.name,
+				restrainedExplanationByMemberState.value,
+				currentGameActionState
+			);
+			({ thoughts, actions } = await actionAgent.generateActions(
+				currentGameActionState,
+				historyMessagesState.value,
+				storyState.value,
+				currentCharacter!,
+				currentStats!,
+				inventoryState.value,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.actionAgentInstruction,
+				await getRelatedHistory(
+					summaryAgent,
+					undefined,
+					undefined,
+					relatedStoryHistoryState.value,
+					customMemoriesState.value
+				),
+				gameSettingsState.value?.aiIntroducesSkills,
+				restrainingStateForActive,
+				additionalActionInputState.value
+			));
+		} catch (e) {
+			// On failure clear in-flight flag and rethrow/log
+			console.warn('Action generation failed for character', activeId, e);
+			actionGenerationInFlight[activeId] = false;
+			return; // Do not proceed
+		}
+		finally {
+			// Nothing here yet; keep for future cleanup.
+		}
+
+		// Always save generated actions for this character
+		characterActionsByMemberState.value[activeId] = actions;
+
+		// Only update UI if still active character
+		if (partyState.value.activeCharacterId === activeId) {
+			characterActionsState.value = actions;
+			thoughtsState.value.actionsThoughts = thoughts;
+			if (actionsDiv) actionsDiv.innerHTML = '';
+			renderGameState(currentGameActionState, characterActionsState.value);
+		}
+
+		actionGenerationInFlight[activeId] = false;
+		checkForLevelUp();
+	};
 </script>
 
 <div id="game-container" class="container mx-auto p-4">
@@ -1614,6 +2199,7 @@ import { onMount, tick } from 'svelte';
 			onclose={onGMQuestionClosed}
 			question={gmQuestionState}
 			{playerCharactersGameState}
+			restrainedExplanationByMemberState={restrainedExplanationByMemberState.value}
 		/>
 	{/if}
 	{#if eventEvaluationState.value.character_changed?.showEventConfirmationDialog && !eventEvaluationState.value.character_changed?.aiProcessingComplete}
@@ -1637,6 +2223,8 @@ import { onMount, tick } from 'svelte';
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
+		party={partyState.value}
+		disableSelection={isActiveCombatActionLocked}
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
@@ -1650,6 +2238,7 @@ import { onMount, tick } from 'svelte';
 			}
 		}}
 		onclose={onItemUseChosen}
+		disableSelection={isActiveCombatActionLocked}
 	></UseItemsModal>
 	{#if itemForSuggestActionsState}
 		<SuggestedActionsModal
@@ -1678,6 +2267,7 @@ import { onMount, tick } from 'svelte';
 	{#if customDiceRollNotation}
 		<SimpleDiceRoller onClose={onCustomDiceRollClosed} notation={customDiceRollNotation} />
 	{/if}
+
 	<ResourcesComponent
 		resources={getCurrentCharacterGameState()}
 		currentLevel={characterStatsState.value?.level}
@@ -1722,7 +2312,34 @@ import { onMount, tick } from 'svelte';
 			></TTSComponent>
 		</div>
 	{/if}
+	
+	<!-- Party Member Switcher above actions -->
+	{#if partyState.value.members.length > 1 && !isGameEnded.value}
+		<div class="mt-4">
+			<PartyMemberSwitcher
+				party={partyState.value}
+				onSwitch={() => onSwitchCharacter($state.snapshot(partyState.value.activeCharacterId))}
+			/>
+		</div>
+	{/if}
+	
 	<div id="actions" bind:this={actionsDiv} class="mt-2 p-4 pb-0 pt-0"></div>
+	
+	{#if currentGameActionState.is_character_in_combat && !isGameEnded.value}
+		<div class="p-4 pb-0 pt-0">
+			<button
+				onclick={() => confirmCombatActions()}
+				class="text-md btn btn-success mb-3 w-full"
+				>
+				{#if hasAnySelectedCombatActions()}
+					Confirm Combat Actions ({Object.keys(selectedCombatActionsByMemberState.value).filter(k => selectedCombatActionsByMemberState.value[k]).length}/{partyState.value.members.length} selected)
+				{:else}
+					Confirm Combat Actions (Let AI choose for all)
+				{/if}
+			</button>
+		</div>
+	{/if}
+	
 	{#if Object.keys(currentGameActionState).length !== 0}
 		{#if !isGameEnded.value}
 			{#if characterActionsState.value?.length === 0}
@@ -1807,11 +2424,15 @@ import { onMount, tick } from 'svelte';
 					type="text"
 					bind:this={customActionInput}
 					class="input input-bordered w-full"
+					disabled={isActiveCombatActionLocked && customActionReceiver === 'Character Action'}
+					title={isActiveCombatActionLocked && customActionReceiver === 'Character Action' ? 'Combat action already chosen for this round' : ''}
 					id="user-input"
 					placeholder={getCustomActionPlaceholder(customActionReceiver)}
 				/>
 				<button
 					onclick={() => onCustomActionSubmitted(customActionInput.value)}
+					disabled={isActiveCombatActionLocked && customActionReceiver === 'Character Action'}
+					title={isActiveCombatActionLocked && customActionReceiver === 'Character Action' ? 'Combat action already chosen for this round' : ''}
 					class="btn btn-neutral w-full lg:w-1/4"
 					id="submit-button"
 					>Submit

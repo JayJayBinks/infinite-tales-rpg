@@ -21,7 +21,7 @@
 	const characterStatsState = useLocalStorage('characterStatsState');
 	const difficultyState = useLocalStorage('difficultyState');
 	const useKarmicDice = useLocalStorage('useKarmicDice');
-	const useDynamicCombat = useLocalStorage('useDynamicCombat');
+	const useDynamicCombat = useLocalStorage('useDynamicCombat', true);
 	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
 		'relatedStoryHistoryState',
 		{ relatedDetails: [] }

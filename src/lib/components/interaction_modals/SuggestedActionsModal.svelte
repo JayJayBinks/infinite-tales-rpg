@@ -3,10 +3,12 @@
 	import { onMount } from 'svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
-	import { type CharacterDescription } from '$lib/ai/agents/characterAgent';
+	import { type CharacterDescription, type Party } from '$lib/ai/agents/characterAgent';
 	import type { LLMMessage } from '$lib/ai/llm';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import { ActionAgent } from '$lib/ai/agents/actionAgent';
+	import { getActiveRestrainingState } from '../../../routes/game/restrainingLogic';
+	import { getCharacterTechnicalId } from '../../../routes/game/characterLogic';
 	import type {
 		Action,
 		GameActionState,
@@ -44,6 +46,15 @@
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const customActionAgentInstruction = useLocalStorage<string>('customActionAgentInstruction');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
+		'restrainedExplanationByMemberState',
+		{}
+	);
+	const partyState = useLocalStorage<Party>('partyState');
+	const playerCharactersIdToNamesMapState = useLocalStorage<Record<string, string[]>>(
+		'playerCharactersIdToNamesMapState',
+		{}
+	);
 	let thoughtsState = $state('');
 	let suggestedActions: Array<Action> = $state([]);
 	let customActionInput: string = $state('');
@@ -52,17 +63,21 @@
 	let actionAgent: ActionAgent;
 
 	onMount(async () => {
-		const llm = LLMProvider.provideLLM(
-			{
-				temperature: temperatureState.value,
-				language: aiLanguage.value,
-				apiKey: apiKeyState.value
-			},
-			aiConfigState.value?.useFallbackLlmState
-		);
+		const llm = LLMProvider.provideLLM({
+			temperature: temperatureState.value,
+			language: aiLanguage.value,
+			apiKey: apiKeyState.value
+		});
 		actionAgent = new ActionAgent(llm);
 
 		isGeneratingState = true;
+		const restrainingStateForActive = getActiveRestrainingState(
+			partyState.value,
+			playerCharactersIdToNamesMapState.value,
+			characterState.value.name,
+			restrainedExplanationByMemberState.value,
+			currentGameActionState
+		);
 		const { thoughts, actions } = await actionAgent.generateActionsForItem(
 			itemForSuggestActionsState,
 			currentGameActionState,
@@ -71,7 +86,7 @@
 			characterState.value,
 			characterStatsState.value,
 			inventoryState.value,
-			currentGameActionState.is_character_restrained_explanation,
+			restrainingStateForActive,
 			customSystemInstruction.value,
 			customActionAgentInstruction.value,
 			true,

@@ -5,7 +5,7 @@
 	let { onclose }: { onclose?: () => void } = $props();
 	let gameSettingsState = useLocalStorage<GameSettings>('gameSettingsState', defaultGameSettings());
 
-	const useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', false);
+	const useDynamicCombat = useLocalStorage<boolean>('useDynamicCombat', true);
 </script>
 
 <dialog open class="modal z-50" style="background: rgba(0, 0, 0, 0.3);">

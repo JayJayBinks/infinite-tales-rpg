@@ -27,25 +27,25 @@ export type StatsUpdate = {
 	type: string;
 };
 export const statsUpdatePromptObject = `
-    "stats_update": [
-        # You must include one update for each action
-        # Also include one update per turn effect like poisoned or bleeding
-        {
-        	"explanation": "Short explanation for the reason of this change",
-        	# if targetName is a NPC then resourceKey must be one of hp,mp else one of related CHARACTER resources
-            "sourceName": "NPC name or player CHARACTER name, who is the initiator of this action",
-            "targetName": "NPC name or player CHARACTER name, whose stats must be updated.",
+	"stats_update": [
+		# You must include one update for each ACTIVE action
+		# Also include one update per ongoing turn effect like poisoned or bleeding
+		{
+		"explanation": "Short explanation for the reason of this change",
+		# If targetName is an NPC then resourceKey must be one of hp, mp; if a party member then one of that party member's resources
+			"sourceName": "NPC name or PARTY MEMBER name who is the initiator of this action",
+			"targetName": "NPC name or PARTY MEMBER name whose stats must be updated.",
 			"type": "{resourceKey}_lost|{resourceKey}_gained; resourceKey must be one of the targetName's resources",
-            "value": "must be dice roll notation in format 1d6+3 or 3d4 etc."
-        },
-        {
-        	"targetName": "Player CHARACTER name who gains XP.",
-        	"explanation": "Short explanation for the reason of this change",
-           	"type": "xp_gained",
-           	"value": "SMALL|MEDIUM|HIGH"
-        },
-        ...
-        ]`;
+			"value": "must be dice roll notation in format 1d6+3 or 3d4 etc."
+		},
+		{
+			"targetName": "Party member name who gains XP.",
+			"explanation": "Short explanation for the reason of this change",
+		   	"type": "xp_gained",
+		   	"value": "SMALL|MEDIUM|HIGH"
+		},
+		...
+		]`;
 
 export class CombatAgent {
 	llm: LLM;
@@ -61,8 +61,7 @@ export class CombatAgent {
 	async generateStatsUpdatesFromStory(
 		story: string,
 		playerAction: Action,
-		playerCharacterNames: string[],
-		playerResources: ResourcesWithCurrentValue,
+		partyMemberResources: { [partyMemberName: string]: ResourcesWithCurrentValue },
 		presentNPCKnownNames: string[],
 		customSystemInstruction: string,
 		customCombatAgentInstruction: string
@@ -70,53 +69,69 @@ export class CombatAgent {
 		const npcNames = presentNPCKnownNames.slice(-50);
 
 		const systemInstruction: string[] = [];
-		// Role description
+		// Role description (party-aware)
 		systemInstruction.push(
-			'You are Stats Update Agent. Your tasks: 1. determine what ACTIVE ACTIONS player character and NPCs take from STORY; 2. Derive precise stats_update entries from the determined ACTIONS. Do not invent events absent from the STORY.'
+			'You are Stats Update Agent. Tasks: (1) Determine which ACTIVE ACTIONS party members and NPCs take from the STORY; (2) Derive precise stats_update entries from ONLY those actions or ongoing status effects. Never invent events not explicitly described.'
 		);
-		// Provide resource context
+		// Provide resource context (party members)
+		const partyMemberNames = Object.keys(partyMemberResources);
+		const perMemberResourceLines = partyMemberNames.map((name) => {
+			const resourceKeys = Object.keys(partyMemberResources[name] || {}).filter(
+				(k) => k.toLowerCase() !== 'xp'
+			);
+			return `${name}: ${resourceKeys.join(', ') || 'NO_RESOURCES_DEFINED'}`;
+		});
 		systemInstruction.push(
-			`The following are PLAYER CHARACTER with known names '${playerCharacterNames.join(', ')}' resources, derive EXACTLY one of these names and following resourceKeys exactly typed for that target:
-			${Object.keys(playerResources).join(', ')}
-			Action resource costs will be explicitly stated in the user prompt, you dont have to infer it.`
+				`Party member names and resource keys (only use the listed keys for the matching member, never mix them across members):\n` +
+				perMemberResourceLines.join('\n') +
+				`\nAction resource costs (if any) are explicitly listed; do NOT infer or double-apply costs.`
 		);
 		systemInstruction.push(
 			'NPC names you may reference EXACTLY (hp/mp only):\n' + npcNames.join(', ')
 		);
 		// Reuse original stats update spec
 		systemInstruction.push(
-			`${jsonRule}\n{\n"determined_actions": "string array; one entry per ACTIVE action but not outcomes", ${statsUpdatePromptObject}\n}\n` +
-			'# Rules:\n' +
-			`ACTIONS:
-			**Strict Adherence to Text:** Derive stat changes ONLY from events EXPLICITLY stated in the STORY. If the story says an attack *missed* or a character *dodged*, you MUST NOT create a hp_lost entry for that attack. 
-			Do not infer damage from descriptions of attack preparation, heat, close calls, or environmental damage unless the character is explicitly stated to be harmed.
-			**Action vs. Outcome Distinction:** In determined_actions, list only the initial, active action (e.g., 'Character A attacks Character B'). Do NOT list the result or outcome of that action (e.g., 'Character B's shield is hit', 'The attack misses and hits a wall') as a separate, new action.
-			**Confirmed Hits Only:** Only generate a hp_lost entry if the STORY explicitly describes an attack *connecting* with its target and causing harm.\n` +
-			`STATS_UPDATE:
-			- Determine if stats_update is necessary for each ACTION or ongoing effect (bleeding/poison/etc.) if present in STORY.
-			- Use dice notation (e.g. 1d6+2) for value for non-xp changes, or if mentioned directly COST OF THE PLAYER ACTION
-			- Types follow pattern {resourceKey}_lost or {resourceKey}_gained OR xp_gained.\n` + 
-			`- Handle PLAYER CHARACTER resources per GAME rules, e.g. in a survival game hunger decreases over time; Blood magic costs blood; etc...
-			XP:
-				- Award XP only for contributions to a challenge according to significance.
-				- SMALL: Obtaining clues, engaging in reconnaissance, or learning background information.
-				- MEDIUM: Major progress toward a challenge, such as uncovering a vital piece of evidence, or getting access to a crucial location.
-				- HIGH: Achieving breakthroughs or resolving significant challenges.
-			- XP is also granted for the character’s growth (e.g. a warrior mastering a new technique).
-			- Never grant XP for routine tasks (e.g. basic dialogue, non-story shopping) or actions that build tension but don’t change outcomes.
+			`${jsonRule}\n{\n"determined_actions": "string array; one entry per ACTIVE action only (no outcomes/effects)", ${statsUpdatePromptObject}\n}\n` +
+				'# Rules (Party-Oriented):\n' +
+				`ACTIONS:
+			- Strict Adherence: Derive actions ONLY from events explicitly stated in STORY.
+			- List ONLY the initiating action (e.g. 'A strikes B'), NOT outcomes ('B is wounded').
+			- Confirmed Hits Only: Produce hp_lost (or other resource lost) ONLY when impact / harm is explicit.
+			- Ongoing effects (bleeding, poison, burning) each produce their own update per tick if explicitly described.
+			Party members are NOT NPCs; never classify them as such.
+			` +
+				`STATS_UPDATE:
+			- One entry per ACTIVE action that causes a resource change, plus explicit ongoing effects.
+			- Use dice notation (e.g. 1d6+2) for non-xp values unless an exact numeric or cost is specified.
+			- If COST OF THE PLAYER ACTION is provided, reflect that cost exactly once; do not fabricate extra cost.
+			- Types: {resourceKey}_lost | {resourceKey}_gained | xp_gained.
+			- Handle PARTY MEMBER resources per game rules (e.g. survival drains, blood magic self-costs) ONLY if explicitly narrated.
+			` +
+				`XP:
+			- Award to the specific contributing party member(s) only.
+			- SMALL: reconnaissance / minor progress.
+			- MEDIUM: meaningful step toward major goal.
+			- HIGH: decisive breakthrough / resolution.
+			- No XP for trivial, routine, or purely atmospheric actions.
 			`
 		);
 		if (customSystemInstruction) {
-			systemInstruction.push('Additional instructions which can override others: ' + customSystemInstruction);
+			systemInstruction.push(
+				'Additional instructions which can override others: ' + customSystemInstruction
+			);
 		}
 		if (customCombatAgentInstruction) {
-			systemInstruction.push('Additional instructions which can override others: ' + customCombatAgentInstruction);
+			systemInstruction.push(
+				'Additional instructions which can override others: ' + customCombatAgentInstruction
+			);
 		}
 
 		const userMessage =
 			'STORY (reference only, do NOT repeat):\n' +
 			story +
-			(playerAction.resource_cost ? '\n\nCOST OF THE PLAYER ACTION:\n' + JSON.stringify(playerAction.resource_cost) : '') +
+			(playerAction.resource_cost
+				? '\n\nCOST OF THE PLAYER ACTION:\n' + JSON.stringify(playerAction.resource_cost)
+				: '') +
 			'\n\nReturn ONLY JSON with determined_actions and stats_update.';
 
 		const request: LLMRequest = {
@@ -125,9 +140,9 @@ export class CombatAgent {
 			systemInstruction,
 			returnFallbackProperty: true,
 			reportErrorToUser: false,
-			temperature: .7,
-			model: GEMINI_MODELS.FLASH_LITE_2_5,
-			thinkingConfig: { includeThoughts: true, thinkingBudget: THINKING_BUDGET.DEFAULT }
+			temperature: 0.7,
+			model: GEMINI_MODELS.FLASH_2_5,
+			thinkingConfig: { includeThoughts: true }
 		};
 		const response = await this.llm.generateContent(request);
 		console.log('stats updates thoughts: ', response?.thoughts);
@@ -141,7 +156,7 @@ export class CombatAgent {
 		}
 		console.log('stats updates raw: ', stringifyPretty(content));
 		// Map dice notations
-		const updates = { stats_update }
+		const updates = { stats_update };
 		mapStatsUpdates(updates);
 		return updates.stats_update || [];
 	}
@@ -157,11 +172,14 @@ export class CombatAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story
 	): Promise<NPCAction[]> {
+		if( npcsList.length === 0){
+			return [];
+		}
 		const agent = [
-			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action and the outcomes of these actions" +
+			"You are RPG combat agent, you decide which actions the NPCs take in response to the active party member's action and the outcomes of these actions. Remember that other party members may also be present." +
 				'\n For deciding the outcome simulate if the NPC action can be successfull based on the circumstances.' +
 				'\n You must include an action for each NPC from the list.',
-			"The following is the character's inventory, if an item is relevant in combat then apply it's effect." +
+			"The party's shared inventory - if an item is relevant in combat then apply its effect:" +
 				'\n' +
 				stringifyPretty(inventoryState),
 			'The following is a description of the story setting to keep the actions consistent on.' +
@@ -186,7 +204,7 @@ export class CombatAgent {
 			agent.push('Following instructions overrule all others: ' + customCombatAgentInstruction);
 		}
 		const actionToSend =
-			'player character named ' +
+			'The active party member named ' +
 			action.characterName +
 			' takes following action: ' +
 			action.text +
@@ -213,17 +231,20 @@ export class CombatAgent {
 	static getAdditionalStoryInput(actions: Array<NPCAction>, deadNPCs?: Array<string>) {
 		// let bossFightPrompt = allNpcsDetailsAsList.some(npc => npc.rank === 'Boss' || npc.rank === 'Legendary')
 		//     ? '\nFor now only use following difficulties: ' + bossDifficulties.join('|'): ''
-		if(deadNPCs && deadNPCs.length > 0) {
-			actions = actions.filter(action => !deadNPCs.includes(action.sourceId) && !deadNPCs.includes(action.targetId));
+		if (deadNPCs && deadNPCs.length > 0) {
+			actions = actions.filter(
+				(action) => !deadNPCs.includes(action.sourceId) && !deadNPCs.includes(action.targetId)
+			);
 		}
 		const mappedActions = actions.map(
 			(action) =>
 				`${action.sourceId} targets ${action.targetId} with result: ${action.simulated_outcome}`
 		);
-		return mappedActions.length === 0 ? '' : (
-			'\nDescribe the player action and the following NPCS actions in the story progression:\n' +
-			stringifyPretty(mappedActions) + '\n'
-		);
+		return mappedActions.length === 0
+			? ''
+			: '\nDescribe the player action and the following NPCS actions in the story progression:\n' +
+					stringifyPretty(mappedActions) +
+					'\n';
 	}
 
 	static getNPCsHealthStatePrompt(

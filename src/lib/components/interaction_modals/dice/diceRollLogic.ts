@@ -97,25 +97,25 @@ export function determineDiceRollResult(
 
 export const getDiceRollPromptAddition = (result: DiceRollResult | undefined) => {
 	if (result === 'critical_failure') {
-		return 'The player action is a critical failure!';
+		return 'The action is a critical failure!';
 	}
 	if (result === 'critical_success') {
-		return 'The player action is a critical success!';
+		return 'The action is a critical success!';
 	}
 	if (result === 'major_failure') {
-		return 'The player action is a major failure.';
+		return 'The action is a major failure.';
 	}
 	if (result === 'regular_failure') {
-		return 'The player action is a regular failure.';
+		return 'The action is a regular failure.';
 	}
 	if (result === 'partial_failure') {
-		return 'The player action is a partial failure.';
+		return 'The action is a partial failure.';
 	}
 	if (result === 'major_success') {
-		return 'The player action is a major success.';
+		return 'The action is a major success.';
 	}
 	if (result === 'regular_success') {
-		return 'The player action is a regular success.';
+		return 'The action is a regular success.';
 	}
 
 	return '';

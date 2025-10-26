@@ -1,17 +1,20 @@
 <script lang="ts">
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
 	import { getNPCDisplayName } from '$lib/util.svelte';
+	import type { Party } from '$lib/ai/agents/characterAgent';
 
 	let {
 		targets,
 		action,
 		onclose,
-		dialogRef = $bindable()
+		dialogRef = $bindable(),
+		party
 	}: {
 		targets: Targets;
 		action: Action;
 		onclose;
 		dialogRef;
+		party?: Party;
 	} = $props();
 
 	let targetForm;
@@ -39,12 +42,17 @@
 			<button class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2">✕</button>
 		</form>
 		<form bind:this={targetForm} class="mt-3 flex flex-col items-start">
-			<div class="form-control">
-				<label class="label cursor-pointer">
-					<input type="checkbox" class="checkbox" value="Self" />
-					<span class="ml-2 capitalize">Self</span>
-				</label>
-			</div>
+			{#if party && party.members.length > 0}
+				<span class="m-auto mt-3 font-bold">Party Members:</span>
+				{#each party.members as member}
+					<div class="form-control">
+						<label class="label cursor-pointer">
+							<input type="checkbox" class="checkbox" value={member.character.name} />
+							<span class="ml-2 capitalize">{member.character.name}</span>
+						</label>
+					</div>
+				{/each}
+			{/if}
 			<div class="form-control">
 				<label class="label cursor-pointer">
 					<input type="checkbox" class="checkbox" value={''} />

@@ -5,6 +5,7 @@
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { AIConfig } from '$lib';
+	import type { Party } from '$lib/ai/agents/characterAgent';
 
 	let {
 		abilities,
@@ -13,7 +14,9 @@
 		resources,
 		targets,
 		onclose,
-		dialogRef = $bindable()
+		dialogRef = $bindable(),
+		party,
+		disableSelection = false
 	}: {
 		abilities: Array<Ability>;
 		playerName: string;
@@ -22,6 +25,8 @@
 		targets: Targets;
 		onclose;
 		dialogRef;
+		party?: Party;
+		disableSelection?: boolean;
 	} = $props();
 
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -40,7 +45,7 @@
 </script>
 
 {#if targets}
-	<TargetModal bind:dialogRef={targetModalRef} {targets} action={abilityActionState} {onclose}
+	<TargetModal bind:dialogRef={targetModalRef} {targets} action={abilityActionState} {onclose} {party}
 	></TargetModal>
 {/if}
 <dialog bind:this={dialogRef} class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
@@ -83,10 +88,12 @@
 								<button
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
-									disabled={ability.resource_cost?.cost > 0 &&
+									disabled={disableSelection || (ability.resource_cost?.cost > 0 &&
 										ability.resource_cost?.cost >
-											(resources[ability.resource_cost?.resource_key || '']?.current_value || 0)}
+											(resources[ability.resource_cost?.resource_key || '']?.current_value || 0))}
+									title={disableSelection ? 'Action already chosen for this combat round' : ''}
 									onclick={() => {
+										if (disableSelection) return;
 										mapAbilityToAction(ability);
 										dialogRef.close();
 										targetModalRef.showModal();

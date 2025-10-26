@@ -32,14 +32,11 @@
 
 	onMount(async () => {
 		characterStatsAgent = new CharacterStatsAgent(
-			LLMProvider.provideLLM(
-				{
-					temperature: 0.5,
-					apiKey: apiKeyState.value,
-					language: aiLanguage.value
-				},
-				aiConfigState.value?.useFallbackLlmState
-			)
+			LLMProvider.provideLLM({
+				temperature: 0.5,
+				apiKey: apiKeyState.value,
+				language: aiLanguage.value
+			})
 		);
 	});
 

@@ -57,6 +57,7 @@
 			</output>
 		{:else}
 			<output
+				data-testid={`resource-${resourceKey}-label`}
 				class="overflow-auto text-center text-lg font-semibold capitalize"
 				class:text-end={isDisplayedInGrid}
 				class:mr-3={isDisplayedInGrid}
@@ -66,6 +67,7 @@
 				{resourceKey.replaceAll('_', ' ')}
 			</output>
 			<output
+				data-testid={`resource-${resourceKey}-value`}
 				class="text-center text-lg font-semibold capitalize"
 				class:text-start={isDisplayedInGrid}
 				class:ml-3={isDisplayedInGrid}
