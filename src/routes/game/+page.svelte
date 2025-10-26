@@ -8,7 +8,7 @@
 		type ThoughtsState
 	} from '$lib/util.svelte';
 	// Import state stores
-	import { aiStateStore } from '$lib/state/stores';
+	import { aiStateStore, characterStateStore } from '$lib/state/stores';
 	import {
 		type Action,
 		defaultGameSettings,
@@ -168,14 +168,15 @@
 	);
 	const selectedCombatActionsByMemberState = useLocalStorage<Record<string, Action | null>>('selectedCombatActionsByMemberState', {});
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState', []);
-	const characterState = useLocalStorage<CharacterDescription>(
-		'characterState',
-		initialCharacterState
-	);
-	const characterStatsState = useLocalStorage<CharacterStats>(
-		'characterStatsState',
-		initialCharacterStatsState
-	);
+	// Character state - now using characterStateStore
+	// const characterState = useLocalStorage<CharacterDescription>(
+	// 	'characterState',
+	// 	initialCharacterState
+	// );
+	// const characterStatsState = useLocalStorage<CharacterStats>(
+	// 	'characterStatsState',
+	// 	initialCharacterStatsState
+	// );
 	const partyState = useLocalStorage<Party>('partyState', initialPartyState);
 	const partyStatsState = useLocalStorage<PartyStats>('partyStatsState', initialPartyStatsState);
 
@@ -185,8 +186,8 @@
 			const activeMember = getActivePartyMember(partyState.value);
 			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
 			if (activeMember && activeMemberStats) {
-				characterState.value = activeMember.character;
-				characterStatsState.value = activeMemberStats;
+				characterStateStore.character.value = activeMember.character;
+				characterStateStore.characterStats.value = activeMemberStats;
 			}
 		}
 	});
@@ -236,7 +237,7 @@
 			partyState.value.activeCharacterId ||
 			(getCharacterTechnicalId(
 				playerCharactersIdToNamesMapState.value,
-				characterState.value.name
+				characterStateStore.character.value.name
 			) || '');
 		return playerCharactersGameState[effectiveId];
 	};
@@ -257,7 +258,7 @@
 	);
 
 	const playerCharacterIdState = $derived(
-		getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
+		getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterStateStore.character.value.name) ||
 			''
 	);
 	const getRenderedGameUpdates = (gameState: GameActionState, playerId: string) =>
@@ -350,7 +351,7 @@
 		imagePromptAgent = new ImagePromptAgent(llm);
 
 		migrateStates();
-		const currentCharacterName = characterState.value.name;
+		const currentCharacterName = characterStateStore.character.value.name;
 		let characterId = getCharacterTechnicalId(
 			playerCharactersIdToNamesMapState.value,
 			currentCharacterName
@@ -402,7 +403,7 @@
 
 			// Initialize the player's resource state if it doesn't exist.
 			playerCharactersGameState[characterId] = {
-				...$state.snapshot(characterStatsState.value.resources),
+				...$state.snapshot(characterStateStore.characterStats.value.resources),
 				XP: { current_value: 0, max_value: 0, game_ends_when_zero: false }
 			};
 		}
@@ -430,9 +431,9 @@
 		);
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } =
 			initializeMissingResources(
-				$state.snapshot(characterStatsState.value.resources),
+				$state.snapshot(characterStateStore.characterStats.value.resources),
 				playerCharacterIdState,
-				characterState.value.name,
+				characterStateStore.character.value.name,
 				$state.snapshot(gameActionsState.value),
 				$state.snapshot(playerCharactersGameState)
 			);
@@ -443,9 +444,9 @@
 			// Get current resources for the active character
 			const currentResources = getCurrentCharacterGameState();
 			const characterStatsWithCurrentResources = {
-				...characterStatsState.value,
+				...characterStateStore.characterStats.value,
 				resources: Object.fromEntries(
-					Object.entries(characterStatsState.value.resources).map(([key, resource]) => [
+					Object.entries(characterStateStore.characterStats.value.resources).map(([key, resource]) => [
 						key,
 						{
 							...resource,
@@ -459,7 +460,7 @@
 					const restrainingStateForActive = getActiveRestrainingState(
 						partyState.value,
 						playerCharactersIdToNamesMapState.value,
-						characterState.value.name,
+						characterStateStore.character.value.name,
 						restrainedExplanationByMemberState.value,
 						currentGameActionState
 					);
@@ -467,7 +468,7 @@
 				currentGameActionState,
 				historyMessagesState.value,
 				storyState.value,
-				characterState.value,
+				characterStateStore.character.value,
 				characterStatsWithCurrentResources,
 				inventoryState.value,
 				aiStateStore.systemInstructions.value.generalSystemInstruction,
@@ -498,16 +499,16 @@
 
 	async function initializeGame() {
 		await sendAction({
-			characterName: characterState.value.name,
+			characterName: characterStateStore.character.value.name,
 			text: GameAgent.getStartingPrompt()
 		});
 		if (gameActionsState.value.length === 0) return;
 		// Initialize all resources when the game is first started.
 
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
-			$state.snapshot(characterStatsState.value.resources),
+			$state.snapshot(characterStateStore.characterStats.value.resources),
 			playerCharacterIdState,
-			characterState.value.name,
+			characterStateStore.character.value.name,
 			$state.snapshot(gameActionsState.value),
 			$state.snapshot(playerCharactersGameState)
 		);
@@ -567,7 +568,7 @@
 		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 		const requiredSkillProgression = getRequiredSkillProgression(
 			skillName,
-			characterStatsState.value
+			characterStateStore.characterStats.value
 		);
 		if (requiredSkillProgression) {
 			// Initialize member's skills progression if not exists
@@ -580,11 +581,11 @@
 			
 			if (skillsProgressionState.value[activeId][skillName] >= requiredSkillProgression) {
 				console.log('Advancing skill ' + skillName + ' by 1 for character ' + activeId);
-				characterStatsState.value.skills[skillName] += 1;
+				characterStateStore.characterStats.value.skills[skillName] += 1;
 				skillsProgressionState.value[activeId][skillName] = 0;
 				gameActionsState.value[gameActionsState.value.length].stats_update.push({
-					sourceName: characterState.value.name,
-					targetName: characterState.value.name,
+					sourceName: characterStateStore.character.value.name,
+					targetName: characterStateStore.character.value.name,
 					value: { result: skillName },
 					type: 'skill_increased'
 				});
@@ -592,7 +593,7 @@
 				// Update party stats for the active member
 				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
 				if (memberStats) {
-					memberStats.stats.skills[skillName] = characterStatsState.value.skills[skillName];
+					memberStats.stats.skills[skillName] = characterStateStore.characterStats.value.skills[skillName];
 				}
 			}
 		} else {
@@ -636,7 +637,7 @@
 			}
 
 			// Original single-action flow: apply skill progression + send immediately.
-			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
+			const skillName = getSkillIfApplicable(characterStateStore.characterStats.value, chosenActionState.value);
 			if (skillName && diceRollResult) {
 				skillsProgressionForCurrentActionState = getSkillProgressionForDiceRoll(diceRollResult);
 			}
@@ -737,7 +738,7 @@
 			if (!isGameEnded.value && allDead) {
 				isGameEnded.value = true;
 				await sendAction({
-					characterName: characterState.value.name,
+					characterName: characterStateStore.character.value.name,
 					text: 'All party members have fallen. The adventure ends here.'
 				});
 			}
@@ -749,7 +750,7 @@
 			if (!isGameEnded.value && emptyResourceKeys.length > 0) {
 				isGameEnded.value = true;
 				await sendAction({
-					characterName: characterState.value.name,
+					characterName: characterStateStore.character.value.name,
 					text: GameAgent.getGameEndedPrompt(emptyResourceKeys)
 				});
 			}
@@ -782,7 +783,7 @@
 					storyState.value,
 					getLatestStoryMessages(),
 					newNPCsIds.map((id) => id.uniqueTechnicalNameId),
-					characterStatsState.value,
+					characterStateStore.characterStats.value,
 					aiStateStore.systemInstructions.value.generalSystemInstruction
 				)
 				.then((newNPCState: NPCState) => {
@@ -824,7 +825,7 @@
 		
 		// For active character (for backward compatibility)
 		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
-		const neededXP = getXPNeededForLevel(characterStatsState.value.level);
+		const neededXP = getXPNeededForLevel(characterStateStore.characterStats.value.level);
 		if (
 			neededXP &&
 			playerCharactersGameState[activeId]?.XP.current_value >= neededXP
@@ -976,7 +977,7 @@
 				// Abilities learned filtering (exclude already known & duplicates in stored state)
 				const abilities = evaluated?.abilities_learned?.abilities
 					?.filter(
-						(a) => !characterStatsState.value?.spells_and_abilities.some((b) => b.name === a.name)
+						(a) => !characterStateStore.characterStats.value?.spells_and_abilities.some((b) => b.name === a.name)
 					)
 					.filter(
 						(newAbility) =>
@@ -1030,7 +1031,7 @@
 			isCharacterInCombat ? aiStateStore.systemInstructions.value.combatAgentInstruction : '',
 			historyMessagesState.value,
 			storyState.value,
-			characterState.value,
+			characterStateStore.character.value,
 			playerCharactersGameState[playerCharacterIdState],
 			inventoryState.value,
 			relatedHistory,
@@ -1042,7 +1043,7 @@
 		if (newState.story) {
 			await processPostStory(newState, action, simulation);
 
-			const skillName = getSkillIfApplicable(characterStatsState.value, action);
+			const skillName = getSkillIfApplicable(characterStateStore.characterStats.value, action);
 			console.log('skillName to improve', skillName);
 			if (skillName) {
 				//if no dice was rolled, use difficulty
@@ -1070,12 +1071,12 @@
 				// Build party evaluation input (fallback to single active character if party not initialized)
 				const partyMembersForEvaluation = (partyState.value.members.length
 					? partyState.value.members
-					: [{ id: playerCharacterIdState, character: characterState.value }]
+					: [{ id: playerCharacterIdState, character: characterStateStore.character.value }]
 				).map((m) => ({
 					id: m.id,
 					name: m.character.name,
 					known_abilities:
-						(partyStatsState.value.members.find((ms) => ms.id === m.id)?.stats.spells_and_abilities || characterStatsState.value.spells_and_abilities).map(
+						(partyStatsState.value.members.find((ms) => ms.id === m.id)?.stats.spells_and_abilities || characterStateStore.characterStats.value.spells_and_abilities).map(
 							(a) => a.name
 						)
 				}));
@@ -1212,7 +1213,7 @@
 				const prompt = await imagePromptAgent.generateImagePrompt(
 					getLatestStoryMessages(),
 					newState.story || '',
-					characterState.value.name,
+					characterStateStore.character.value.name,
 					currentGameActionState.image_prompt || ''
 				);
 				return prompt || 'big letters showing ERROR GENERATING IMAGE PROMPT';
@@ -1231,7 +1232,7 @@
 								playerCharactersGameState[m.id] || {}
 							])
 					  )
-					: { [characterState.value.name]: playerCharactersGameState[playerCharacterIdState] };
+					: { [characterStateStore.character.value.name]: playerCharactersGameState[playerCharacterIdState] };
 				const generated = await combatAgent.generateStatsUpdatesFromStory(
 					newState.story || '',
 					action,
@@ -1270,10 +1271,10 @@
 	const addSkillsIfApplicable = (actions: Action[]) => {
 		if (gameSettingsState.value?.aiIntroducesSkills) {
 			actions.forEach((action: Action) => {
-				const skill = isNewSkill($state.snapshot(characterStatsState.value), action);
+				const skill = isNewSkill($state.snapshot(characterStateStore.characterStats.value), action);
 				//TODO skill can be trait sometimes which we dont want?
 				if (skill) {
-					characterStatsState.value.skills[skill] = 0;
+					characterStateStore.characterStats.value.skills[skill] = 0;
 				}
 			});
 		}
@@ -1473,7 +1474,7 @@
 
 	function levelUpClicked(playerName: string) {
 		levelUpState.value.playerName = playerName;
-		const level = $state.snapshot(characterStatsState.value.level);
+		const level = $state.snapshot(characterStateStore.characterStats.value.level);
 		const xpNeededForLevel = getXPNeededForLevel(level);
 		if (!xpNeededForLevel) {
 			handleError('Could not calculate XP needed for level up!');
@@ -1584,8 +1585,8 @@
 			currentGameActionState,
 			getLatestStoryMessages(),
 			storyState.value,
-			characterState.value,
-			characterStatsState.value,
+			characterStateStore.character.value,
+			characterStateStore.characterStats.value,
 			inventoryState.value,
 			aiStateStore.systemInstructions.value.generalSystemInstruction,
 			aiStateStore.systemInstructions.value.actionAgentInstruction,
@@ -1594,7 +1595,7 @@
 			getActiveRestrainingState(
 				partyState.value,
 				playerCharactersIdToNamesMapState.value,
-				characterState.value.name,
+				characterStateStore.character.value.name,
 				restrainedExplanationByMemberState.value,
 				currentGameActionState
 			),
@@ -1628,19 +1629,19 @@
 	};
 	const onLevelUpModalClosed = (aiLevelUp: AiLevelUp) => {
 		if (aiLevelUp) {
-			characterStatsState.value = applyLevelUp(aiLevelUp, characterStatsState.value);
+			characterStateStore.characterStats.value = applyLevelUp(aiLevelUp, characterStateStore.characterStats.value);
 		} else {
-			characterStatsState.value = {
-				...characterStatsState.value,
-				level: characterStatsState.value.level + 1
+			characterStateStore.characterStats.value = {
+				...characterStateStore.characterStats.value,
+				level: characterStateStore.characterStats.value.level + 1
 			};
 		}
 		levelUpState.reset();
 
 		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
-			$state.snapshot(characterStatsState.value.resources),
+			$state.snapshot(characterStateStore.characterStats.value.resources),
 			playerCharacterIdState,
-			characterState.value.name,
+			characterStateStore.character.value.name,
 			$state.snapshot(gameActionsState.value),
 			$state.snapshot(playerCharactersGameState)
 		);
@@ -1686,8 +1687,8 @@
 			currentGameActionState,
 			historyMessagesState.value,
 			storyState.value,
-			characterState.value,
-			characterStatsState.value,
+			characterStateStore.character.value,
+			characterStateStore.characterStats.value,
 			inventoryState.value,
 			aiStateStore.systemInstructions.value.generalSystemInstruction,
 			aiStateStore.systemInstructions.value.actionAgentInstruction,
@@ -1696,7 +1697,7 @@
 			getActiveRestrainingState(
 				partyState.value,
 				playerCharactersIdToNamesMapState.value,
-				characterState.value.name,
+				characterStateStore.character.value.name,
 				restrainedExplanationByMemberState.value,
 				currentGameActionState
 			),
@@ -1728,7 +1729,7 @@
 
 	const onCustomActionSubmitted = async (text: string, mustGenerateCustomAction = false) => {
 		let action: Action = {
-			characterName: characterState.value.name,
+			characterName: characterStateStore.character.value.name,
 			text,
 			is_custom_action: true
 		};
@@ -1783,7 +1784,7 @@
 		if (text) {
 			sendAction(
 				{
-					characterName: characterState.value.name,
+					characterName: characterStateStore.character.value.name,
 					text,
 					is_custom_action: false
 				},
@@ -1828,8 +1829,8 @@
 			const { transformedCharacter, transformedCharacterStats } = await applyCharacterChange(
 				changedInto,
 				$state.snapshot(storyState.value),
-				$state.snapshot(characterState.value),
-				$state.snapshot(characterStatsState.value),
+				$state.snapshot(characterStateStore.character.value),
+				$state.snapshot(characterStateStore.characterStats.value),
 				characterAgent,
 				characterStatsAgent
 			);
@@ -1843,7 +1844,7 @@
 					activeId,
 					transformedCharacter.name
 				);
-				characterState.value = transformedCharacter;
+				characterStateStore.character.value = transformedCharacter;
 				
 				// Update party member if in party mode
 				const partyMember = partyState.value.members.find(m => m.id === activeId);
@@ -1852,7 +1853,7 @@
 				}
 			}
 			if (transformedCharacterStats) {
-				characterStatsState.value = transformedCharacterStats;
+				characterStateStore.characterStats.value = transformedCharacterStats;
 				
 				// Update party stats if in party mode
 				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
@@ -1864,20 +1865,20 @@
 				//generate new actions considering resources might have changed
 				regenerateActions();
 				additionalStoryInputState.value +=
-					'\n After transformation make sure that stats_update refer to the new resources from now on for character ' + characterState.value.name + '!\n' +
-					stringifyPretty(characterStatsState.value.resources);
+					'\n After transformation make sure that stats_update refer to the new resources from now on for character ' + characterStateStore.character.value.name + '!\n' +
+					stringifyPretty(characterStateStore.characterStats.value.resources);
 			}
 
 			//apply new resources
 			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 			playerCharactersGameState[activeId] = {
-				...$state.snapshot(characterStatsState.value.resources),
+				...$state.snapshot(characterStateStore.characterStats.value.resources),
 				XP: playerCharactersGameState[activeId].XP
 			};
 			const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
-				$state.snapshot(characterStatsState.value.resources),
+				$state.snapshot(characterStateStore.characterStats.value.resources),
 				activeId,
-				characterState.value.name,
+				characterStateStore.character.value.name,
 				$state.snapshot(gameActionsState.value),
 				$state.snapshot(playerCharactersGameState)
 			);
@@ -1902,9 +1903,9 @@
 			return;
 		}
 		console.log('Added new abilities:', stringifyPretty(abilities));
-		characterStatsState.value = {
-			...characterStatsState.value,
-			spells_and_abilities: [...characterStatsState.value.spells_and_abilities, ...abilities]
+		characterStateStore.characterStats.value = {
+			...characterStateStore.characterStats.value,
+			spells_and_abilities: [...characterStateStore.characterStats.value.spells_and_abilities, ...abilities]
 		};
 	};
 
@@ -1940,7 +1941,7 @@
 		const restrainingStateForActive = getActiveRestrainingState(
 			partyState.value,
 			playerCharactersIdToNamesMapState.value,
-			characterState.value.name,
+			characterStateStore.character.value.name,
 			restrainedExplanationByMemberState.value,
 			currentGameActionState
 		);
@@ -1948,8 +1949,8 @@
 			currentGameActionState,
 			historyMessagesState.value,
 			storyState.value,
-			characterState.value,
-			characterStatsState.value,
+			characterStateStore.character.value,
+			characterStateStore.characterStats.value,
 			inventoryState.value,
 			aiStateStore.systemInstructions.value.generalSystemInstruction,
 			aiStateStore.systemInstructions.value.actionAgentInstruction,
@@ -1970,9 +1971,9 @@
 	}
 
 	function migrateStates() {
-		characterStatsState.value = migrateIfApplicable(
+		characterStateStore.characterStats.value = migrateIfApplicable(
 			'characterStatsState',
-			$state.snapshot(characterStatsState.value)
+			$state.snapshot(characterStateStore.characterStats.value)
 		);
 		gameActionsState.value = migrateIfApplicable(
 			'gameActionsState',
@@ -2045,7 +2046,7 @@
 		action.text += SUDO_COMMAND + '\nOnly apply the mentioned state updates, but nothing else.';
 		const newState = await gameAgent.generateStateOnlyNoStory(
 			action,
-			characterState.value.name,
+			characterStateStore.character.value.name,
 			playerCharactersGameState[playerCharacterIdState],
 			inventoryState.value,
 			npcState.value
@@ -2081,10 +2082,10 @@
 			// Sync character + stats to selected member for immediate UI consistency
 			const member = partyState.value.members.find((m) => m.id === activeId);
 			if (member) {
-				characterState.value = member.character;
+				characterStateStore.character.value = member.character;
 				const memberStats = partyStatsState.value.members.find((m) => m.id === activeId);
 				if (memberStats) {
-					characterStatsState.value = memberStats.stats;
+					characterStateStore.characterStats.value = memberStats.stats;
 				}
 			}
 		}
@@ -2219,9 +2220,9 @@
 	{/if}
 	<UseSpellsAbilitiesModal
 		bind:dialogRef={useSpellsAbilitiesModal}
-		playerName={characterState.value.name}
+		playerName={characterStateStore.character.value.name}
 		resources={playerCharactersGameState[playerCharacterIdState]}
-		abilities={characterStatsState.value?.spells_and_abilities}
+		abilities={characterStateStore.characterStats.value?.spells_and_abilities}
 		storyImagePrompt={storyState.value.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
@@ -2231,7 +2232,7 @@
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}
 		{onDeleteItem}
-		playerName={characterState.value.name}
+		playerName={characterStateStore.character.value.name}
 		inventoryState={inventoryState.value}
 		storyImagePrompt={storyState.value.general_image_prompt}
 		oncrafting={(craftingPrompt) => {
@@ -2272,7 +2273,7 @@
 
 	<ResourcesComponent
 		resources={getCurrentCharacterGameState()}
-		currentLevel={characterStatsState.value?.level}
+		currentLevel={characterStateStore.characterStats.value?.level}
 	/>
 	<div id="story" class="mt-4 justify-items-center rounded-lg bg-base-100 p-4 shadow-md">
 		<button onclick={() => showXLastStoryPrgressions++} class="btn-xs w-full"
@@ -2356,7 +2357,7 @@
 				<button
 					onclick={() =>
 						sendAction({
-							characterName: characterState.value.name,
+							characterName: characterStateStore.character.value.name,
 							text: 'Continue The Tale'
 						})}
 					class="text-md btn btn-neutral mb-3 w-full"
@@ -2366,7 +2367,7 @@
 				{#if levelUpState.value.buttonEnabled}
 					<button
 						onclick={() => {
-							levelUpClicked(characterState.value.name);
+							levelUpClicked(characterStateStore.character.value.name);
 						}}
 						class="text-md btn btn-success mb-3 w-full"
 						>Level up!
