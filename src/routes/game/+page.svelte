@@ -1035,6 +1035,7 @@
 			gameSettingsState.value,
 			simulation
 		);
+		console.log('New game action state:', newState);
 
 		if (newState.story) {
 			await processPostStory(newState, action, simulation);
@@ -1083,19 +1084,29 @@
 						partyMembersForEvaluation
 					)
 					.then((evaluation) => {
+						console.log('Event evaluation result:', evaluation);
 						evaluation.events_by_member.forEach((ev) => {
+							console.log(`Applying event evaluation for member ${JSON.stringify(ev)}:`, ev);
 							applyGameEventEvaluationForMember(ev.character_id, {
 								character_changed: ev.character_changed,
 								abilities_learned: ev.abilities_learned
 							});
 							// Apply per-member restraining state if provided by EventAgent
 							if (typeof ev.restrained_state_explanation !== 'undefined') {
+								
 								restrainedExplanationByMemberState.value = {
 									...restrainedExplanationByMemberState.value,
 									[ev.character_id]: ev.restrained_state_explanation || null
 								};
+								console.log(`applied event ${JSON.stringify(restrainedExplanationByMemberState.value)}:`, restrainedExplanationByMemberState.value);
+						
+							}else{
+								restrainedExplanationByMemberState.value = {
+									...restrainedExplanationByMemberState.value,
+									[ev.character_id]: null
+								};
 							}
-						});
+							});
 						const perCharThoughts = evaluation.events_by_member
 							.map((ev) => `${ev.character_name}: ${ev.reasoning || ''}`)
 							.join('\n');
@@ -1651,7 +1662,7 @@
 	};
 
 	const getCurrentCampaignChapter = (): CampaignChapter | undefined =>
-		campaignState.value?.chapters.find(
+		campaignState.value?.chapters?.find(
 			(chapter) => chapter.chapterId === currentChapterState.value
 		);
 
@@ -2039,8 +2050,10 @@
 		);
 		isAiGeneratingState = false;
 		if (customActionInput) customActionInput.value = '';
+	
 		if (newState) {
 			// Apply the new state to the game logic
+			console.log('Generated new state from state command:', stringifyPretty(newState));
 			gameLogic.applyGameActionState(
 				playerCharactersGameState,
 				playerCharactersIdToNamesMapState.value,

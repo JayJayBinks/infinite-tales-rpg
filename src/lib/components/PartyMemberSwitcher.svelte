@@ -23,9 +23,21 @@
 		onSwitch?.();
 	}
 
+	const gameActionsState = useLocalStorage<any[]>('gameActionsState', []);
+
+	function hasLegacyRestrained(): boolean {
+		const arr = gameActionsState.value;
+		if (!arr || arr.length === 0) return false;
+		const last = arr[arr.length - 1];
+		return !!last?.is_character_restrained_explanation;
+	}
+
 	function isRestrained(memberId: string): boolean {
+		console.log('Checking if member is restrained:', memberId);
 		const v = restrainedExplanationByMemberState.value[memberId];
-		return !!v; // non-null, non-empty string indicates restrained
+		if (v) return true; // per-member mapping wins
+		// Fallback: legacy field applies only to active member
+		return party?.activeCharacterId === memberId && hasLegacyRestrained();
 	}
 
 	// State for restrained modal
@@ -65,11 +77,14 @@
 					>
 				</div>
 				{#if isRestrained(member.id)}
-					<button
-						type="button"
+					<span
+						role="button"
+						tabindex="0"
 						class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-error/90 p-0.5 text-error-content shadow ring-1 ring-error-content/30 transition hover:scale-110 focus:scale-110 focus:outline-none"
 						aria-label="Character restrained - tap for details"
+						data-testid="restrained-indicator"
 						onclick={(e) => showRestrainedModal(member.id, member.character.name, e)}
+						onkeydown={(e) => { if(e.key==='Enter' || e.key===' ') { showRestrainedModal(member.id, member.character.name, e as any); } }}
 					>
 						<svg
 							x="0px"
@@ -82,7 +97,7 @@
 							<title>Restrained</title>
 							<path d="M12 2a5 5 0 00-5 5v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7a5 5 0 00-5-5zm-3 8V7a3 3 0 116 0v3H9zm3 4a1.75 1.75 0 011.75 1.75c0 .74-.463 1.374-1.108 1.625L13 19h-2l.358-1.625A1.751 1.751 0 0112 14z" />
 						</svg>
-					</button>
+					</span>
 				{/if}
 			</button>
 		{/each}

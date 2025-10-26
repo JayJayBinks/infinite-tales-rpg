@@ -303,9 +303,18 @@ export function applyGameActionState(
 	}
 
 	for (const statUpdate of state?.stats_update?.map(mapStatsUpdateToGameLogic) || []) {
-		const characterId =
+		// Resolve the technical id from a display/known name. Some mock/state-only updates may already
+		// use the technical id (e.g. 'player_character_1') as targetName, which previously failed because
+		// we only searched by known names. Fallback: if the raw targetName matches an existing technical id
+		// in playerCharactersGameState, treat it directly.
+		let characterId =
 			getCharacterTechnicalId(playerCharactersIdToNamesMapState, statUpdate.targetName) || '';
+		if (!characterId && playerCharactersGameState[statUpdate.targetName]) {
+			characterId = statUpdate.targetName; // direct technical id provided
+		}
+		console.log('Applying stat update for characterId:', characterId, statUpdate);
 		if (playerCharactersGameState[characterId]) {
+			console.log('Found character in game state:', playerCharactersGameState[characterId]);
 			const updateResourceValue = Number.parseInt(statUpdate.value.result) || 0;
 			if (statUpdate.type.includes('now_level')) {
 				playerCharactersGameState[characterId].XP.current_value -= updateResourceValue;
@@ -330,8 +339,10 @@ export function applyGameActionState(
 			if (statUpdate.type.includes('_lost')) {
 				const resource: string = statUpdate.type.replace('_lost', '');
 				const res = getResourceIfPresent(playerCharactersGameState[characterId], resource);
+				console.log('Applying lost to resource:', resource, res);
 				if (!res) continue;
 				let lost = updateResourceValue;
+				console.log('Applying lost to resource:', lost);
 				lost = lost > 0 ? lost : 0;
 				res.current_value -= lost;
 			}

@@ -19,6 +19,16 @@
 	let isGenerating = $state(false);
 
 	function generateStory() {
+		// Ensure at least 1 party member for downstream generation
+		if (!partyMemberCount) {
+			partyMemberCount = 1;
+		}
+		console.log('[QuickstartModal] Start clicked', {
+			storyDescription,
+			partyDescription,
+			partyMemberCount,
+			stateStory: storyState
+		});
 		const data = {
 			story: storyState || storyDescription,
 			partyDescription,
@@ -79,7 +89,7 @@ Example: A dark fantasy quest to stop a necromancer from raising an undead army.
 			</label>
 			<div class="flex gap-2 justify-center">
 				{#each [1, 2, 3, 4] as count}
-					<button
+					<button type="button"
 						class="btn btn-sm"
 						class:btn-primary={partyMemberCount === count}
 						class:btn-outline={partyMemberCount !== count}
@@ -101,8 +111,14 @@ Example: A balanced party with a warrior, mage, rogue, and cleric."
 		</textarea>
 
 		<div class="mt-3 flex gap-2 w-full">
-			<button class="btn btn-primary flex-1" onclick={generateIdea}>Generate Idea</button>
-			<button class="btn btn-accent flex-1" onclick={generateStory}>Start</button>
+			<button type="button" class="btn btn-primary flex-1" onclick={generateIdea}>Generate Idea</button>
+			<button
+				type="button"
+				class="btn btn-accent flex-1"
+				onclick={() => {
+					generateStory();
+				}}
+			>Start</button>
 		</div>
 	</div>
 </dialog>

@@ -34,6 +34,7 @@ export type CharacterChangedInto = {
 export type EventEvaluation = {
 	character_changed?: CharacterChangedInto;
 	abilities_learned?: AbilitiesLearned;
+	restrained_state_explanation?: string | null;
 };
 
 // =============================
