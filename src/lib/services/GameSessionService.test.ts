@@ -51,10 +51,6 @@ describe('GameSessionService', () => {
 	});
 
 	describe('Party management', () => {
-		it('should always be in party mode', () => {
-			expect(service.isPartyMode()).toBe(true);
-		});
-
 		it('should get party size', () => {
 			const size = service.getPartySize();
 			expect(typeof size).toBe('number');

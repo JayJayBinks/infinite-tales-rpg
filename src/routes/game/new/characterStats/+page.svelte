@@ -125,7 +125,7 @@
 			console.log(newState);
 			parseState(newState);
 			characterStatsState.value = newState;
-			// Update party stats if we're using party mode
+			// Update party stats
 			if (partyState.value.members.length > 0) {
 				partyStatsState.value.members[currentCharacterIndex].stats = newState;
 			}

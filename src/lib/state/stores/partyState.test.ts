@@ -55,20 +55,6 @@ describe('PartyState', () => {
 			const member = partyState.getMemberById('player_2');
 			expect(member?.character.name).toBe('Hero 2');
 		});
-
-		it('should check if party mode is active', () => {
-			expect(partyState.isPartyMode).toBe(false);
-
-			partyState.party = {
-				members: [
-					{ id: 'player_1', character: initialCharacterState },
-					{ id: 'player_2', character: initialCharacterState }
-				],
-				activeCharacterId: 'player_1'
-			};
-
-			expect(partyState.isPartyMode).toBe(true);
-		});
 	});
 
 	describe('Member actions', () => {

@@ -14,12 +14,12 @@ import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorage
  * Manages event evaluations for character transformations and new abilities
  */
 export class EventStateStore {
-	// Current event evaluation (single-character compatibility)
+	// Legacy event evaluation (for backwards compatibility with active member)
 	private _eventEvaluation = $state<EventEvaluation>(
 		getFromLocalStorage('eventEvaluationState', initialEventEvaluationState)
 	);
 	
-	// Per-member event evaluations (party mode)
+	// Per-member event evaluations
 	private _eventEvaluationByMember = $state<Record<string, EventEvaluation>>(
 		getFromLocalStorage('eventEvaluationByMemberState', {})
 	);
@@ -66,7 +66,7 @@ export class EventStateStore {
 	}
 	
 	/**
-	 * Update active event evaluation (single-character mode)
+	 * Update active event evaluation (legacy, for active member)
 	 */
 	updateEventEvaluation(evaluation: EventEvaluation) {
 		this.eventEvaluation = evaluation;

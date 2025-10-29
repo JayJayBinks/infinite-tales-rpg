@@ -151,13 +151,6 @@ export class PartyState {
 	}
 	
 	/**
-	 * Check if party mode is active (more than one member)
-	 */
-	get isPartyMode(): boolean {
-		return this.party.members.length > 1;
-	}
-	
-	/**
 	 * Get all party character names
 	 */
 	getAllCharacterNames(): string[] {

@@ -350,65 +350,24 @@ export class GameAgent {
 	) {
 		// Defensive: handle undefined or empty resource state gracefully (can happen on very first tick before init)
 		if (!playerCharactersGameState) {
-			playerCharactersGameState = {} as ResourcesWithCurrentValue; // empty fallback
+			playerCharactersGameState = {} as PlayerCharactersGameState;
 		}
 
-		// Determine if this is a party game state (nested resources objects) or single character resource map.
-		// Heuristic: party shape => values are objects whose nested values have current_value; single => this object itself has resource entries.
-		let isParty = false;
-		let isSingleCharacter = false;
-		try {
-			const values = Object.values(playerCharactersGameState as any);
-			if (values.length === 0) {
-				// Empty -> assume single character (startup) so prompts remain coherent
-				isSingleCharacter = true;
-			} else {
-				const sample = values[0];
-				// If the sample itself has current_value we are in single-character current resources shape
-				if (sample && typeof sample === 'object' && 'current_value' in sample) {
-					isSingleCharacter = true;
-				} else {
-					// Check nested one level deeper to confirm party mapping
-					const nestedFirst = sample && typeof sample === 'object' ? Object.values(sample as any)[0] : undefined;
-					if (nestedFirst && typeof nestedFirst === 'object' && 'current_value' in (nestedFirst as any)) {
-						isParty = true;
-					} else {
-						// Fallback: treat as single character to avoid bloating prompt erroneously
-						isSingleCharacter = true;
-					}
-				}
-			}
-		} catch (e) {
-			// On any unexpected structure, default to single character to keep prompt minimal
-			isSingleCharacter = true;
-			isParty = false;
-		}
-
-		let partyResourcesPresentation = '';
-		if (isParty) {
-			// Map to an array for clarity in prompt
-			partyResourcesPresentation = stringifyPretty(
-				Object.entries(playerCharactersGameState as PlayerCharactersGameState).map(
-					([memberId, resources]) => ({ memberId, resources })
-				)
-			);
-		}
+		// Always treat as party mode - a single character is just a party of 1
+		const partyResourcesPresentation = stringifyPretty(
+			Object.entries(playerCharactersGameState as PlayerCharactersGameState).map(
+				([memberId, resources]) => ({ memberId, resources })
+			)
+		);
 
 		const gameAgent = [
 			systemBehaviour(gameSettings),
 			stringifyPretty(storyState),
-			isParty
-				? 'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story. IMPORTANT: Party members are player characters and should NEVER be added to currently_present_npcs.' +
-					'\n' +
-					stringifyPretty(characterState)
-				: 'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-					'\n' +
-					stringifyPretty(characterState),
-			isParty
-				? "The following are all party members' CURRENT resources. Consider the party's overall condition in your response.\n" +
-					partyResourcesPresentation
-				: "The following are the character's CURRENT resources, consider it in your response\n" +
-					stringifyPretty(Object.entries(playerCharactersGameState as ResourcesWithCurrentValue)),
+			'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story. IMPORTANT: Party members are player characters and should NEVER be added to currently_present_npcs.' +
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are all party members' CURRENT resources. Consider the party's overall condition in your response.\n" +
+				partyResourcesPresentation,
 			"The party's shared inventory - check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
 				stringifyPretty(inventoryState)
 		];

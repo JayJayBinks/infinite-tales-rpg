@@ -105,11 +105,6 @@ export class SelectionState {
 	
 	// TTS actions text
 	actionsTextForTTS = $state<string>('');
-	
-	// Event evaluation (single-character compatibility)
-	private _eventEvaluation = $state<EventEvaluation>(
-		getFromLocalStorage('eventEvaluationState', initialEventEvaluationState)
-	);
 
 	get chosenAction() {
 		return this._chosenAction;
@@ -125,14 +120,6 @@ export class SelectionState {
 	set characterActions(v: Action[]) {
 		this._characterActions = v;
 		saveToLocalStorage('characterActionsState', v);
-	}
-
-	get eventEvaluation() {
-		return this._eventEvaluation;
-	}
-	set eventEvaluation(v: EventEvaluation) {
-		this._eventEvaluation = v;
-		saveToLocalStorage('eventEvaluationState', v);
 	}
 	
 	/**

@@ -110,13 +110,6 @@ export class GameSessionService {
 	}
 	
 	/**
-	 * Check if party mode is active (always true now)
-	 */
-	isPartyMode(): boolean {
-		return true; // Always party mode, even for single character (party of 1)
-	}
-	
-	/**
 	 * Get the party size
 	 */
 	getPartySize(): number {

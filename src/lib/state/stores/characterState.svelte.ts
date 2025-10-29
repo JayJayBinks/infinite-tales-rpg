@@ -1,6 +1,6 @@
 /**
  * Character State Store
- * Manages character descriptions and stats for both single character and party members
+ * Manages character descriptions and stats for party members
  */
 
 import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
@@ -32,7 +32,7 @@ function saveToLocalStorage<T>(key: string, value: T): void {
 
 /**
  * Character state store
- * Manages active character state (synced with active party member if party mode is active)
+ * Manages active character state (synced with active party member)
  */
 export class CharacterStateStore {
 	// Active character description

@@ -27,11 +27,6 @@ function extractIsParty(instructions: string[]): boolean {
 	return joined.includes("The following are all party members' CURRENT resources");
 }
 
-function extractIsSingle(instructions: string[]): boolean {
-	const joined = instructions.join('\n');
-	return joined.includes("The following are the character's CURRENT resources");
-}
-
 describe('GameAgent resource shape classification', () => {
 	const agent = new GameAgent(new DummyLLM());
 	const invoke = (state: any) => (agent as any).getGameAgentSystemInstructionsFromStates(
@@ -45,37 +40,29 @@ describe('GameAgent resource shape classification', () => {
 		settings
 	);
 
-	it('handles undefined player state gracefully (treated as single)', () => {
+	it('handles undefined player state gracefully (treated as party)', () => {
 		const instr = invoke(undefined);
-		expect(extractIsSingle(instr)).toBe(true);
+		expect(extractIsParty(instr)).toBe(true);
 		expect(() => invoke(undefined)).not.toThrow();
 	});
 
-	it('handles empty object (single)', () => {
+	it('handles empty object (treated as party)', () => {
 		const instr = invoke({});
-		expect(extractIsSingle(instr)).toBe(true);
+		expect(extractIsParty(instr)).toBe(true);
 	});
 
-	it('single-character without current_value still classified as single', () => {
-		const singleNoCurrent = {
-			HP: { max_value: 10, start_value: 10, game_ends_when_zero: true },
-			MP: { max_value: 5, start_value: 5, game_ends_when_zero: false }
+	it('party with single member is still party mode', () => {
+		const party = {
+			player_character_1: {
+				HP: { max_value: 10, current_value: 7, game_ends_when_zero: true },
+				MP: { max_value: 5, current_value: 5, game_ends_when_zero: false }
+			}
 		};
-		const instr = invoke(singleNoCurrent);
-		expect(extractIsSingle(instr)).toBe(true);
-		expect(extractIsParty(instr)).toBe(false);
+		const instr = invoke(party);
+		expect(extractIsParty(instr)).toBe(true);
 	});
 
-	it('single-character with current_value classified as single', () => {
-		const singleWithCurrent = {
-			HP: { max_value: 10, current_value: 7, game_ends_when_zero: true },
-			MP: { max_value: 5, current_value: 5, game_ends_when_zero: false }
-		};
-		const instr = invoke(singleWithCurrent);
-		expect(extractIsSingle(instr)).toBe(true);
-	});
-
-	it('party mapping classification', () => {
+	it('party with multiple members classification', () => {
 		const party = {
 			member_1: {
 				HP: { max_value: 10, current_value: 9, game_ends_when_zero: true }
@@ -87,6 +74,5 @@ describe('GameAgent resource shape classification', () => {
 		};
 		const instr = invoke(party);
 		expect(extractIsParty(instr)).toBe(true);
-		expect(extractIsSingle(instr)).toBe(false);
 	});
 });

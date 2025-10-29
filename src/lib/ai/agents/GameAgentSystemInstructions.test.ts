@@ -20,7 +20,7 @@ function extractResourceLine(arr: string[]): string | undefined {
 describe('GameAgent.getGameAgentSystemInstructionsFromStates classification', () => {
 	const agent: any = new GameAgent(new StubLLM());
 
-	it('handles undefined player state gracefully (treated as single character)', () => {
+	it('handles undefined player state gracefully (treated as party)', () => {
 		const instr = agent.getGameAgentSystemInstructionsFromStates(
 			storyState,
 			characterState,
@@ -30,10 +30,10 @@ describe('GameAgent.getGameAgentSystemInstructionsFromStates classification', ()
 		);
 		expect(instr).toBeTruthy();
 		const line = extractResourceLine(instr);
-		expect(line).toMatch(/character's CURRENT resources/);
+		expect(line).toMatch(/party members' CURRENT resources/);
 	});
 
-	it('handles empty object player state (single character fallback)', () => {
+	it('handles empty object player state (party mode)', () => {
 		const instr = agent.getGameAgentSystemInstructionsFromStates(
 			storyState,
 			characterState,
@@ -42,28 +42,23 @@ describe('GameAgent.getGameAgentSystemInstructionsFromStates classification', ()
 			'', '', '', settings
 		);
 		const line = extractResourceLine(instr);
-		expect(line).toMatch(/character's CURRENT resources/);
+		expect(line).toMatch(/party members' CURRENT resources/);
 	});
 
-	it('single character without current_value keys', () => {
-		const resourcesNoCurrent = { HP: { max_value: 10, start_value: 10, game_ends_when_zero: true } } as any;
+	it('party with single member', () => {
+		const singleMemberParty = { 
+			player_character_1: { 
+				HP: { max_value: 10, current_value: 10, game_ends_when_zero: true } 
+			} 
+		} as any;
 		const instr = agent.getGameAgentSystemInstructionsFromStates(
-			storyState, characterState, resourcesNoCurrent, inventory, '', '', '', settings
+			storyState, characterState, singleMemberParty, inventory, '', '', '', settings
 		);
 		const line = extractResourceLine(instr);
-		expect(line).toMatch(/character's CURRENT resources/);
+		expect(line).toMatch(/party members' CURRENT resources/);
 	});
 
-	it('single character with current_value', () => {
-		const resourcesWithCurrent = { HP: { max_value: 10, current_value: 10, game_ends_when_zero: true } } as any;
-		const instr = agent.getGameAgentSystemInstructionsFromStates(
-			storyState, characterState, resourcesWithCurrent, inventory, '', '', '', settings
-		);
-		const line = extractResourceLine(instr);
-		expect(line).toMatch(/character's CURRENT resources/);
-	});
-
-	it('party mapping classification', () => {
+	it('party with multiple members', () => {
 		const partyMapping = {
 			member1: { HP: { max_value: 10, current_value: 10, game_ends_when_zero: true } },
 			member2: { MP: { max_value: 5, current_value: 5, game_ends_when_zero: false } }

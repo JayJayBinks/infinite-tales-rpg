@@ -271,7 +271,7 @@
 	// Priority:
 	// 1. Explicit id param
 	// 2. Currently active party member id
-	// 3. Derived playerCharacterIdState (fallback single-character mode)
+	// 3. Derived playerCharacterIdState
 	const getCurrentCharacterGameState = (id?: string) => {
 		const effectiveId =
 			id ||
@@ -439,7 +439,7 @@
 			// Set character ID to active party member
 			characterId = partyState.value.activeCharacterId;
 		} else if (!characterId) {
-			// Fallback single-character initialization WITH normalized current_value before any sendAction
+			// Initialize party member if not yet tracked
 			characterId = getFreeCharacterTechnicalId(playerCharactersIdToNamesMapState.value);
 			addCharacterToPlayerCharactersIdToNamesMap(
 				playerCharactersIdToNamesMapState.value,
@@ -483,7 +483,7 @@
 			$state.snapshot(gameActionsState.value)
 		);
 		
-		// Initialize missing resources for all party members (or single character)
+		// Initialize missing resources for all party members
 		// Party mode: initialize for all members
 			for (const member of partyState.value.members) {
 				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
@@ -561,7 +561,7 @@
 	}
 
 	async function initializeGame() {
-		// Ensure single-character fallback resources normalized synchronously (import already queued above)
+		// Ensure party member resources are normalized
 		if (partyState.value.members.length === 0) {
 			// If normalization via dynamic import not yet resolved, perform minimal inline normalization
 			const activeId = playerCharacterIdState;
@@ -574,7 +574,7 @@
 				});
 			}
 		}
-		// Party mode: refill resources for all members
+		// Refill resources for all party members
 			for (const member of partyState.value.members) {
 				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
 				if (memberStats) {
@@ -805,7 +805,7 @@
 
 	//TODO sendAction should not be handled here so it can be externally called
 	async function checkGameEnded() {
-		// Check if ALL party members are dead (for party mode)
+		// Check if ALL party members are dead
 		if (partyState.value.members.length > 0) {
 			const allDead = partyState.value.members.every(member => {
 				const memberState = playerCharactersGameState[member.id];
@@ -822,7 +822,7 @@
 				});
 			}
 		} else {
-			// Single character mode
+			// Single party member - check if they've fallen
 			const currentResources = playerCharactersGameState[playerCharacterIdState] || {};
 			const emptyResourceKeys = getEmptyCriticalResourceKeys(currentResources);
 			if (!isGameEnded.value && emptyResourceKeys.length > 0) {
@@ -1082,7 +1082,7 @@
 					...eventEvaluationByMemberState.value,
 					[memberId]: updated
 				};
-				// If active member, reflect in single-character reactive state for existing UI compatibility
+				// Update legacy event evaluation state for active member
 				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 				if (memberId === activeId) {
 					eventEvaluationState.value = updated;
@@ -1930,7 +1930,7 @@
 				);
 				characterStateStore.character = transformedCharacter;
 				
-				// Update party member if in party mode
+				// Update party member
 				const partyMember = partyState.value.members.find(m => m.id === activeId);
 				if (partyMember) {
 					partyMember.character = transformedCharacter;
@@ -1939,7 +1939,7 @@
 			if (transformedCharacterStats) {
 				characterStateStore.characterStats = transformedCharacterStats;
 				
-				// Update party stats if in party mode
+				// Update party stats
 				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
 				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
 				if (memberStats) {
