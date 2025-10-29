@@ -46,7 +46,7 @@ export class ActionProcessingService {
 		}
 		
 		// Check resource costs
-		if (action.resource_cost) {
+		if (action.resource_cost && typeof action.resource_cost === 'object') {
 			for (const [resourceKey, cost] of Object.entries(action.resource_cost)) {
 				const resource = characterResources[resourceKey];
 				if (!resource || resource.current_value < cost) {

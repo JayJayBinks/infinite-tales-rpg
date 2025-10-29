@@ -63,6 +63,7 @@
 		'characterTransformState',
 		initialCharacterTransformState
 	);
+	const diceRollRequiredValueState = localState('diceRollRequiredValueState');
 
 	const relatedStoryHistoryState = localState<RelatedStoryHistory>(
 		'relatedStoryHistoryState',
@@ -102,7 +103,7 @@
 	const additionalStoryInputState = localState<string>('additionalStoryInputState', '');
 	const additionalActionInputState = localState<string>('additionalActionInputState', '');
 	const thoughtsState = localState<ThoughtsState>('thoughtsState', initialThoughtsState);
-	const didAIProcessDiceRollActionState = localState<boolean>('didAIProcessDiceRollAction');
+	const didAIProcessDiceRollActionState = localState<boolean>('didAIProcessDiceRollAction', true);
 
 	function localState<T>(key: string, initial: T | undefined = undefined as any) {
 		let _v = $state<T>(getFromLocalStorage(key, initial as T));
@@ -116,6 +117,7 @@
 			},
 			reset() {
 				this.value = initial as T;
+				saveToLocalStorage(key, this.value);
 			},
 			resetProperty(prop: keyof T) {
 				if (typeof _v === 'object' && _v !== null && initial) {
@@ -155,6 +157,7 @@
 
 	function clearStates() {
 		historyMessagesState.reset();
+		diceRollRequiredValueState.reset();
 		gameActionsState.reset();
 		characterState.reset();
 		characterImageState.reset();

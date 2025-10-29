@@ -90,7 +90,7 @@
 									class="components btn btn-neutral no-animation mt-2"
 									disabled={disableSelection || (ability.resource_cost?.cost > 0 &&
 										ability.resource_cost?.cost >
-											(resources[ability.resource_cost?.resource_key || '']?.current_value || 0))}
+											(resources?.[ability.resource_cost?.resource_key || '']?.current_value || 0))}
 									title={disableSelection ? 'Action already chosen for this combat round' : ''}
 									onclick={() => {
 										if (disableSelection) return;

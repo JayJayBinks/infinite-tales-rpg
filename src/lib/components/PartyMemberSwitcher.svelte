@@ -61,11 +61,11 @@
 				class:btn-primary={isActive}
 				class:btn-outline={!isActive}
 				onclick={() => handleSwitch(member.id)}
-				title={(member.character.class || 'No class') + (isRestrained(member.id) ? ' - Restrained' : '')}
+				title={(member.character?.class || 'No class') + (isRestrained(member.id) ? ' - Restrained' : '')}
 			>
 				<div class="flex w-full flex-col items-start">
 					<span class="font-bold pr-4"
-						>{member.character.name || `Character ${member.id.split('_').pop()}`}</span
+						>{member.character?.name || `Character ${member.id.split('_').pop()}`}</span
 					>
 				</div>
 				{#if isRestrained(member.id)}

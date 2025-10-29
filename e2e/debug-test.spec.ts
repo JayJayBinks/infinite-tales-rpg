@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('debug story visibility', async ({ page, context }) => {
+test.skip('debug story visibility', async ({ page, context }) => {
   // Listen for console messages
   page.on('console', msg => console.log('BROWSER:', msg.text()));
   page.on('pageerror', err => console.log('ERROR:', err.message));

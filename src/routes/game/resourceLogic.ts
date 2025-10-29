@@ -15,6 +15,11 @@ export function refillResourcesFully(
 	updatedGameActionsState: GameActionState[];
 	updatedPlayerCharactersGameState: PlayerCharactersGameState;
 } {
+	// Ensure the player has an entry in the game state
+	if (!playerCharactersGameState[playerId]) {
+		playerCharactersGameState[playerId] = {};
+	}
+	
 	// Get the current state for the given player
 	const currentPlayerResources = playerCharactersGameState[playerId];
 
@@ -69,6 +74,11 @@ export function initializeMissingResources(
 	gameActionsState: GameActionState[],
 	playerCharactersGameState: PlayerCharactersGameState
 ) {
+	// Ensure the player has an entry in the game state
+	if (!playerCharactersGameState[playerId]) {
+		playerCharactersGameState[playerId] = {};
+	}
+	
 	// Check for any resources that are missing in the player's state.
 	const missingResources: Resources = Object.entries(resources)
 		.filter(

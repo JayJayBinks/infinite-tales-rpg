@@ -222,17 +222,15 @@ export class ActionAgent {
 			'As an action, the character can make use of items from the party inventory:' +
 				'\n' +
 				stringifyPretty(inventoryState),
-			'dice_roll modifier can be applied based on high or low resources of the active character:' +
-				'\n' +
-				stringifyPretty(characterStats.resources),
-			`${jsonRule}
+		'dice_roll modifier can be applied based on high or low resources of the active character:' +
+			'\n' +
+			stringifyPretty(characterStats.resources),
+		`${jsonRule}
       [
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes || {}), Object.keys(characterStats.skills || {}), newSkillsAllowed)},
 				...
   		]`
-		];
-
-		this.addRestrainingStateToAgent(agent, restrainingState);
+	];		this.addRestrainingStateToAgent(agent, restrainingState);
 		if (relatedHistory && relatedHistory.length > 0) {
 			agent.push(
 				'The actions must be plausible with PAST STORY PLOT;\n' +
@@ -320,7 +318,7 @@ export class ActionAgent {
 				stringifyPretty(characterStats.resources),
 			`${jsonRule}
       [
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
+				${this.jsonFormatAndRules(Object.keys(characterStats.attributes || {}), Object.keys(characterStats.skills || {}), newSkillsAllowed)},
 				...
   		]`
 		];

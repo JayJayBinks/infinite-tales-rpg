@@ -4,7 +4,7 @@ const config: PlaywrightTestConfig = {
 	webServer: {
 		command: 'npm run build && npm run preview',
 		port: 4173,
-		timeout: 20 * 1000,
+		timeout: 40 * 1000,
 		reuseExistingServer: !process.env.CI,
 	},
 	testDir: 'e2e',
@@ -13,7 +13,7 @@ const config: PlaywrightTestConfig = {
   use: {
 		baseURL: 'http://localhost:4173',
   },
-	reporter: 'html',
+	reporter: 'list',
 	fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

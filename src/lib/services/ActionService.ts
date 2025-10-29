@@ -112,25 +112,25 @@ export class ActionService {
 				const memberStats = partyStats.members.find((m) => m.id === member.id);
 				if (!memberStats) return null;
 
-				// Get current resources for this member
-				const currentResources = playerCharactersGame[member.id];
-				const memberStatsWithCurrentResources = {
-					...memberStats.stats,
-					resources: Object.fromEntries(
-						Object.entries(memberStats.stats.resources).map(([key, resource]) => [
-							key,
-							{
-								...resource,
-								current_value:
-									currentResources?.[key]?.current_value ??
-									resource.start_value ??
-									resource.max_value
-							}
-						])
-					)
-				};
-
-				const memberRestrainingState = getActiveRestrainingStateFn(
+			// Get current resources for this member
+			const currentResources = playerCharactersGame[member.id];
+			const memberStatsWithCurrentResources = {
+				...memberStats.stats,
+				resources: memberStats.stats.resources
+					? Object.fromEntries(
+							Object.entries(memberStats.stats.resources).map(([key, resource]) => [
+								key,
+								{
+									...resource,
+									current_value:
+										currentResources?.[key]?.current_value ??
+										resource.start_value ??
+										resource.max_value
+								}
+							])
+					  )
+					: {}
+			};				const memberRestrainingState = getActiveRestrainingStateFn(
 					party,
 					playerCharactersIdToNamesMap,
 					member.character.name,
@@ -183,7 +183,7 @@ export class ActionService {
 		characterResources: ResourcesWithCurrentValue
 	): { canExecute: boolean; reason?: 'not_enough_resource' | 'not_plausible' } {
 		// Check if character has enough resources to perform the action
-		if (action.resource_cost) {
+		if (action.resource_cost && typeof action.resource_cost === 'object') {
 			for (const [resourceKey, cost] of Object.entries(action.resource_cost)) {
 				const currentResource = characterResources[resourceKey];
 				if (!currentResource || currentResource.current_value < cost) {

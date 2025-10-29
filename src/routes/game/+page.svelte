@@ -280,7 +280,15 @@
 				playerCharactersIdToNamesMapState.value,
 				characterStateStore.character.name
 			) || '');
-		return playerCharactersGameState[effectiveId];
+		const resources = playerCharactersGameState[effectiveId] || {};
+		console.log('getCurrentCharacterGameState:', { 
+			requestedId: id, 
+			effectiveId, 
+			characterName: characterStateStore.character.name,
+			hasResources: Object.keys(resources).length > 0,
+			resources 
+		});
+		return resources;
 	};
 
     let levelUpState = wrap<{ buttonEnabled: boolean; dialogOpened: boolean; playerName: string; partyLevelUpStatus?: Record<string, boolean>; }>(
@@ -303,7 +311,7 @@
 			.renderStatUpdates(
 				$state.snapshot(gameState.stats_update),
 				getCurrentCharacterGameState(),
-				playerCharactersIdToNamesMapState.value[playerId],
+				playerCharactersIdToNamesMapState.value[playerId] || [],
 				partyState.value.members.length > 1 // Pass isParty flag
 			)
 			.concat(gameLogic.renderInventoryUpdate($state.snapshot(gameState.inventory_update)));
@@ -387,45 +395,47 @@
 		imagePromptAgent = new ImagePromptAgent(llm);
 
 		migrateStates();
-		const currentCharacterName = characterStateStore.character.name;
-		let characterId = getCharacterTechnicalId(
-			playerCharactersIdToNamesMapState.value,
-			currentCharacterName
-		);
-
-		// Initialize party if it exists
+		
+		// Initialize party if it exists and ensure activeCharacterId is valid
 		if (partyState.value.members.length > 0) {
-			// Initialize resources for all party members
-			for (const member of partyState.value.members) {
-				const memberStats = partyStatsState.value.members.find((m) => m.id === member.id)?.stats;
-				if (memberStats) {
-					// Always reinitialize to ensure all members have resources
-					playerCharactersGameState[member.id] = {};
-
-					// Convert resources to have current_value
-					for (const [key, resource] of Object.entries(memberStats.resources)) {
-						playerCharactersGameState[member.id][key] = {
-							max_value: resource.max_value,
-							current_value: resource.start_value || resource.max_value,
-							game_ends_when_zero: resource.game_ends_when_zero
-						};
-					}
-
-					// Initialize XP
-					playerCharactersGameState[member.id].XP = {
-						max_value: 9999,
-						current_value: 0,
-						game_ends_when_zero: false
-					};
-				}
+			// Ensure activeCharacterId is set to first member if missing or invalid
+			if (!partyState.value.activeCharacterId || 
+				!partyState.value.members.find(m => m.id === partyState.value.activeCharacterId)) {
+				partyState.value.activeCharacterId = partyState.value.members[0].id;
+				console.log('Set activeCharacterId to first member:', partyState.value.activeCharacterId);
 			}
-
+			
+			// Force sync character state with active party member immediately
+			const activeMember = getActivePartyMember(partyState.value);
+			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
+			
+			console.log('Party initialization:', {
+				memberCount: partyState.value.members.length,
+				activeCharacterId: partyState.value.activeCharacterId,
+				activeMember: activeMember?.character.name,
+				currentCharacterStoreName: characterStateStore.character.name
+			});
+			
+			if (activeMember && activeMemberStats) {
+				characterStateStore.character = activeMember.character;
+				characterStateStore.characterStats = activeMemberStats;
+				console.log('Synced character state with active member:', activeMember.character.name);
+			}
+			
 			// Update playerCharactersIdToNamesMapState
 			updatePlayerCharactersIdToNamesMapForParty(
 				partyState.value,
 				playerCharactersIdToNamesMapState.value
 			);
-
+		}
+		
+		const currentCharacterName = characterStateStore.character.name;
+		let characterId = getCharacterTechnicalId(
+			playerCharactersIdToNamesMapState.value,
+			currentCharacterName
+		);
+		
+		if (partyState.value.members.length > 0) {
 			// Set character ID to active party member
 			characterId = partyState.value.activeCharacterId;
 		} else if (!characterId) {
@@ -436,19 +446,19 @@
 				characterId,
 				currentCharacterName
 			);
-			import('$lib/game/resourceUtils').then(({ normalizeResources }) => {
-				playerCharactersGameState[characterId] = normalizeResources(
-					$state.snapshot(characterStateStore.characterStats.resources)
-				);
-				// Ensure XP pseudo resource present
-				if (!playerCharactersGameState[characterId].XP) {
-					playerCharactersGameState[characterId].XP = {
-						max_value: 0,
-						current_value: 0,
-						game_ends_when_zero: false
-					};
-				}
-			});
+			// Import and immediately initialize resources synchronously to avoid race conditions
+			const { normalizeResources } = await import('$lib/game/resourceUtils');
+			playerCharactersGameState[characterId] = normalizeResources(
+				$state.snapshot(characterStateStore.characterStats.resources)
+			);
+			// Ensure XP pseudo resource present
+			if (!playerCharactersGameState[characterId].XP) {
+				playerCharactersGameState[characterId].XP = {
+					max_value: 0,
+					current_value: 0,
+					game_ends_when_zero: false
+				};
+			}
 		}
 		if (relatedStoryHistoryStateStore.story.relatedDetails.length === 0) {
 			getRelatedHistoryForStory();
@@ -472,31 +482,41 @@
 			inventoryState.value,
 			$state.snapshot(gameActionsState.value)
 		);
-		const { updatedGameActionsState, updatedPlayerCharactersGameState } =
-			initializeMissingResources(
-				$state.snapshot(characterStateStore.characterStats.resources),
-				playerCharacterIdState,
-				characterStateStore.character.name,
-				$state.snapshot(gameActionsState.value),
-				$state.snapshot(playerCharactersGameState)
-			);
-		gameActionsState.value = updatedGameActionsState;
-		playerCharactersGameState = updatedPlayerCharactersGameState;
+		
+		// Initialize missing resources for all party members (or single character)
+		// Party mode: initialize for all members
+			for (const member of partyState.value.members) {
+				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
+				if (memberStats) {
+					const { updatedGameActionsState, updatedPlayerCharactersGameState } =
+						initializeMissingResources(
+							$state.snapshot(memberStats.resources),
+							member.id,
+							member.character.name,
+							$state.snapshot(gameActionsState.value),
+							$state.snapshot(playerCharactersGameState)
+						);
+					gameActionsState.value = updatedGameActionsState;
+					playerCharactersGameState = updatedPlayerCharactersGameState;
+				}
+			}
 		tick().then(() => customActionInput && customActionInput.scrollIntoView(false));
 		if (characterActionsState.value.length === 0) {
 			// Get current resources for the active character
 			const currentResources = getCurrentCharacterGameState();
 			const characterStatsWithCurrentResources = {
 				...characterStateStore.characterStats,
-				resources: Object.fromEntries(
-					Object.entries(characterStateStore.characterStats.resources).map(([key, resource]) => [
-						key,
-						{
-							...resource,
-							current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
-						}
-					])
-				)
+				resources: characterStateStore.characterStats.resources
+					? Object.fromEntries(
+							Object.entries(characterStateStore.characterStats.resources).map(([key, resource]) => [
+								key,
+								{
+									...resource,
+									current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+								}
+							])
+					  )
+					: {}
 			};
 			
 
@@ -546,7 +566,7 @@
 			// If normalization via dynamic import not yet resolved, perform minimal inline normalization
 			const activeId = playerCharacterIdState;
 			const current = playerCharactersGameState[activeId];
-			if (current && !('current_value' in Object.values(current)[0] as any)) {
+			if (current && typeof current === 'object' && Object.keys(current).length > 0 && !('current_value' in Object.values(current)[0] as any)) {
 				Object.entries(current).forEach(([k, v]: any) => {
 					if (v && typeof v === 'object' && 'max_value' in v && !('current_value' in v)) {
 						(v as any).current_value = v.start_value ?? v.max_value;
@@ -554,19 +574,24 @@
 				});
 			}
 		}
+		// Party mode: refill resources for all members
+			for (const member of partyState.value.members) {
+				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
+				if (memberStats) {
+					const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
+						$state.snapshot(memberStats.resources),
+						member.id,
+						member.character.name,
+						$state.snapshot(gameActionsState.value),
+						$state.snapshot(playerCharactersGameState)
+					);
+					gameActionsState.value = updatedGameActionsState;
+					playerCharactersGameState = updatedPlayerCharactersGameState;
+				}
+			}
 		await sendAction({ characterName: characterStateStore.character.name, text: GameAgent.getStartingPrompt() });
-		if (gameActionsState.value.length === 0) return;
+		
 		// Initialize all resources when the game is first started.
-
-		const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
-			$state.snapshot(characterStateStore.characterStats.resources),
-			playerCharacterIdState,
-			characterStateStore.character.name,
-			$state.snapshot(gameActionsState.value),
-			$state.snapshot(playerCharactersGameState)
-		);
-		gameActionsState.value = updatedGameActionsState;
-		playerCharactersGameState = updatedPlayerCharactersGameState;
 	}
 
 	//TODO applyGameActionState should not be handled here so it can be externally called
@@ -784,6 +809,7 @@
 		if (partyState.value.members.length > 0) {
 			const allDead = partyState.value.members.every(member => {
 				const memberState = playerCharactersGameState[member.id];
+				if (!memberState) return false;
 				const emptyKeys = getEmptyCriticalResourceKeys(memberState);
 				return emptyKeys.length > 0;
 			});
@@ -797,9 +823,8 @@
 			}
 		} else {
 			// Single character mode
-			const emptyResourceKeys = getEmptyCriticalResourceKeys(
-				playerCharactersGameState[playerCharacterIdState]
-			);
+			const currentResources = playerCharactersGameState[playerCharacterIdState] || {};
+			const emptyResourceKeys = getEmptyCriticalResourceKeys(currentResources);
 			if (!isGameEnded.value && emptyResourceKeys.length > 0) {
 				isGameEnded.value = true;
 				await sendAction({
@@ -860,7 +885,7 @@
 			const memberGameState = playerCharactersGameState[member.id];
 			const memberStats = partyStatsState.value.members.find(m => m.id === member.id);
 			
-			if (memberGameState && memberStats) {
+			if (memberGameState && memberStats && memberGameState.XP) {
 				const neededXP = getXPNeededForLevel(memberStats.stats.level);
 				const canLevelUp = neededXP && memberGameState.XP.current_value >= neededXP;
 				
@@ -881,7 +906,7 @@
 		const neededXP = getXPNeededForLevel(characterStateStore.characterStats.level);
 		if (
 			neededXP &&
-			playerCharactersGameState[activeId]?.XP.current_value >= neededXP
+			playerCharactersGameState[activeId]?.XP?.current_value >= neededXP
 		) {
 			levelUpState.value.buttonEnabled = true;
 		}
@@ -1189,15 +1214,17 @@
 							const currentResources = playerCharactersGameState[member.id];
 							const memberStatsWithCurrentResources = {
 								...memberStats.stats,
-								resources: Object.fromEntries(
-									Object.entries(memberStats.stats.resources).map(([key, resource]) => [
-										key,
-										{
-											...resource,
-											current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
-										}
-									])
-								)
+								resources: memberStats.stats.resources
+									? Object.fromEntries(
+											Object.entries(memberStats.stats.resources).map(([key, resource]) => [
+												key,
+												{
+													...resource,
+													current_value: currentResources?.[key]?.current_value ?? resource.start_value ?? resource.max_value
+												}
+											])
+									  )
+									: {}
 							};
 							
 							const memberRestrainingState = getActiveRestrainingState(
@@ -1286,7 +1313,7 @@
 								playerCharactersGameState[m.id] || {}
 							])
 					  )
-					: { [characterStateStore.character.name]: playerCharactersGameState[playerCharacterIdState] };
+					: { [characterStateStore.character.name]: playerCharactersGameState[playerCharacterIdState] || {} };
 				const generated = await combatAgent.generateStatsUpdatesFromStory(
 					newState.story || '',
 					action,
@@ -1535,7 +1562,10 @@
 			return;
 		}
 		const buyLevelUpObject = GameAgent.getLevelUpCostObject(xpNeededForLevel, playerName, level);
-		playerCharactersGameState[playerCharacterIdState].XP.current_value -= xpNeededForLevel;
+		const currentCharacterState = playerCharactersGameState[playerCharacterIdState];
+		if (currentCharacterState?.XP) {
+			currentCharacterState.XP.current_value -= xpNeededForLevel;
+		}
 		gameActionsState.value[gameActionsState.value.length - 1].stats_update.push(buyLevelUpObject);
 		levelUpState.value.dialogOpened = true;
 		checkForLevelUp();
@@ -2101,7 +2131,7 @@
 		const newState = await gameAgent.generateStateOnlyNoStory(
 			action,
 			characterStateStore.character.name,
-			playerCharactersGameState[playerCharacterIdState],
+			playerCharactersGameState[playerCharacterIdState] || {},
 			inventoryState.value,
 			npcState.value
 		);
@@ -2275,7 +2305,7 @@
 	<UseSpellsAbilitiesModal
 		bind:dialogRef={useSpellsAbilitiesModal}
 		playerName={characterStateStore.character.name}
-		resources={playerCharactersGameState[playerCharacterIdState]}
+		resources={getCurrentCharacterGameState()}
 		abilities={characterStateStore.characterStats?.spells_and_abilities}
 		storyImagePrompt={storyStateStore.story.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
