@@ -55,7 +55,7 @@
 	// Initialize party based on storyState.party_count (auto-create tabs 1-4)
 	$effect(() => {
 		// Ensure at least one member exists
-		if (partyState.value.members.length === 0) {
+		if (partyState.party.members.length === 0) {
 			const id = 'player_character_1';
 			partyState.addMember({
 				id,
@@ -64,15 +64,15 @@
 			partyState.setActiveCharacterId(id);
 			currentCharacterIndex = 0;
 		}
-		// Derive desired party size from storyState.value.party_count (string)
-		const rawCount = storyState.value.party_count;
+		// Derive desired party size from storyState.story.party_count (string)
+		const rawCount = storyState.story.party_count;
 		let desiredCount = parseInt(rawCount || '1', 10);
 		if (Number.isNaN(desiredCount)) desiredCount = 1;
 		// Clamp between 1 and 4
 		desiredCount = Math.min(4, Math.max(1, desiredCount));
 		// Add members until we reach desired count
-		while (partyState.value.members.length < desiredCount) {
-			const nextId = `player_character_${partyState.value.members.length + 1}`;
+		while (partyState.party.members.length < desiredCount) {
+			const nextId = `player_character_${partyState.party.members.length + 1}`;
 			partyState.addMember({
 				id: nextId,
 				character: { ...initialCharacterState }
@@ -82,9 +82,9 @@
 	});
 
 	function addPartyMember() {
-		if (partyState.value.members.length >= 4) return;
+		if (partyState.party.members.length >= 4) return;
 		
-		const nextId = `player_character_${partyState.value.members.length + 1}`;
+		const nextId = `player_character_${partyState.party.members.length + 1}`;
 		partyState.addMember({
 			id: nextId,
 			character: { ...initialCharacterState }
@@ -92,24 +92,24 @@
 	}
 
 	function removePartyMember(index: number) {
-		if (partyState.value.members.length <= 1) return;
+		if (partyState.party.members.length <= 1) return;
 		
-		const memberIdToRemove = partyState.value.members[index].id;
+		const memberIdToRemove = partyState.party.members[index].id;
 		partyState.removeMember(memberIdToRemove);
 		
 		// Adjust current index if needed
-		if (currentCharacterIndex >= partyState.value.members.length) {
-			currentCharacterIndex = partyState.value.members.length - 1;
+		if (currentCharacterIndex >= partyState.party.members.length) {
+			currentCharacterIndex = partyState.party.members.length - 1;
 		}
 		
 		// Update active character if we removed the active one
 		if (partyState.value.activeCharacterId === memberIdToRemove) {
-			const newActiveId = partyState.value.members[currentCharacterIndex].id;
+			const newActiveId = partyState.party.members[currentCharacterIndex].id;
 			partyState.setActiveCharacterId(newActiveId);
 		}
 		
 		// Load the current character
-		characterState.value = partyState.value.members[currentCharacterIndex].character;
+		characterState.character = partyState.party.members[currentCharacterIndex].character;
 	}
 
 	onMount(() => {
@@ -122,11 +122,11 @@
 		);
 		let playerCharacterId = getCharacterTechnicalId(
 			playerCharactersIdToNamesMapState.value,
-			characterState.value.name
+			characterState.character.name
 		);
 		beforeNavigate(() => {
 			// Update party state
-			if (partyState.value.members.length > 0) {
+			if (partyState.party.members.length > 0) {
 				updatePlayerCharactersIdToNamesMapForParty(
 					partyState.value,
 					playerCharactersIdToNamesMapState.value
@@ -135,7 +135,7 @@
 				addCharacterToPlayerCharactersIdToNamesMap(
 					playerCharactersIdToNamesMapState.value,
 					playerCharacterId,
-					characterState.value.name
+					characterState.character.name
 				);
 			} else {
 				console.error('Player character id not found to add new name');
@@ -145,7 +145,7 @@
 
 	const onRandomizeParty = async () => {
 		isGeneratingState = true;
-		const party = partyState.value.members;
+		const party = partyState.party.members;
 		const partyDescriptions = await characterAgent.generatePartyDescriptions(
 			$state.snapshot(storyState.value),
 			undefined,
@@ -158,7 +158,7 @@
 				partyState.updateMemberCharacter(memberId, partyDescriptions[i]);
 			}
 			// Set first character as active
-			characterState.value = partyState.value.members[0].character;
+			characterState.character = partyState.party.members[0].character;
 			resetImageState = true;
 		}
 		isGeneratingState = false;
@@ -171,9 +171,9 @@
 			characterStateOverwrites
 		);
 		if (newState) {
-			characterState.value = newState;
+			characterState.character = newState;
 			// Update current party member using immutable method
-			const memberId = partyState.value.members[currentCharacterIndex].id;
+			const memberId = partyState.party.members[currentCharacterIndex].id;
 			partyState.updateMemberCharacter(memberId, newState);
 			resetImageState = true;
 		}
@@ -190,11 +190,10 @@
 			characterInput
 		);
 		if (newState) {
-			characterState.value[stateValue] = newState[stateValue];
+			characterState.character = { ...characterState.character, [stateValue]: newState[stateValue] };
 			// Update current party member
-			partyState.value.members[currentCharacterIndex].character = characterState.value;
-			// Trigger setter to save to localStorage
-			partyState.value = { ...partyState.value };
+			const memberId = partyState.party.members[currentCharacterIndex].id;
+			partyState.updateMemberCharacter(memberId, characterState.character);
 			if (stateValue === 'appearance') {
 				resetImageState = true;
 			}
@@ -204,19 +203,18 @@
 
 	const switchToCharacter = (index: number) => {
 		// Save current character state to party
-			partyState.value.members[currentCharacterIndex].character = characterState.value;
-			// Trigger setter to save to localStorage
-			partyState.value = { ...partyState.value };
+		const currentMemberId = partyState.party.members[currentCharacterIndex].id;
+		partyState.updateMemberCharacter(currentMemberId, characterState.character);
 
 		// Switch to new character
 		currentCharacterIndex = index;
-		characterState.value = partyState.value.members[index].character;
+		characterState.character = partyState.party.members[index].character;
 		characterStateOverwrites = {};
 		resetImageState = true;
 	};
 
 	const isPartyComplete = $derived(
-		partyState.value.members.every((m) => !isEqual(m.character, initialCharacterState))
+		partyState.party.members.every((m) => !isEqual(m.character, initialCharacterState))
 	);
 </script>
 
@@ -244,14 +242,14 @@
 <!-- Party Member Tabs -->
 <div class="mt-4 flex flex-col items-center gap-2">
 	<div class="tabs tabs-boxed flex justify-center flex-wrap">
-		{#each partyState.value.members as member, index}
+		{#each partyState.party.members as member, index}
 			<button
 				class="tab"
 				class:tab-active={currentCharacterIndex === index}
 				onclick={() => switchToCharacter(index)}
 			>
 				{member.character.name || `Character ${index + 1}`}
-				{#if partyState.value.members.length > 1}
+				{#if partyState.party.members.length > 1}
 					<span
 						role="button"
 						tabindex="0"
@@ -274,19 +272,19 @@
 		{/each}
 	</div>
 	<div class="flex gap-2 items-center">
-		{#if partyState.value.members.length < 4}
+		{#if partyState.party.members.length < 4}
 			<button class="btn btn-sm btn-primary" onclick={addPartyMember}>
 				+ Add Party Member
 			</button>
 		{/if}
 		<span class="text-sm text-gray-500">
-			{partyState.value.members.length}/4 party members
+			{partyState.party.members.length}/4 party members
 		</span>
 	</div>
 </div>
 
 <form class="m-6 grid items-center gap-2 text-center">
-	<p>Generate party of {partyState.value.members.length} character{partyState.value.members.length > 1 ? 's' : ''}, or customize each character individually</p>
+	<p>Generate party of {partyState.party.members.length} character{partyState.party.members.length > 1 ? 's' : ''}, or customize each character individually</p>
 	<button
 		class="btn btn-accent m-auto mt-3 w-3/4 sm:w-1/2"
 		disabled={isGeneratingState}
@@ -296,7 +294,7 @@
 	</button>
 	<div class="divider">OR</div>
 	<p>
-		Customize Current Character ({partyState.value.members[currentCharacterIndex]?.character.name ||
+		Customize Current Character ({partyState.party.members[currentCharacterIndex]?.character.name ||
 			`Character ${currentCharacterIndex + 1}`})
 	</p>
 	<button
@@ -310,9 +308,8 @@
 		class="btn btn-neutral m-auto w-3/4 sm:w-1/2"
 		onclick={() => {
 			characterState.reset();
-			partyState.value.members[currentCharacterIndex].character = { ...initialCharacterState };
-			// Trigger setter to save to localStorage
-			partyState.value = { ...partyState.value };
+			const memberId = partyState.party.members[currentCharacterIndex].id;
+			partyState.updateMemberCharacter(memberId, { ...initialCharacterState });
 			characterStateOverwrites = {};
 			resetImageState = true;
 		}}
@@ -380,7 +377,7 @@
 			class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 			onclick={() => {
 				characterState.resetProperty(stateValue as keyof CharacterDescription);
-				partyState.value.members[currentCharacterIndex].character = characterState.value;
+				partyState.party.members[currentCharacterIndex].character = characterState.value;
 				// Trigger setter to save to localStorage
 				partyState.value = { ...partyState.value };
 				delete characterStateOverwrites[stateValue];
@@ -396,7 +393,7 @@
 				<AIGeneratedImage
 					storageKey="characterImageState_{currentCharacterIndex}"
 					{resetImageState}
-					imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
+					imagePrompt="{storyState.story.general_image_prompt} {characterState.character.appearance}"
 				/>
 			</div>
 		{/if}

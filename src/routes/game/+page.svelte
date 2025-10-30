@@ -208,7 +208,7 @@
 
 	// Sync character state with active party member
 	$effect(() => {
-		if (partyState.value.members.length > 0) {
+		if (partyState.party.members.length > 0) {
 			const activeMember = getActivePartyMember(partyState.value);
 			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
 			if (activeMember && activeMemberStats) {
@@ -275,7 +275,7 @@
 	const getCurrentCharacterGameState = (id?: string) => {
 		const effectiveId =
 			id ||
-			partyState.value.activeCharacterId ||
+			partyState.party.activeCharacterId ||
 			(getCharacterTechnicalId(
 				playerCharactersIdToNamesMapState.value,
 				characterStateStore.character.name
@@ -312,7 +312,7 @@
 				$state.snapshot(gameState.stats_update),
 				getCurrentCharacterGameState(),
 				playerCharactersIdToNamesMapState.value[playerId] || [],
-				partyState.value.members.length > 1 // Pass isParty flag
+				partyState.party.members.length > 1 // Pass isParty flag
 			)
 			.concat(gameLogic.renderInventoryUpdate($state.snapshot(gameState.inventory_update)));
 
@@ -397,16 +397,16 @@
 		migrateStates();
 		
 		// Initialize party if it exists and ensure activeCharacterId is valid
-		if (partyState.value.members.length > 0) {
+		if (partyState.party.members.length > 0) {
 			// Ensure activeCharacterId is set to first member if missing or invalid
-			if (!partyState.value.activeCharacterId || 
-				!partyState.value.members.find(m => m.id === partyState.value.activeCharacterId)) {
-				partyState.setActiveCharacterId(partyState.value.members[0].id);
-				console.log('Set activeCharacterId to first member:', partyState.value.activeCharacterId);
+			if (!partyState.party.activeCharacterId || 
+				!partyState.party.members.find(m => m.id === partyState.party.activeCharacterId)) {
+				partyState.setActiveCharacterId(partyState.party.members[0].id);
+				console.log('Set activeCharacterId to first member:', partyState.party.activeCharacterId);
 			}
 			
 			// Initialize playerCharactersGameState for all party members
-			for (const member of partyState.value.members) {
+			for (const member of partyState.party.members) {
 				if (!playerCharactersGameState[member.id]) {
 					playerCharactersGameState[member.id] = {};
 				}
@@ -417,8 +417,8 @@
 			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
 			
 			console.log('Party initialization:', {
-				memberCount: partyState.value.members.length,
-				activeCharacterId: partyState.value.activeCharacterId,
+				memberCount: partyState.party.members.length,
+				activeCharacterId: partyState.party.activeCharacterId,
 				activeMember: activeMember?.character.name,
 				currentCharacterStoreName: characterStateStore.character.name,
 				playerCharactersGameStateIds: Object.keys(playerCharactersGameState)
@@ -443,9 +443,9 @@
 			currentCharacterName
 		);
 		
-		if (partyState.value.members.length > 0) {
+		if (partyState.party.members.length > 0) {
 			// Set character ID to active party member
-			characterId = partyState.value.activeCharacterId;
+			characterId = partyState.party.activeCharacterId;
 		} else if (!characterId) {
 			// Initialize party member if not yet tracked
 			characterId = getFreeCharacterTechnicalId(playerCharactersIdToNamesMapState.value);
@@ -493,7 +493,7 @@
 		
 		// Initialize missing resources for all party members
 		// Party mode: initialize for all members
-			for (const member of partyState.value.members) {
+			for (const member of partyState.party.members) {
 				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
 				if (memberStats) {
 					const { updatedGameActionsState, updatedPlayerCharactersGameState } =
@@ -558,7 +558,7 @@
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
 			// Cache generated actions for active character
-			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 			characterActionsByMemberState.value[activeId] = actions;
 		}
 		renderGameState(currentGameActionState, characterActionsState.value);
@@ -570,7 +570,7 @@
 
 	async function initializeGame() {
 		// Ensure party member resources are normalized
-		if (partyState.value.members.length === 0) {
+		if (partyState.party.members.length === 0) {
 			// If normalization via dynamic import not yet resolved, perform minimal inline normalization
 			const activeId = playerCharacterIdState;
 			const current = playerCharactersGameState[activeId];
@@ -583,7 +583,7 @@
 			}
 		}
 		// Refill resources for all party members
-			for (const member of partyState.value.members) {
+			for (const member of partyState.party.members) {
 				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
 				if (memberStats) {
 					const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
@@ -651,7 +651,7 @@
 	}
 
 	const advanceSkillIfApplicable = (skillName: string) => {
-		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 		const requiredSkillProgression = getRequiredSkillProgression(
 			skillName,
 			characterStateStore.characterStats
@@ -689,7 +689,7 @@
 
 	const addSkillProgression = (skillName: string, skillProgression: number) => {
 		if (skillProgression) {
-			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 			// Initialize member's skills progression if not exists
 			if (!skillsProgressionState.value[activeId]) {
 				skillsProgressionState.value[activeId] = {};
@@ -785,7 +785,7 @@
     //  - skipDice: never open dice dialog (even if mustRollDice would require) – default false
     async function handleActionSelection(action: Action, options?: { forceRollDice?: boolean; skipDice?: boolean }) {
         const inCombat = currentGameActionState.is_character_in_combat;
-        const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+        const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
         if (inCombat) {
             // Queue action for party combat turn
             selectedCombatActionsByMemberState.value[activeId] = action;
@@ -814,8 +814,8 @@
 	//TODO sendAction should not be handled here so it can be externally called
 	async function checkGameEnded() {
 		// Check if ALL party members are dead
-		if (partyState.value.members.length > 0) {
-			const allDead = partyState.value.members.every(member => {
+		if (partyState.party.members.length > 0) {
+			const allDead = partyState.party.members.every(member => {
 				const memberState = playerCharactersGameState[member.id];
 				if (!memberState) return false;
 				const emptyKeys = getEmptyCriticalResourceKeys(memberState);
@@ -889,7 +889,7 @@
 
 	function checkForLevelUp() {
 		// Check level-up for all party members
-		partyState.value.members.forEach(member => {
+		partyState.party.members.forEach(member => {
 			const memberGameState = playerCharactersGameState[member.id];
 			const memberStats = partyStatsState.value.members.find(m => m.id === member.id);
 			
@@ -910,7 +910,7 @@
 		levelUpState.value.buttonEnabled = anyCanLevelUp;
 		
 		// For active character (for backward compatibility)
-		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 		const neededXP = getXPNeededForLevel(characterStateStore.characterStats.level);
 		if (
 			neededXP &&
@@ -928,7 +928,7 @@
 		// Aggregate combat actions with inline dice outcomes
 		let combatActionsPrompt = '\n\nPARTY COMBAT ACTIONS:\n';
 		let actionsCount = 0
-		for (const member of partyState.value.members) {
+		for (const member of partyState.party.members) {
 			const selectedAction = selectedCombatActionsByMemberState.value[member.id];
 			const outcomeText = selectedCombatActionsDiceAdditionsState[member.id];
 			if (selectedAction) {
@@ -939,11 +939,11 @@
 				combatActionsPrompt += `- ${member.character.name}: [AI choose an appropriate action]\n`;
 			}
 		}
-		combatActionsPrompt += actionsCount >= partyState.value.members.length ? '' 
+		combatActionsPrompt += actionsCount >= partyState.party.members.length ? '' 
 		:'\nFor party members without chosen actions, generate appropriate actions based on the combat situation and their abilities.';
 
 		const partyAction: Action = {
-			characterName: partyState.value.members.map((m) => m.character.name).join(', '),
+			characterName: partyState.party.members.map((m) => m.character.name).join(', '),
 			text: combatActionsPrompt,
 			type: 'Party Combat Turn'
 		};
@@ -1091,7 +1091,7 @@
 					[memberId]: updated
 				};
 				// Update legacy event evaluation state for active member
-				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 				if (memberId === activeId) {
 					eventEvaluationState.value = updated;
 				}
@@ -1156,8 +1156,8 @@
 				getRelatedHistoryForStory();
 				getRelatedHistoryForStory();
 				// Build party evaluation input (fallback to single active character if party not initialized)
-				const partyMembersForEvaluation = (partyState.value.members.length
-					? partyState.value.members
+				const partyMembersForEvaluation = (partyState.party.members.length
+					? partyState.party.members
 					: [{ id: playerCharacterIdState, character: characterStateStore.character }]
 				).map((m) => ({
 					id: m.id,
@@ -1205,10 +1205,10 @@
 
 				// Generate the next set of actions for all party members
 				const generateActionsForAllMembers = async () => {
-					const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+					const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 					
 					// Generate actions for all party members concurrently
-					const actionsPromises = partyState.value.members.map(async (member) => {
+					const actionsPromises = partyState.party.members.map(async (member) => {
 						// Skip if actions already exist for this member
 						if (characterActionsByMemberState.value[member.id]) {
 							return null;
@@ -1314,9 +1314,9 @@
 
 		const statsUpdatesPromise = (async () => {
 			try {
-				const partyResourcesByName = partyState.value.members.length > 0
+				const partyResourcesByName = partyState.party.members.length > 0
 					? Object.fromEntries(
-							partyState.value.members.map(m => [
+							partyState.party.members.map(m => [
 								m.character.name,
 								playerCharactersGameState[m.id] || {}
 							])
@@ -1591,7 +1591,7 @@
 		button.textContent = getTextForActionButton(action);
 
 		// Get active character ID for resource checks
-		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 		const isLocked = is_character_in_combat && selectedCombatActionsLockedState[activeId];
 		
 		if (
@@ -1802,7 +1802,7 @@
 		if (action.is_possible === false) {
 			customActionImpossibleReasonState = 'not_plausible';
 		} else {
-			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 			if (
 				!isEnoughResource(
 					action,
@@ -1911,7 +1911,7 @@
 	) {
 		eventEvaluationState.value.character_changed!.showEventConfirmationDialog = false;
 		// Sync mapping immediately (dialog closed)
-		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		if (confirmed === undefined) {
 			return;
@@ -1928,7 +1928,7 @@
 			);
 
 			if (transformedCharacter) {
-				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 				
 				// Update character ID mapping
 				addCharacterToPlayerCharactersIdToNamesMap(
@@ -1939,7 +1939,7 @@
 				characterStateStore.character = transformedCharacter;
 				
 				// Update party member
-				const partyMember = partyState.value.members.find(m => m.id === activeId);
+				const partyMember = partyState.party.members.find(m => m.id === activeId);
 				if (partyMember) {
 					partyMember.character = transformedCharacter;
 				}
@@ -1948,7 +1948,7 @@
 				characterStateStore.characterStats = transformedCharacterStats;
 				
 				// Update party stats
-				const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+				const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 				const memberStats = partyStatsState.value.members.find(m => m.id === activeId);
 				if (memberStats) {
 					memberStats.stats = transformedCharacterStats;
@@ -1962,7 +1962,7 @@
 			}
 
 			//apply new resources
-			const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+			const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 			playerCharactersGameState[activeId] = {
 				...$state.snapshot(characterStateStore.characterStats.resources),
 				XP: playerCharactersGameState[activeId].XP
@@ -1988,7 +1988,7 @@
 		if (!abilities) {
 			return;
 		}
-		const activeId = partyState.value.activeCharacterId || playerCharacterIdState;
+		const activeId = partyState.party.activeCharacterId || playerCharacterIdState;
 		eventEvaluationByMemberState.value[activeId] = eventEvaluationState.value;
 		eventEvaluationState.value.abilities_learned!.aiProcessingComplete = true;
 		if (abilities.length === 0) {
@@ -2128,7 +2128,7 @@
 	}
 
 	// Derived convenience flags for disabling further selections when combat action is locked
-	const activeMemberId = $derived(partyState.value.activeCharacterId || playerCharacterIdState);
+	const activeMemberId = $derived(partyState.party.activeCharacterId || playerCharacterIdState);
 	const isActiveCombatActionLocked = $derived(
 		currentGameActionState.is_character_in_combat && selectedCombatActionsLockedState[activeMemberId]
 	);
@@ -2169,10 +2169,10 @@
 		const activeId = characterId;
 
 		// Update active character id first so resource lookups use the new id.
-		if (partyState.value.activeCharacterId !== activeId) {
+		if (partyState.party.activeCharacterId !== activeId) {
 			partyState.setActiveCharacterId(activeId);
 			// Sync character + stats to selected member for immediate UI consistency
-			const member = partyState.value.members.find((m) => m.id === activeId);
+			const member = partyState.party.members.find((m) => m.id === activeId);
 			if (member) {
 				characterStateStore.character = member.character;
 				const memberStats = partyStatsState.value.members.find((m) => m.id === activeId);
@@ -2205,7 +2205,7 @@
 			characterActionsByMemberState.value[activeId] &&
 			characterActionsByMemberState.value[activeId].length > 0
 		) {
-			if (partyState.value.activeCharacterId === activeId) {
+			if (partyState.party.activeCharacterId === activeId) {
 				characterActionsState.value = characterActionsByMemberState.value[activeId];
 				if (actionsDiv) actionsDiv.innerHTML = '';
 				renderGameState(currentGameActionState, characterActionsState.value);
@@ -2215,12 +2215,12 @@
 		}
 
 		actionGenerationInFlight[activeId] = true;
-		if (partyState.value.activeCharacterId === activeId) {
+		if (partyState.party.activeCharacterId === activeId) {
 			characterActionsState.reset();
 			if (actionsDiv) actionsDiv.innerHTML = '';
 		}
 
-		const currentCharacter = partyState.value.members.find(m => m.id === activeId)?.character;
+		const currentCharacter = partyState.party.members.find(m => m.id === activeId)?.character;
 		const currentStats = partyStatsState.value.members.find(m => m.id === activeId)?.stats;
 
 
@@ -2267,7 +2267,7 @@
 		characterActionsByMemberState.value[activeId] = actions;
 
 		// Only update UI if still active character
-		if (partyState.value.activeCharacterId === activeId) {
+		if (partyState.party.activeCharacterId === activeId) {
 			characterActionsState.value = actions;
 			thoughtsState.value.actionsThoughts = thoughts;
 			if (actionsDiv) actionsDiv.innerHTML = '';
@@ -2409,11 +2409,11 @@
 	{/if}
 	
 	<!-- Party Member Switcher above actions -->
-	{#if partyState.value.members.length > 1 && !isGameEnded.value}
+	{#if partyState.party.members.length > 1 && !isGameEnded.value}
 		<div class="mt-4">
 			<PartyMemberSwitcher
 				party={partyState.value}
-				onSwitch={() => onSwitchCharacter($state.snapshot(partyState.value.activeCharacterId))}
+				onSwitch={() => onSwitchCharacter($state.snapshot(partyState.party.activeCharacterId))}
 			/>
 		</div>
 	{/if}
@@ -2427,7 +2427,7 @@
 				class="text-md btn btn-success mb-3 w-full"
 				>
 				{#if hasAnySelectedCombatActions()}
-					Confirm Combat Actions ({Object.keys(selectedCombatActionsByMemberState.value).filter(k => selectedCombatActionsByMemberState.value[k]).length}/{partyState.value.members.length} selected)
+					Confirm Combat Actions ({Object.keys(selectedCombatActionsByMemberState.value).filter(k => selectedCombatActionsByMemberState.value[k]).length}/{partyState.party.members.length} selected)
 				{:else}
 					Confirm Combat Actions (Let AI choose for all)
 				{/if}
