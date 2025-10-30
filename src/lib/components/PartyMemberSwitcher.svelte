@@ -17,19 +17,9 @@
 		onSwitch?.();
 	}
 
-	function hasLegacyRestrained(): boolean {
-		const arr = gameState.progression.gameActions;
-		if (!arr || arr.length === 0) return false;
-		const last = arr[arr.length - 1];
-		return !!last?.is_character_restrained_explanation;
-	}
-
 	function isRestrained(memberId: string): boolean {
 		console.log('Checking if member is restrained:', memberId);
-		const v = partyState.restrainedExplanationByMember[memberId];
-		if (v) return true; // per-member mapping wins
-		// Fallback: legacy field applies only to active member
-		return party?.activeCharacterId === memberId && hasLegacyRestrained();
+		return !!partyState.restrainedExplanationByMember[memberId];
 	}
 
 	// State for restrained modal

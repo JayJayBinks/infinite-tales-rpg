@@ -4,8 +4,6 @@
 		CharacterAgent,
 		type CharacterDescription,
 		initialCharacterState,
-		type Party,
-		initialPartyState
 	} from '$lib/ai/agents/characterAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
@@ -26,6 +24,7 @@
 		createPartyFromCharacters,
 		updatePlayerCharactersIdToNamesMapForParty
 	} from '../../partyLogic';
+	import { partyState } from '$lib/state/stores';
 
 	let isGeneratingState = $state(false);
 	function localState<T>(key: string, initial: T | undefined = undefined as any) {
@@ -42,7 +41,6 @@
 	const storyState = localState<Story>('storyState', initialStoryState);
 	const campaignState = localState<Campaign>('campaignState', {} as Campaign);
 	const characterState = localState<CharacterDescription>('characterState', initialCharacterState);
-	const partyState = localState<Party>('partyState', initialPartyState);
 
 	// Track which character index we're editing (0-3 for party members)
 	let currentCharacterIndex = $state(0);
@@ -155,6 +153,8 @@
 			for (let i = 0; i < party.length; i++) {
 				partyState.value.members[i].character = partyDescriptions[i];
 			}
+			// Trigger setter to save to localStorage
+			partyState.value = { ...partyState.value };
 			// Set first character as active
 			characterState.value = partyState.value.members[0].character;
 			resetImageState = true;
@@ -172,6 +172,8 @@
 			characterState.value = newState;
 			// Update current party member
 			partyState.value.members[currentCharacterIndex].character = newState;
+			// Trigger setter to save to localStorage
+			partyState.value = { ...partyState.value };
 			resetImageState = true;
 		}
 		isGeneratingState = false;
@@ -190,6 +192,8 @@
 			characterState.value[stateValue] = newState[stateValue];
 			// Update current party member
 			partyState.value.members[currentCharacterIndex].character = characterState.value;
+			// Trigger setter to save to localStorage
+			partyState.value = { ...partyState.value };
 			if (stateValue === 'appearance') {
 				resetImageState = true;
 			}
@@ -199,7 +203,9 @@
 
 	const switchToCharacter = (index: number) => {
 		// Save current character state to party
-		partyState.value.members[currentCharacterIndex].character = characterState.value;
+			partyState.value.members[currentCharacterIndex].character = characterState.value;
+			// Trigger setter to save to localStorage
+			partyState.value = { ...partyState.value };
 
 		// Switch to new character
 		currentCharacterIndex = index;
@@ -304,6 +310,8 @@
 		onclick={() => {
 			characterState.reset();
 			partyState.value.members[currentCharacterIndex].character = { ...initialCharacterState };
+			// Trigger setter to save to localStorage
+			partyState.value = { ...partyState.value };
 			characterStateOverwrites = {};
 			resetImageState = true;
 		}}
@@ -372,6 +380,8 @@
 			onclick={() => {
 				characterState.resetProperty(stateValue as keyof CharacterDescription);
 				partyState.value.members[currentCharacterIndex].character = characterState.value;
+				// Trigger setter to save to localStorage
+				partyState.value = { ...partyState.value };
 				delete characterStateOverwrites[stateValue];
 				if (stateValue === 'appearance') {
 					resetImageState = true;

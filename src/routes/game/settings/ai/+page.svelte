@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import { handleError, navigate, parseState, initialThoughtsState, type ThoughtsState } from '$lib/util.svelte';
-	import { CharacterAgent, initialCharacterState, type Party } from '$lib/ai/agents/characterAgent';
+	import { CharacterAgent, initialCharacterState, initialPartyState, type Party } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
@@ -28,7 +28,7 @@
 	import OutputFeaturesModal from '$lib/components/interaction_modals/settings/OutputFeaturesModal.svelte';
 	import SystemPromptsModal from '$lib/components/interaction_modals/settings/SystemPromptsModal.svelte';
 	// Import state stores
-	import { aiStateStore } from '$lib/state/stores';
+	import { aiStateStore, } from '$lib/state/stores';
 
 	// Use AI state store instead of individual useLocalStorage calls
 	// const apiKeyState = localState<string>('apiKeyState');

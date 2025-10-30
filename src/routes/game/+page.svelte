@@ -405,6 +405,13 @@
 				console.log('Set activeCharacterId to first member:', partyState.value.activeCharacterId);
 			}
 			
+			// Initialize playerCharactersGameState for all party members
+			for (const member of partyState.value.members) {
+				if (!playerCharactersGameState[member.id]) {
+					playerCharactersGameState[member.id] = {};
+				}
+			}
+			
 			// Force sync character state with active party member immediately
 			const activeMember = getActivePartyMember(partyState.value);
 			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
@@ -413,7 +420,8 @@
 				memberCount: partyState.value.members.length,
 				activeCharacterId: partyState.value.activeCharacterId,
 				activeMember: activeMember?.character.name,
-				currentCharacterStoreName: characterStateStore.character.name
+				currentCharacterStoreName: characterStateStore.character.name,
+				playerCharactersGameStateIds: Object.keys(playerCharactersGameState)
 			});
 			
 			if (activeMember && activeMemberStats) {
