@@ -209,8 +209,8 @@
 	// Sync character state with active party member
 	$effect(() => {
 		if (partyState.party.members.length > 0) {
-			const activeMember = getActivePartyMember(partyState.value);
-			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
+			const activeMember = getActivePartyMember(partyState.party);
+			const activeMemberStats = getActivePartyMemberStats(partyState.party, partyStatsState.value);
 			if (activeMember && activeMemberStats) {
 				characterStateStore.character = activeMember.character;
 				characterStateStore.characterStats = activeMemberStats;
@@ -413,8 +413,8 @@
 			}
 			
 			// Force sync character state with active party member immediately
-			const activeMember = getActivePartyMember(partyState.value);
-			const activeMemberStats = getActivePartyMemberStats(partyState.value, partyStatsState.value);
+			const activeMember = getActivePartyMember(partyState.party);
+			const activeMemberStats = getActivePartyMemberStats(partyState.party, partyStatsState.value);
 			
 			console.log('Party initialization:', {
 				memberCount: partyState.party.members.length,
@@ -432,7 +432,7 @@
 			
 			// Update playerCharactersIdToNamesMapState
 			updatePlayerCharactersIdToNamesMapForParty(
-				partyState.value,
+				partyState.party,
 				playerCharactersIdToNamesMapState.value
 			);
 		}
@@ -529,7 +529,7 @@
 			
 
 					const restrainingStateForActive = getActiveRestrainingState(
-						partyState.value,
+						partyState.party,
 						playerCharactersIdToNamesMapState.value,
 						characterStateStore.character.name,
 						restrainedExplanationByMemberState.value,
@@ -1236,7 +1236,7 @@
 							};
 							
 							const memberRestrainingState = getActiveRestrainingState(
-								partyState.value,
+								partyState.party,
 								playerCharactersIdToNamesMapState.value,
 								member.character.name,
 								restrainedExplanationByMemberState.value,
@@ -1685,7 +1685,7 @@
 			relatedActionHistoryStateStore.story,
 			gameSettingsState.value?.aiIntroducesSkills,
 			getActiveRestrainingState(
-				partyState.value,
+				partyState.party,
 				playerCharactersIdToNamesMapState.value,
 				characterStateStore.character.name,
 				restrainedExplanationByMemberState.value,
@@ -1787,7 +1787,7 @@
 			relatedActionHistoryStateStore.story,
 			gameSettingsState.value?.aiIntroducesSkills,
 			getActiveRestrainingState(
-				partyState.value,
+				partyState.party,
 				playerCharactersIdToNamesMapState.value,
 				characterStateStore.character.name,
 				restrainedExplanationByMemberState.value,
@@ -2031,7 +2031,7 @@
 		if (actionsDiv) actionsDiv.innerHTML = '';
 
 		const restrainingStateForActive = getActiveRestrainingState(
-			partyState.value,
+			partyState.party,
 			playerCharactersIdToNamesMapState.value,
 			characterStateStore.character.name,
 			restrainedExplanationByMemberState.value,
@@ -2227,7 +2227,7 @@
 		let thoughts, actions;
 		try {
 			const restrainingStateForActive = getActiveRestrainingState(
-				partyState.value,
+				partyState.party,
 				playerCharactersIdToNamesMapState.value,
 				currentCharacter!.name,
 				restrainedExplanationByMemberState.value,
@@ -2318,7 +2318,7 @@
 		storyImagePrompt={storyStateStore.story.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
-		party={partyState.value}
+		party={partyState.party}
 		disableSelection={isActiveCombatActionLocked}
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
@@ -2412,7 +2412,7 @@
 	{#if partyState.party.members.length > 1 && !isGameEnded.value}
 		<div class="mt-4">
 			<PartyMemberSwitcher
-				party={partyState.value}
+				party={partyState.party}
 				onSwitch={() => onSwitchCharacter($state.snapshot(partyState.party.activeCharacterId))}
 			/>
 		</div>
