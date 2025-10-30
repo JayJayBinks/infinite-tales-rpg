@@ -57,11 +57,11 @@
 		// Ensure at least one member exists
 		if (partyState.value.members.length === 0) {
 			const id = 'player_character_1';
-			partyState.value.members.push({
+			partyState.addMember({
 				id,
 				character: { ...initialCharacterState }
 			});
-			partyState.value.activeCharacterId = id;
+			partyState.setActiveCharacterId(id);
 			currentCharacterIndex = 0;
 		}
 		// Derive desired party size from storyState.value.party_count (string)
@@ -73,7 +73,7 @@
 		// Add members until we reach desired count
 		while (partyState.value.members.length < desiredCount) {
 			const nextId = `player_character_${partyState.value.members.length + 1}`;
-			partyState.value.members.push({
+			partyState.addMember({
 				id: nextId,
 				character: { ...initialCharacterState }
 			});
@@ -85,7 +85,7 @@
 		if (partyState.value.members.length >= 4) return;
 		
 		const nextId = `player_character_${partyState.value.members.length + 1}`;
-		partyState.value.members.push({
+		partyState.addMember({
 			id: nextId,
 			character: { ...initialCharacterState }
 		});
@@ -94,7 +94,8 @@
 	function removePartyMember(index: number) {
 		if (partyState.value.members.length <= 1) return;
 		
-		partyState.value.members.splice(index, 1);
+		const memberIdToRemove = partyState.value.members[index].id;
+		partyState.removeMember(memberIdToRemove);
 		
 		// Adjust current index if needed
 		if (currentCharacterIndex >= partyState.value.members.length) {
@@ -102,8 +103,9 @@
 		}
 		
 		// Update active character if we removed the active one
-		if (partyState.value.activeCharacterId === `player_character_${index + 1}`) {
-			partyState.value.activeCharacterId = partyState.value.members[currentCharacterIndex].id;
+		if (partyState.value.activeCharacterId === memberIdToRemove) {
+			const newActiveId = partyState.value.members[currentCharacterIndex].id;
+			partyState.setActiveCharacterId(newActiveId);
 		}
 		
 		// Load the current character
@@ -150,11 +152,11 @@
 			party.length
 		);
 		if (partyDescriptions && partyDescriptions.length === party.length) {
+			// Use immutable update methods to ensure persistence
 			for (let i = 0; i < party.length; i++) {
-				partyState.value.members[i].character = partyDescriptions[i];
+				const memberId = party[i].id;
+				partyState.updateMemberCharacter(memberId, partyDescriptions[i]);
 			}
-			// Trigger setter to save to localStorage
-			partyState.value = { ...partyState.value };
 			// Set first character as active
 			characterState.value = partyState.value.members[0].character;
 			resetImageState = true;
@@ -170,10 +172,9 @@
 		);
 		if (newState) {
 			characterState.value = newState;
-			// Update current party member
-			partyState.value.members[currentCharacterIndex].character = newState;
-			// Trigger setter to save to localStorage
-			partyState.value = { ...partyState.value };
+			// Update current party member using immutable method
+			const memberId = partyState.value.members[currentCharacterIndex].id;
+			partyState.updateMemberCharacter(memberId, newState);
 			resetImageState = true;
 		}
 		isGeneratingState = false;

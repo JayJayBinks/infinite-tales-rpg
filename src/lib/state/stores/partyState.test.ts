@@ -138,6 +138,100 @@ describe('PartyState', () => {
 		});
 	});
 
+	describe('Immutable update methods', () => {
+		beforeEach(() => {
+			partyState.party = {
+				members: [
+					{ id: 'player_1', character: { ...initialCharacterState, name: 'Hero 1' } },
+					{ id: 'player_2', character: { ...initialCharacterState, name: 'Hero 2' } }
+				],
+				activeCharacterId: 'player_1'
+			};
+			partyState.partyStats = {
+				members: [
+					{ id: 'player_1', stats: { ...initialCharacterStatsState, level: 1 } },
+					{ id: 'player_2', stats: { ...initialCharacterStatsState, level: 1 } }
+				]
+			};
+		});
+
+		it('should update member character immutably', () => {
+			const newCharacter = { ...initialCharacterState, name: 'Updated Hero 1', background: 'New background' };
+			
+			partyState.updateMemberCharacter('player_1', newCharacter);
+			
+			expect(partyState.party.members[0].character.name).toBe('Updated Hero 1');
+			expect(partyState.party.members[0].character.background).toBe('New background');
+			expect(partyState.party.members[1].character.name).toBe('Hero 2'); // Other members unchanged
+		});
+
+		it('should update member stats immutably', () => {
+			const newStats = { ...initialCharacterStatsState, level: 5 };
+			
+			partyState.updateMemberStats('player_2', newStats);
+			
+			expect(partyState.partyStats.members[1].stats.level).toBe(5);
+			expect(partyState.partyStats.members[0].stats.level).toBe(1); // Other members unchanged
+		});
+
+		it('should set active character ID immutably', () => {
+			partyState.setActiveCharacterId('player_2');
+			
+			expect(partyState.activeCharacterId).toBe('player_2');
+		});
+
+		it('should add member immutably', () => {
+			const newMember = { id: 'player_3', character: { ...initialCharacterState, name: 'Hero 3' } };
+			
+			partyState.addMember(newMember);
+			
+			expect(partyState.party.members).toHaveLength(3);
+			expect(partyState.party.members[2].character.name).toBe('Hero 3');
+		});
+
+		it('should add member stats immutably', () => {
+			const newMemberStats = { id: 'player_3', stats: { ...initialCharacterStatsState, level: 3 } };
+			
+			partyState.addMemberStats(newMemberStats);
+			
+			expect(partyState.partyStats.members).toHaveLength(3);
+			expect(partyState.partyStats.members[2].stats.level).toBe(3);
+		});
+
+		it('should remove member immutably', () => {
+			partyState.removeMember('player_2');
+			
+			expect(partyState.party.members).toHaveLength(1);
+			expect(partyState.party.members[0].character.name).toBe('Hero 1');
+		});
+
+		it('should remove member stats immutably', () => {
+			partyState.removeMemberStats('player_1');
+			
+			expect(partyState.partyStats.members).toHaveLength(1);
+			expect(partyState.partyStats.members[0].id).toBe('player_2');
+		});
+
+		it('should set member skill progression immutably', () => {
+			partyState.setMemberSkillProgression('player_1', 'Swordsmanship', 10);
+			partyState.setMemberSkillProgression('player_1', 'Swordsmanship', 5);
+			
+			const progression = partyState.getMemberSkillsProgression('player_1');
+			expect(progression['Swordsmanship']).toBe(15);
+		});
+
+		it('should not modify original data when updating', () => {
+			const originalParty = { ...partyState.party };
+			const originalMemberName = partyState.party.members[0].character.name;
+			
+			partyState.updateMemberCharacter('player_1', { ...initialCharacterState, name: 'Changed' });
+			
+			// Reference should be different (immutability)
+			expect(partyState.party).not.toBe(originalParty);
+			expect(partyState.party.members[0].character.name).not.toBe(originalMemberName);
+		});
+	});
+
 	describe('resetPartyState', () => {
 		it('should reset all party state', () => {
 			// Set some values

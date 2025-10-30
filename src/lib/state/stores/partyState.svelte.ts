@@ -158,6 +158,106 @@ export class PartyState {
 	}
 	
 	/**
+	 * Update a specific party member's character description
+	 * Uses immutable pattern to ensure setter is triggered
+	 */
+	updateMemberCharacter(memberId: string, character: CharacterDescription) {
+		const memberIndex = this.party.members.findIndex((m) => m.id === memberId);
+		if (memberIndex === -1) return;
+		
+		this.party = {
+			...this.party,
+			members: this.party.members.map((m, i) =>
+				i === memberIndex ? { ...m, character } : m
+			)
+		};
+	}
+	
+	/**
+	 * Update a specific party member's stats
+	 * Uses immutable pattern to ensure setter is triggered
+	 */
+	updateMemberStats(memberId: string, stats: CharacterStats) {
+		const memberIndex = this.partyStats.members.findIndex((m) => m.id === memberId);
+		if (memberIndex === -1) return;
+		
+		this.partyStats = {
+			...this.partyStats,
+			members: this.partyStats.members.map((m, i) =>
+				i === memberIndex ? { ...m, stats } : m
+			)
+		};
+	}
+	
+	/**
+	 * Set the active character ID
+	 * Uses immutable pattern to ensure setter is triggered
+	 */
+	setActiveCharacterId(id: string) {
+		this.party = { ...this.party, activeCharacterId: id };
+	}
+	
+	/**
+	 * Add a new party member
+	 * Uses immutable pattern to ensure setter is triggered
+	 */
+	addMember(member: Party['members'][0]) {
+		this.party = {
+			...this.party,
+			members: [...this.party.members, member]
+		};
+	}
+	
+	/**
+	 * Add a new party member stats
+	 * Uses immutable pattern to ensure setter is triggered
+	 */
+	addMemberStats(memberStats: PartyStats['members'][0]) {
+		this.partyStats = {
+			...this.partyStats,
+			members: [...this.partyStats.members, memberStats]
+		};
+	}
+	
+	/**
+	 * Remove a party member by ID
+	 * Uses immutable pattern to ensure setter is triggered
+	 */
+	removeMember(memberId: string) {
+		this.party = {
+			...this.party,
+			members: this.party.members.filter(m => m.id !== memberId)
+		};
+	}
+	
+	/**
+	 * Remove a party member stats by ID
+	 * Uses immutable pattern to ensure setter is triggered
+	 */
+	removeMemberStats(memberId: string) {
+		this.partyStats = {
+			...this.partyStats,
+			members: this.partyStats.members.filter(m => m.id !== memberId)
+		};
+	}
+	
+	/**
+	 * Update skills progression for a member (immutable)
+	 */
+	setMemberSkillProgression(memberId: string, skillName: string, progression: number) {
+		const currentProgression = this.skillsProgressionByMember[memberId] || {};
+		const currentSkillValue = currentProgression[skillName] || 0;
+		
+		this.skillsProgressionByMember = {
+			...this.skillsProgressionByMember,
+			[memberId]: {
+				...currentProgression,
+				[skillName]: currentSkillValue + progression
+			}
+		};
+	}
+	
+	/**
 	 * Reset party state
 	 */
 	resetPartyState() {

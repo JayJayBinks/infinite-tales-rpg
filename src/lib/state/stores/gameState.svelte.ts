@@ -67,6 +67,55 @@ export class GameProgressionState {
 	getPlayerCharacterGameState(characterId: string) {
 		return this.playerCharactersGame[characterId];
 	}
+	
+	/**
+	 * Add a new game action (immutable pattern)
+	 */
+	addGameAction(action: GameActionState) {
+		this.gameActions = [...this.gameActions, action];
+	}
+	
+	/**
+	 * Update the latest game action (immutable pattern)
+	 */
+	updateCurrentGameAction(updates: Partial<GameActionState>) {
+		if (this.gameActions.length === 0) return;
+		
+		const lastIndex = this.gameActions.length - 1;
+		this.gameActions = this.gameActions.map((action, i) =>
+			i === lastIndex ? { ...action, ...updates } : action
+		);
+	}
+	
+	/**
+	 * Update inventory item (immutable pattern)
+	 */
+	updateInventoryItem(itemId: string, quantity: number) {
+		this.inventory = {
+			...this.inventory,
+			[itemId]: quantity
+		};
+	}
+	
+	/**
+	 * Update NPC state (immutable pattern)
+	 */
+	updateNPC(npcId: string, npcData: NPCState[string]) {
+		this.npcs = {
+			...this.npcs,
+			[npcId]: npcData
+		};
+	}
+	
+	/**
+	 * Add or update player character game state (immutable pattern)
+	 */
+	setPlayerCharacterGameState(characterId: string, state: PlayerCharactersGameState[string]) {
+		this.playerCharactersGame = {
+			...this.playerCharactersGame,
+			[characterId]: state
+		};
+	}
 }
 
 /**

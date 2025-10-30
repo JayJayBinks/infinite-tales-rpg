@@ -401,7 +401,7 @@
 			// Ensure activeCharacterId is set to first member if missing or invalid
 			if (!partyState.value.activeCharacterId || 
 				!partyState.value.members.find(m => m.id === partyState.value.activeCharacterId)) {
-				partyState.value.activeCharacterId = partyState.value.members[0].id;
+				partyState.setActiveCharacterId(partyState.value.members[0].id);
 				console.log('Set activeCharacterId to first member:', partyState.value.activeCharacterId);
 			}
 			
@@ -2170,7 +2170,7 @@
 
 		// Update active character id first so resource lookups use the new id.
 		if (partyState.value.activeCharacterId !== activeId) {
-			partyState.value.activeCharacterId = activeId;
+			partyState.setActiveCharacterId(activeId);
 			// Sync character + stats to selected member for immediate UI consistency
 			const member = partyState.value.members.find((m) => m.id === activeId);
 			if (member) {

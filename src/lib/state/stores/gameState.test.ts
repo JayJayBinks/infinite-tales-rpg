@@ -115,6 +115,102 @@ describe('GameState', () => {
 		});
 	});
 
+	describe('Immutable update methods', () => {
+		it('should add game action immutably', () => {
+			const action1: GameActionState = {
+				id: '1',
+				story: 'Action 1',
+				stats_update: [],
+				inventory_update: {},
+				currently_present_npcs: { hostile: [], neutral: [], friendly: [] },
+				currentPlotPoint: '',
+				nextPlotPoint: '',
+				image_prompt: '',
+				is_character_in_combat: false
+			} as GameActionState;
+
+			const action2: GameActionState = { ...action1, id: '2', story: 'Action 2' };
+
+			gameState.progression.addGameAction(action1);
+			gameState.progression.addGameAction(action2);
+
+			expect(gameState.progression.gameActions).toHaveLength(2);
+			expect(gameState.progression.currentGameAction.story).toBe('Action 2');
+		});
+
+		it('should update current game action immutably', () => {
+			const action: GameActionState = {
+				id: '1',
+				story: 'Original story',
+				stats_update: [],
+				inventory_update: {},
+				currently_present_npcs: { hostile: [], neutral: [], friendly: [] },
+				currentPlotPoint: '',
+				nextPlotPoint: '',
+				image_prompt: '',
+				is_character_in_combat: false
+			} as GameActionState;
+
+			gameState.progression.addGameAction(action);
+			gameState.progression.updateCurrentGameAction({ story: 'Updated story', image_prompt: 'new_image.png' });
+
+			expect(gameState.progression.currentGameAction.story).toBe('Updated story');
+			expect(gameState.progression.currentGameAction.image_prompt).toBe('new_image.png');
+			expect(gameState.progression.currentGameAction.id).toBe('1'); // Other fields unchanged
+		});
+
+		it('should update inventory item immutably', () => {
+			gameState.progression.updateInventoryItem('sword', 1);
+			gameState.progression.updateInventoryItem('potion', 5);
+
+			expect(gameState.progression.inventory['sword']).toBe(1);
+			expect(gameState.progression.inventory['potion']).toBe(5);
+		});
+
+		it('should update NPC immutably', () => {
+			const npcData = {
+				HP: { current_value: 50, max_value: 100, game_ends_when_zero: false }
+			};
+
+			gameState.progression.updateNPC('goblin_1', npcData);
+
+			expect(gameState.progression.npcs['goblin_1']).toEqual(npcData);
+		});
+
+		it('should set player character game state immutably', () => {
+			const characterState = {
+				HP: { current_value: 75, max_value: 100, game_ends_when_zero: true }
+			};
+
+			gameState.progression.setPlayerCharacterGameState('player_1', characterState);
+
+			const retrieved = gameState.progression.getPlayerCharacterGameState('player_1');
+			expect(retrieved).toEqual(characterState);
+		});
+
+		it('should not modify original data when updating', () => {
+			const action: GameActionState = {
+				id: '1',
+				story: 'Original',
+				stats_update: [],
+				inventory_update: {},
+				currently_present_npcs: { hostile: [], neutral: [], friendly: [] },
+				currentPlotPoint: '',
+				nextPlotPoint: '',
+				image_prompt: '',
+				is_character_in_combat: false
+			} as GameActionState;
+
+			gameState.progression.addGameAction(action);
+			const originalActions = gameState.progression.gameActions;
+
+			gameState.progression.updateCurrentGameAction({ story: 'Updated' });
+
+			// Reference should be different (immutability)
+			expect(gameState.progression.gameActions).not.toBe(originalActions);
+		});
+	});
+
 	describe('resetGameState', () => {
 		it('should reset all game state', () => {
 			// Set some values
