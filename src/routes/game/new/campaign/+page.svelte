@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import {
 		getRowsForTextarea,
@@ -25,17 +25,21 @@
 	import { beforeNavigate } from '$app/navigation';
 	import type { AIConfig } from '$lib';
 	let isGeneratingState = $state(false);
-	const apiKeyState = useLocalStorage<string>('apiKeyState');
-	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	function localState<T>(key: string, initial: T | undefined = undefined as any) {
+		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		return { get value() { return _v; }, set value(val: T) { _v = val; saveToLocalStorage(key, val); }, reset() { this.value = initial as T; }, resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} } };
+	}
+	const apiKeyState = localState<string>('apiKeyState', '');
+	const aiLanguage = localState<string>('aiLanguage', 'English');
 	let campaignAgent: CampaignAgent;
 
-	const campaignState = useLocalStorage<Campaign>('campaignState', initialCampaignState);
-	const storyState = useLocalStorage<Story>('storyState', {} as Story);
-	const currentChapterState = useLocalStorage<number>('currentChapterState');
+    const campaignState = localState<Campaign>('campaignState', initialCampaignState);
+    const storyState = localState<Story>('storyState', {} as Story);
+    const currentChapterState = localState<number>('currentChapterState', 1 as any);
 	const textAreaRowsDerived = $derived(getRowsForTextarea(campaignState.value));
 	let campaignStateOverwrites = $state({});
-	const characterState = useLocalStorage<CharacterDescription>('characterState');
-	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
+    const characterState = localState<CharacterDescription>('characterState', { ...initialCharacterState });
+    const aiConfigState = localState<AIConfig>('aiConfigState', { disableAudioState: false, disableImagesState: false } as AIConfig);
 
 	onMount(() => {
 		campaignAgent = new CampaignAgent(

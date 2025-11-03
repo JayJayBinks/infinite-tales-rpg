@@ -5,7 +5,6 @@
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
 	import type { AIConfig } from '$lib';
-	import type { Party } from '$lib/ai/agents/characterAgent';
 
 	let {
 		abilities,
@@ -14,24 +13,21 @@
 		resources,
 		targets,
 		onclose,
-		dialogRef = $bindable(),
-		party,
-		disableSelection = false
+		dialogRef = $bindable()
 	}: {
 		abilities: Array<Ability>;
 		playerName: string;
 		storyImagePrompt: string;
-		resources: ResourcesWithCurrentValue;
+		resources?: ResourcesWithCurrentValue;
 		targets: Targets;
 		onclose;
 		dialogRef;
-		party?: Party;
-		disableSelection?: boolean;
 	} = $props();
 
+	const safeResources = resources ?? ({} as ResourcesWithCurrentValue);
+
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	// eslint-disable-next-line svelte/valid-compile
-	let targetModalRef;
+	let targetModalRef: HTMLDialogElement | null = $state(null);
 	let abilityActionState = $state({} as Action);
 
 	function mapAbilityToAction(ability: Ability) {
@@ -42,10 +38,39 @@
 			text: playerName + ' casts ' + ability.name + ': ' + ability.effect
 		};
 	}
+
+	const getAbilityResourceStatus = (ability: Ability) => {
+		const key = ability.resource_cost?.resource_key;
+		const cost = ability.resource_cost?.cost ?? 0;
+		if (!key || cost <= 0) {
+			return {
+				missing: false,
+				insufficient: false,
+				label: '',
+				available: Infinity
+			};
+		}
+		const resource = safeResources?.[key];
+		if (!resource) {
+			return {
+				missing: true,
+				insufficient: false,
+				label: key.replaceAll('_', ' '),
+				available: 0
+			};
+		}
+		const available = resource.current_value ?? 0;
+		return {
+			missing: false,
+			insufficient: cost > available,
+			label: key.replaceAll('_', ' '),
+			available
+		};
+	};
 </script>
 
 {#if targets}
-	<TargetModal bind:dialogRef={targetModalRef} {targets} action={abilityActionState} {onclose} {party}
+	<TargetModal bind:dialogRef={targetModalRef} {targets} action={abilityActionState} {onclose}
 	></TargetModal>
 {/if}
 <dialog bind:this={dialogRef} class="z-100 modal" style="background: rgba(0, 0, 0, 0.3);">
@@ -55,6 +80,7 @@
 			<button class="btn btn-circle btn-ghost btn-sm absolute right-2 top-2">✕</button>
 		</form>
 		{#each abilities as ability (ability.name)}
+			{@const resourceStatus = getAbilityResourceStatus(ability)}
 			<label class="form-control mt-3 w-full">
 				<details class="collapse collapse-arrow textarea-bordered border bg-base-200">
 					<summary class="collapse-title capitalize">
@@ -62,9 +88,14 @@
 							<!-- Top: Badge always at the top -->
 							<div>
 								{#if ability.resource_cost?.cost > 0}
-									<p class="badge badge-info h-fit overflow-auto break-all">
+									<p
+										class="badge h-fit overflow-auto break-all"
+										class:badge-info={!resourceStatus.missing && !resourceStatus.insufficient}
+										class:badge-warning={resourceStatus.insufficient}
+										class:badge-error={resourceStatus.missing}
+									>
 										{ability.resource_cost?.cost}
-										{(ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}
+										{resourceStatus.label || (ability.resource_cost?.resource_key || '').replaceAll('_', ' ')}
 									</p>
 								{/if}
 							</div>
@@ -88,19 +119,24 @@
 								<button
 									type="button"
 									class="components btn btn-neutral no-animation mt-2"
-									disabled={disableSelection || (ability.resource_cost?.cost > 0 &&
-										ability.resource_cost?.cost >
-											(resources[ability.resource_cost?.resource_key || '']?.current_value || 0))}
-									title={disableSelection ? 'Action already chosen for this combat round' : ''}
+									disabled={resourceStatus.missing || resourceStatus.insufficient}
 									onclick={() => {
-										if (disableSelection) return;
 										mapAbilityToAction(ability);
 										dialogRef.close();
-										targetModalRef.showModal();
+										targetModalRef?.showModal();
 									}}
 								>
 									Cast
 								</button>
+								{#if resourceStatus.missing}
+									<p class="mt-2 text-xs font-medium text-error">
+										Resource {resourceStatus.label} is not tracked for this character yet.
+									</p>
+								{:else if resourceStatus.insufficient}
+									<p class="mt-2 text-xs font-medium text-warning">
+										Needs {ability.resource_cost?.cost} {resourceStatus.label}. Available: {resourceStatus.available}
+									</p>
+								{/if}
 							</div>
 						</div>
 					</summary>

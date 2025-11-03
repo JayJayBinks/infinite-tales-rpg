@@ -1,14 +1,8 @@
 <script lang="ts">
-	import type { Party } from '$lib/ai/agents/characterAgent';
+	import type { Party } from '$lib/types/party';
 	import { switchActiveCharacter } from '../../routes/game/partyLogic';
-	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { partyState, gameState } from '$lib/state/stores';
 	import RestrainedExplanationModal from '$lib/components/interaction_modals/RestrainedExplanationModal.svelte';
-
-	// Per-member restrained state (string explanation or null)
-	const restrainedExplanationByMemberState = useLocalStorage<Record<string, string | null>>(
-		'restrainedExplanationByMemberState',
-		{}
-	);
 
 	let {
 		party,
@@ -23,21 +17,9 @@
 		onSwitch?.();
 	}
 
-	const gameActionsState = useLocalStorage<any[]>('gameActionsState', []);
-
-	function hasLegacyRestrained(): boolean {
-		const arr = gameActionsState.value;
-		if (!arr || arr.length === 0) return false;
-		const last = arr[arr.length - 1];
-		return !!last?.is_character_restrained_explanation;
-	}
-
 	function isRestrained(memberId: string): boolean {
 		console.log('Checking if member is restrained:', memberId);
-		const v = restrainedExplanationByMemberState.value[memberId];
-		if (v) return true; // per-member mapping wins
-		// Fallback: legacy field applies only to active member
-		return party?.activeCharacterId === memberId && hasLegacyRestrained();
+		return !!partyState.restrainedExplanationByMember[memberId];
 	}
 
 	// State for restrained modal
@@ -50,7 +32,7 @@
 		event.stopPropagation();
 		restrainedModalMemberId = memberId;
 		restrainedModalName = memberName;
-		restrainedModalExplanation = restrainedExplanationByMemberState.value[memberId] || '';
+		restrainedModalExplanation = partyState.restrainedExplanationByMember[memberId] || '';
 	}
 
 	function closeRestrainedModal() {
@@ -69,11 +51,11 @@
 				class:btn-primary={isActive}
 				class:btn-outline={!isActive}
 				onclick={() => handleSwitch(member.id)}
-				title={(member.character.class || 'No class') + (isRestrained(member.id) ? ' - Restrained' : '')}
+				title={(member.character?.class || 'No class') + (isRestrained(member.id) ? ' - Restrained' : '')}
 			>
 				<div class="flex w-full flex-col items-start">
 					<span class="font-bold pr-4"
-						>{member.character.name || `Character ${member.id.split('_').pop()}`}</span
+						>{member.character?.name || `Character ${member.id.split('_').pop()}`}</span
 					>
 				</div>
 				{#if isRestrained(member.id)}

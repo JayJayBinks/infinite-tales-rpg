@@ -27,6 +27,9 @@ export enum ActionDifficulty {
 }
 
 export function getEmptyCriticalResourceKeys(resources: ResourcesWithCurrentValue): string[] {
+	if (!resources || typeof resources !== 'object') {
+		return [];
+	}
 	return Object.entries(resources)
 		.filter((entry) => entry[1].game_ends_when_zero && entry[1].current_value <= 0)
 		.map((entry) => entry[0]);
@@ -123,10 +126,12 @@ function getColorForStatUpdate(mappedType: string, resources: ResourcesWithCurre
 	if (mappedType.includes('LEVEL')) color = 'text-green-500';
 	if (mappedType.includes('SKILL')) color = 'text-green-500';
 	if (!color) {
-		const foundResourceEntry = Object.entries(resources).find((res) => {
-			const processedKey = res[0]?.replaceAll('_', ' ').toUpperCase();
-			return processedKey?.includes(mappedType.toUpperCase());
-		});
+		const foundResourceEntry = resources && typeof resources === 'object' 
+			? Object.entries(resources).find((res) => {
+				const processedKey = res[0]?.replaceAll('_', ' ').toUpperCase();
+				return processedKey?.includes(mappedType.toUpperCase());
+			})
+			: undefined;
 
 		const foundResourceValue = foundResourceEntry ? foundResourceEntry[1] : undefined;
 		if (foundResourceValue) {
@@ -426,14 +431,18 @@ export function isEnoughResource(
 	if (cost === 0) {
 		return true;
 	}
-	const resourceKey = Object.keys(resources).find(
-		(key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase()
-	);
+	const resourceKey = resources && typeof resources === 'object'
+		? Object.keys(resources).find(
+			(key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase()
+		  )
+		: undefined;
 	let inventoryKey: string | undefined = undefined;
 	if (!resourceKey) {
-		inventoryKey = Object.keys(inventory).find(
-			(key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase()
-		);
+		inventoryKey = inventory && typeof inventory === 'object'
+			? Object.keys(inventory).find(
+				(key) => key.toLowerCase() === action.resource_cost?.resource_key?.toLowerCase()
+			  )
+			: undefined;
 		return !!inventoryKey;
 	}
 	return resources[resourceKey || '']?.current_value >= cost;

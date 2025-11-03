@@ -1,5 +1,5 @@
 import type { GameActionState } from '$lib/ai/agents/gameAgent';
-import type { Party } from '$lib/ai/agents/characterAgent';
+import type { Party } from '$lib/types/party';
 import { getCharacterTechnicalId } from './characterLogic';
 
 /**

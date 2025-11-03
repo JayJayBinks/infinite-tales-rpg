@@ -37,6 +37,33 @@ test.describe('1. Onboarding & Tale Setup', () => {
     const activeMemberName = await getActivePartyMemberName(page);
     expect(activeMemberName).toBeTruthy();
     expect(activeMemberName.length).toBeGreaterThan(0);
+    
+    // Verify resources are shown in the resource bar
+    // Wait a bit for resources to initialize
+    await page.waitForTimeout(1500);
+    
+    // Check for HP resource (should always exist)
+    const hpLabel = page.locator('[data-testid="resource-HP-label"]');
+    await expect(hpLabel).toBeVisible({ timeout: 5000 });
+    
+    const hpValue = page.locator('[data-testid="resource-HP-value"]');
+    await expect(hpValue).toBeVisible({ timeout: 5000 });
+    
+    // Verify HP has non-zero values (format: "current/max")
+    const hpText = await hpValue.textContent();
+    expect(hpText).toBeTruthy();
+    expect(hpText).toMatch(/\d+\/\d+/); // Should match "X/Y" format
+    
+    // Extract current and max values
+    const hpMatch = hpText!.match(/(\d+)\/(\d+)/);
+    expect(hpMatch).toBeTruthy();
+    const currentHP = parseInt(hpMatch![1]);
+    const maxHP = parseInt(hpMatch![2]);
+    
+    // Resources should be filled at game start
+    expect(currentHP).toBeGreaterThan(0);
+    expect(maxHP).toBeGreaterThan(0);
+    expect(currentHP).toBe(maxHP); // Should be full at start
   });
 
   test('1.2 Quickstart with overwrites (H)', async ({ page }) => {
@@ -215,13 +242,10 @@ test.describe('1. Onboarding & Tale Setup', () => {
     const restoredPartyCount = await getPartyMemberCount(page);
     expect(restoredPartyCount).toBe(originalPartyCount);
     
-    //TODO always restrained atm to fit the restrain test
     const restoredActiveMember = await getActivePartyMemberName(page)
-    expect(restoredActiveMember).toBe(originalActiveMember + ' Restrained');
+    expect(restoredActiveMember).toBe(originalActiveMember);
     
     const restoredPartyNames = await getAllPartyMemberNames(page);
-    //TODO always restrained atm to fit the restrain test
-    originalPartyNames[0] += ' Restrained';
     expect(restoredPartyNames).toEqual(originalPartyNames);
     
     // Verify story is visible again

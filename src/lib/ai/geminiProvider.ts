@@ -303,7 +303,6 @@ export class GeminiProvider extends LLM {
 				}
 				return this.genAI.models.generateContentStream(genAIRequest) as any;
 			} else {
-				console.log('Gemini Request: ', JSON.stringify(genAIRequest));
 				result = await this.genAI.models.generateContent(genAIRequest);
 			}
 		} catch (e) {

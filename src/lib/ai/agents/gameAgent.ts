@@ -348,36 +348,26 @@ export class GameAgent {
 		customCombatAgentInstruction: string,
 		gameSettings: GameSettings
 	) {
-		// Determine if this is a party game state (nested resources objects)
-		const firstValue = Object.values(playerCharactersGameState)[0] as unknown;
-		const isSingleCharacter = !!firstValue && typeof firstValue === 'object' && 'current_value' in (firstValue as any);
-		const isParty = !isSingleCharacter; // If the first level values don't have current_value, assume party mapping
-
-		let partyResourcesPresentation = '';
-		if (isParty) {
-			// Map to an array for clarity in prompt
-			partyResourcesPresentation = stringifyPretty(
-				Object.entries(playerCharactersGameState as PlayerCharactersGameState).map(
-					([memberId, resources]) => ({ memberId, resources })
-				)
-			);
+		// Defensive: handle undefined or empty resource state gracefully (can happen on very first tick before init)
+		if (!playerCharactersGameState) {
+			playerCharactersGameState = {} as PlayerCharactersGameState;
 		}
+
+		// Always treat as party mode - a single character is just a party of 1
+		const partyResourcesPresentation = stringifyPretty(
+			Object.entries(playerCharactersGameState as PlayerCharactersGameState).map(
+				([memberId, resources]) => ({ memberId, resources })
+			)
+		);
 
 		const gameAgent = [
 			systemBehaviour(gameSettings),
 			stringifyPretty(storyState),
-			isParty
-				? 'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story. IMPORTANT: Party members are player characters and should NEVER be added to currently_present_npcs.' +
-					'\n' +
-					stringifyPretty(characterState)
-				: 'The following is a description of the player character, always refer to it when considering appearance, reasoning, motives etc.' +
-					'\n' +
-					stringifyPretty(characterState),
-			isParty
-				? "The following are all party members' CURRENT resources. Consider the party's overall condition in your response.\n" +
-					partyResourcesPresentation
-				: "The following are the character's CURRENT resources, consider it in your response\n" +
-					stringifyPretty(Object.entries(playerCharactersGameState as ResourcesWithCurrentValue)),
+			'The player controls a party of adventurers. The following is a description of the currently active party member, always refer to it when considering appearance, reasoning, motives etc. Remember that other party members are also present and may act or be referenced in the story. IMPORTANT: Party members are player characters and should NEVER be added to currently_present_npcs.' +
+				'\n' +
+				stringifyPretty(characterState),
+			"The following are all party members' CURRENT resources. Consider the party's overall condition in your response.\n" +
+				partyResourcesPresentation,
 			"The party's shared inventory - check items for relevant passive effects relevant for the story progression or effects that are triggered every action.\n" +
 				stringifyPretty(inventoryState)
 		];
@@ -427,15 +417,18 @@ export class GameAgent {
 		Object.entries(maxResources)
 			.filter(([resourceKey]) => resourceKey !== 'XP')
 			.forEach(([resourceKey, maxResource]) => {
-				const refillValue = GameAgent.getRefillValue(maxResource);
-				if (refillValue === 0) {
+				const baseTarget = Math.max(maxResource.max_value || 0, maxResource.start_value || 0);
+				const currentValue = currentResources[resourceKey]?.current_value ?? 0;
+				const targetValue = Math.max(currentValue, baseTarget);
+				const gainedAmount = targetValue - currentValue;
+				if (gainedAmount <= 0) {
 					return;
 				}
 				returnObject.stats_update.push({
 					sourceName: playerCharacterName,
 					targetName: playerCharacterName,
 					type: resourceKey + '_gained',
-					value: { result: refillValue - (currentResources[resourceKey]?.current_value || 0) || 0 }
+					value: { result: gainedAmount }
 				});
 			});
 		return returnObject;

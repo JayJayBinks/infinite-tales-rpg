@@ -1,6 +1,6 @@
 import { stringifyPretty } from '$lib/util.svelte';
 import type { LLM, LLMRequest } from '$lib/ai/llm';
-import { TROPES_CLICHE_PROMPT, type Story } from '$lib/ai/agents/storyAgent';
+import { TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
 import { jsonRule } from './agentUtils';
 
 export type CharacterDescription = {
@@ -39,22 +39,6 @@ export const initialCharacterState: CharacterDescription = {
 	motivation: ''
 };
 
-// Party types
-export type PartyMember = {
-	id: string;
-	character: CharacterDescription;
-};
-
-export type Party = {
-	members: PartyMember[];
-	activeCharacterId: string;
-};
-
-export const initialPartyState: Party = {
-	members: [],
-	activeCharacterId: ''
-};
-
 export class CharacterAgent {
 	llm: LLM;
 
@@ -91,33 +75,76 @@ export class CharacterAgent {
 		return (await this.llm.generateContent(request))?.content as CharacterDescription;
 	}
 
-	async generatePartyDescriptions(
-		storyState: Story,
-		partyOverwrites?: Partial<CharacterDescription>[] | string,
-		partySize: number = 4
+	async generatePartyCharacterDescriptions(
+		storyState: object,
+		partySize: number,
+		overwrites: Array<Partial<CharacterDescription> | undefined> = [],
+		transformations: Array<string | undefined> = []
 	): Promise<CharacterDescription[]> {
-		const partyPrompt = Array(partySize).fill(characterDescriptionForPrompt).join(',\n');
-		const agentInstruction = [
-			`You are RPG character agent, creating a party of ${partySize} diverse character${partySize > 1 ? 's' : ''} for an RPG adventure.\n` +
-				(partySize > 1 
-					? `Create ${partySize} unique characters that complement each other with different classes, races, and personalities.\n` +
-						'Ensure the party has a good balance of combat, magic, support, and social skills.\n'
-					: 'Create a unique character suitable for solo adventuring.\n') +
-				TROPES_CLICHE_PROMPT
-		];
-		agentInstruction.push(jsonRule + '\n[\n' + partyPrompt + '\n]');
+		if (partySize <= 0) return [];
+		const generatedMembers: CharacterDescription[] = [];
+		for (let index = 0; index < partySize; index += 1) {
+			const memberOverrides = overwrites[index];
+			const transformInto = transformations[index];
+			const description = await this.generateCharacterDescription(
+				storyState,
+				memberOverrides,
+				transformInto
+			);
+			if (description) {
+				generatedMembers.push(description);
+			}
+		}
+		return generatedMembers;
+	}
 
-		const preset = partyOverwrites || Array(partySize).fill({});
+	async generatePartyCharacterDescriptionsBatch(
+		storyState: object,
+		partySize: number,
+		overwrites: Array<Partial<CharacterDescription> | undefined> = [],
+		transformations: Array<string | undefined> = []
+	): Promise<CharacterDescription[]> {
+		if (partySize <= 0) return [];
+
+		const partyPrompt = Array.from({ length: partySize }, (_, index) => {
+			const memberOverrides = overwrites[index];
+			const transformInto = transformations[index];
+			let memberPrompt = `Party Member ${index + 1}:\n`;
+			if (memberOverrides && Object.keys(memberOverrides).length > 0) {
+				memberPrompt += `Use existing fields as fixed values. EXISTING FIELDS:\n${stringifyPretty(memberOverrides)}\n`;
+			}
+			if (transformInto) {
+				memberPrompt += `Transform into: ${transformInto}\n`;
+			}
+			return memberPrompt;
+		}).join('\n---\n');
+
+		const agentInstruction = [
+			'You are RPG character agent, describing a party of adventurers according to the game system, adventure and provided details.\n' +
+				'Each member must feel distinct and contribute unique strengths to the party.\n' +
+				TROPES_CLICHE_PROMPT,
+			`${jsonRule}\nReturn an array of character descriptions, one for each party member in order:\n[${characterDescriptionForPrompt}, ${characterDescriptionForPrompt}, ...]`
+		];
+
 		const request: LLMRequest = {
 			userMessage:
-				`Create a party of ${partySize} character${partySize > 1 ? 's' : ''} for this adventure:\n` +
-				stringifyPretty(storyState) +
-				'\n\nMake sure to create characters that fit the following description:\n' +
-				storyState.party_description +
-				(preset ? '\n\nParty overwrites:\n' +
-				stringifyPretty(preset) : ''),
-			systemInstruction: agentInstruction
+				'Create the party members for the given story. Reuse existing fields exactly as provided and fill in the missing ones.\n' +
+				partyPrompt,
+			systemInstruction: agentInstruction,
+			historyMessages: [
+				{
+					role: 'user',
+					content: 'Description of the story: ' + stringifyPretty(storyState)
+				}
+			]
 		};
-		return (await this.llm.generateContent(request))?.content as CharacterDescription[];
+
+		const response = await this.llm.generateContent(request);
+		const descriptions = response?.content as CharacterDescription[];
+		if (!Array.isArray(descriptions)) {
+			console.error('Expected array of character descriptions, got:', descriptions);
+			return [];
+		}
+		return descriptions;
 	}
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Action, Targets } from '$lib/ai/agents/gameAgent';
 	import { getNPCDisplayName } from '$lib/util.svelte';
-	import type { Party } from '$lib/ai/agents/characterAgent';
+	import type { Party } from '$lib/types/party';
 
 	let {
 		targets,
@@ -17,11 +17,17 @@
 		party?: Party;
 	} = $props();
 
-	let targetForm;
+	let targetForm: HTMLFormElement | undefined;
 	let customTargetState = $state<string>();
 
 	function mapTargets(): string[] {
+		if (!targetForm) {
+			const result = customTargetState ? [customTargetState] : [];
+			customTargetState = undefined;
+			return result;
+		}
 		const mappedTargets = Array.from(targetForm.elements)
+			.filter((elm): elm is HTMLInputElement => elm instanceof HTMLInputElement && elm.type === 'checkbox')
 			.filter((elm) => elm.checked && elm.value)
 			.map((elm) => {
 				elm.checked = false;

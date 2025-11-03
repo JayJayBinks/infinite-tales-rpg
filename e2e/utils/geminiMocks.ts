@@ -12,6 +12,7 @@ import {
   generateLevelUpResponse,
   generateImagePromptResponse
 } from './mocks';
+import { env } from 'process';
 
 type AgentType =
   | 'storyAgent'
@@ -138,7 +139,10 @@ export async function installGeminiApiMocks(page: Page) {
 
       const agentType = detectAgentType(systemInstruction, userMessage);
       const ctx = extractRequestContext(userMessage, systemInstruction);
-      console.log(`[Gemini Mock] Detected agentType=${agentType} for systemInstruction="${systemInstruction}..." and userMessage="${userMessage.substring(0, 50)}..."`);
+
+      if (env.DEBUG_GEMINI_MOCKS === 'true') {
+        console.log(`[Gemini Mock] Detected agentType=${agentType} for systemInstruction="${systemInstruction}..." and userMessage="${userMessage.substring(0, 50)}..."`);
+      }
 
       let bodyPayload: any;
       if (endpoint === 'countTokens') {

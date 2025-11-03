@@ -1,4 +1,5 @@
 <script lang="ts">
+import { aiStateStore } from '$lib/state/stores';
 	import { onMount } from 'svelte';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import {
@@ -77,7 +78,7 @@
 		const llm = LLMProvider.provideLLM({
 			temperature: 0.7,
 			language: aiLanguage.value,
-			apiKey: apiKeyState.value
+			apiKey: aiStateStore.apiKey
 		});
 		gameAgent = new GameAgent(llm);
 		const summaryAgent = new SummaryAgent(llm);
@@ -94,7 +95,7 @@
 		const { thoughts, answer } = await gameAgent.generateAnswerForPlayerQuestion(
 			question,
 			thoughtsState.value,
-			systemInstructionsState.value,
+			aiStateStore.systemInstructions,
 			historyMessagesState.value,
 			storyState.value,
 			characterState.value,

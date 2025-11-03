@@ -1,20 +1,57 @@
 name: Playwright Tests
 
+# Expanded triggers: still reacts to successful Vercel deployment via repository_dispatch,
+# plus standard push to validate before deploy.
 on:
   repository_dispatch:
-    types:
-      - 'vercel.deployment.success'
+    types: [vercel.deployment.success]
+  push:
+    branches: [ main, develop, feature/**, copilot/** ]
+
+concurrency:
+  group: playwright-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-e2es:
-    if: github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (deployment payload sha or ref)
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.client_payload.git.sha }}
+          # For repository_dispatch we pin to the deployed commit; for other events this will be ignored (empty evaluates to ref)
+          ref: ${{ github.event.client_payload.git.sha || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
       - name: Install dependencies
-        run: npm ci && npx playwright install --with-deps
-      - name: Run tests
-        run: npx playwright test
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Show environment meta
+        run: |
+          node -v
+          npm -v
+          echo "Event: $GITHUB_EVENT_NAME"
+          echo "Commit: $(git rev-parse --short HEAD)"
+
+      - name: Run Playwright tests
         env:
-          BASE_URL: ${{ github.event.client_payload.url }}
+          # Prefer Vercel deployment URL when event is repository_dispatch; fallback to local server started via playwright.config.ts
+          BASE_URL: ${{ github.event.client_payload.url || 'http://localhost:4173' }}
+          CI: true
+        run: npx playwright test
+
+      - name: Upload Playwright report (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
