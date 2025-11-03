@@ -417,15 +417,18 @@ export class GameAgent {
 		Object.entries(maxResources)
 			.filter(([resourceKey]) => resourceKey !== 'XP')
 			.forEach(([resourceKey, maxResource]) => {
-				const refillValue = GameAgent.getRefillValue(maxResource);
-				if (refillValue === 0) {
+				const baseTarget = Math.max(maxResource.max_value || 0, maxResource.start_value || 0);
+				const currentValue = currentResources[resourceKey]?.current_value ?? 0;
+				const targetValue = Math.max(currentValue, baseTarget);
+				const gainedAmount = targetValue - currentValue;
+				if (gainedAmount <= 0) {
 					return;
 				}
 				returnObject.stats_update.push({
 					sourceName: playerCharacterName,
 					targetName: playerCharacterName,
 					type: resourceKey + '_gained',
-					value: { result: refillValue - (currentResources[resourceKey]?.current_value || 0) || 0 }
+					value: { result: gainedAmount }
 				});
 			});
 		return returnObject;

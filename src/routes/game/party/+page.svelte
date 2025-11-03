@@ -2,7 +2,8 @@
 	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
 	import AIGeneratedImage from '$lib/components/AIGeneratedImage.svelte';
 	import type { CharacterStats, SkillsProgression, PartyStats } from '$lib/ai/agents/characterStatsAgent.ts';
-	import type { CharacterDescription, Party } from '$lib/ai/agents/characterAgent';
+	import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+	import type { Party } from '$lib/types/party';
 	import type { Story } from '$lib/ai/agents/storyAgent';
 	import type { AIConfig } from '$lib';
 	import { getRequiredSkillProgression } from '../characterLogic';

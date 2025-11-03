@@ -1,15 +1,14 @@
 <script lang="ts">
-	import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
-	import { handleError, navigate, parseState, initialThoughtsState, type ThoughtsState } from '$lib/util.svelte';
-	import { CharacterAgent, initialCharacterState, initialPartyState, type Party } from '$lib/ai/agents/characterAgent';
+	import { useLocalStorage } from '$lib/state/useLocalStorage.svelte';
+	import { handleError, navigate, parseState } from '$lib/util.svelte';
+	import { CharacterAgent, initialCharacterState } from '$lib/ai/agents/characterAgent';
 	import { LLMProvider } from '$lib/ai/llmProvider';
 	import { initialStoryState, type Story, StoryAgent } from '$lib/ai/agents/storyAgent';
 	import LoadingModal from '$lib/components/LoadingModal.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		CharacterStatsAgent,
-		initialCharacterStatsState,
-		type PartyStats
+		initialCharacterStatsState
 	} from '$lib/ai/agents/characterStatsAgent';
 	import { initialCampaignState } from '$lib/ai/agents/campaignAgent';
 	import { onMount } from 'svelte';
@@ -27,137 +26,103 @@
 	import AiGenerationSettings from '$lib/components/interaction_modals/settings/AiGenerationSettings.svelte';
 	import OutputFeaturesModal from '$lib/components/interaction_modals/settings/OutputFeaturesModal.svelte';
 	import SystemPromptsModal from '$lib/components/interaction_modals/settings/SystemPromptsModal.svelte';
-	// Import state stores
-	import { aiStateStore, } from '$lib/state/stores';
+	import { partyState } from '$lib/state/stores';
+	import type { PartyMemberProfile } from '$lib/types/party';
+	import {
+		addCharacterToPlayerCharactersIdToNamesMap,
+		getFreeCharacterTechnicalId
+	} from '../../characterLogic';
+	import cloneDeep from 'lodash.clonedeep';
 
-	// Use AI state store instead of individual useLocalStorage calls
-	// const apiKeyState = localState<string>('apiKeyState');
-	// const aiLanguage = localState<string>('aiLanguage');
+	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	//TODO migrate all AI settings into this object to avoid too many vars in local storage
-	const aiConfigState = localState<AIConfig>('aiConfigState', {
-		disableAudioState: false,
-		disableImagesState: false
-	});
+	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
+			disableAudioState: false,
+			disableImagesState: false
+		});
 	let showGenerationSettingsModal = $state<boolean>(false);
 	let showOutputFeaturesModal = $state<boolean>(false);
 	let showSystemPromptsModal = $state<boolean>(false);
 
-	const gameActionsState = localState('gameActionsState', []);
-	const historyMessagesState = localState('historyMessagesState', []);
-	const characterState = localState('characterState', initialCharacterState);
-	const inventoryState = localState('inventoryState', {});
-	const characterImageState = localState('characterImageState');
-	const characterStatsState = localState('characterStatsState', initialCharacterStatsState);
-	const npcState = localState('npcState', []);
-	const storyState = localState('storyState', initialStoryState);
-	const isGameEnded = localState('isGameEnded', false);
-	const rollDifferenceHistoryState = localState('rollDifferenceHistoryState', []);
-	const campaignState = localState('campaignState', initialCampaignState);
-	const currentChapterState = localState('currentChapterState');
-	const characterActionsState = localState('characterActionsState');
-	const levelUpState = localState('levelUpState');
-	const customMemoriesState = localState<string>('customMemoriesState');
-	const customGMNotesState = localState<string>('customGMNotesState');
-	const skillsProgressionState = localState('skillsProgressionState', {});
-	const characterTransformState = localState<CharacterChangedInto>(
+	const gameActionsState = useLocalStorage('gameActionsState', []);
+	const historyMessagesState = useLocalStorage('historyMessagesState', []);
+	const characterState = useLocalStorage('characterState', initialCharacterState);
+	const inventoryState = useLocalStorage('inventoryState', {});
+	const characterImageState = useLocalStorage('characterImageState');
+	const characterStatsState = useLocalStorage('characterStatsState', initialCharacterStatsState);
+	const npcState = useLocalStorage('npcState', []);
+	const storyState = useLocalStorage('storyState', initialStoryState);
+	const isGameEnded = useLocalStorage('isGameEnded', false);
+	const rollDifferenceHistoryState = useLocalStorage('rollDifferenceHistoryState', []);
+	const campaignState = useLocalStorage('campaignState', initialCampaignState);
+	const currentChapterState = useLocalStorage('currentChapterState');
+	const characterActionsState = useLocalStorage('characterActionsState');
+	const levelUpState = useLocalStorage('levelUpState');
+	const customMemoriesState = useLocalStorage<string>('customMemoriesState');
+	const customGMNotesState = useLocalStorage<string>('customGMNotesState');
+	const skillsProgressionState = useLocalStorage('skillsProgressionState', {});
+	const characterTransformState = useLocalStorage<CharacterChangedInto>(
 		'characterTransformState',
 		initialCharacterTransformState
 	);
-	const diceRollRequiredValueState = localState('diceRollRequiredValueState');
 
-	const relatedStoryHistoryState = localState<RelatedStoryHistory>(
+	const relatedStoryHistoryState = useLocalStorage<RelatedStoryHistory>(
 		'relatedStoryHistoryState',
 		{ relatedDetails: [] }
 	);
-	const relatedActionHistoryState = localState<string[]>('relatedActionHistoryState', []);
-	const eventEvaluationState = localState<EventEvaluation>(
+	const relatedActionHistoryState = useLocalStorage<string[]>('relatedActionHistoryState', []);
+	const eventEvaluationState = useLocalStorage<EventEvaluation>(
 		'eventEvaluationState',
 		initialEventEvaluationState
 	);
-	const playerCharactersIdToNamesMapState = localState<PlayerCharactersIdToNamesMap>(
+	const playerCharactersIdToNamesMapState = useLocalStorage<PlayerCharactersIdToNamesMap>(
 		'playerCharactersIdToNamesMapState',
 		{}
 	);
-	const relatedActionGroundTruthState = localState('relatedActionGroundTruthState');
-	const relatedNPCActionsState = localState<NPCAction[]>('relatedNPCActionsState', []);
-	const partyState = localState('partyState');
-	const partyStatsState = localState('partyStatsState');
-	// Additional per-party / per-tale states (must be cleared on new tale)
-	const characterActionsByMemberState = localState<Record<string, any>>(
-		'characterActionsByMemberState',
-		{}
-	);
-	const restrainedExplanationByMemberState = localState<Record<string, string | null>>(
-		'restrainedExplanationByMemberState',
-		{}
-	);
-	const selectedCombatActionsByMemberState = localState<Record<string, any>>(
-		'selectedCombatActionsByMemberState',
-		{}
-	);
-	const eventEvaluationByMemberState = localState<Record<string, EventEvaluation>>(
-		'eventEvaluationByMemberState',
-		{}
-	);
-	const chosenActionState = localState('chosenActionState');
-	const additionalStoryInputState = localState<string>('additionalStoryInputState', '');
-	const additionalActionInputState = localState<string>('additionalActionInputState', '');
-	const thoughtsState = localState<ThoughtsState>('thoughtsState', initialThoughtsState);
-	const didAIProcessDiceRollActionState = localState<boolean>('didAIProcessDiceRollAction', true);
-
-	function localState<T>(key: string, initial: T | undefined = undefined as any) {
-		let _v = $state<T>(getFromLocalStorage(key, initial as T));
-		return {
-			get value() {
-				return _v;
-			},
-			set value(val: T) {
-				_v = val;
-				saveToLocalStorage(key, val);
-			},
-			reset() {
-				this.value = initial as T;
-				saveToLocalStorage(key, this.value);
-			},
-			resetProperty(prop: keyof T) {
-				if (typeof _v === 'object' && _v !== null && initial) {
-					(_v as any)[prop] = (initial as any)[prop];
-					saveToLocalStorage(key, _v);
-				}
-			}
-		};
-	}
+	const relatedActionGroundTruthState = useLocalStorage('relatedActionGroundTruthState');
+	const relatedNPCActionsState = useLocalStorage<NPCAction[]>('relatedNPCActionsState', []);
+	const partyMembersState = useLocalStorage<PartyMemberProfile[]>('partyMembersState', []);
+  const activePartyMemberIdState = useLocalStorage<string | null>('activePartyMemberIdState', null);
 
 	let isGeneratingState = $state(false);
 	let quickstartModalOpen = $state(false);
 	let llm: LLM;
 	let storyAgent: StoryAgent | undefined = $state();
+	const MIN_PARTY_SIZE = 1;
+	const MAX_PARTY_SIZE = 4;
+	type QuickstartSubmission = {
+		story?: string | Story;
+		partyDescription?: string;
+		partyMemberCount?: number;
+	};
+	const isStoryState = (value: unknown): value is Story =>
+		isPlainObject(value) && 'adventure_and_main_event' in value && 'party_count' in value;
 
 	onMount(async () => {
-		if (aiStateStore.apiKey) {
+		if (apiKeyState.value) {
 			provideLLM();
 		}
 	});
 
 	const provideLLM = () => {
 		llm = LLMProvider.provideLLM({
-			temperature: 1.3,
-			apiKey: aiStateStore.apiKey,
-			language: aiStateStore.language
+			temperature: 2,
+			apiKey: apiKeyState.value,
+			language: aiLanguage.value
 		});
 		storyAgent = new StoryAgent(llm);
 	};
 
 	const onQuickstartClicked = () => {
 		provideLLM();
-		if (aiStateStore.apiKey) {
+		if (apiKeyState.value) {
 			quickstartModalOpen = true;
 		}
 	};
 
 	function clearStates() {
 		historyMessagesState.reset();
-		diceRollRequiredValueState.reset();
 		gameActionsState.reset();
 		characterState.reset();
 		characterImageState.reset();
@@ -181,108 +146,132 @@
 		playerCharactersIdToNamesMapState.reset();
 		relatedActionGroundTruthState.reset();
 		relatedNPCActionsState.reset();
-		partyState.reset();
-		partyStatsState.reset();
-		// Newly added party / multi-member states
-		characterActionsByMemberState.reset();
-		restrainedExplanationByMemberState.reset();
-		selectedCombatActionsByMemberState.reset();
-		eventEvaluationByMemberState.reset();
-		chosenActionState.reset();
-		additionalStoryInputState.reset();
-		additionalActionInputState.reset();
-		thoughtsState.reset();
-		didAIProcessDiceRollActionState.reset();
+		partyMembersState.reset();
+		activePartyMemberIdState.reset();
+		partyState.resetPartyState();
 	}
 
-	async function onQuickstartNew(data: any) {
+	async function onQuickstartNew(
+		input: string | Story | QuickstartSubmission | undefined
+	) {
 		clearStates();
 		isGeneratingState = true;
-		let newStoryState;
 		try {
-			console.log('[Quickstart] Start quickstart flow', data);
-			const story = data.story || data;
-			const partyDescription = data.partyDescription || '';
-			const partyMemberCount = data.partyMemberCount || 1;
-			
-			if (story && isPlainObject(story)) {
-				newStoryState = story as Story;
+			let requestedPartySize: number | undefined;
+			let explicitPartyDescription: string | undefined;
+			let storyCandidate: string | Story | undefined = input;
+
+			if (isPlainObject(input) && !isStoryState(input)) {
+				const submission = input as QuickstartSubmission;
+				storyCandidate = submission.story;
+				explicitPartyDescription = submission.partyDescription;
+				requestedPartySize = submission.partyMemberCount ?? undefined;
+				if (requestedPartySize !== undefined) {
+					requestedPartySize = Math.min(
+						MAX_PARTY_SIZE,
+						Math.max(MIN_PARTY_SIZE, Math.round(requestedPartySize))
+					);
+				}
+			}
+
+			let newStoryState: Story | undefined;
+			if (isStoryState(storyCandidate)) {
+				newStoryState = cloneDeep(storyCandidate);
 			} else {
-				const overwriteStory = !story
-					? {}
-					: {
-						adventure_and_main_event: story as string,
-						party_description: partyDescription || (story as string),
-						party_count: (partyMemberCount || 1).toString()
-					};
+				const overwriteStory: Partial<Story> = {};
+				if (typeof storyCandidate === 'string' && storyCandidate.trim().length > 0) {
+					overwriteStory.adventure_and_main_event = storyCandidate;
+				}
+				if (explicitPartyDescription) {
+					overwriteStory.party_description = explicitPartyDescription;
+				}
+				if (requestedPartySize) {
+					overwriteStory.party_count = requestedPartySize.toString();
+				}
 				newStoryState = await storyAgent!.generateRandomStorySettings(overwriteStory);
 			}
+
 			if (newStoryState) {
-				console.log('[Quickstart] Generated story state');
+				if (explicitPartyDescription) {
+					newStoryState.party_description = explicitPartyDescription;
+				}
+				if (requestedPartySize) {
+					newStoryState.party_count = requestedPartySize.toString();
+				}
+
 				storyState.value = newStoryState;
 				const characterAgent = new CharacterAgent(llm);
 				const characterStatsAgent = new CharacterStatsAgent(llm);
-				
-				// Generate party
-				const partyDescriptions = await characterAgent.generatePartyDescriptions(
-					$state.snapshot(storyState.value),
-					partyDescription
-						? [{ background: partyDescription }]
-						: undefined,
-					partyMemberCount
+
+				const parsedPartyCount = parseInt(newStoryState.party_count || '', 10);
+				const fallbackPartySize = Number.isNaN(parsedPartyCount)
+					? MAX_PARTY_SIZE
+					: parsedPartyCount;
+				const resolvedPartySize = Math.min(
+					MAX_PARTY_SIZE,
+					Math.max(MIN_PARTY_SIZE, requestedPartySize ?? fallbackPartySize)
 				);
-				console.log('[Quickstart] Party descriptions', partyDescriptions?.length);
-				
-				if (partyDescriptions && partyDescriptions.length > 0) {
-					// Generate stats for all party members
-					const partyStats = await characterStatsAgent.generatePartyStats(
+
+				const descriptions = await characterAgent.generatePartyCharacterDescriptions(
+					$state.snapshot(storyState.value),
+					resolvedPartySize
+				);
+				if (descriptions.length) {
+					const trimmedDescriptions = descriptions.slice(0, resolvedPartySize);
+					const generatedStats = await characterStatsAgent.generatePartyCharacterStats(
 						storyState.value,
-						partyDescriptions,
-						partyDescriptions.map(() => ({
-							level: 1,
-							resources: {
-								HP: { max_value: 0, game_ends_when_zero: true },
-								MP: { max_value: 0, game_ends_when_zero: false }
-							}
-						}))
+						trimmedDescriptions
 					);
-					console.log('[Quickstart] Party stats generated', partyStats?.length);
-					
-					if (partyStats && partyStats.length === partyDescriptions.length) {
-						// Initialize party state with all generated members
-						const party: Party = {
-							members: partyDescriptions.map((desc, index) => ({
-								id: `player_character_${index + 1}`,
-								character: desc
-							})),
-							activeCharacterId: 'player_character_1'
-						};
-						
-						const partyStatsData: PartyStats = {
-							members: partyStats.map((stats, index) => ({
-								id: `player_character_${index + 1}`,
-								stats
-							}))
-						};
-						
-						partyState.value = party;
-						partyStatsState.value = partyStatsData;
-						
-						// Set first character as active character
-						characterState.value = partyDescriptions[0];
-						characterStatsState.value = partyStats[0];
-						parseState(characterStatsState.value);
-						
+					const partyMembers: PartyMemberProfile[] = [];
+					trimmedDescriptions.forEach((description, index) => {
+						if (!description) return;
+						const statsSource = generatedStats[index]
+							? cloneDeep(generatedStats[index]!)
+							: cloneDeep(initialCharacterStatsState);
+						parseState(statsSource);
+						const displayName = (description.name || `Hero ${index + 1}`).trim();
+						const id = getFreeCharacterTechnicalId(playerCharactersIdToNamesMapState.value);
+						addCharacterToPlayerCharactersIdToNamesMap(
+							playerCharactersIdToNamesMapState.value,
+							id,
+							displayName
+						);
+						const knownNames = new Set<string>();
+						if (displayName) knownNames.add(displayName);
+						if (description.name) knownNames.add(description.name);
+						partyMembers.push({
+							id,
+							displayName,
+							knownNames: Array.from(knownNames),
+							description,
+							stats: statsSource
+						});
+					});
+					if (partyMembers.length) {
+						partyMembersState.value = partyMembers;
+						const firstMember = partyMembers[0];
+						activePartyMemberIdState.value = firstMember?.id ?? null;
+						partyState.resetPartyState();
+						for (const member of partyMembers) {
+							const descriptionClone = cloneDeep(member.description);
+							const statsClone = cloneDeep(member.stats);
+							partyState.addMember({ id: member.id, character: descriptionClone });
+							partyState.addMemberStats({ id: member.id, stats: statsClone });
+						}
+						if (firstMember) {
+							partyState.setActiveCharacterId(firstMember.id);
+							characterState.value = cloneDeep(firstMember.description);
+							characterStatsState.value = cloneDeep(firstMember.stats);
+						}
 						quickstartModalOpen = false;
-						console.log('[Quickstart] Navigating to /game');
 						await goto('/game');
 					}
 				}
 			}
-			isGeneratingState = false;
 		} catch (e) {
-			isGeneratingState = false;
 			handleError(e);
+		} finally {
+			isGeneratingState = false;
 		}
 	}
 
@@ -313,7 +302,7 @@
 		<input
 			type="text"
 			id="apikey"
-			bind:value={aiStateStore.apiKey}
+			bind:value={apiKeyState.value}
 			placeholder="Copy your API Key from Google AI Studio and paste here"
 			class="input input-bordered mt-2"
 		/>
@@ -334,7 +323,7 @@
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!aiStateStore.apiKey}
+		disabled={!apiKeyState.value}
 		onclick={onStartCustom}
 	>
 		New Custom Tale
@@ -342,7 +331,7 @@
 	<small class="m-auto mt-2">Customize your Tale with a brief, open-ended plot</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!aiStateStore.apiKey}
+		disabled={!apiKeyState.value}
 		onclick={onNewCampaign}
 	>
 		New Campaign

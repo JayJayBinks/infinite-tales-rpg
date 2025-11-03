@@ -27,13 +27,34 @@
 	import { partyState } from '$lib/state/stores';
 
 	let isGeneratingState = $state(false);
+	function cloneValue<T>(value: T): T {
+		if (value === null || typeof value !== 'object') {
+			return value;
+		}
+		return JSON.parse(JSON.stringify(value)) as T;
+	}
+
 	function localState<T>(key: string, initial: T | undefined = undefined as any) {
-		let _v = $state<T>(getFromLocalStorage(key, initial as T));
+		const baseInitial = cloneValue(initial as T);
+		let _v = $state<T>(cloneValue(getFromLocalStorage(key, baseInitial)));
 		return {
-			get value() { return _v; },
-			set value(val: T) { _v = val; saveToLocalStorage(key, val); },
-			reset() { this.value = initial as T; },
-			resetProperty(prop: keyof T) { if (typeof _v === 'object' && _v !== null && initial) { (_v as any)[prop] = (initial as any)[prop]; saveToLocalStorage(key, _v);} }
+			get value() {
+				return _v;
+			},
+			set value(val: T) {
+				_v = val;
+				saveToLocalStorage(key, val);
+			},
+			reset() {
+				const next = cloneValue(baseInitial);
+				this.value = next;
+			},
+			resetProperty(prop: keyof T) {
+				if (typeof _v === 'object' && _v !== null && baseInitial && typeof baseInitial === 'object') {
+					(_v as any)[prop] = cloneValue((baseInitial as any)[prop]);
+					saveToLocalStorage(key, _v);
+				}
+			}
 		};
 	}
 	const apiKeyState = localState<string>('apiKeyState', '');
@@ -64,8 +85,8 @@
 			partyState.setActiveCharacterId(id);
 			currentCharacterIndex = 0;
 		}
-		// Derive desired party size from storyState.story.party_count (string)
-		const rawCount = storyState.story.party_count;
+		// Derive desired party size from storyState value (string count)
+		const rawCount = storyState.value.party_count;
 		let desiredCount = parseInt(rawCount || '1', 10);
 		if (Number.isNaN(desiredCount)) desiredCount = 1;
 		// Clamp between 1 and 4
@@ -77,6 +98,13 @@
 				id: nextId,
 				character: { ...initialCharacterState }
 			});
+		}
+		// Ensure character editor reflects the active member
+		if (partyState.party.members.length > 0) {
+			const activeMember = partyState.party.members[currentCharacterIndex] ?? partyState.party.members[0];
+			if (activeMember) {
+				characterState.value = activeMember.character;
+			}
 		}
 		// Do NOT auto-remove if user already added more than desired; user can manually adjust.
 	});
@@ -109,7 +137,7 @@
 		}
 		
 		// Load the current character
-		characterState.character = partyState.party.members[currentCharacterIndex].character;
+		characterState.value = partyState.party.members[currentCharacterIndex].character;
 	}
 
 	onMount(() => {
@@ -122,7 +150,7 @@
 		);
 		let playerCharacterId = getCharacterTechnicalId(
 			playerCharactersIdToNamesMapState.value,
-			characterState.character.name
+			characterState.value.name
 		);
 		beforeNavigate(() => {
 			// Update party state
@@ -135,7 +163,7 @@
 				addCharacterToPlayerCharactersIdToNamesMap(
 					playerCharactersIdToNamesMapState.value,
 					playerCharacterId,
-					characterState.character.name
+					characterState.value.name
 				);
 			} else {
 				console.error('Player character id not found to add new name');
@@ -158,7 +186,7 @@
 				partyState.updateMemberCharacter(memberId, partyDescriptions[i]);
 			}
 			// Set first character as active
-			characterState.character = partyState.party.members[0].character;
+			characterState.value = partyState.party.members[0].character;
 			resetImageState = true;
 		}
 		isGeneratingState = false;
@@ -171,7 +199,7 @@
 			characterStateOverwrites
 		);
 		if (newState) {
-			characterState.character = newState;
+			characterState.value = newState;
 			// Update current party member using immutable method
 			const memberId = partyState.party.members[currentCharacterIndex].id;
 			partyState.updateMemberCharacter(memberId, newState);
@@ -190,10 +218,11 @@
 			characterInput
 		);
 		if (newState) {
-			characterState.character = { ...characterState.character, [stateValue]: newState[stateValue] };
+			const updatedCharacter = { ...characterState.value, [stateValue]: newState[stateValue] };
+			characterState.value = updatedCharacter;
 			// Update current party member
 			const memberId = partyState.party.members[currentCharacterIndex].id;
-			partyState.updateMemberCharacter(memberId, characterState.character);
+			partyState.updateMemberCharacter(memberId, updatedCharacter);
 			if (stateValue === 'appearance') {
 				resetImageState = true;
 			}
@@ -204,11 +233,11 @@
 	const switchToCharacter = (index: number) => {
 		// Save current character state to party
 		const currentMemberId = partyState.party.members[currentCharacterIndex].id;
-		partyState.updateMemberCharacter(currentMemberId, characterState.character);
+		partyState.updateMemberCharacter(currentMemberId, characterState.value);
 
 		// Switch to new character
 		currentCharacterIndex = index;
-		characterState.character = partyState.party.members[index].character;
+		characterState.value = partyState.party.members[index].character;
 		characterStateOverwrites = {};
 		resetImageState = true;
 	};
@@ -273,7 +302,7 @@
 	</div>
 	<div class="flex gap-2 items-center">
 		{#if partyState.party.members.length < 4}
-			<button class="btn btn-sm btn-primary" onclick={addPartyMember}>
+			<button class="btn btn-sm btn-primary" aria-label="Add party member" onclick={addPartyMember}>
 				+ Add Party Member
 			</button>
 		{/if}
@@ -393,7 +422,7 @@
 				<AIGeneratedImage
 					storageKey="characterImageState_{currentCharacterIndex}"
 					{resetImageState}
-					imagePrompt="{storyState.story.general_image_prompt} {characterState.character.appearance}"
+					imagePrompt="{storyState.value.general_image_prompt} {characterState.value.appearance}"
 				/>
 			</div>
 		{/if}

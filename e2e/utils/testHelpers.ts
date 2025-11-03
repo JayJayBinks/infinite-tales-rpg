@@ -168,7 +168,8 @@ export async function getActivePartyMemberName(page: Page): Promise<string> {
   if (await partySwitcher.isVisible({ timeout: 2000 }).catch(() => false)) {
     const activeButton = partySwitcher.locator('button.btn-primary');
     if (await activeButton.isVisible().catch(() => false)) {
-      const text = await activeButton.textContent();
+      const nameSpan = activeButton.locator('span').first();
+      const text = await nameSpan.textContent();
       return text?.trim() || '';
     }
   }
@@ -182,7 +183,8 @@ export async function getAllPartyMemberNames(page: Page): Promise<string[]> {
   const buttons = await getPartyMemberButtons(page);
   const names: string[] = [];
   for (const button of buttons) {
-    const text = await button.textContent();
+    const nameSpan = button.locator('span').first();
+    const text = await nameSpan.textContent();
     if (text) {
       names.push(text.trim());
     }
@@ -225,10 +227,15 @@ export async function clearGameState(page: Page) {
   // Navigate to the app first to ensure localStorage is accessible
   try {
     await page.goto('/game/settings/ai');
+    await page.waitForFunction(() => typeof (window as unknown as { __resetAllState?: unknown }).__resetAllState === 'function', { timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(500);
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       localStorage.clear();
       localStorage.setItem('apiKeyState', JSON.stringify('state-was-deleted-for-tests'));
+      const reset = (window as unknown as { __resetAllState?: () => Promise<void> }).__resetAllState;
+      if (typeof reset === 'function') {
+        await reset();
+      }
     });
   } catch (error) {
     // If localStorage is not accessible, just continue

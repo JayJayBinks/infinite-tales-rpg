@@ -62,10 +62,6 @@
 	import { initialStoryState, type Story } from '$lib/ai/agents/storyAgent';
 	import {
 		CharacterAgent,
-		type CharacterDescription,
-		initialCharacterState,
-		type Party,
-		initialPartyState
 	} from '$lib/ai/agents/characterAgent';
 	import DiceRollComponent from '$lib/components/interaction_modals/dice/DiceRollComponent.svelte';
 	import UseItemsModal from '$lib/components/interaction_modals/UseItemsModal.svelte';
@@ -582,22 +578,29 @@
 				});
 			}
 		}
-		// Refill resources for all party members
+		const refillAllPartyResources = () => {
 			for (const member of partyState.party.members) {
-				const memberStats = partyStatsState.value.members.find(m => m.id === member.id)?.stats;
-				if (memberStats) {
-					const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
-						$state.snapshot(memberStats.resources),
-						member.id,
-						member.character.name,
-						$state.snapshot(gameActionsState.value),
-						$state.snapshot(playerCharactersGameState)
-					);
-					gameActionsState.value = updatedGameActionsState;
-					playerCharactersGameState = updatedPlayerCharactersGameState;
+				const memberStats = partyStatsState.value.members.find((m) => m.id === member.id)?.stats;
+				if (!memberStats) {
+					continue;
 				}
+				const { updatedGameActionsState, updatedPlayerCharactersGameState } = refillResourcesFully(
+					$state.snapshot(memberStats.resources),
+					member.id,
+					member.character.name,
+					$state.snapshot(gameActionsState.value),
+					$state.snapshot(playerCharactersGameState)
+				);
+				gameActionsState.value = updatedGameActionsState;
+				playerCharactersGameState = updatedPlayerCharactersGameState;
 			}
+		};
+
+		refillAllPartyResources();
 		await sendAction({ characterName: characterStateStore.character.name, text: GameAgent.getStartingPrompt() });
+
+		// Ensure all members begin the campaign at full strength after the opening narration
+		refillAllPartyResources();
 		
 		// Initialize all resources when the game is first started.
 	}
@@ -2318,8 +2321,6 @@
 		storyImagePrompt={storyStateStore.story.general_image_prompt}
 		targets={currentGameActionState.currently_present_npcs}
 		onclose={onTargetedSpellsOrAbility}
-		party={partyState.party}
-		disableSelection={isActiveCombatActionLocked}
 	></UseSpellsAbilitiesModal>
 	<UseItemsModal
 		bind:dialogRef={useItemsModal}

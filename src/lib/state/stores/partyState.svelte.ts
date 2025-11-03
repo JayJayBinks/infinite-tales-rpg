@@ -4,12 +4,20 @@
  */
 
 import { getFromLocalStorage, saveToLocalStorage } from '$lib/state/localStorageUtil';
-import type { Party, CharacterDescription } from '$lib/ai/agents/characterAgent';
-import type { PartyStats, CharacterStats, SkillsProgression } from '$lib/ai/agents/characterStatsAgent';
-import { initialPartyState } from '$lib/ai/agents/characterAgent';
-import { initialPartyStatsState, initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
+import type { CharacterStats, SkillsProgression } from '$lib/ai/agents/characterStatsAgent';
 import type { Action } from '$lib/ai/agents/gameAgent';
 import type { EventEvaluation } from '$lib/ai/agents/eventAgent';
+import type { Party, PartyStats } from '$lib/types/party';
+// Provide minimal empty initial states for Party and PartyStats
+const initialPartyState: Party = {
+	members: [],
+	activeCharacterId: ''
+};
+
+const initialPartyStatsState: PartyStats = {
+	members: []
+};
 
 /**
  * Party state store

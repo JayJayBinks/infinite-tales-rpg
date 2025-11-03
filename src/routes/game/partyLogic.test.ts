@@ -11,8 +11,9 @@ getPartyMemberByCharacterName,
 updatePartyMemberCharacter,
 updatePartyMemberStats
 } from './partyLogic';
-import type { Party, CharacterDescription } from '$lib/ai/agents/characterAgent';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { PartyStats, CharacterStats } from '$lib/ai/agents/characterStatsAgent';
+import type { Party } from '$lib/types/party';
 import { initialCharacterState } from '$lib/ai/agents/characterAgent';
 import { initialCharacterStatsState } from '$lib/ai/agents/characterStatsAgent';
 import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';

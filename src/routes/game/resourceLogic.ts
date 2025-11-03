@@ -32,20 +32,36 @@ export function refillResourcesFully(
 
 	// Copy the game actions state and update the last action's stats_update log
 	const updatedGameActionsState = [...gameActionsState];
-	const lastIndex = updatedGameActionsState.length - 1;
-	updatedGameActionsState[lastIndex] = {
-		...updatedGameActionsState[lastIndex],
-		stats_update: [...updatedGameActionsState[lastIndex].stats_update, ...statsUpdate.stats_update]
-	};
+	const statsUpdateEntries = statsUpdate.stats_update ?? [];
+	if (updatedGameActionsState.length > 0 && statsUpdateEntries.length > 0) {
+		const lastIndex = updatedGameActionsState.length - 1;
+		const lastAction = updatedGameActionsState[lastIndex];
+		updatedGameActionsState[lastIndex] = {
+			...lastAction,
+			stats_update: [...(lastAction?.stats_update ?? []), ...statsUpdateEntries]
+		};
+	}
 
 	//then set current values to start or max value or if smaller than current value to current value
-	const newResources = {};
-	for (const key in maxResources) {
-		const refillValue = GameAgent.getRefillValue(maxResources[key]);
-		const currentValue = playerCharactersGameState[playerId][key]?.current_value || 0;
+	const newResources: Partial<Resources> = {};
+	for (const key of Object.keys(maxResources)) {
+		const resourceDefinition = maxResources[key];
+		const existingResource = currentPlayerResources[key];
+		const existingValue = existingResource?.current_value ?? resourceDefinition.start_value ?? 0;
+
+		if (key === 'XP') {
+			newResources[key] = {
+				...resourceDefinition,
+				current_value: existingValue
+			};
+			continue;
+		}
+
+		const baseTarget = Math.max(resourceDefinition.max_value || 0, resourceDefinition.start_value || 0);
+		const targetValue = Math.max(existingValue, baseTarget);
 		newResources[key] = {
-			...maxResources[key],
-			current_value: refillValue >= currentValue ? refillValue : currentValue
+			...resourceDefinition,
+			current_value: targetValue
 		};
 	}
 

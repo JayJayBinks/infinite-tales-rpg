@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Party } from '$lib/ai/agents/characterAgent';
+	import type { Party } from '$lib/types/party';
 	import { switchActiveCharacter } from '../../routes/game/partyLogic';
 	import { partyState, gameState } from '$lib/state/stores';
 	import RestrainedExplanationModal from '$lib/components/interaction_modals/RestrainedExplanationModal.svelte';

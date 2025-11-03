@@ -1,4 +1,4 @@
-import type { Party, PartyMember, CharacterDescription } from '$lib/ai/agents/characterAgent';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type {
 	CharacterStats,
 	PartyStats,
@@ -6,6 +6,7 @@ import type {
 	SkillsProgression
 } from '$lib/ai/agents/characterStatsAgent';
 import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
+import type { Party, PartyMember } from '$lib/types/party';
 
 export function createPartyFromCharacters(
 	characters: CharacterDescription[],

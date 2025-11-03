@@ -5,7 +5,7 @@
  */
 
 import type { Action, GameActionState, InventoryState } from '$lib/ai/agents/gameAgent';
-import type { CharacterDescription, Party } from '$lib/ai/agents/characterAgent';
+import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import type { CharacterStats, NPCState } from '$lib/ai/agents/characterStatsAgent';
 import type { ResourcesWithCurrentValue } from '$lib/ai/agents/gameAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
@@ -14,6 +14,7 @@ import type { ActionAgent } from '$lib/ai/agents/actionAgent';
 import type { SummaryAgent } from '$lib/ai/agents/summaryAgent';
 import type { RelatedStoryHistory } from '$lib/ai/agents/summaryAgent';
 import type { PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
+import type { Party } from '$lib/types/party';
 
 export interface ActionGenerationParams {
 	currentGameAction: GameActionState;

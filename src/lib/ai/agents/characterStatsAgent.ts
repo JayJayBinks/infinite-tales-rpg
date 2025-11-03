@@ -187,23 +187,92 @@ export class CharacterStatsAgent {
 		return stats;
 	};
 
-	async generatePartyStats(
+	async generatePartyCharacterStats(
 		storyState: Story,
-		partyCharacters: CharacterDescription[],
-		statsOverwrites?: Partial<CharacterStats>[]
+		characterDescriptions: CharacterDescription[],
+		statsOverwrites: Array<Partial<CharacterStats> | undefined> = [],
+		isAdaptiveOverwrite: boolean = false,
+		transformations: Array<string | undefined> = []
 	): Promise<CharacterStats[]> {
-		const partyStats: CharacterStats[] = [];
+		if (!characterDescriptions.length) return [];
+		const generatedStats: CharacterStats[] = [];
+		for (let index = 0; index < characterDescriptions.length; index += 1) {
+			const characterDescription = characterDescriptions[index];
+			const overwrite = statsOverwrites[index];
+			const transformInto = transformations[index];
+			const stats = await this.generateCharacterStats(
+				storyState,
+				characterDescription,
+				overwrite,
+				isAdaptiveOverwrite,
+				transformInto
+			);
+			if (stats) {
+				generatedStats.push(stats);
+			}
+		}
+		return generatedStats;
+	}
 
-		for (let i = 0; i < partyCharacters.length; i++) {
-			const character = partyCharacters[i];
-			const overwrites = statsOverwrites?.[i];
+	async generatePartyCharacterStatsBatch(
+		storyState: Story,
+		characterDescriptions: CharacterDescription[],
+		statsOverwrites: Array<Partial<CharacterStats> | undefined> = [],
+		isAdaptiveOverwrite: boolean = false
+	): Promise<CharacterStats[]> {
+		if (!characterDescriptions.length) return [];
 
-			const stats = await this.generateCharacterStats(storyState, character, overwrites, false);
+		const partyPrompt = characterDescriptions
+			.map((char, index) => {
+				const overwrite = statsOverwrites[index];
+				let charPrompt = `Party Member ${index + 1}:\n`;
+				charPrompt += `Description: ${stringifyPretty(char)}\n`;
+				if (overwrite) {
+					const statsPrompt = isAdaptiveOverwrite
+						? 'Adapt and refine the EXISTING STATS, especially spells and abilities, based on the Character description.\n'
+						: 'You must reuse the EXISTING STATS exactly as given, e.g. EXISTING STAT of 150 must stay as 150; fill in other values if needed.\n';
+					charPrompt += `${statsPrompt}EXISTING STATS:\n${stringifyPretty(overwrite)}\n`;
+				}
+				return charPrompt;
+			})
+			.join('\n---\n');
 
-			partyStats.push(stats);
+		const agentInstruction = [
+			'You are RPG character stats agent, generating the starting stats for EACH PARTY MEMBER according to game system, adventure and character descriptions.\n' +
+				'Attributes and skills should be determined based on EACH character description.\n' +
+				'Scale the attributes, skills and abilities according to the level. A low level character has attributes and skills -1 to 1.\n' +
+				'If there is a HP resource or deviation, it must be greater than 20.\n' +
+				'Ensure the party is balanced and complementary - each member should have distinct strengths.\n',
+			`${jsonRule}\n` +
+				`Return an array of character stats, one for each party member in order:\n[${characterStatsStateForPrompt}, ${characterStatsStateForPrompt}, ...]`
+		];
+
+		if (!statsOverwrites.some((s) => s?.level)) {
+			statsOverwrites = statsOverwrites.map((s) => ({ ...s, level: 1 }));
 		}
 
-		return partyStats;
+		const request: LLMRequest = {
+			userMessage:
+				'Create stats for each party member according to their descriptions.\nScale the stats and abilities according to their levels.\n' +
+				partyPrompt,
+			historyMessages: [
+				{
+					role: 'user',
+					content: 'Description of the story: ' + stringifyPretty(storyState)
+				}
+			],
+			systemInstruction: agentInstruction
+		};
+
+		const response = await this.llm.generateContent(request);
+		const statsArray = response?.content as CharacterStats[];
+
+		if (!Array.isArray(statsArray)) {
+			console.error('Expected array of stats, got:', statsArray);
+			return [];
+		}
+
+		return statsArray.map(this.mapStats);
 	}
 
 	async levelUpCharacter(
