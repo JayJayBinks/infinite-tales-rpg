@@ -292,10 +292,12 @@
         v => uiState.modals.levelUpDialog = v,
         { buttonEnabled: false, dialogOpened: false, playerName: '' }
     );
-	const currentGameActionState: GameActionState = $derived(
-		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
-			({} as GameActionState)
-	);
+	const currentGameActionState: GameActionState = $derived.by(() => {
+		const actions = gameActionsState.value;
+		const lastAction = actions && actions.length > 0 ? actions[actions.length - 1] : ({} as GameActionState);
+		console.log('currentGameActionState derived - total actions:', actions?.length, 'has story:', !!lastAction?.story);
+		return lastAction;
+	});
 
 	const playerCharacterIdState = $derived(
 		getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterStateStore.character.name) ||
@@ -1128,7 +1130,8 @@
 			gameSettingsState.value,
 			simulation
 		);
-		console.log('New game action state:', newState);
+		console.log('New game action state generated:', newState);
+		console.log('Story exists in newState:', !!newState.story);
 
 		if (newState.story) {
 			await processPostStory(newState, action, simulation);
@@ -2114,7 +2117,10 @@
 			gameActionsState.value,
 			isStateUpdateOnly
 		);
+		console.log('Updating gameActionsState with', updatedGameActions.length, 'actions');
+		console.log('Latest action has story:', !!updatedGameActions[updatedGameActions.length - 1]?.story);
 		gameActionsState.value = updatedGameActions;
+		console.log('gameActionsState updated, current length:', gameActionsState.value.length);
 		// Update history messages based on game state
 		if (isStateUpdateOnly) {
 			//update last model message
