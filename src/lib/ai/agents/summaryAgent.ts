@@ -102,11 +102,20 @@ export class SummaryAgent {
 			temperature: 0.1,
 			reportErrorToUser: false
 		};
-		const response = (await this.llm.generateContent(request))?.content as RelatedStoryHistory;
+		const response = (await this.llm.generateContent(request))?.content as
+			| RelatedStoryHistory
+			| undefined;
 		console.log(storyProgression, 'Related history returned ', stringifyPretty(response));
-		if (!response.relatedDetails) {
+		if (!response || !Array.isArray(response.relatedDetails)) {
 			return { relatedDetails: [] };
 		}
-		return response;
+		return {
+			relatedDetails: response.relatedDetails
+				.filter((detail) => Boolean(detail?.storyReference))
+				.map((detail) => ({
+					storyReference: String(detail.storyReference),
+					relevanceScore: Number(detail.relevanceScore)
+				}))
+		};
 	}
 }

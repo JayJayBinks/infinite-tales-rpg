@@ -21,9 +21,8 @@ export const getRelatedHistory = async (
 		...(relatedStoryHistoryState?.relatedDetails || [])
 	);
 	if (summaryAgent && action && action.text != 'Continue The Tale') {
-		relatedHistoryWithRelevance.relatedDetails.push(
-			...(await summaryAgent.retrieveRelatedHistory(action.text, gameActions || [])).relatedDetails
-		);
+		const related = await summaryAgent.retrieveRelatedHistory(action.text, gameActions || []);
+		relatedHistoryWithRelevance.relatedDetails.push(...(related?.relatedDetails || []));
 	}
 	relatedHistory = [
 		...new Set(
