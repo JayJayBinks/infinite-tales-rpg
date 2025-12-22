@@ -183,20 +183,17 @@ export function getTTSUrl(text, voice) {
 export function getTextForActionButton(action: Action) {
 	let text = '';
 	const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+	// Fallback to plausibility or empty string if text is missing
+	const rawText = (action.text || action.plausibility || '') as string;
+	const safeText = rawText ? String(rawText).trim() : '';
 
 	if (cost > 0) {
 		const costString = ` (${cost} ${action.resource_cost?.resource_key?.replaceAll('_', ' ')}).`;
-		text = action.text.replaceAll('.', '');
+		text = safeText.replaceAll('.', '').trim();
 		text += costString;
 	} else {
-		const hasEndingChar =
-			action.text.endsWith('.') ||
-			action.text.endsWith('. ') ||
-			action.text.endsWith('! ') ||
-			action.text.endsWith('!') ||
-			action.text.endsWith('? ') ||
-			action.text.endsWith('?');
-		text += hasEndingChar ? action.text : action.text + '.';
+		const hasEndingChar = /[.!?]\s*$/.test(safeText);
+		text += hasEndingChar ? safeText : (safeText ? safeText + '.' : '');
 	}
 	return text;
 }

@@ -1,6 +1,7 @@
 import { handleError } from '../util.svelte';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
 import {
+	type ContentWithThoughts,
 	LLM,
 	type LLMconfig,
 	type LLMMessage,
@@ -9,6 +10,7 @@ import {
 } from '$lib/ai/llm';
 import isPlainObject from 'lodash.isplainobject';
 import type { GenerateContentConfig } from '@google/genai';
+import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 export const defaultGPT4JsonConfig: GenerateContentConfig = {
 	temperature: 1.1,
@@ -44,20 +46,110 @@ export class PollinationsProvider extends LLM {
 		throw new Error('Method not implemented.' + request + storyUpdateCallback);
 	}
 
-	async generateContent(request: LLMRequest): Promise<object | undefined> {
+	private stripCodeFences(text: string): string {
+		return text
+			.replaceAll('```json', '')
+			.replaceAll('```html', '')
+			.replaceAll('```', '')
+			.trim();
+	}
+
+	private extractJsonCandidate(text: string): { leadingText: string; jsonCandidate: string } {
+		const trimmed = text.trim();
+		if (!trimmed) return { leadingText: '', jsonCandidate: '' };
+		const objStart = trimmed.indexOf('{');
+		const arrStart = trimmed.indexOf('[');
+		let startIndex = -1;
+		if (objStart === -1 && arrStart === -1) {
+			return { leadingText: '', jsonCandidate: trimmed };
+		}
+		startIndex =
+			objStart === -1 ? arrStart : arrStart === -1 ? objStart : Math.min(objStart, arrStart);
+		const leadingText = trimmed.slice(0, startIndex).trim();
+		let jsonCandidate = trimmed.slice(startIndex);
+		const lastEndIdx = Math.max(jsonCandidate.lastIndexOf('}'), jsonCandidate.lastIndexOf(']'));
+		if (lastEndIdx !== -1 && lastEndIdx < jsonCandidate.length - 1) {
+			jsonCandidate = jsonCandidate.slice(0, lastEndIdx + 1);
+		}
+		return { leadingText, jsonCandidate: jsonCandidate.trim() };
+	}
+
+	private async parseTextResponse(
+		rawText: string,
+		autoFixJSON: boolean,
+		reportErrorToUser?: boolean
+	): Promise<ContentWithThoughts | undefined> {
+		const cleaned = this.stripCodeFences(rawText);
+		if (!cleaned) {
+			if (reportErrorToUser !== false) {
+				handleError('Pollinations did not send a response...');
+			}
+			return undefined;
+		}
+
+		try {
+			return { thoughts: '', content: JSON.parse(cleaned) };
+		} catch (firstError) {
+			try {
+				const { leadingText, jsonCandidate } = this.extractJsonCandidate(cleaned);
+				if (jsonCandidate) {
+					try {
+						return { thoughts: leadingText, content: JSON.parse(jsonCandidate) };
+					} catch {
+						// fall through to sanitization/fixing
+					}
+				}
+
+				const sanitized = sanitizeAnndParseJSON(cleaned);
+				return {
+					thoughts: leadingText,
+					content: sanitized
+				};
+			} catch (secondError) {
+				if (autoFixJSON) {
+					try {
+						const fixedJson = await this.jsonFixingInterceptorAgent.fixJSON(
+							cleaned,
+							(firstError as SyntaxError).message,
+							reportErrorToUser
+						);
+						return fixedJson ? { thoughts: '', content: fixedJson } : undefined;
+					} catch (e) {
+						if (reportErrorToUser !== false) {
+							handleError(e as string);
+						}
+						return undefined;
+					}
+				}
+				if (reportErrorToUser !== false) {
+					handleError(secondError as string);
+				}
+				return undefined;
+			}
+		}
+	}
+
+	async generateContent(request: LLMRequest): Promise<ContentWithThoughts | undefined> {
 		const contents = this.buildContentsFormat(request.userMessage, request.historyMessages || []);
 		const systemInstructions = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
 		);
-		if (this.llmConfig.language) {
+		if (request.englishText) {
+			systemInstructions.push({ role: 'system', content: 'Only respond in English ALWAYS!' });
+		} else if (this.llmConfig.language) {
 			const languageInstruction = LANGUAGE_PROMPT + this.llmConfig.language;
 			systemInstructions.push({ role: 'system', content: languageInstruction });
 		}
 
-		const temperature = Math.min(
-			request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
-			this.getMaxTemperature()
-		);
+		let temperature: number;
+		if (request.temperature === 0 || this.llmConfig.temperature === 0) {
+			temperature = 0;
+		} else {
+			temperature = Math.min(
+				request.temperature || this.llmConfig.temperature || this.getDefaultTemperature(),
+				this.getMaxTemperature()
+			);
+		}
 		console.log('calling llm with temperature', temperature);
 		const url = `https://text.pollinations.ai`;
 		const body: any = {
@@ -86,17 +178,22 @@ export class PollinationsProvider extends LLM {
 			e.message = fallbackMessage + ' ' + (e as Error).message;
 			if (this.fallbackLLM) {
 				console.log('Pollinations Fallback LLM for error: ', this.model, e.message);
+				request.model = this.fallbackLLM.llmConfig.model;
 				const fallbackResult = await this.fallbackLLM.generateContent(request);
 				if (!fallbackResult) {
-					handleError(e as unknown as string);
+					if (request.reportErrorToUser !== false) {
+						handleError(e as unknown as string);
+					}
 				} else {
-					if (this.model === 'openai') {
-						fallbackResult['fallbackUsed'] = true;
+					if (this.llmConfig.returnFallbackProperty || request.returnFallbackProperty) {
+						fallbackResult.content['fallbackUsed'] = true;
 					}
 				}
 				return fallbackResult;
 			} else {
-				handleError(e as unknown as string);
+				if (request.reportErrorToUser !== false) {
+					handleError(e as unknown as string);
+				}
 				return undefined;
 			}
 		}
@@ -106,9 +203,11 @@ export class PollinationsProvider extends LLM {
 				((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
 					this.llmConfig.tryAutoFixJSONError) ||
 				false;
-			return this.parseContentByModel(this.model, response, autoFixJSON);
+			return await this.parseContentByModel(this.model, response, autoFixJSON, request.reportErrorToUser);
 		} catch (e) {
-			handleError(e as string);
+			if (request.reportErrorToUser !== false) {
+				handleError(e as string);
+			}
 		}
 		return undefined;
 	}
@@ -143,54 +242,42 @@ export class PollinationsProvider extends LLM {
 		return contents;
 	}
 
-	parseDeepseek(response: any, autoFixJSON: boolean) {
+	parseDeepseek(response: any, autoFixJSON: boolean, reportErrorToUser?: boolean) {
 		if (isPlainObject(response)) {
-			return response;
+			return { thoughts: '', content: response as object };
 		}
-		return this.parseJSON(response, autoFixJSON);
+		return this.parseTextResponse(String(response), autoFixJSON, reportErrorToUser);
 	}
 
-	parseOpenAI(response: any, autoFixJSON: boolean) {
+	parseOpenAI(response: any, autoFixJSON: boolean, reportErrorToUser?: boolean) {
 		if (!response.choices) {
-			return response;
+			return { thoughts: '', content: response as object };
 		}
 		const responseText = response.choices[0].message.content;
-		return this.parseJSON(responseText, autoFixJSON);
+		return this.parseTextResponse(String(responseText), autoFixJSON, reportErrorToUser);
 	}
 
-	parseGeminiThinking(response: string, autoFixJSON: boolean) {
-		return this.parseJSON(response, autoFixJSON);
+	parseGeminiThinking(response: string, autoFixJSON: boolean, reportErrorToUser?: boolean) {
+		return this.parseTextResponse(response, autoFixJSON, reportErrorToUser);
 	}
 
-	parseJSON(response: string, autoFix: boolean) {
-		try {
-			return JSON.parse(
-				response.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim()
-			);
-		} catch (firstError) {
-			//autofix if true or not set and llm allows it
-			if (autoFix) {
-				console.log('Try json fix with llm agent');
-				return this.jsonFixingInterceptorAgent.fixJSON(
-					response,
-					(firstError as SyntaxError).message,
-					false
-				);
-			}
-			handleError(firstError as string);
-			return undefined;
-		}
-	}
-
-	async parseContentByModel(model: string, response: Response, autoFixJson: boolean) {
+	async parseContentByModel(
+		model: string,
+		response: Response,
+		autoFixJson: boolean,
+		reportErrorToUser?: boolean
+	): Promise<ContentWithThoughts | undefined> {
 		switch (model) {
 			case 'deepseek-r1':
-				return this.parseDeepseek(await response.json(), autoFixJson);
+				return this.parseDeepseek(await response.json(), autoFixJson, reportErrorToUser);
 			case 'openai':
 			case 'openai-large':
-				return this.parseOpenAI(await response.json(), autoFixJson);
+				return this.parseOpenAI(await response.json(), autoFixJson, reportErrorToUser);
 			default:
-				return this.parseJSON(await response.text(), autoFixJson);
+				if (model === 'gemini-thinking') {
+					return this.parseGeminiThinking(await response.text(), autoFixJson, reportErrorToUser);
+				}
+				return this.parseTextResponse(await response.text(), autoFixJson, reportErrorToUser);
 		}
 	}
 }
