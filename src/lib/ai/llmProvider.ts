@@ -4,7 +4,7 @@ import { PollinationsProvider } from '$lib/ai/pollinationsProvider';
 import { GroqProvider } from './groqProvider';
 
 export const defaultLLMConfig: LLMconfig = {
-	provider: 'groq',
+	provider: 'pollinations',
 	temperature: defaultGeminiJsonConfig.temperature,
 	config: defaultGeminiJsonConfig,
 	tryAutoFixJSONError: true

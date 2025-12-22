@@ -11,6 +11,7 @@ import {
 import isPlainObject from 'lodash.isplainobject';
 import type { GenerateContentConfig } from '@google/genai';
 import { sanitizeAnndParseJSON } from './agents/agentUtils';
+import { GEMINI_MODELS } from './geminiProvider';
 
 export const defaultGPT4JsonConfig: GenerateContentConfig = {
 	temperature: 1.1,
@@ -26,9 +27,15 @@ export class PollinationsProvider extends LLM {
 	fallbackLLM?: LLM;
 	constructor(llmConfig: LLMconfig, fallbackLLM?: LLM) {
 		super(llmConfig);
-		this.model = llmConfig.model || 'openai';
+		this.model = llmConfig.model || 'gemini';
 		this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
 		this.fallbackLLM = fallbackLLM;
+	}
+
+	private resolvePollinationsModel(model?: string): 'gemini' | 'gemini-fast' {
+		// Map FLASH_2_5 to 'gemini', everything else to 'gemini-fast'
+		if (model === 'gemini' || model === GEMINI_MODELS.FLASH_2_5) return 'gemini';
+		return 'gemini';
 	}
 
 	getDefaultTemperature(): number {
@@ -130,6 +137,13 @@ export class PollinationsProvider extends LLM {
 	}
 
 	async generateContent(request: LLMRequest): Promise<ContentWithThoughts | undefined> {
+		if (!this.llmConfig.apiKey) {
+			if (request.reportErrorToUser !== false) {
+				handleError('Please enter your Pollinations API token first in the settings.');
+			}
+			return undefined;
+		}
+
 		const contents = this.buildContentsFormat(request.userMessage, request.historyMessages || []);
 		const systemInstructions = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
@@ -151,26 +165,32 @@ export class PollinationsProvider extends LLM {
 			);
 		}
 		console.log('calling llm with temperature', temperature);
-		const url = `https://text.pollinations.ai`;
+		const url = `https://gen.pollinations.ai/v1/chat/completions`;
+		const modelToUse = this.resolvePollinationsModel(request.model || this.model);
 		const body: any = {
 			messages: [...systemInstructions, ...contents],
+			model: modelToUse,
+			modalities: ['text'],
+			stream: false,
 			temperature,
-			model: this.model
+			// Request TEXT directly from Pollinations
+			response_format: { type: 'json_object' }
 		};
-		if (this.model !== 'gemini-thinking' && this.model !== 'openai-reasoning') {
-			body.response_format = { type: 'json_object' };
-		}
 		let result;
 		try {
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${this.llmConfig.apiKey}`
 				},
 				body: JSON.stringify(body)
 			});
 			if (response.status === 500) {
 				throw new Error(await response.text());
+			}
+			if (response.status === 401 || response.status === 403) {
+				throw new Error('Pollinations authentication failed (check your token).');
 			}
 			result = response;
 		} catch (e: any) {
@@ -203,7 +223,7 @@ export class PollinationsProvider extends LLM {
 				((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
 					this.llmConfig.tryAutoFixJSONError) ||
 				false;
-			return await this.parseContentByModel(this.model, response, autoFixJSON, request.reportErrorToUser);
+			return await this.parseContentByModel(modelToUse, response, autoFixJSON, request.reportErrorToUser);
 		} catch (e) {
 			if (request.reportErrorToUser !== false) {
 				handleError(e as string);
@@ -267,17 +287,22 @@ export class PollinationsProvider extends LLM {
 		autoFixJson: boolean,
 		reportErrorToUser?: boolean
 	): Promise<ContentWithThoughts | undefined> {
-		switch (model) {
-			case 'deepseek-r1':
-				return this.parseDeepseek(await response.json(), autoFixJson, reportErrorToUser);
-			case 'openai':
-			case 'openai-large':
-				return this.parseOpenAI(await response.json(), autoFixJson, reportErrorToUser);
-			default:
-				if (model === 'gemini-thinking') {
-					return this.parseGeminiThinking(await response.text(), autoFixJson, reportErrorToUser);
-				}
-				return this.parseTextResponse(await response.text(), autoFixJson, reportErrorToUser);
+		// Try to parse a JSON object directly when Pollinations returns JSON
+		try {
+			const parsed = await response.json();
+			// If OpenAI-style response, delegate to parseOpenAI
+			if (parsed && parsed.choices) {
+				return this.parseOpenAI(parsed, autoFixJson, reportErrorToUser);
+			}
+			// If it's a plain object, return it directly
+			if (isPlainObject(parsed)) {
+				return { thoughts: '', content: parsed as object };
+			}
+			// Fallback to text parsing
+			return this.parseTextResponse(String(parsed), autoFixJson, reportErrorToUser);
+		} catch (e) {
+			// Fallback to plain text response handling
+			return this.parseTextResponse(await response.text(), autoFixJson, reportErrorToUser);
 		}
 	}
 }
