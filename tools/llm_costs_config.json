@@ -1,0 +1,54 @@
+{
+  "rates": {
+    "flash": { "input_per_1M": 0.5, "output_per_1M": 3 },
+    "lite": { "input_per_1M": 0.1, "output_per_1M": 0.4 }
+  },
+  "agents": {
+    "GameAgent": { "model": "flash", "in": {"min": 5000, "typ": 8000, "max": 12000}, "out": {"min": 800, "typ": 1200, "max": 1600} },
+    "ActionAgent.generateActions": { "model": "flash", "in": {"min": 2000, "typ": 3500, "max": 5000}, "out": {"min": 800, "typ": 1200, "max": 2000} },
+    "ActionAgent.generateSingleAction": { "model": "flash", "in": {"min": 1500, "typ": 3000, "max": 4000}, "out": {"min": 400, "typ": 800, "max": 1200} },
+    "ImagePromptAgent": { "model": "lite", "in": {"min": 1000, "typ": 1500, "max": 2000}, "out": {"min": 60, "typ": 120, "max": 200} },
+    "EventAgent": { "model": "lite", "in": {"min": 500, "typ": 900, "max": 1500}, "out": {"min": 80, "typ": 150, "max": 300} },
+    "SummaryAgent.retrieveRelatedHistory": { "model": "lite", "in": {"min": 2500, "typ": 4000, "max": 6000}, "out": {"min": 50, "typ": 200, "max": 400} },
+    "SummaryAgent.summarizeStoryIfTooLong": { "model": "lite", "in": {"min": 2500, "typ": 4000, "max": 5000}, "out": {"min": 100, "typ": 400, "max": 800} },
+    "CombatAgent": { "model": "flash", "in": {"min": 2000, "typ": 3000, "max": 4000}, "out": {"min": 800, "typ": 1200, "max": 2000} },
+    "CampaignAgent": { "model": "flash", "in": {"min": 4000, "typ": 5000, "max": 7000}, "out": {"min": 300, "typ": 800, "max": 1200} },
+    "CharacterStatsAgent.generateNPCStats": { "model": "lite", "in": {"min": 1200, "typ": 2000, "max": 3000}, "out": {"min": 100, "typ": 400, "max": 800} },
+    "ActionAgent.get_ground_truth": { "model": "lite", "in": {"min": 1500, "typ": 3000, "max": 4000}, "out": {"min": 100, "typ": 400, "max": 800} },
+    "JsonFixingInterceptorAgent": { "model": "lite", "in": {"min": 800, "typ": 1500, "max": 2500}, "out": {"min": 50, "typ": 200, "max": 400} }
+  },
+  "actions": {
+    "Normal Early": {
+      "calls": { "GameAgent": 1, "ImagePromptAgent": 1, "EventAgent": 1, "ActionAgent.generateActions": 1 },
+      "notes": "No memory retrieval, early game"
+    },
+    "Normal Late": {
+      "calls": { "GameAgent": 1, "ImagePromptAgent": 1, "EventAgent": 1, "ActionAgent.generateActions": 1, "SummaryAgent.retrieveRelatedHistory": 2 },
+      "notes": "Late game includes memory retrieval calls"
+    },
+    "Dice Roll": {
+      "calls": { "ActionAgent.get_ground_truth": 1 },
+      "notes": "Only ground truth (pre-roll). Story processed subsequently like Normal Early"
+    },
+    "Dice + Combat": {
+      "calls": { "ActionAgent.get_ground_truth": 1, "CombatAgent": 1 },
+      "notes": "Combat resolves then GameAgent processes story"
+    },
+    "Custom Action / Targeted Spell": {
+      "calls": { "ActionAgent.generateSingleAction": 1 },
+      "notes": "Enriches action before processing like Normal Early"
+    },
+    "State Command": {
+      "calls": { "GameAgent": 1 },
+      "notes": "Uses generateStateOnlyNoStory (Flash model but smaller output)"
+    },
+    "GM Question": {
+      "calls": { "SummaryAgent.retrieveRelatedHistory": 1, "GameAgent": 1 },
+      "notes": "Ask a question to GM (answer + optional thoughts)"
+    },
+    "Campaign Amortized": {
+      "calls": { "CampaignAgent": 0.2 },
+      "notes": "Campaign check runs every 5 actions; shown amortized per action"
+    }
+  }
+}

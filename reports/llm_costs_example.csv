@@ -1,0 +1,9 @@
+Action,Notes,Cost_low_USD,Cost_typ_USD,Cost_high_USD
+Normal Early,"No memory retrieval, early game",0.009505,0.013298,0.021297
+Normal Late,"Late game includes memory retrieval calls",0.010492,0.014258,0.022995
+Dice Roll,"Only ground truth (pre-roll). Story processed subsequently like Normal Early",0.000300,0.000460,0.001200
+Dice + Combat,"Combat resolves then GameAgent processes story",0.014404,0.018847,0.027297
+Custom Action / Targeted Spell,"Enriches action before processing like Normal Early",0.012405,0.017198,0.025197
+State Command,"Uses generateStateOnlyNoStory (Flash model but smaller output)",0.004000,0.007600,0.012000
+GM Question,"Ask a question to GM (answer + optional thoughts)",0.005100,0.004920,0.011400
+Campaign Amortized,"Campaign check runs every 5 actions; shown amortized per action",0.001450,0.000980,0.001560
