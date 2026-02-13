@@ -118,7 +118,6 @@ export class GameAgent {
 	constructor(llm: LLM) {
 		this.llm = llm;
 	}
-
 	async generateStateOnlyNoStory(
 		action: Action,
 		characterName: string,

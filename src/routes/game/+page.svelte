@@ -119,6 +119,10 @@
 
 	//ai state
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
+	type LlmProviderState = 'gemini' | 'openai-compatible' | 'pollinations';
+	const llmProviderState = useLocalStorage<LlmProviderState>('llmProviderState', 'gemini');
+	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
+	const llmModelState = useLocalStorage<string>('llmModelState', '');
 	const temperatureState = useLocalStorage<number>('temperatureState');
 	const systemInstructionsState = useLocalStorage<SystemInstructionsState>(
 		'systemInstructionsState',
@@ -267,6 +271,9 @@
 		// });
 		const llm = LLMProvider.provideLLM(
 			{
+				provider: llmProviderState.value,
+				baseUrl: llmBaseUrlState.value,
+				model: llmModelState.value || undefined,
 				temperature: temperatureState.value,
 				language: aiLanguage.value,
 				apiKey: apiKeyState.value

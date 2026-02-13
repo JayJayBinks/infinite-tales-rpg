@@ -41,6 +41,10 @@
 		initialSystemInstructionsState
 	);
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	type LlmProviderState = 'gemini' | 'openai-compatible' | 'pollinations';
+	const llmProviderState = useLocalStorage<LlmProviderState>('llmProviderState', 'gemini');
+	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
+	const llmModelState = useLocalStorage<string>('llmModelState', '');
 	const storyState = useLocalStorage<Story>('storyState');
 	const characterState = useLocalStorage<CharacterDescription>('characterState');
 	const historyMessagesState = useLocalStorage<LLMMessage[]>('historyMessagesState');
@@ -74,6 +78,9 @@
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM(
 			{
+					provider: llmProviderState.value,
+					baseUrl: llmBaseUrlState.value,
+					model: llmModelState.value || undefined,
 				temperature: 0.7,
 				language: aiLanguage.value,
 				apiKey: apiKeyState.value

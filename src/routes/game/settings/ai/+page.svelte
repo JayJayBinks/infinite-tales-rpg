@@ -29,7 +29,11 @@
 
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
-	//TODO migrate all AI settings into this object to avoid too many vars in local storage
+	// LLM provider settings (moved from generation modal)
+	const llmProviderState = useLocalStorage<'gemini' | 'openai-compatible'>('llmProviderState', 'gemini');
+	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
+	const llmModelState = useLocalStorage<string>('llmModelState', '');
+		//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
 		disableImagesState: false,
@@ -81,8 +85,12 @@
 	let llm: LLM;
 	let storyAgent: StoryAgent | undefined = $state();
 
+	const isLocalProvider = $derived(llmProviderState.value === 'openai-compatible');
+	const hasLocalConfig = $derived(!!llmBaseUrlState.value?.trim() && !!llmModelState.value?.trim());
+	const canUseAI = $derived((!isLocalProvider && !!apiKeyState.value?.trim()) || (isLocalProvider && hasLocalConfig));
+
 	onMount(async () => {
-		if (apiKeyState.value) {
+		if (canUseAI) {
 			provideLLM();
 		}
 	});
@@ -90,9 +98,12 @@
 	const provideLLM = () => {
 		llm = LLMProvider.provideLLM(
 			{
+				provider: llmProviderState.value,
 				temperature: 2,
 				apiKey: apiKeyState.value,
-				language: aiLanguage.value
+				language: aiLanguage.value,
+				baseUrl: llmBaseUrlState.value,
+				model: llmModelState.value
 			},
 			aiConfigState.value?.useFallbackLlmState
 		);
@@ -101,7 +112,7 @@
 
 	const onQuickstartClicked = () => {
 		provideLLM();
-		if (apiKeyState.value) {
+		if (canUseAI) {
 			quickstartModalOpen = true;
 		}
 	};
@@ -201,25 +212,42 @@
 	<LoadingModal loadingText="Creating Your New Tale, this may take a minute..." />
 {/if}
 <form class="m-6 flex flex-col items-center text-center">
+	<!-- Provider & API key (primary place for provider config) -->
 	<label class="form-control w-full sm:w-2/3">
-		<p>Google Gemini API Key</p>
-		<input
-			type="text"
-			id="apikey"
-			bind:value={apiKeyState.value}
-			placeholder="Copy your API Key from Google AI Studio and paste here"
-			class="input input-bordered mt-2"
-		/>
-		<small class="m-auto mt-2"
-			>View the
-			<a
-				target="_blank"
-				href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
-				class="link text-blue-400 underline"
-			>
-				guide to create the API Key</a
-			></small
-		>
+		<span>Provider</span>
+		<select bind:value={llmProviderState.value} class="select select-bordered mt-2 text-center">
+			<option value="gemini">Gemini (remote)</option>
+			<option value="openai-compatible">Local (LM Studio / OpenAI‑compatible)</option>
+		</select>
+		<small class="m-auto mt-2 text-xs text-base-content/70">Choose where the AI runs. Local requires Base URL & Model below.</small>
+	</label>
+
+	<label class="form-control w-full sm:w-2/3 mt-4">
+		{#if !isLocalProvider}
+			<p class="mt-2">Google Gemini API Key</p>
+			<input
+				type="text"
+				id="apikey"
+				bind:value={apiKeyState.value}
+				placeholder="Copy your API Key from Google AI Studio and paste here"
+				class="input input-bordered mt-2"
+			/>
+			<small class="m-auto mt-2 text-xs text-base-content/70">
+				View the <a target="_blank" href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91" class="link text-blue-400 underline">guide to create the API Key</a>
+			</small>
+		{:else}
+			<!-- local provider: show baseUrl + model fields -->
+			<label class="form-control mt-2 w-full">
+				<span>Local Base URL</span>
+				<input bind:value={llmBaseUrlState.value} placeholder="http://localhost:1234" class="input input-bordered mt-2" />
+				<small class="m-auto mt-2 text-xs text-base-content/70">Set to your LM Studio/Ollama endpoint (use proxy if needed).</small>
+			</label>
+			<label class="form-control mt-3 w-full">
+				<span>Local Model</span>
+				<input bind:value={llmModelState.value} placeholder="e.g. qwen2.5-7b-instruct" class="input input-bordered mt-2" />
+				<small class="m-auto mt-2 text-xs text-base-content/70">Model identifier as configured in your local server.</small>
+			</label>
+		{/if}
 	</label>
 	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={onQuickstartClicked}>
 		Quickstart:<br />New Tale
@@ -227,7 +255,7 @@
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!apiKeyState.value}
+		disabled={!canUseAI}
 		onclick={onStartCustom}
 	>
 		New Custom Tale
@@ -235,7 +263,7 @@
 	<small class="m-auto mt-2">Customize your Tale with a brief, open-ended plot</small>
 	<button
 		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!apiKeyState.value}
+		disabled={!canUseAI}
 		onclick={onNewCampaign}
 	>
 		New Campaign

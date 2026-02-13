@@ -1,5 +1,7 @@
 export const jsonRule =
-	'Most important Instruction! You must always respond with a single valid JSON in the following format, do not include any text before or after the JSON: ';
+	'Most important Instruction! Before producing JSON, first briefly analyze the request inside <analysis></analysis> tags. Do not use curly braces or square brackets inside the analysis. Then respond with a single valid JSON.\n' +
+	'Example:\n<analysis>\nBrief reasoning about the key decision points\n</analysis>\n\n' +
+	'Then the JSON in the following format: ';
 
 /**
  * Attempts to repair a malformed JSON string and parse it.
@@ -7,8 +9,11 @@ export const jsonRule =
  * Returns parsed json or re throws
  */
 export const sanitizeAnndParseJSON = (input: string): any => {
-	// Trim whitespace
-	const trimmed = input.trim();
+	// Trim whitespace and strip <analysis> blocks (chain-of-thought prompting)
+	const trimmed = input
+		.trim()
+		.replace(/<analysis>[\s\S]*?<\/analysis>/gi, '')
+		.trim();
 	if (trimmed === '') return {};
 
 	// Only consider '{' and '[' as legal JSON start characters
@@ -41,11 +46,75 @@ export const sanitizeAnndParseJSON = (input: string): any => {
 		return JSON.parse(working);
 	} catch (e) {
 		console.error('Failed to parse JSON after sanitization:', e);
-		const extracted = extractFirstJsonObject(working);
+
+		// QUICK AUTO-REPAIR: models sometimes emit *literal* newlines inside JSON strings.
+		// JSON requires these to be escaped as \n, so we escape them only when inside string context.
+		const newlineEscaped = escapeNewlinesInStrings(working);
+		if (newlineEscaped !== working) {
+			try {
+				return JSON.parse(newlineEscaped);
+			} catch (innerErr) {
+				console.warn('Newline escaping repair failed to parse:', innerErr);
+			}
+		}
+
+		// QUICK AUTO-REPAIR: attempt lightweight syntactic fixes before using LLM fixer
+		const balanced = balanceBracesAndQuotes(newlineEscaped);
+		if (balanced !== newlineEscaped) {
+			try {
+				return JSON.parse(balanced);
+			} catch (innerErr) {
+				console.warn('Quick syntactic repair failed to parse:', innerErr);
+			}
+		}
+
+		const extracted = extractFirstJsonObject(balanced);
 		if (!extracted) throw e;
 		return extracted;
 	}
 };
+
+function escapeNewlinesInStrings(text: string): string {
+	let inString = false;
+	let escaped = false;
+	let changed = false;
+	let result = '';
+
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		if (ch === '\\' && !escaped) {
+			escaped = true;
+			result += ch;
+			continue;
+		}
+
+		if (ch === '"' && !escaped) {
+			inString = !inString;
+			result += ch;
+			continue;
+		}
+
+		if (inString) {
+			if (ch === '\n') {
+				changed = true;
+				result += '\\n';
+				continue;
+			}
+			if (ch === '\r') {
+				changed = true;
+				// normalize CRLF and CR to \n
+				if (text[i + 1] === '\n') i++;
+				result += '\\n';
+				continue;
+			}
+		}
+
+		escaped = false;
+		result += ch;
+	}
+
+	return changed ? result : text;
+}
 
 /**
  * Finds and parses the first valid, top-level JSON object from a string.
@@ -103,4 +172,49 @@ function extractFirstJsonObject<T = Record<string, any>>(text: string): T | null
 	}
 	// If the loop finishes without finding a matching closing
 	return null;
+}
+
+/**
+ * Try a minimal syntactic repair: balance unclosed braces/brackets and close unterminated strings.
+ * This is intentionally conservative (only adds closing characters) and does not attempt deep fixes.
+ */
+function balanceBracesAndQuotes(text: string): string {
+	let inString = false;
+	let escaped = false;
+	let curly = 0;
+	let square = 0;
+
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		if (ch === '\\' && !escaped) {
+			escaped = true;
+			continue;
+		}
+		if (ch === '"' && !escaped) {
+			inString = !inString;
+		}
+		if (!inString) {
+			if (ch === '{') curly++;
+			else if (ch === '}') curly = Math.max(0, curly - 1);
+			else if (ch === '[') square++;
+			else if (ch === ']') square = Math.max(0, square - 1);
+		}
+		escaped = false;
+	}
+
+	let repaired = text;
+	if (inString) {
+		// close open string
+		repaired = repaired + '"';
+	}
+	// append necessary closing brackets/braces in reverse order
+	while (square > 0) {
+		repaired += ']';
+		square--;
+	}
+	while (curly > 0) {
+		repaired += '}';
+		curly--;
+	}
+	return repaired;
 }

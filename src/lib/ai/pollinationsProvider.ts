@@ -9,6 +9,7 @@ import {
 } from '$lib/ai/llm';
 import isPlainObject from 'lodash.isplainobject';
 import type { GenerateContentConfig } from '@google/genai';
+import { sanitizeAnndParseJSON } from './agents/agentUtils';
 
 export const defaultGPT4JsonConfig: GenerateContentConfig = {
 	temperature: 1.1,
@@ -168,17 +169,22 @@ export class PollinationsProvider extends LLM {
 				response.replaceAll('```json', '').replaceAll('```html', '').replaceAll('```', '').trim()
 			);
 		} catch (firstError) {
-			//autofix if true or not set and llm allows it
-			if (autoFix) {
-				console.log('Try json fix with llm agent');
-				return this.jsonFixingInterceptorAgent.fixJSON(
-					response,
-					(firstError as SyntaxError).message,
-					false
-				);
+			try {
+				console.log('Try json simple fix (sanitize)');
+				return sanitizeAnndParseJSON(response);
+			} catch (secondError) {
+				//autofix if true or not set and llm allows it
+				if (autoFix) {
+					console.log('Try json fix with llm agent');
+					return this.jsonFixingInterceptorAgent.fixJSON(
+						response,
+						(firstError as SyntaxError).message,
+						false
+					);
+				}
+				handleError(firstError as string);
+				return undefined;
 			}
-			handleError(firstError as string);
-			return undefined;
 		}
 	}
 

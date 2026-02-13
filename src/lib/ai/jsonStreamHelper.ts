@@ -42,6 +42,17 @@ export async function requestLLMJsonStream(
 
 	// Use emitPartialTokens to get story updates faster
 	const liveParser = new JSONParser({ emitPartialValues: true, emitPartialTokens: true });
+	let liveParserEnabled = true;
+
+	const safeWriteToLiveParser = (text: string) => {
+		if (!liveParserEnabled || !text) return;
+		try {
+			liveParser.write(text);
+		} catch (e) {
+			console.warn('Disabling live JSON parsing due to write error:', e);
+			liveParserEnabled = false;
+		}
+	};
 
 	const liveParserPromise = new Promise<void>((resolve) => {
 		liveParser.onValue = ({ value, key, partial }) => {
@@ -52,12 +63,13 @@ export async function requestLLMJsonStream(
 			}
 		};
 		liveParser.onError = (err) => {
-			// Let errors propagate
 			if (liveParser.isEnded || err.message?.includes('state ENDED')) {
 				console.log('--> Ignoring Live parser ended processing input with error:', err.message);
 				return;
 			}
-			throw err;
+			// Disable live parser instead of crashing - final parse will handle it
+			console.warn('--> Live parser error (will rely on final parse):', err.message);
+			liveParserEnabled = false;
 		};
 		liveParser.onEnd = () => {
 			console.log('--> Live parser finished processing input.');
@@ -179,14 +191,14 @@ export async function requestLLMJsonStream(
 				const jsonPartInCurrentChunk = textToProcess.substring(jsonContentStartIndexInOriginal);
 				if (jsonPartInCurrentChunk.length > 0) {
 					accumulatedJsonText += jsonPartInCurrentChunk;
-					liveParser.write(jsonPartInCurrentChunk);
+					safeWriteToLiveParser(jsonPartInCurrentChunk);
 				}
 			}
 		} else {
 			// --- JSON already started in a previous chunk, process the whole current chunk ---
 			if (textToProcess.length > 0) {
 				accumulatedJsonText += textToProcess;
-				liveParser.write(textToProcess);
+				safeWriteToLiveParser(textToProcess);
 			}
 		}
 	} // End of stream loop

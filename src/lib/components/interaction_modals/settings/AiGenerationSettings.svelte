@@ -9,33 +9,40 @@
 		disableImagesState: false,
 		disableAudioState: false
 	});
+	const llmProviderState = useLocalStorage<'gemini' | 'openai-compatible'>('llmProviderState','gemini');
 	const temperatureState = useLocalStorage<number>('temperatureState', 1);
 	const aiLanguage = useLocalStorage<string>('aiLanguage', '');
+
+	const isLocalProvider = $derived(llmProviderState.value === 'openai-compatible');
 </script>
 
 <dialog open class="modal z-50" style="background: rgba(0, 0, 0, 0.3);">
 	<div class="modal-box flex flex-col items-center text-center">
 		<h3 class="text-lg font-bold">AI Generation Settings</h3>
 
+	
+
 		<!-- Use Gemini Flash Fallback -->
-		<label class="form-control mt-5 w-full sm:w-2/3">
-			<div class="flex flex-col items-center gap-2">
-				<span>Use Gemini Flash as fallback</span>
-				<div class="flex items-center gap-2">
-					<input
-						type="checkbox"
-						class="toggle"
-						bind:checked={aiConfigState.value.useFallbackLlmState}
-					/>
+		{#if !isLocalProvider}
+			<label class="form-control mt-5 w-full sm:w-2/3">
+				<div class="flex flex-col items-center gap-2">
+					<span>Use Gemini Flash as fallback</span>
+					<div class="flex items-center gap-2">
+						<input
+							type="checkbox"
+							class="toggle"
+							bind:checked={aiConfigState.value.useFallbackLlmState}
+						/>
+					</div>
+					<small class="m-auto mt-2 text-xs text-base-content/70">
+						When Gemini Thinking is overloaded, Flash will be used.
+					</small>
+					<small class="m-auto mt-1 text-xs text-base-content/70">
+						Keep in mind that the game experience can be decreased with this option.
+					</small>
 				</div>
-				<small class="m-auto mt-2 text-xs text-base-content/70">
-					When Gemini Thinking is overloaded, Flash will be used.
-				</small>
-				<small class="m-auto mt-1 text-xs text-base-content/70">
-					Keep in mind that the game experience can be decreased with this option.
-				</small>
-			</div>
-		</label>
+			</label>
+		{/if}
 
 		<!-- Temperature -->
 		<label class="form-control mt-5 w-full sm:w-2/3">

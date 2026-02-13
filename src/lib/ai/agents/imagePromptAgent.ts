@@ -73,7 +73,7 @@ ${story}
 			userMessage: prompt,
 			historyMessages: [],
 			systemInstruction: [
-				'Always output a single, vivid image prompt suitable for generative AI art as JSON with the keys "most_important_element", "frame_focus" and "image_prompt". No extra text.'
+				'Before producing JSON, first briefly analyze the visual scene inside <analysis></analysis> tags. Do not use curly braces or square brackets inside the analysis. Then output a single, vivid image prompt suitable for generative AI art as JSON with the keys "most_important_element", "frame_focus" and "image_prompt".'
 			],
 			temperature: 0.7,
 			model: GEMINI_MODELS.FLASH_LITE_2_5,

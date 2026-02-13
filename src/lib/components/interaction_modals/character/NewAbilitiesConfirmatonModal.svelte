@@ -23,6 +23,10 @@
 	const characterStatsState = useLocalStorage<CharacterStats>('characterStatsState');
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
+	type LlmProviderState = 'gemini' | 'openai-compatible' | 'pollinations';
+	const llmProviderState = useLocalStorage<LlmProviderState>('llmProviderState', 'gemini');
+	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
+	const llmModelState = useLocalStorage<string>('llmModelState', '');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
 
 	let isConfirmed = $state(false);
@@ -34,6 +38,9 @@
 		characterStatsAgent = new CharacterStatsAgent(
 			LLMProvider.provideLLM(
 				{
+					provider: llmProviderState.value,
+					baseUrl: llmBaseUrlState.value,
+					model: llmModelState.value || undefined,
 					temperature: 0.5,
 					apiKey: apiKeyState.value,
 					language: aiLanguage.value
