@@ -10,16 +10,19 @@
 	}: {
 		targets: Targets;
 		action: Action;
-		onclose;
-		dialogRef;
+		onclose: (action: Action, targets: string[]) => void;
+		dialogRef?: HTMLDialogElement;
 	} = $props();
 
-	let targetForm;
+	let targetForm: HTMLFormElement;
 	let customTargetState = $state<string>();
 
 	function mapTargets(): string[] {
 		const mappedTargets = Array.from(targetForm.elements)
-			.filter((elm) => elm.checked && elm.value)
+			.filter(
+				(elm): elm is HTMLInputElement =>
+					elm instanceof HTMLInputElement && elm.checked && Boolean(elm.value)
+			)
 			.map((elm) => {
 				elm.checked = false;
 				return elm.value as string;
@@ -106,7 +109,7 @@
 				type="submit"
 				class="btn btn-neutral m-auto mt-5"
 				onclick={() => {
-					dialogRef.close();
+					dialogRef?.close();
 					onclose(action, mapTargets());
 				}}
 			>

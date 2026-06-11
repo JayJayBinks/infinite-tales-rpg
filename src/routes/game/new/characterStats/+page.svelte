@@ -57,7 +57,10 @@
 					baseUrl: llmBaseUrlState.value,
 					model: llmModelState.value || undefined,
 					temperature: 2,
-					apiKey: llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value,
+					apiKey:
+						llmProviderState.value === 'openai-compatible'
+							? llmApiKeyState.value
+							: apiKeyState.value,
 					language: aiLanguage.value
 				},
 				aiConfigState.value?.useFallbackLlmState
@@ -312,7 +315,7 @@
 			id="level"
 			class="input input-bordered m-auto w-full max-w-md"
 			bind:value={characterStatsState.value.level}
-			oninput={(e) => addLevelOverwrite(parseInt(e.target.value))}
+			oninput={(e) => addLevelOverwrite(parseInt(e.currentTarget.value))}
 		/>
 	</div>
 
@@ -354,7 +357,9 @@
 									id={`${resourceName}-max`}
 									class="input input-bordered w-full"
 									oninput={(e) =>
-										addResourceOverwrite(resourceName, { max_value: parseInt(e.target.value) })}
+										addResourceOverwrite(resourceName, {
+											max_value: parseInt(e.currentTarget.value)
+										})}
 									bind:value={characterStatsState.value.resources[resourceName].max_value}
 								/>
 							</div>
@@ -368,7 +373,9 @@
 									id={`${resourceName}-start`}
 									class="input input-bordered w-full"
 									oninput={(e) =>
-										addResourceOverwrite(resourceName, { start_value: parseInt(e.target.value) })}
+										addResourceOverwrite(resourceName, {
+											start_value: parseInt(e.currentTarget.value)
+										})}
 									bind:value={characterStatsState.value.resources[resourceName].start_value}
 								/>
 							</div>
@@ -380,7 +387,9 @@
 								type="checkbox"
 								class="toggle"
 								oninput={(e) =>
-									addResourceOverwrite(resourceName, { game_ends_when_zero: e.target.checked })}
+									addResourceOverwrite(resourceName, {
+										game_ends_when_zero: e.currentTarget.checked
+									})}
 								bind:checked={characterStatsState.value.resources[resourceName].game_ends_when_zero}
 							/>
 						</label>
@@ -460,7 +469,7 @@
 							id={`attributes-${statName}`}
 							class="input input-bordered w-full"
 							bind:value={characterStatsState.value.attributes[statName]}
-							oninput={(e) => addAttributeOverwrite(statName, parseInt(e.target.value))}
+							oninput={(e) => addAttributeOverwrite(statName, parseInt(e.currentTarget.value))}
 						/>
 					</div>
 				{/each}
@@ -541,7 +550,7 @@
 							id={`skills-${statName}`}
 							class="input input-bordered w-full"
 							bind:value={characterStatsState.value.skills[statName]}
-							oninput={(e) => addSkillOverwrite(statName, parseInt(e.target.value))}
+							oninput={(e) => addSkillOverwrite(statName, parseInt(e.currentTarget.value))}
 						/>
 					</div>
 				{/each}

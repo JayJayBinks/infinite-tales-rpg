@@ -1,8 +1,7 @@
-// @ts-expect-error VERCEL_ENV is present
-import { VERCEL_ENV } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export function load() {
 	return {
-		VERCEL_ENV
+		VERCEL_ENV: env.VERCEL_ENV
 	};
 }

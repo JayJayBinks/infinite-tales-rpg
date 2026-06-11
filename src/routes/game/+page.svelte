@@ -101,7 +101,10 @@
 		getCharacterTechnicalId,
 		addCharacterToPlayerCharactersIdToNamesMap
 	} from './characterLogic';
-	import { getDiceRollPromptAddition } from '$lib/components/interaction_modals/dice/diceRollLogic';
+	import {
+		getDiceRollPromptAddition,
+		type DiceRollResult
+	} from '$lib/components/interaction_modals/dice/diceRollLogic';
 	import NewAbilitiesConfirmatonModal from '$lib/components/interaction_modals/character/NewAbilitiesConfirmatonModal.svelte';
 	import SimpleDiceRoller from '$lib/components/interaction_modals/dice/SimpleDiceRoller.svelte';
 	import StoryProgressionWithImage, {
@@ -109,13 +112,12 @@
 	} from '$lib/components/StoryProgressionWithImage.svelte';
 	import { ImagePromptAgent } from '$lib/ai/agents/imagePromptAgent';
 	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
-	// eslint-disable-next-line svelte/valid-compile
-	let diceRollDialog,
-		useSpellsAbilitiesModal,
-		useItemsModal,
-		utilityModal,
-		actionsDiv,
-		customActionInput;
+	let diceRollDialog = $state(undefined as unknown as HTMLDialogElement);
+	let useSpellsAbilitiesModal = $state(undefined as unknown as HTMLDialogElement);
+	let useItemsModal = $state(undefined as unknown as HTMLDialogElement);
+	let utilityModal = $state(undefined as unknown as HTMLDialogElement);
+	let actionsDiv = $state(undefined as unknown as HTMLDivElement);
+	let customActionInput = $state(undefined as unknown as HTMLInputElement);
 
 	//ai state
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
@@ -277,7 +279,8 @@
 				model: llmModelState.value || undefined,
 				temperature: temperatureState.value,
 				language: aiLanguage.value,
-				apiKey: llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value
+				apiKey:
+					llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value
 			},
 			aiConfigState.value?.useFallbackLlmState
 		);
@@ -496,7 +499,7 @@
 		diceRollDialog.show();
 		diceRollDialog.addEventListener('close', function sendWithManuallyRolled() {
 			diceRollDialog.removeEventListener('close', sendWithManuallyRolled);
-			const result = diceRollDialog.returnValue;
+			const result = diceRollDialog.returnValue as DiceRollResult;
 
 			const skillName = getSkillIfApplicable(characterStatsState.value, chosenActionState.value);
 			if (skillName) {
@@ -760,7 +763,7 @@
 			additionalStoryInput,
 			gameSettingsState.value.randomEventsHandling,
 			currentGameActionState.is_character_in_combat,
-			diceRollDialog.returnValue //TODO better way to pass the result ?, its string here
+			diceRollDialog.returnValue as DiceRollResult //TODO better way to pass the result ?, its string here
 		);
 		if (!additionalStoryInput.includes('sudo')) {
 			additionalStoryInput +=

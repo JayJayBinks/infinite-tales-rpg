@@ -4,6 +4,19 @@
 	import { onMount } from 'svelte';
 	import LoadingIcon from '$lib/components/LoadingIcon.svelte';
 
+	type AIGeneratedImageProps = {
+		storageKey?: string;
+		showGenerateButton?: boolean;
+		buttonClassesString?: string;
+		showLoadingSpinner?: boolean;
+		noLogo?: boolean;
+		enhance?: boolean;
+		onClickGenerate?: (event: MouseEvent) => void;
+		resetImageState?: boolean;
+		imagePrompt?: string;
+		imageClassesString?: string;
+	};
+
 	let {
 		storageKey = '',
 		showGenerateButton = true,
@@ -15,7 +28,7 @@
 		resetImageState = false,
 		imagePrompt = '',
 		imageClassesString = 'm-auto h-[296px] sm:h-[512px]'
-	} = $props();
+	}: AIGeneratedImageProps = $props();
 
 	const initialImageState = {
 		prompt: imagePrompt?.trim(),

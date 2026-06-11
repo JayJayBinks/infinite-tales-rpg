@@ -53,7 +53,10 @@
 					baseUrl: llmBaseUrlState.value,
 					model: llmModelState.value || undefined,
 					temperature: 2,
-					apiKey: llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value,
+					apiKey:
+						llmProviderState.value === 'openai-compatible'
+							? llmApiKeyState.value
+							: apiKeyState.value,
 					language: aiLanguage.value
 				},
 				aiConfigState.value?.useFallbackLlmState
@@ -88,9 +91,9 @@
 		}
 		isGeneratingState = false;
 	};
-	const onRandomizeSingle = async (stateValue) => {
+	const onRandomizeSingle = async (stateValue: keyof CharacterDescription) => {
 		isGeneratingState = true;
-		const currentCharacter = { ...characterState.value };
+		const currentCharacter: Partial<CharacterDescription> = { ...characterState.value };
 		currentCharacter[stateValue] = undefined;
 		const characterInput = { ...currentCharacter, ...characterStateOverwrites };
 		const newState = await characterAgent.generateCharacterDescription(
@@ -189,7 +192,8 @@
 				rows={textAreaRowsDerived ? textAreaRowsDerived[stateValue] : 2}
 				placeholder=""
 				oninput={(evt) => {
-					characterStateOverwrites[stateValue] = evt.currentTarget.value;
+					characterStateOverwrites[stateValue as keyof CharacterDescription] =
+						evt.currentTarget.value;
 				}}
 				class="textarea textarea-bordered textarea-md mt-2 w-full"
 			>
@@ -198,7 +202,7 @@
 		<button
 			class="btn btn-accent m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 			onclick={() => {
-				onRandomizeSingle(stateValue);
+				onRandomizeSingle(stateValue as keyof CharacterDescription);
 			}}
 		>
 			Randomize {stateValue.replaceAll('_', ' ')}
@@ -206,8 +210,8 @@
 		<button
 			class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 			onclick={() => {
-				characterState.resetProperty(stateValue);
-				delete characterStateOverwrites[stateValue];
+				characterState.resetProperty(stateValue as keyof CharacterDescription);
+				delete characterStateOverwrites[stateValue as keyof CharacterDescription];
 				if (stateValue === 'appearance') {
 					resetImageState = true;
 				}

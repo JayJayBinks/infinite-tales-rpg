@@ -20,13 +20,12 @@
 		storyImagePrompt: string;
 		resources: ResourcesWithCurrentValue;
 		targets: Targets;
-		onclose;
-		dialogRef;
+		onclose: (action: Action, targets: string[]) => void;
+		dialogRef?: HTMLDialogElement;
 	} = $props();
 
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
-	// eslint-disable-next-line svelte/valid-compile
-	let targetModalRef;
+	let targetModalRef = $state<HTMLDialogElement>();
 	let abilityActionState = $state({} as Action);
 
 	function mapAbilityToAction(ability: Ability) {
@@ -88,8 +87,8 @@
 											(resources[ability.resource_cost?.resource_key || '']?.current_value || 0)}
 									onclick={() => {
 										mapAbilityToAction(ability);
-										dialogRef.close();
-										targetModalRef.showModal();
+										dialogRef?.close();
+										targetModalRef?.showModal();
 									}}
 								>
 									Cast

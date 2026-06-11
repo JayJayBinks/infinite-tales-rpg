@@ -41,7 +41,10 @@
 					baseUrl: llmBaseUrlState.value,
 					model: llmModelState.value || undefined,
 					temperature: 2,
-					apiKey: llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value,
+					apiKey:
+						llmProviderState.value === 'openai-compatible'
+							? llmApiKeyState.value
+							: apiKeyState.value,
 					language: aiLanguage.value
 				},
 				aiConfigState.value?.useFallbackLlmState
@@ -69,9 +72,9 @@
 		}
 		isGeneratingState = false;
 	};
-	const onRandomizeSingle = async (stateValue) => {
+	const onRandomizeSingle = async (stateValue: keyof Story) => {
 		isGeneratingState = true;
-		const currentStory = { ...storyState.value };
+		const currentStory: Partial<Story> = { ...storyState.value };
 		currentStory[stateValue] = undefined;
 		const agentInput = { ...currentStory, ...storyStateOverwrites };
 		const newState = await storyAgent.generateRandomStorySettings(
@@ -84,8 +87,8 @@
 		isGeneratingState = false;
 	};
 
-	function handleInput(evt, stateValue) {
-		storyStateOverwrites[stateValue] = evt.target.value;
+	function handleInput(evt: Event, stateValue: string) {
+		storyStateOverwrites[stateValue] = (evt.currentTarget as HTMLTextAreaElement).value;
 	}
 
 	function onUploadClicked() {
@@ -195,7 +198,7 @@
 			<button
 				class="btn btn-accent m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 				onclick={() => {
-					onRandomizeSingle(stateValue);
+					onRandomizeSingle(stateValue as keyof Story);
 				}}
 			>
 				Randomize {stateValue.replaceAll('_', ' ')}
@@ -203,7 +206,7 @@
 			<button
 				class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 				onclick={() => {
-					storyState.resetProperty(stateValue);
+					storyState.resetProperty(stateValue as keyof Story);
 					delete storyStateOverwrites[stateValue];
 				}}
 			>

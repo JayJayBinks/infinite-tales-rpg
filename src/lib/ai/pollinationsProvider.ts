@@ -2,6 +2,7 @@ import { handleError } from '../util.svelte';
 import { JsonFixingInterceptorAgent } from './agents/jsonFixingInterceptorAgent';
 import {
 	LLM,
+	type ContentWithThoughts,
 	type LLMconfig,
 	type LLMMessage,
 	type LLMRequest,
@@ -41,11 +42,11 @@ export class PollinationsProvider extends LLM {
 	generateContentStream(
 		request: LLMRequest,
 		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
-	): Promise<object | undefined> {
+	): Promise<ContentWithThoughts | undefined> {
 		throw new Error('Method not implemented.' + request + storyUpdateCallback);
 	}
 
-	async generateContent(request: LLMRequest): Promise<object | undefined> {
+	async generateContent(request: LLMRequest): Promise<ContentWithThoughts | undefined> {
 		const contents = this.buildContentsFormat(request.userMessage, request.historyMessages || []);
 		const systemInstructions = this.buildSystemInstruction(
 			request.systemInstruction || this.llmConfig.systemInstruction
@@ -91,8 +92,8 @@ export class PollinationsProvider extends LLM {
 				if (!fallbackResult) {
 					handleError(e as unknown as string);
 				} else {
-					if (this.model === 'openai') {
-						fallbackResult['fallbackUsed'] = true;
+					if (this.model === 'openai' && fallbackResult.content) {
+						fallbackResult.content['fallbackUsed'] = true;
 					}
 				}
 				return fallbackResult;
@@ -107,7 +108,10 @@ export class PollinationsProvider extends LLM {
 				((request.tryAutoFixJSONError || request.tryAutoFixJSONError === undefined) &&
 					this.llmConfig.tryAutoFixJSONError) ||
 				false;
-			return this.parseContentByModel(this.model, response, autoFixJSON);
+			const parsedContent = await this.parseContentByModel(this.model, response, autoFixJSON);
+			if (parsedContent) {
+				return { thoughts: '', content: parsedContent };
+			}
 		} catch (e) {
 			handleError(e as string);
 		}

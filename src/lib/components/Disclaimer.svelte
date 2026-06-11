@@ -1,6 +1,9 @@
 <script lang="ts">
-	let disclaimer;
-	let { disclaimerOpen = false, onAgree } = $props();
+	let disclaimer: HTMLDialogElement;
+	let {
+		disclaimerOpen = false,
+		onAgree = () => {}
+	}: { disclaimerOpen?: boolean; onAgree?: () => void } = $props();
 </script>
 
 <dialog

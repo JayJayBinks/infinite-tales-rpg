@@ -10,12 +10,15 @@
 		onclose: (selectedItems: ItemWithId[], craftDescription: string) => void;
 	} = $props();
 
-	let itemForm;
+	let itemForm: HTMLFormElement;
 	let craftDescription = $state<string>('');
 
 	function mapSelectedItems(): ItemWithId[] {
 		const selectedItemIds = Array.from(itemForm.elements)
-			.filter((elm) => elm.checked && elm.value)
+			.filter(
+				(elm): elm is HTMLInputElement =>
+					elm instanceof HTMLInputElement && elm.checked && Boolean(elm.value)
+			)
 			.map((elm) => {
 				elm.checked = false; // Uncheck after selection
 				return elm.value as string;

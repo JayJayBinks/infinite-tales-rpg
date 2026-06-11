@@ -50,7 +50,10 @@
 					baseUrl: llmBaseUrlState.value,
 					model: llmModelState.value || undefined,
 					temperature: 2,
-					apiKey: llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value,
+					apiKey:
+						llmProviderState.value === 'openai-compatible'
+							? llmApiKeyState.value
+							: apiKeyState.value,
 					language: aiLanguage.value
 				},
 				aiConfigState.value?.useFallbackLlmState
@@ -151,8 +154,8 @@
 		isGeneratingState = false;
 	};
 
-	function handleInput(evt, stateValue) {
-		campaignStateOverwrites[stateValue] = evt.target.value;
+	function handleInput(evt: Event, stateValue: string) {
+		campaignStateOverwrites[stateValue] = (evt.currentTarget as HTMLTextAreaElement).value;
 	}
 
 	function isCampaignSet() {
@@ -378,7 +381,9 @@
 																							}
 																							campaignStateOverwrites[stateValue][chapterNumber][
 																								chapterProperty
-																							][plotPoint][plotPointProperty] = evt.target?.value;
+																							][plotPoint][plotPointProperty] = (
+																								evt.currentTarget as HTMLTextAreaElement
+																							).value;
 																						}}
 																						class="textarea textarea-bordered textarea-md mt-2 w-full"
 																					>
@@ -466,7 +471,7 @@
 																	}
 																	campaignStateOverwrites[stateValue][chapterNumber][
 																		chapterProperty
-																	] = evt.target?.value;
+																	] = (evt.currentTarget as HTMLTextAreaElement).value;
 																}}
 																class="textarea textarea-bordered textarea-md mt-2 w-full"
 															>
@@ -537,7 +542,7 @@
 				<button
 					class="btn btn-neutral m-auto mt-2 w-3/4 capitalize sm:w-1/2"
 					onclick={() => {
-						campaignState.resetProperty(stateValue);
+						campaignState.resetProperty(stateValue as keyof Campaign);
 						delete campaignStateOverwrites[stateValue];
 					}}
 				>

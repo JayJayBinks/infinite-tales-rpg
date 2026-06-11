@@ -3,7 +3,7 @@ import { CharacterAgent, type CharacterDescription } from '$lib/ai/agents/charac
 import type { CharacterStats, CharacterStatsAgent } from '$lib/ai/agents/characterStatsAgent';
 import type { Story } from '$lib/ai/agents/storyAgent';
 import type { Action, PlayerCharactersIdToNamesMap } from '$lib/ai/agents/gameAgent';
-import type { DiceRollResult } from '$lib/components/interaction_modals/diceRollLogic';
+import type { DiceRollResult } from '$lib/components/interaction_modals/dice/diceRollLogic';
 import { ActionDifficulty } from './gameLogic';
 
 export async function applyCharacterChange(
