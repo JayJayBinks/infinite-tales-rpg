@@ -31,6 +31,7 @@
 	const llmProviderState = useLocalStorage<LlmProviderState>('llmProviderState', 'gemini');
 	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
 	const llmModelState = useLocalStorage<string>('llmModelState', '');
+	const llmApiKeyState = useLocalStorage<string>('llmApiKeyState', '');
 	let campaignAgent: CampaignAgent;
 
 	const campaignState = useLocalStorage<Campaign>('campaignState', initialCampaignState);
@@ -49,7 +50,7 @@
 					baseUrl: llmBaseUrlState.value,
 					model: llmModelState.value || undefined,
 					temperature: 2,
-					apiKey: apiKeyState.value,
+					apiKey: llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value,
 					language: aiLanguage.value
 				},
 				aiConfigState.value?.useFallbackLlmState

@@ -33,6 +33,7 @@
 	const llmProviderState = useLocalStorage<'gemini' | 'openai-compatible'>('llmProviderState', 'gemini');
 	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
 	const llmModelState = useLocalStorage<string>('llmModelState', '');
+	const llmApiKeyState = useLocalStorage<string>('llmApiKeyState', '');
 		//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
@@ -85,9 +86,9 @@
 	let llm: LLM;
 	let storyAgent: StoryAgent | undefined = $state();
 
-	const isLocalProvider = $derived(llmProviderState.value === 'openai-compatible');
-	const hasLocalConfig = $derived(!!llmBaseUrlState.value?.trim() && !!llmModelState.value?.trim());
-	const canUseAI = $derived((!isLocalProvider && !!apiKeyState.value?.trim()) || (isLocalProvider && hasLocalConfig));
+	const isOpenAICompatible = $derived(llmProviderState.value === 'openai-compatible');
+	const hasOpenAIConfig = $derived(!!llmBaseUrlState.value?.trim() && !!llmModelState.value?.trim());
+	const canUseAI = $derived((!isOpenAICompatible && !!apiKeyState.value?.trim()) || (isOpenAICompatible && hasOpenAIConfig));
 
 	onMount(async () => {
 		if (canUseAI) {
@@ -100,7 +101,7 @@
 			{
 				provider: llmProviderState.value,
 				temperature: 2,
-				apiKey: apiKeyState.value,
+				apiKey: isOpenAICompatible ? llmApiKeyState.value : apiKeyState.value,
 				language: aiLanguage.value,
 				baseUrl: llmBaseUrlState.value,
 				model: llmModelState.value
@@ -217,13 +218,19 @@
 		<span>Provider</span>
 		<select bind:value={llmProviderState.value} class="select select-bordered mt-2 text-center">
 			<option value="gemini">Gemini (remote)</option>
-			<option value="openai-compatible">Local (LM Studio / OpenAI‑compatible)</option>
+			<option value="openai-compatible">OpenAI-compatible (Local / OpenRouter / etc.)</option>
 		</select>
-		<small class="m-auto mt-2 text-xs text-base-content/70">Choose where the AI runs. Local requires Base URL & Model below.</small>
+		<small class="m-auto mt-2 text-xs text-base-content/70">
+			{#if isOpenAICompatible}
+				Connect to any OpenAI-compatible API: LM Studio, Ollama, OpenRouter, Together AI, etc.
+			{:else}
+				Uses Google Gemini. Requires a free API key.
+			{/if}
+		</small>
 	</label>
 
-	<label class="form-control w-full sm:w-2/3 mt-4">
-		{#if !isLocalProvider}
+	<div class="form-control w-full sm:w-2/3 mt-4">
+		{#if !isOpenAICompatible}
 			<p class="mt-2">Google Gemini API Key</p>
 			<input
 				type="text"
@@ -236,19 +243,23 @@
 				View the <a target="_blank" href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91" class="link text-blue-400 underline">guide to create the API Key</a>
 			</small>
 		{:else}
-			<!-- local provider: show baseUrl + model fields -->
 			<label class="form-control mt-2 w-full">
-				<span>Local Base URL</span>
-				<input bind:value={llmBaseUrlState.value} placeholder="http://localhost:1234" class="input input-bordered mt-2" />
-				<small class="m-auto mt-2 text-xs text-base-content/70">Set to your LM Studio/Ollama endpoint (use proxy if needed).</small>
+				<span>Base URL</span>
+				<input bind:value={llmBaseUrlState.value} placeholder="http://localhost:1234 or https://openrouter.ai/api" class="input input-bordered mt-2" />
+				<small class="m-auto mt-2 text-xs text-base-content/70">The base URL of the OpenAI-compatible API (without /v1).</small>
 			</label>
 			<label class="form-control mt-3 w-full">
-				<span>Local Model</span>
-				<input bind:value={llmModelState.value} placeholder="e.g. qwen2.5-7b-instruct" class="input input-bordered mt-2" />
-				<small class="m-auto mt-2 text-xs text-base-content/70">Model identifier as configured in your local server.</small>
+				<span>API Key (optional for local)</span>
+				<input type="password" bind:value={llmApiKeyState.value} placeholder="sk-... (leave empty for local servers)" class="input input-bordered mt-2" />
+				<small class="m-auto mt-2 text-xs text-base-content/70">Required for cloud providers like OpenRouter. Leave empty for local servers.</small>
+			</label>
+			<label class="form-control mt-3 w-full">
+				<span>Model</span>
+				<input bind:value={llmModelState.value} placeholder="e.g. google/gemma-3-4b, meta-llama/llama-3-8b" class="input input-bordered mt-2" />
+				<small class="m-auto mt-2 text-xs text-base-content/70">Model identifier as listed by your provider.</small>
 			</label>
 		{/if}
-	</label>
+	</div>
 	<button class="btn btn-accent m-auto mt-5 w-1/2" onclick={onQuickstartClicked}>
 		Quickstart:<br />New Tale
 	</button>

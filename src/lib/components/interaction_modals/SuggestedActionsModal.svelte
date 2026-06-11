@@ -45,6 +45,7 @@
 	const llmProviderState = useLocalStorage<LlmProviderState>('llmProviderState', 'gemini');
 	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
 	const llmModelState = useLocalStorage<string>('llmModelState', '');
+	const llmApiKeyState = useLocalStorage<string>('llmApiKeyState', '');
 	const customSystemInstruction = useLocalStorage<string>('customSystemInstruction');
 	const customActionAgentInstruction = useLocalStorage<string>('customActionAgentInstruction');
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState');
@@ -63,7 +64,7 @@
 				model: llmModelState.value || undefined,
 				temperature: temperatureState.value,
 				language: aiLanguage.value,
-				apiKey: apiKeyState.value
+				apiKey: llmProviderState.value === 'openai-compatible' ? llmApiKeyState.value : apiKeyState.value
 			},
 			aiConfigState.value?.useFallbackLlmState
 		);

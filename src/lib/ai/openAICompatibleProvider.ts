@@ -1,4 +1,5 @@
 import JSONParser from '@streamparser/json/jsonparser.js';
+import OpenAI from 'openai';
 import { handleError } from '$lib/util.svelte';
 import { JsonFixingInterceptorAgent } from '$lib/ai/agents/jsonFixingInterceptorAgent';
 import {
@@ -10,18 +11,39 @@ import {
 	type LLMconfig
 } from '$lib/ai/llm';
 import { sanitizeAnndParseJSON } from '$lib/ai/agents/agentUtils';
-
-type OpenAIChatMessage = {
-	role: 'system' | 'user' | 'assistant';
-	content: string;
-};
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 export class OpenAICompatibleProvider extends LLM {
 	private readonly jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
+	private readonly client: OpenAI;
 
 	constructor(llmConfig: LLMconfig) {
 		super(llmConfig);
 		this.jsonFixingInterceptorAgent = new JsonFixingInterceptorAgent(this);
+
+		// Normalize base URL: strip any trailing /v1, /v1/chat/completions etc.
+		const baseUrl = (llmConfig.baseUrl?.trim() || 'http://localhost:1234')
+			.replace(/\/+$/, '')
+			.replace(/\/v1\/chat\/completions$/, '')
+			.replace(/\/v1$/, '');
+
+		this.client = new OpenAI({
+			apiKey: llmConfig.apiKey?.trim() || 'not-needed',
+			baseURL: `${baseUrl}/v1`,
+			dangerouslyAllowBrowser: true,
+			// Strip x-stainless-* telemetry headers — they cause CORS preflight failures
+			// on many self-hosted and third-party OpenAI-compatible endpoints.
+			fetch: (url, init) => {
+				if (init?.headers) {
+					const headers = new Headers(init.headers as HeadersInit);
+					for (const key of [...headers.keys()]) {
+						if (key.startsWith('x-stainless')) headers.delete(key);
+					}
+					init = { ...init, headers };
+				}
+				return globalThis.fetch(url, init);
+			}
+		});
 	}
 
 	getDefaultTemperature(): number {
@@ -30,12 +52,6 @@ export class OpenAICompatibleProvider extends LLM {
 
 	getMaxTemperature(): number {
 		return 2;
-	}
-
-	private getBaseUrl(): string {
-		const configured = this.llmConfig.baseUrl?.trim();
-		if (!configured) return 'http://localhost:1234';
-		return configured.replace(/\/$/, '');
 	}
 
 	private isGeminiModelName(model?: string): boolean {
@@ -50,8 +66,8 @@ export class OpenAICompatibleProvider extends LLM {
 		return 'google/gemma-3-4b';
 	}
 
-	private buildMessages(request: LLMRequest): OpenAIChatMessage[] {
-		const messages: OpenAIChatMessage[] = [];
+	private buildMessages(request: LLMRequest): ChatCompletionMessageParam[] {
+		const messages: ChatCompletionMessageParam[] = [];
 
 		const systemInstructions = request.systemInstruction ?? this.llmConfig.systemInstruction;
 		if (typeof systemInstructions === 'string' && systemInstructions.trim()) {
@@ -121,50 +137,28 @@ export class OpenAICompatibleProvider extends LLM {
 	}
 
 	async generateContent(request: LLMRequest): Promise<ContentWithThoughts | undefined> {
-		const baseUrl = this.getBaseUrl();
-		const url = `${baseUrl}/v1/chat/completions`;
 		const messages = this.buildMessages(request);
 		const model = this.getModelToUse(request);
 		const temperature = this.clampTemperature(request);
 
-		const body: any = {
-			model,
-			messages,
-			temperature,
-			stream: false
-		};
-
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json'
-		};
-		if (this.llmConfig.apiKey?.trim()) {
-			headers.Authorization = `Bearer ${this.llmConfig.apiKey}`;
-		}
-
-		let response: Response;
+		let completion: OpenAI.Chat.Completions.ChatCompletion;
 		try {
-			response = await fetch(url, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(body)
+			completion = await this.client.chat.completions.create({
+				model,
+				messages,
+				temperature,
+				stream: false
 			});
-		} catch (e) {
-			if (request.reportErrorToUser !== false) handleError(e as unknown as string);
-			return undefined;
-		}
-
-		if (!response.ok) {
-			const text = await response.text().catch(() => '');
+		} catch (e: any) {
 			if (request.reportErrorToUser !== false) {
-				handleError(`Local LLM request failed: ${response.status} ${response.statusText} ${text}`);
+				handleError(`OpenAI-compatible request failed: ${e?.message ?? e}`);
 			}
 			return undefined;
 		}
 
-		const json = (await response.json()) as any;
-		const responseText: string | undefined = json?.choices?.[0]?.message?.content;
+		const responseText = completion.choices?.[0]?.message?.content;
 		if (!responseText) {
-			if (request.reportErrorToUser !== false) handleError('Local LLM did not return any text.');
+			if (request.reportErrorToUser !== false) handleError('OpenAI-compatible LLM did not return any text.');
 			return undefined;
 		}
 
@@ -183,44 +177,22 @@ export class OpenAICompatibleProvider extends LLM {
 	async generateContentStream(
 		request: LLMRequest,
 		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
-		// local OpenAI-compatible providers typically do not support separate "thoughts" channels
 	): Promise<object | undefined> {
-		const baseUrl = this.getBaseUrl();
-		const url = `${baseUrl}/v1/chat/completions`;
 		const messages = this.buildMessages(request);
 		const model = this.getModelToUse(request);
 		const temperature = this.clampTemperature(request);
 
-		const body: any = {
-			model,
-			messages,
-			temperature,
-			stream: true
-		};
-
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json'
-		};
-		if (this.llmConfig.apiKey?.trim()) {
-			headers.Authorization = `Bearer ${this.llmConfig.apiKey}`;
-		}
-
-		let response: Response;
+		let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
 		try {
-			response = await fetch(url, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(body)
+			stream = await this.client.chat.completions.create({
+				model,
+				messages,
+				temperature,
+				stream: true
 			});
-		} catch (e) {
-			if (request.reportErrorToUser !== false) handleError(e as unknown as string);
-			return undefined;
-		}
-
-		if (!response.ok || !response.body) {
-			const text = await response.text().catch(() => '');
+		} catch (e: any) {
 			if (request.reportErrorToUser !== false) {
-				handleError(`Local LLM stream failed: ${response.status} ${response.statusText} ${text}`);
+				handleError(`OpenAI-compatible stream failed: ${e?.message ?? e}`);
 			}
 			return undefined;
 		}
@@ -238,10 +210,6 @@ export class OpenAICompatibleProvider extends LLM {
 			}
 		};
 
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder('utf-8');
-		let buffer = '';
-
 		const writeJsonChunk = (chunk: string) => {
 			if (!chunk) return;
 			accumulatedJsonText += chunk;
@@ -255,68 +223,35 @@ export class OpenAICompatibleProvider extends LLM {
 			}
 		};
 
-		let streamEnded = false;
-		while (!streamEnded) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			buffer += decoder.decode(value, { stream: true });
+		try {
+			for await (const chunk of stream) {
+				const deltaText = chunk.choices?.[0]?.delta?.content;
+				if (typeof deltaText !== 'string' || deltaText.length === 0) continue;
 
-			// Parse Server-Sent Events: split by double newline
-			let eventSepIndex = buffer.indexOf('\n\n');
-			while (eventSepIndex !== -1) {
-				const rawEvent = buffer.slice(0, eventSepIndex);
-				buffer = buffer.slice(eventSepIndex + 2);
-
-				for (const line of rawEvent.split('\n')) {
-					const trimmed = line.trim();
-					if (!trimmed.startsWith('data:')) continue;
-					const data = trimmed.slice('data:'.length).trim();
-					if (!data) continue;
-					if (data === '[DONE]') {
-						streamEnded = true;
-						break;
-					}
-
-					let parsed: any;
-					try {
-						parsed = JSON.parse(data);
-					} catch {
-						continue;
-					}
-
-					const deltaText: string | undefined =
-						parsed?.choices?.[0]?.delta?.content ?? parsed?.choices?.[0]?.message?.content;
-					if (typeof deltaText !== 'string' || deltaText.length === 0) continue;
-
-					if (!jsonStarted) {
-						const idxObj = deltaText.indexOf('{');
-						const idxArr = deltaText.indexOf('[');
-						let idx = -1;
-						if (idxObj === -1 && idxArr === -1) continue;
-						if (idxObj === -1 || (idxArr !== -1 && idxArr < idxObj)) {
-							idx = idxArr;
-							startedWith = '[';
-						} else {
-							idx = idxObj;
-							startedWith = '{';
-						}
-						jsonStarted = true;
-						writeJsonChunk(deltaText.slice(idx));
+				if (!jsonStarted) {
+					const idxObj = deltaText.indexOf('{');
+					const idxArr = deltaText.indexOf('[');
+					if (idxObj === -1 && idxArr === -1) continue;
+					let idx: number;
+					if (idxObj === -1 || (idxArr !== -1 && idxArr < idxObj)) {
+						idx = idxArr;
+						startedWith = '[';
 					} else {
-						writeJsonChunk(deltaText);
+						idx = idxObj;
+						startedWith = '{';
 					}
+					jsonStarted = true;
+					writeJsonChunk(deltaText.slice(idx));
+				} else {
+					writeJsonChunk(deltaText);
 				}
-				if (streamEnded) break;
-
-				eventSepIndex = buffer.indexOf('\n\n');
+			}
+		} catch (e: any) {
+			if (request.reportErrorToUser !== false) {
+				handleError(`OpenAI-compatible stream error: ${e?.message ?? e}`);
 			}
 		}
 
-		try {
-			reader.releaseLock();
-		} catch {
-			// ignore
-		}
 		try {
 			liveParser.end();
 		} catch {
@@ -328,7 +263,6 @@ export class OpenAICompatibleProvider extends LLM {
 			return undefined;
 		}
 
-		// Basic cleanup
 		const cleaned = this.stripCodeFences(accumulatedJsonText).replaceAll('```', '').trim();
 		const autoFixJson =
 			((request.tryAutoFixJSONError ?? true) && (this.llmConfig.tryAutoFixJSONError ?? false)) ||
