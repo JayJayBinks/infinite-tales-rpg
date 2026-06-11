@@ -30,11 +30,14 @@
 	const apiKeyState = useLocalStorage<string>('apiKeyState');
 	const aiLanguage = useLocalStorage<string>('aiLanguage');
 	// LLM provider settings (moved from generation modal)
-	const llmProviderState = useLocalStorage<'gemini' | 'openai-compatible'>('llmProviderState', 'gemini');
+	const llmProviderState = useLocalStorage<'gemini' | 'openai-compatible'>(
+		'llmProviderState',
+		'gemini'
+	);
 	const llmBaseUrlState = useLocalStorage<string>('llmBaseUrlState', 'http://localhost:1234');
 	const llmModelState = useLocalStorage<string>('llmModelState', '');
 	const llmApiKeyState = useLocalStorage<string>('llmApiKeyState', '');
-		//TODO migrate all AI settings into this object to avoid too many vars in local storage
+	//TODO migrate all AI settings into this object to avoid too many vars in local storage
 	const aiConfigState = useLocalStorage<AIConfig>('aiConfigState', {
 		disableAudioState: false,
 		disableImagesState: false,
@@ -87,8 +90,12 @@
 	let storyAgent: StoryAgent | undefined = $state();
 
 	const isOpenAICompatible = $derived(llmProviderState.value === 'openai-compatible');
-	const hasOpenAIConfig = $derived(!!llmBaseUrlState.value?.trim() && !!llmModelState.value?.trim());
-	const canUseAI = $derived((!isOpenAICompatible && !!apiKeyState.value?.trim()) || (isOpenAICompatible && hasOpenAIConfig));
+	const hasOpenAIConfig = $derived(
+		!!llmBaseUrlState.value?.trim() && !!llmModelState.value?.trim()
+	);
+	const canUseAI = $derived(
+		(!isOpenAICompatible && !!apiKeyState.value?.trim()) || (isOpenAICompatible && hasOpenAIConfig)
+	);
 
 	onMount(async () => {
 		if (canUseAI) {
@@ -110,6 +117,15 @@
 		);
 		storyAgent = new StoryAgent(llm);
 	};
+
+	function applyLmStudioGemmaPreset() {
+		llmProviderState.value = 'openai-compatible';
+		llmBaseUrlState.value = 'http://localhost:1234';
+		if (!llmModelState.value?.trim()) {
+			llmModelState.value = 'gemma-4-e4b';
+		}
+		llmApiKeyState.value = '';
+	}
 
 	const onQuickstartClicked = () => {
 		provideLLM();
@@ -170,8 +186,8 @@
 						{
 							level: 1,
 							resources: {
-								HP: { max_value: 0, game_ends_when_zero: true },
-								MP: { max_value: 0, game_ends_when_zero: false }
+								HP: { max_value: 0, start_value: 0, game_ends_when_zero: true },
+								MP: { max_value: 0, start_value: 0, game_ends_when_zero: false }
 							}
 						},
 						true
@@ -187,7 +203,7 @@
 			isGeneratingState = false;
 		} catch (e) {
 			isGeneratingState = false;
-			handleError(e);
+			handleError(String(e));
 		}
 	}
 
@@ -229,7 +245,7 @@
 		</small>
 	</label>
 
-	<div class="form-control w-full sm:w-2/3 mt-4">
+	<div class="form-control mt-4 w-full sm:w-2/3">
 		{#if !isOpenAICompatible}
 			<p class="mt-2">Google Gemini API Key</p>
 			<input
@@ -240,23 +256,53 @@
 				class="input input-bordered mt-2"
 			/>
 			<small class="m-auto mt-2 text-xs text-base-content/70">
-				View the <a target="_blank" href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91" class="link text-blue-400 underline">guide to create the API Key</a>
+				View the <a
+					target="_blank"
+					href="https://github.com/JayJayBinks/infinite-tales-rpg/wiki/Create-your-free-Google-Gemini-API-Key-%F0%9F%94%91"
+					class="link text-blue-400 underline">guide to create the API Key</a
+				>
 			</small>
 		{:else}
+			<button type="button" class="btn btn-info mt-2 w-full" onclick={applyLmStudioGemmaPreset}>
+				Use LM Studio / Gemma 4 E4B preset
+			</button>
+			<small class="m-auto mt-2 text-xs text-base-content/70">
+				Sets LM Studio defaults. Keep the model field editable and match it to the model name shown
+				by LM Studio.
+			</small>
 			<label class="form-control mt-2 w-full">
 				<span>Base URL</span>
-				<input bind:value={llmBaseUrlState.value} placeholder="http://localhost:1234 or https://openrouter.ai/api" class="input input-bordered mt-2" />
-				<small class="m-auto mt-2 text-xs text-base-content/70">The base URL of the OpenAI-compatible API (without /v1).</small>
+				<input
+					bind:value={llmBaseUrlState.value}
+					placeholder="http://localhost:1234 or https://openrouter.ai/api"
+					class="input input-bordered mt-2"
+				/>
+				<small class="m-auto mt-2 text-xs text-base-content/70"
+					>The base URL of the OpenAI-compatible API (without /v1).</small
+				>
 			</label>
 			<label class="form-control mt-3 w-full">
 				<span>API Key (optional for local)</span>
-				<input type="password" bind:value={llmApiKeyState.value} placeholder="sk-... (leave empty for local servers)" class="input input-bordered mt-2" />
-				<small class="m-auto mt-2 text-xs text-base-content/70">Required for cloud providers like OpenRouter. Leave empty for local servers.</small>
+				<input
+					type="password"
+					bind:value={llmApiKeyState.value}
+					placeholder="sk-... (leave empty for local servers)"
+					class="input input-bordered mt-2"
+				/>
+				<small class="m-auto mt-2 text-xs text-base-content/70"
+					>Required for cloud providers like OpenRouter. Leave empty for local servers.</small
+				>
 			</label>
 			<label class="form-control mt-3 w-full">
 				<span>Model</span>
-				<input bind:value={llmModelState.value} placeholder="e.g. google/gemma-3-4b, meta-llama/llama-3-8b" class="input input-bordered mt-2" />
-				<small class="m-auto mt-2 text-xs text-base-content/70">Model identifier as listed by your provider.</small>
+				<input
+					bind:value={llmModelState.value}
+					placeholder="e.g. gemma-4-e4b or the exact LM Studio model name"
+					class="input input-bordered mt-2"
+				/>
+				<small class="m-auto mt-2 text-xs text-base-content/70"
+					>Model identifier as listed by your provider. LM Studio may expose a different exact name.</small
+				>
 			</label>
 		{/if}
 	</div>
@@ -264,19 +310,11 @@
 		Quickstart:<br />New Tale
 	</button>
 	<small class="m-auto mt-2">Let the AI generate a Tale for you</small>
-	<button
-		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!canUseAI}
-		onclick={onStartCustom}
-	>
+	<button class="btn btn-neutral m-auto mt-5 w-1/2" disabled={!canUseAI} onclick={onStartCustom}>
 		New Custom Tale
 	</button>
 	<small class="m-auto mt-2">Customize your Tale with a brief, open-ended plot</small>
-	<button
-		class="btn btn-neutral m-auto mt-5 w-1/2"
-		disabled={!canUseAI}
-		onclick={onNewCampaign}
-	>
+	<button class="btn btn-neutral m-auto mt-5 w-1/2" disabled={!canUseAI} onclick={onNewCampaign}>
 		New Campaign
 	</button>
 	<small class="m-auto mt-2">Structured Tale with in-detail planned plot</small>

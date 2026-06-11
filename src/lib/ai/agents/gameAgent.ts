@@ -146,7 +146,13 @@ export class GameAgent {
 			historyMessages: [],
 			systemInstruction,
 			returnFallbackProperty: true,
-			model: GEMINI_MODELS.FLASH_LITE_2_5
+			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			validationContext: {
+				playerResourceKeys: Object.keys(playerCharactersGameState),
+				npcIds: Object.keys(ncState),
+				inventoryItemIds: Object.keys(inventoryState),
+				actionDifficulties: Object.keys(ActionDifficulty)
+			}
 		};
 		const newState = (await this.llm.generateContent(request))?.content as GameActionState;
 
@@ -211,7 +217,12 @@ export class GameAgent {
 			historyMessages: historyMessages,
 			systemInstruction: gameAgent,
 			returnFallbackProperty: true,
-			model: GEMINI_MODELS.FLASH_2_5
+			model: GEMINI_MODELS.FLASH_2_5,
+			validationContext: {
+				playerResourceKeys: Object.keys(playerCharactersGameState),
+				inventoryItemIds: Object.keys(inventoryState),
+				actionDifficulties: Object.keys(ActionDifficulty)
+			}
 		};
 		const time = new Date().toLocaleTimeString();
 		console.log('Starting game agent:', time);
@@ -240,7 +251,7 @@ export class GameAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story,
 		characterState: CharacterDescription,
-		playerCharactersGameState: PlayerCharactersGameState,
+		playerCharactersGameState: PlayerCharactersGameState | ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
 		npcState: NPCState,
 		relatedHistory: string[],
@@ -312,7 +323,7 @@ export class GameAgent {
 	private getGameAgentSystemInstructionsFromStates(
 		storyState: Story,
 		characterState: CharacterDescription,
-		playerCharactersGameState: PlayerCharactersGameState,
+		playerCharactersGameState: PlayerCharactersGameState | ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
 		customSystemInstruction: string,
 		customStoryAgentInstruction: string,

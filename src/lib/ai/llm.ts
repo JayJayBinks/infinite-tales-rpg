@@ -37,6 +37,8 @@ export interface LLMRequest {
 	thinkingConfig?: ThinkingConfig;
 	englishText?: boolean;
 	reportErrorToUser?: boolean;
+	strictJson?: boolean;
+	validationContext?: LLMValidationContext;
 }
 
 export interface LLMconfig {
@@ -50,6 +52,14 @@ export interface LLMconfig {
 	baseUrl?: string;
 	model?: string;
 	returnFallbackProperty?: boolean;
+	strictJson?: boolean;
+}
+
+export interface LLMValidationContext {
+	playerResourceKeys?: string[];
+	npcIds?: string[];
+	inventoryItemIds?: string[];
+	actionDifficulties?: string[];
 }
 
 export const LANGUAGE_PROMPT =

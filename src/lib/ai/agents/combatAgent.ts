@@ -112,6 +112,12 @@ export class CombatAgent {
 			userMessage: actionToSend,
 			historyMessages: historyMessages,
 			systemInstruction: agent,
+			validationContext: {
+				playerResourceKeys: Object.keys(playerCharResources),
+				npcIds: npcsList
+					.map((npc: any) => npc?.technicalId || npc?.uniqueTechnicalNameId)
+					.filter(Boolean)
+			},
 			reportErrorToUser: false
 		};
 

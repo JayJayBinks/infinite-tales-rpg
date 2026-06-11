@@ -167,6 +167,11 @@ export class ActionAgent {
 			userMessage,
 			historyMessages,
 			systemInstruction: agent,
+			validationContext: {
+				playerResourceKeys: Object.keys(characterStats.resources),
+				inventoryItemIds: Object.keys(inventoryState),
+				actionDifficulties: Object.keys(ActionDifficulty)
+			},
 			thinkingConfig: {
 				thinkingBudget: THINKING_BUDGET.FAST
 			}
@@ -267,7 +272,12 @@ export class ActionAgent {
 		const request: LLMRequest = {
 			userMessage,
 			historyMessages,
-			systemInstruction: agent
+			systemInstruction: agent,
+			validationContext: {
+				playerResourceKeys: Object.keys(characterStats.resources),
+				inventoryItemIds: Object.keys(inventoryState),
+				actionDifficulties: Object.keys(ActionDifficulty)
+			}
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 		console.log('actions response: ', response);
@@ -345,7 +355,12 @@ export class ActionAgent {
 			userMessage,
 			historyMessages,
 			systemInstruction: agent,
-			model: GEMINI_MODELS.FLASH_THINKING_2_0
+			model: GEMINI_MODELS.FLASH_THINKING_2_0,
+			validationContext: {
+				playerResourceKeys: Object.keys(characterStats.resources),
+				inventoryItemIds: Object.keys(inventoryState),
+				actionDifficulties: Object.keys(ActionDifficulty)
+			}
 		};
 		const response = (await this.llm.generateContent(request)) as any;
 

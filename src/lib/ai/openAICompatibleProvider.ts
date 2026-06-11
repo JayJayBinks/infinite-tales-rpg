@@ -12,6 +12,52 @@ import {
 } from '$lib/ai/llm';
 import { sanitizeAnndParseJSON } from '$lib/ai/agents/agentUtils';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import {
+	normalizeLocalStrictJsonInstruction,
+	shouldUseJsonObjectResponseFormat
+} from '$lib/ai/localJson';
+import { applyLocalContextBudget, countMessageCharacters } from '$lib/ai/localContext';
+import { writeLlmDebugState } from '$lib/ai/llmDebug';
+import {
+	buildValidationRepairInstruction,
+	validateCriticalLLMResponse
+} from '$lib/ai/llmValidation';
+
+type ChatCreateResult<T> = {
+	result: T;
+	jsonModeAttempted: boolean;
+	jsonModeRetriedWithout: boolean;
+};
+
+export async function createChatCompletionWithOptionalJsonMode<T>(
+	create: (body: any) => Promise<T>,
+	body: Record<string, any>,
+	useJsonObjectMode: boolean
+): Promise<ChatCreateResult<T>> {
+	if (!useJsonObjectMode) {
+		return {
+			result: await create(body),
+			jsonModeAttempted: false,
+			jsonModeRetriedWithout: false
+		};
+	}
+	try {
+		return {
+			result: await create({
+				...body,
+				response_format: { type: 'json_object' }
+			}),
+			jsonModeAttempted: true,
+			jsonModeRetriedWithout: false
+		};
+	} catch {
+		return {
+			result: await create(body),
+			jsonModeAttempted: true,
+			jsonModeRetriedWithout: true
+		};
+	}
+}
 
 export class OpenAICompatibleProvider extends LLM {
 	private readonly jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
@@ -47,11 +93,11 @@ export class OpenAICompatibleProvider extends LLM {
 	}
 
 	getDefaultTemperature(): number {
-		return 0.8;
+		return 0.7;
 	}
 
 	getMaxTemperature(): number {
-		return 2;
+		return 1.1;
 	}
 
 	private isGeminiModelName(model?: string): boolean {
@@ -63,18 +109,29 @@ export class OpenAICompatibleProvider extends LLM {
 		if (requested && !this.isGeminiModelName(requested)) return requested;
 		const configured = this.llmConfig.model?.trim();
 		if (configured) return configured;
-		return 'google/gemma-3-4b';
+		return 'local-model';
 	}
 
 	private buildMessages(request: LLMRequest): ChatCompletionMessageParam[] {
 		const messages: ChatCompletionMessageParam[] = [];
+		const strictJson = this.shouldUseStrictJson(request);
 
 		const systemInstructions = request.systemInstruction ?? this.llmConfig.systemInstruction;
 		if (typeof systemInstructions === 'string' && systemInstructions.trim()) {
-			messages.push({ role: 'system', content: systemInstructions });
+			messages.push({
+				role: 'system',
+				content: strictJson
+					? normalizeLocalStrictJsonInstruction(systemInstructions)
+					: systemInstructions
+			});
 		} else if (Array.isArray(systemInstructions)) {
 			for (const instr of systemInstructions) {
-				if (instr?.trim()) messages.push({ role: 'system', content: instr });
+				if (instr?.trim()) {
+					messages.push({
+						role: 'system',
+						content: strictJson ? normalizeLocalStrictJsonInstruction(instr) : instr
+					});
+				}
 			}
 		}
 
@@ -98,6 +155,10 @@ export class OpenAICompatibleProvider extends LLM {
 		return messages;
 	}
 
+	private shouldUseStrictJson(request: LLMRequest): boolean {
+		return request.strictJson ?? this.llmConfig.strictJson ?? true;
+	}
+
 	private clampTemperature(request: LLMRequest): number {
 		if (request.temperature === 0 || this.llmConfig.temperature === 0) return 0;
 		return Math.min(
@@ -113,43 +174,86 @@ export class OpenAICompatibleProvider extends LLM {
 	private async parseJsonOrFix(
 		responseText: string,
 		autoFix: boolean,
-		reportErrorToUser: boolean
-	): Promise<object | undefined> {
+		reportErrorToUser: boolean,
+		request: LLMRequest
+	): Promise<{ content?: object; sanitizingOrRepairUsed: boolean; validationErrors: string[] }> {
 		const cleaned = this.stripCodeFences(responseText);
+		let sanitizingOrRepairUsed = cleaned !== responseText;
+		let parsed: object | undefined;
 		try {
-			return sanitizeAnndParseJSON(cleaned);
+			parsed = sanitizeAnndParseJSON(cleaned);
 		} catch (firstError) {
 			if (autoFix) {
 				try {
-					return (await this.jsonFixingInterceptorAgent.fixJSON(
+					sanitizingOrRepairUsed = true;
+					parsed = (await this.jsonFixingInterceptorAgent.fixJSON(
 						responseText,
 						(firstError as SyntaxError).message,
 						reportErrorToUser
 					)) as object | undefined;
 				} catch (secondError) {
 					if (reportErrorToUser) handleError(secondError as unknown as string);
-					return undefined;
+					return { sanitizingOrRepairUsed, validationErrors: [] };
 				}
+			} else {
+				if (reportErrorToUser) handleError(firstError as unknown as string);
+				return { sanitizingOrRepairUsed, validationErrors: [] };
 			}
-			if (reportErrorToUser) handleError(firstError as unknown as string);
-			return undefined;
 		}
+		if (!parsed) return { sanitizingOrRepairUsed, validationErrors: [] };
+		const validation = validateCriticalLLMResponse(parsed, request.validationContext);
+		if (validation.valid) {
+			return { content: parsed, sanitizingOrRepairUsed, validationErrors: [] };
+		}
+		if (!autoFix) {
+			return { content: parsed, sanitizingOrRepairUsed, validationErrors: validation.errors };
+		}
+		sanitizingOrRepairUsed = true;
+		const repaired = await this.jsonFixingInterceptorAgent.repairJSONByInstruction(
+			JSON.stringify(parsed),
+			buildValidationRepairInstruction(validation.errors),
+			reportErrorToUser
+		);
+		const repairedValidation = validateCriticalLLMResponse(repaired, request.validationContext);
+		return {
+			content: repairedValidation.valid && repaired ? repaired : parsed,
+			sanitizingOrRepairUsed,
+			validationErrors: repairedValidation.valid ? [] : repairedValidation.errors
+		};
 	}
 
 	async generateContent(request: LLMRequest): Promise<ContentWithThoughts | undefined> {
-		const messages = this.buildMessages(request);
+		const startedAt = Date.now();
+		const prepared = applyLocalContextBudget(this.buildMessages(request));
+		const messages = prepared.messages;
 		const model = this.getModelToUse(request);
 		const temperature = this.clampTemperature(request);
+		const useJsonObjectMode =
+			this.shouldUseStrictJson(request) && shouldUseJsonObjectResponseFormat(messages);
 
 		let completion: OpenAI.Chat.Completions.ChatCompletion;
+		let jsonModeAttempted = false;
+		let jsonModeRetriedWithout = false;
 		try {
-			completion = await this.client.chat.completions.create({
-				model,
-				messages,
-				temperature,
-				stream: false
-			});
+			const result = await createChatCompletionWithOptionalJsonMode(
+				(body) => this.client.chat.completions.create(body),
+				{
+					model,
+					messages,
+					temperature,
+					stream: false
+				},
+				useJsonObjectMode
+			);
+			completion = result.result;
+			jsonModeAttempted = result.jsonModeAttempted;
+			jsonModeRetriedWithout = result.jsonModeRetriedWithout;
 		} catch (e: any) {
+			this.writeDebug(request, model, startedAt, prepared, {
+				jsonModeAttempted,
+				jsonModeRetriedWithout,
+				lastError: e?.message ?? String(e)
+			});
 			if (request.reportErrorToUser !== false) {
 				handleError(`OpenAI-compatible request failed: ${e?.message ?? e}`);
 			}
@@ -158,7 +262,8 @@ export class OpenAICompatibleProvider extends LLM {
 
 		const responseText = completion.choices?.[0]?.message?.content;
 		if (!responseText) {
-			if (request.reportErrorToUser !== false) handleError('OpenAI-compatible LLM did not return any text.');
+			if (request.reportErrorToUser !== false)
+				handleError('OpenAI-compatible LLM did not return any text.');
 			return undefined;
 		}
 
@@ -168,29 +273,55 @@ export class OpenAICompatibleProvider extends LLM {
 		const parsed = await this.parseJsonOrFix(
 			responseText,
 			autoFixJson,
-			request.reportErrorToUser !== false
+			request.reportErrorToUser !== false,
+			request
 		);
-		if (!parsed) return undefined;
-		return { thoughts: '', content: parsed };
+		this.writeDebug(request, model, startedAt, prepared, {
+			jsonModeAttempted,
+			jsonModeRetriedWithout,
+			sanitizingOrRepairUsed: parsed.sanitizingOrRepairUsed,
+			validationErrors: parsed.validationErrors
+		});
+		if (!parsed.content) return undefined;
+		return { thoughts: '', content: parsed.content };
 	}
 
 	async generateContentStream(
 		request: LLMRequest,
 		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void
 	): Promise<object | undefined> {
-		const messages = this.buildMessages(request);
+		const startedAt = Date.now();
+		const prepared = applyLocalContextBudget(this.buildMessages(request));
+		const messages = prepared.messages;
 		const model = this.getModelToUse(request);
 		const temperature = this.clampTemperature(request);
+		const useJsonObjectMode =
+			this.shouldUseStrictJson(request) && shouldUseJsonObjectResponseFormat(messages);
 
 		let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
+		let jsonModeAttempted = false;
+		let jsonModeRetriedWithout = false;
 		try {
-			stream = await this.client.chat.completions.create({
-				model,
-				messages,
-				temperature,
-				stream: true
-			});
+			const result = await createChatCompletionWithOptionalJsonMode(
+				(body) => this.client.chat.completions.create(body),
+				{
+					model,
+					messages,
+					temperature,
+					stream: true
+				},
+				useJsonObjectMode
+			);
+			stream =
+				result.result as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
+			jsonModeAttempted = result.jsonModeAttempted;
+			jsonModeRetriedWithout = result.jsonModeRetriedWithout;
 		} catch (e: any) {
+			this.writeDebug(request, model, startedAt, prepared, {
+				jsonModeAttempted,
+				jsonModeRetriedWithout,
+				lastError: e?.message ?? String(e)
+			});
 			if (request.reportErrorToUser !== false) {
 				handleError(`OpenAI-compatible stream failed: ${e?.message ?? e}`);
 			}
@@ -270,9 +401,16 @@ export class OpenAICompatibleProvider extends LLM {
 		const finalObj = await this.parseJsonOrFix(
 			cleaned,
 			autoFixJson,
-			request.reportErrorToUser !== false
+			request.reportErrorToUser !== false,
+			request
 		);
-		if (!finalObj) {
+		this.writeDebug(request, model, startedAt, prepared, {
+			jsonModeAttempted,
+			jsonModeRetriedWithout,
+			sanitizingOrRepairUsed: finalObj.sanitizingOrRepairUsed,
+			validationErrors: finalObj.validationErrors
+		});
+		if (!finalObj.content) {
 			if (request.reportErrorToUser !== false && liveParserFailure) {
 				handleError(
 					`Stream JSON was not incrementally parseable (startedWith=${startedWith ?? 'unknown'}). Final parse failed too: ${liveParserFailure}`
@@ -280,8 +418,40 @@ export class OpenAICompatibleProvider extends LLM {
 			}
 			return undefined;
 		}
-		const finalStory = typeof (finalObj as any)?.story === 'string' ? (finalObj as any).story : '';
+		const finalStory =
+			typeof (finalObj.content as any)?.story === 'string' ? (finalObj.content as any).story : '';
 		storyUpdateCallback(finalStory, true);
-		return finalObj as object;
+		return finalObj.content as object;
+	}
+
+	private writeDebug(
+		request: LLMRequest,
+		model: string,
+		startedAt: number,
+		prepared: ReturnType<typeof applyLocalContextBudget>,
+		update: {
+			jsonModeAttempted: boolean;
+			jsonModeRetriedWithout: boolean;
+			sanitizingOrRepairUsed?: boolean;
+			validationErrors?: string[];
+			lastError?: string;
+		}
+	) {
+		writeLlmDebugState({
+			provider: 'openai-compatible',
+			baseUrl: this.llmConfig.baseUrl || 'http://localhost:1234',
+			model,
+			lastRequestStartedAt: new Date(startedAt).toISOString(),
+			lastRequestDurationMs: Date.now() - startedAt,
+			promptCharacters: prepared.originalCharacters || countMessageCharacters(prepared.messages),
+			promptCharactersAfterBudget: prepared.finalCharacters,
+			trimmedMessages: prepared.trimmedMessages,
+			strictJson: this.shouldUseStrictJson(request),
+			jsonModeAttempted: update.jsonModeAttempted,
+			jsonModeRetriedWithout: update.jsonModeRetriedWithout,
+			sanitizingOrRepairUsed: update.sanitizingOrRepairUsed || false,
+			validationErrors: update.validationErrors || [],
+			lastError: update.lastError
+		});
 	}
 }

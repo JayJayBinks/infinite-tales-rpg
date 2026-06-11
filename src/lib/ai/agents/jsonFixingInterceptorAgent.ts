@@ -31,4 +31,32 @@ export class JsonFixingInterceptorAgent {
 		};
 		return (await this.llm.generateContent(request))?.content;
 	}
+
+	async repairJSONByInstruction(
+		json: string,
+		instruction: string,
+		reportErrorToUser
+	): Promise<object | undefined> {
+		const agent =
+			'You are JSON repair agent. You will be given valid JSON and repair instructions. ' +
+			'Respond only with the repaired JSON. Do not explain the changes.';
+
+		const request: LLMRequest = {
+			userMessage: instruction,
+			historyMessages: [
+				{
+					role: 'user',
+					content: json
+				}
+			],
+			thinkingConfig: {
+				thinkingBudget: THINKING_BUDGET.FAST
+			},
+			systemInstruction: agent,
+			temperature: 0,
+			tryAutoFixJSONError: false,
+			reportErrorToUser
+		};
+		return (await this.llm.generateContent(request))?.content;
+	}
 }
