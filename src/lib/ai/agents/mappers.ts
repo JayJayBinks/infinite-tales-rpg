@@ -10,10 +10,21 @@ export function mapGameState(state: GameActionState) {
 }
 
 export function mapStatsUpdates(object: Pick<GameActionState, 'stats_update'>) {
-	object.stats_update = object.stats_update?.map((statUpdate) => mapStatsUpdate(statUpdate));
+	object.stats_update = (object.stats_update || [])
+		.map((statUpdate) => mapStatsUpdate(statUpdate))
+		.filter((statUpdate) => !!statUpdate) as StatsUpdate[];
 }
 
-export function mapStatsUpdate(stats_update): StatsUpdate {
+export function mapStatsUpdate(stats_update): StatsUpdate | undefined {
+	if (!stats_update || stats_update.value === null || stats_update.value === undefined) {
+		return undefined;
+	}
+	if (
+		typeof stats_update.type === 'string' &&
+		['N/A', 'null', 'none'].includes(stats_update.type)
+	) {
+		return undefined;
+	}
 	let parsed: DiceRoll;
 
 	function tryMapAnyResult(stats_update) {
@@ -27,6 +38,9 @@ export function mapStatsUpdate(stats_update): StatsUpdate {
 		};
 	}
 	function recursiveIsResultObject(obj) {
+		if (!isPlainObject(obj)) {
+			return obj;
+		}
 		if (isPlainObject(obj.result)) {
 			return recursiveIsResultObject(obj.result);
 		}

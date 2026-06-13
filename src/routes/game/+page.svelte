@@ -112,6 +112,9 @@
 	} from '$lib/components/StoryProgressionWithImage.svelte';
 	import { ImagePromptAgent } from '$lib/ai/agents/imagePromptAgent';
 	import UtilityModal from '$lib/components/interaction_modals/UtilityModal.svelte';
+
+	const IMAGE_PROMPT_GENERATION_ENABLED = false;
+
 	let diceRollDialog = $state(undefined as unknown as HTMLDialogElement);
 	let useSpellsAbilitiesModal = $state(undefined as unknown as HTMLDialogElement);
 	let useItemsModal = $state(undefined as unknown as HTMLDialogElement);
@@ -207,6 +210,7 @@
 		(gameActionsState.value && gameActionsState.value[gameActionsState.value.length - 1]) ||
 			({} as GameActionState)
 	);
+	let localPostTurnWorkPromise: Promise<void> | undefined;
 
 	const playerCharacterIdState = $derived(
 		getCharacterTechnicalId(playerCharactersIdToNamesMapState.value, characterState.value.name) ||
@@ -630,30 +634,33 @@
 		additionalActionInputState.reset();
 	}
 
-	function checkForNewNPCs(newState: GameActionState) {
+	async function generateNewNPCStats(newState: GameActionState) {
 		const newNPCsIds = gameLogic.getNewNPCs(newState.currently_present_npcs, npcState.value);
 		if (newNPCsIds.length > 0) {
-			characterStatsAgent
-				.generateNPCStats(
-					storyState.value,
-					getLatestStoryMessages(),
-					newNPCsIds.map((id) => id.uniqueTechnicalNameId),
-					characterStatsState.value,
-					systemInstructionsState.value.generalSystemInstruction
-				)
-				.then((newState: NPCState) => {
-					if (newState) {
-						combatLogic.addResourceValues(newState);
-						newNPCsIds.forEach((id) => {
-							if (newState[id.uniqueTechnicalNameId]) {
-								newState[id.uniqueTechnicalNameId].known_names = [id.displayName];
-							}
-						});
-						npcState.value = { ...npcState.value, ...newState };
-						console.log(stringifyPretty(npcState.value));
+			const generatedNPCState = await characterStatsAgent.generateNPCStats(
+				storyState.value,
+				getLatestStoryMessages(),
+				newNPCsIds.map((id) => id.uniqueTechnicalNameId),
+				characterStatsState.value,
+				systemInstructionsState.value.generalSystemInstruction
+			);
+			if (generatedNPCState) {
+				combatLogic.addResourceValues(generatedNPCState);
+				newNPCsIds.forEach((id) => {
+					if (generatedNPCState[id.uniqueTechnicalNameId]) {
+						generatedNPCState[id.uniqueTechnicalNameId].known_names = [id.displayName];
 					}
 				});
+				npcState.value = { ...npcState.value, ...generatedNPCState };
+				console.log(stringifyPretty(npcState.value));
+			}
 		}
+	}
+
+	function startBackgroundNPCStats(newState: GameActionState) {
+		generateNewNPCStats(newState).catch((error) => {
+			console.warn('Failed to generate NPC stats', error);
+		});
 	}
 
 	function checkForLevelUp() {
@@ -825,42 +832,86 @@
 		simulation: string
 	) {
 		thoughtsState.value.storyThoughts = '';
+		const previousImagePrompt = currentGameActionState.image_prompt || '';
 
-		const { newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
-			onStoryStreamUpdate,
-			onThoughtStreamUpdate,
-			action,
-			additionalStoryInput,
-			systemInstructionsState.value.generalSystemInstruction,
-			systemInstructionsState.value.storyAgentInstruction,
-			isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
-			historyMessagesState.value,
-			storyState.value,
-			characterState.value,
-			playerCharactersGameState[playerCharacterIdState],
-			inventoryState.value,
-			relatedHistory,
-			gameSettingsState.value,
-			simulation
-		);
+		let newState: GameActionState;
+		let updatedHistoryMessages: LLMMessage[];
+		const useLocalSplitFlow = llmProviderState.value === 'openai-compatible';
+
+		if (useLocalSplitFlow) {
+			const finalStory = await gameAgent.generateNarrationStream(
+				onStoryStreamUpdate,
+				action,
+				additionalStoryInput,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.storyAgentInstruction,
+				isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
+				historyMessagesState.value,
+				storyState.value,
+				characterState.value,
+				playerCharactersGameState[playerCharacterIdState],
+				inventoryState.value,
+				relatedHistory,
+				gameSettingsState.value,
+				simulation
+			);
+			({ newState, updatedHistoryMessages } = await gameAgent.generateStateDelta(
+				action,
+				finalStory,
+				additionalStoryInput,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.storyAgentInstruction,
+				isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
+				historyMessagesState.value,
+				storyState.value,
+				characterState.value,
+				playerCharactersGameState[playerCharacterIdState],
+				inventoryState.value,
+				relatedHistory,
+				gameSettingsState.value,
+				simulation
+			));
+		} else {
+			({ newState, updatedHistoryMessages } = await gameAgent.generateStoryProgression(
+				onStoryStreamUpdate,
+				onThoughtStreamUpdate,
+				action,
+				additionalStoryInput,
+				systemInstructionsState.value.generalSystemInstruction,
+				systemInstructionsState.value.storyAgentInstruction,
+				isCharacterInCombat ? systemInstructionsState.value.combatAgentInstruction : '',
+				historyMessagesState.value,
+				storyState.value,
+				characterState.value,
+				playerCharactersGameState[playerCharacterIdState],
+				inventoryState.value,
+				relatedHistory,
+				gameSettingsState.value,
+				simulation
+			));
+		}
 
 		if (newState.story) {
 			newState.image_prompt = '';
-			try {
-				newState.image_prompt = await imagePromptAgent.generateImagePrompt(
-					getLatestStoryMessages(),
-					newState.story,
-					characterState.value.name,
-					currentGameActionState.image_prompt!
-				);
-				if (!newState.image_prompt) {
+			if (IMAGE_PROMPT_GENERATION_ENABLED && !useLocalSplitFlow) {
+				try {
+					newState.image_prompt = await imagePromptAgent.generateImagePrompt(
+						getLatestStoryMessages(),
+						newState.story,
+						characterState.value.name,
+						currentGameActionState.image_prompt!
+					);
+					if (!newState.image_prompt) {
+						newState.image_prompt = 'big letters showing ERROR GENERATING IMAGE PROMPT';
+					}
+				} catch (e) {
+					console.warn('Failed to generate image prompt', e);
 					newState.image_prompt = 'big letters showing ERROR GENERATING IMAGE PROMPT';
 				}
-			} catch (e) {
-				console.warn('Failed to generate image prompt', e);
-				newState.image_prompt = 'big letters showing ERROR GENERATING IMAGE PROMPT';
 			}
-			checkForNewNPCs(newState);
+			if (!useLocalSplitFlow) {
+				startBackgroundNPCStats(newState);
+			}
 			npcLogic.addNPCNamesToState(newState.currently_present_npcs, npcState.value);
 			// If combat provided a specific stat update, use it.
 
@@ -895,7 +946,10 @@
 
 			resetStatesAfterActionProcessed();
 
-			handleUpdateHistoryAndGameActionState(newState, updatedHistoryMessages);
+			await handleUpdateHistoryAndGameActionState(newState, updatedHistoryMessages);
+			if (IMAGE_PROMPT_GENERATION_ENABLED && useLocalSplitFlow) {
+				startBackgroundImagePrompt(newState, previousImagePrompt);
+			}
 
 			const time = new Date().toLocaleTimeString();
 			console.log('Complete parsing:', time);
@@ -903,20 +957,8 @@
 			await checkGameEnded();
 
 			if (!isGameEnded.value) {
-				getRelatedHistoryForStory();
-				eventAgent
-					.evaluateEvents(
-						historyMessagesState.value.slice(-6).map((m) => m.content),
-						characterStatsState.value.spells_and_abilities.map((a) => a.name)
-					)
-					.then((evaluation) => {
-						applyGameEventEvaluation(evaluation.event_evaluation);
-						thoughtsState.value.eventThoughts = evaluation.thoughts;
-					});
-
-				// Generate the next set of actions.
-				actionAgent
-					.generateActions(
+				if (useLocalSplitFlow) {
+					const { thoughts, actions } = await actionAgent.generateActions(
 						currentGameActionState,
 						historyMessagesState.value,
 						storyState.value,
@@ -929,17 +971,56 @@
 						gameSettingsState.value?.aiIntroducesSkills,
 						newState.is_character_restrained_explanation,
 						additionalActionInputState.value
-					)
-					.then(({ thoughts, actions }) => {
-						if (actions) {
-							console.log(stringifyPretty(actions));
-							characterActionsState.value = actions;
-							renderGameState(currentGameActionState, actions);
-							addSkillsIfApplicable(actions);
-						}
-						thoughtsState.value.actionsThoughts = thoughts;
-						resetStatesAfterActionsGenerated();
-					});
+					);
+					if (actions) {
+						console.log(stringifyPretty(actions));
+						characterActionsState.value = actions;
+						renderGameState(currentGameActionState, actions);
+						addSkillsIfApplicable(actions);
+					}
+					thoughtsState.value.actionsThoughts = thoughts;
+					resetStatesAfterActionsGenerated();
+
+					startLocalPostActionBackgroundWork(newState);
+				} else {
+					getRelatedHistoryForStory();
+					eventAgent
+						.evaluateEvents(
+							historyMessagesState.value.slice(-6).map((m) => m.content),
+							characterStatsState.value.spells_and_abilities.map((a) => a.name)
+						)
+						.then((evaluation) => {
+							applyGameEventEvaluation(evaluation.event_evaluation);
+							thoughtsState.value.eventThoughts = evaluation.thoughts;
+						});
+
+					// Generate the next set of actions.
+					actionAgent
+						.generateActions(
+							currentGameActionState,
+							historyMessagesState.value,
+							storyState.value,
+							characterState.value,
+							characterStatsState.value,
+							inventoryState.value,
+							systemInstructionsState.value.generalSystemInstruction,
+							systemInstructionsState.value.actionAgentInstruction,
+							relatedHistory,
+							gameSettingsState.value?.aiIntroducesSkills,
+							newState.is_character_restrained_explanation,
+							additionalActionInputState.value
+						)
+						.then(({ thoughts, actions }) => {
+							if (actions) {
+								console.log(stringifyPretty(actions));
+								characterActionsState.value = actions;
+								renderGameState(currentGameActionState, actions);
+								addSkillsIfApplicable(actions);
+							}
+							thoughtsState.value.actionsThoughts = thoughts;
+							resetStatesAfterActionsGenerated();
+						});
+				}
 				handlePostActionProcessedState();
 			}
 		}
@@ -957,16 +1038,61 @@
 		}
 	};
 
+	async function updateRelatedHistoryForStory() {
+		const relatedHistory = await summaryAgent.retrieveRelatedHistory(
+			currentGameActionState.story,
+			gameActionsState.value,
+			2
+		);
+		if (relatedHistory) {
+			relatedStoryHistoryState.value = relatedHistory;
+		} else {
+			relatedStoryHistoryState.reset();
+		}
+	}
+
 	function getRelatedHistoryForStory() {
-		summaryAgent
-			.retrieveRelatedHistory(currentGameActionState.story, gameActionsState.value, 2)
-			.then((relatedHistory) => {
-				if (relatedHistory) {
-					relatedStoryHistoryState.value = relatedHistory;
-				} else {
-					relatedStoryHistoryState.reset();
-				}
-			});
+		updateRelatedHistoryForStory().catch((error) => {
+			console.warn('Failed to retrieve related story history', error);
+		});
+	}
+
+	function startLocalPostActionBackgroundWork(newState: GameActionState) {
+		localPostTurnWorkPromise = (async () => {
+			try {
+				await generateNewNPCStats(newState);
+			} catch (error) {
+				console.warn('Failed to generate local post-action NPC stats', error);
+			}
+
+			try {
+				const evaluation = await eventAgent.evaluateEvents(
+					historyMessagesState.value.slice(-6).map((m) => m.content),
+					characterStatsState.value.spells_and_abilities.map((a) => a.name)
+				);
+				applyGameEventEvaluation(evaluation.event_evaluation);
+				thoughtsState.value.eventThoughts = evaluation.thoughts;
+			} catch (error) {
+				console.warn('Failed to evaluate local post-action events', error);
+			}
+
+			try {
+				await updateRelatedHistoryForStory();
+			} catch (error) {
+				console.warn('Failed to retrieve local post-action related story history', error);
+			}
+		})();
+	}
+
+	async function waitForLocalPostTurnWork() {
+		if (llmProviderState.value !== 'openai-compatible' || !localPostTurnWorkPromise) return;
+		const pendingWork = localPostTurnWorkPromise;
+		console.log('Waiting for local post-turn work...', new Date().toLocaleTimeString());
+		await pendingWork;
+		if (localPostTurnWorkPromise === pendingWork) {
+			localPostTurnWorkPromise = undefined;
+		}
+		console.log('Local post-turn work finished', new Date().toLocaleTimeString());
 	}
 
 	function removeCluesFromSimulationOnFailure(diceRollAdditionText: string): any {
@@ -1050,6 +1176,7 @@
 					await waitForFunction;
 					console.log('Waiting for function finished', new Date().toLocaleTimeString());
 				}
+				await waitForLocalPostTurnWork();
 
 				if (relatedActionHistoryState.value.length === 0) {
 					relatedActionHistoryState.value = await getRelatedHistory(
@@ -1594,6 +1721,43 @@
 			).modelMessage;
 		}
 		historyMessagesState.value = newHistory;
+	}
+
+	function startBackgroundImagePrompt(gameState: GameActionState, previousImagePrompt: string) {
+		if (!IMAGE_PROMPT_GENERATION_ENABLED) return;
+		const targetIndex = gameActionsState.value.findLastIndex((entry) => entry.id === gameState.id);
+		const fallbackTargetIndex =
+			targetIndex >= 0 ? targetIndex : Math.max(0, gameActionsState.value.length - 1);
+		imagePromptAgent
+			.generateImagePrompt(
+				getLatestStoryMessages(),
+				gameState.story,
+				characterState.value.name,
+				previousImagePrompt
+			)
+			.then((imagePrompt) => {
+				if (!imagePrompt) return;
+				const updatedGameActions = [...gameActionsState.value];
+				const existing = updatedGameActions[fallbackTargetIndex];
+				if (!existing) return;
+				updatedGameActions[fallbackTargetIndex] = {
+					...existing,
+					image_prompt: imagePrompt
+				};
+				gameActionsState.value = updatedGameActions;
+				const updatedHistory = [...historyMessagesState.value];
+				const lastModelIndex = updatedHistory.findLastIndex((message) => message.role === 'model');
+				if (lastModelIndex >= 0) {
+					updatedHistory[lastModelIndex] = gameAgent.buildHistoryMessages(
+						'',
+						updatedGameActions[fallbackTargetIndex]
+					).modelMessage;
+					historyMessagesState.value = updatedHistory;
+				}
+			})
+			.catch((e) => {
+				console.warn('Failed to generate background image prompt', e);
+			});
 	}
 
 	function handlePostActionProcessedState() {

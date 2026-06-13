@@ -40,13 +40,44 @@
 			{llmDebugState.value?.jsonModeAttempted ? 'yes' : 'no'}
 		</div>
 		<div>
+			<strong>JSON schema attempted:</strong>
+			{llmDebugState.value?.jsonSchemaAttempted ? 'yes' : 'no'}
+		</div>
+		<div>
+			<strong>Retried without JSON schema:</strong>
+			{llmDebugState.value?.jsonSchemaRetriedWithout ? 'yes' : 'no'}
+		</div>
+		<div>
 			<strong>Retried without JSON mode:</strong>
 			{llmDebugState.value?.jsonModeRetriedWithout ? 'yes' : 'no'}
+		</div>
+		<div>
+			<strong>Response-format cache hit:</strong>
+			{llmDebugState.value?.responseFormatCapabilityCacheHit ? 'yes' : 'no'}
+		</div>
+		<div>
+			<strong>JSON schema capability:</strong>
+			{llmDebugState.value?.jsonSchemaCapability || 'unknown'}
+		</div>
+		<div>
+			<strong>JSON object capability:</strong>
+			{llmDebugState.value?.jsonObjectCapability || 'unknown'}
 		</div>
 		<div>
 			<strong>Sanitizing or repair used:</strong>
 			{llmDebugState.value?.sanitizingOrRepairUsed ? 'yes' : 'no'}
 		</div>
+		{#if llmDebugState.value?.promptViewType}
+			<div><strong>Prompt view:</strong> {llmDebugState.value.promptViewType}</div>
+		{/if}
+		{#if llmDebugState.value?.promptViewReductions?.length}
+			<div>
+				<strong>Prompt reductions:</strong>
+				<output style="white-space: pre-wrap"
+					>{llmDebugState.value.promptViewReductions.join('\n')}</output
+				>
+			</div>
+		{/if}
 		{#if llmDebugState.value?.validationErrors?.length}
 			<div>
 				<strong>Validation errors:</strong>
@@ -55,10 +86,27 @@
 				>
 			</div>
 		{/if}
+		{#if llmDebugState.value?.validationDetails?.length}
+			<div>
+				<strong>Validation details:</strong>
+				<output style="white-space: pre-wrap"
+					>{llmDebugState.value.validationDetails.join('\n')}</output
+				>
+			</div>
+		{/if}
 		{#if llmDebugState.value?.lastError}
 			<div class="text-error"><strong>Last error:</strong> {llmDebugState.value.lastError}</div>
 		{/if}
 	</div>
+</details>
+
+<details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">
+	<summary class="collapse-title text-lg font-bold capitalize">
+		<p class="text-center">Last Local Prompt Preview</p>
+	</summary>
+	<output class="block p-4 text-sm" style="white-space: pre-wrap"
+		>{llmDebugState.value?.promptPreview || 'No prompt preview recorded'}</output
+	>
 </details>
 
 <details class="menu collapse collapse-arrow menu-vertical mt-7 bg-base-200">

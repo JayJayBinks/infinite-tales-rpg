@@ -4,6 +4,7 @@ import type { CharacterDescription } from '$lib/ai/agents/characterAgent';
 import { type Story, TROPES_CLICHE_PROMPT } from '$lib/ai/agents/storyAgent';
 import { GEMINI_MODELS } from '../geminiProvider';
 import { jsonRule } from './agentUtils';
+import { compactHistoryMessages, shouldUseLocalPromptViews } from '$lib/ai/localPromptViews';
 
 export type Ability = {
 	name: string;
@@ -233,10 +234,17 @@ export class CharacterStatsAgent {
 		characterStats: CharacterStats,
 		customSystemInstruction: string
 	): Promise<NPCState> {
-		const latestHistoryTextOnly = historyMessages.map((m: LLMMessage) => m.content).join('\n');
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
+		const historyMessagesForPrompt = useLocalPromptView
+			? compactHistoryMessages(historyMessages, 2, 1200)
+			: historyMessages;
+		const storyStateForPrompt = useLocalPromptView ? compactStoryForNPCStats(storyState) : storyState;
+		const latestHistoryTextOnly = historyMessagesForPrompt
+			.map((m: LLMMessage) => m.content)
+			.join('\n');
 		const agent = [
 			'You are RPG NPC stats agent, generating the stats for NPCs according to game system, adventure and story progression.',
-			'Description of the adventure: ' + stringifyPretty(storyState),
+			'Description of the adventure: ' + stringifyPretty(storyStateForPrompt),
 			'Latest story progression:\n' + latestHistoryTextOnly,
 			'Scale the stats and abilities according to the player character level: ' +
 				characterStats.level +
@@ -254,7 +262,20 @@ export class CharacterStatsAgent {
 			userMessage: action,
 			systemInstruction: agent,
 			model: GEMINI_MODELS.FLASH_THINKING_2_0,
-			reportErrorToUser: false
+			reportErrorToUser: false,
+			debugMetadata: useLocalPromptView
+				? {
+						promptViewType: 'npc-stats',
+						promptPreview: stringifyPretty({
+							npcsToGenerate,
+							storyState: storyStateForPrompt,
+							historyMessages: historyMessagesForPrompt
+						}),
+						promptViewReductions: [
+							`npc stats history messages: ${historyMessages.length} -> ${historyMessagesForPrompt.length}`
+						]
+					}
+				: undefined
 		};
 		return (await this.llm.generateContent(request))?.content as NPCState;
 	}
@@ -311,4 +332,21 @@ export class CharacterStatsAgent {
 		}
 		return (storyImagePrompt || '') + ' RPG game icon ' + (ability.image_prompt || ability.name);
 	}
+}
+
+function compactStoryForNPCStats(story: Story): Partial<Story> {
+	return {
+		game: story.game,
+		theme: story.theme,
+		tonality: story.tonality,
+		world_details: trimMiddle(story.world_details, 1000),
+		adventure_and_main_event: trimMiddle(story.adventure_and_main_event, 1200),
+		character_simple_description: trimMiddle(story.character_simple_description, 600)
+	};
+}
+
+function trimMiddle(text: string | undefined, maxCharacters: number): string {
+	if (!text || text.length <= maxCharacters) return text || '';
+	const half = Math.floor(maxCharacters / 2);
+	return text.slice(0, half) + '\n[...trimmed for local NPC stats...]\n' + text.slice(half * -1);
 }

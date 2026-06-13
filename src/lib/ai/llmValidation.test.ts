@@ -62,4 +62,20 @@ describe('validateCriticalLLMResponse', () => {
 		expect(result.valid).toBe(false);
 		expect(result.errors).toHaveLength(1);
 	});
+
+	it('rejects no-op and raw stats update values', () => {
+		const result = validateCriticalLLMResponse(
+			{
+				stats_update: [
+					{ type: 'N/A', value: null },
+					{ type: 'xp_gained', value: 'SMALL' }
+				]
+			},
+			context
+		);
+
+		expect(result.valid).toBe(false);
+		expect(result.errors.join('\n')).toContain('omit no-op updates');
+		expect(result.errors.join('\n')).toContain('must be an object');
+	});
 });

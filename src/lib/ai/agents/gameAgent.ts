@@ -14,6 +14,13 @@ import {
 import type { CampaignChapter } from '$lib/ai/agents/campaignAgent';
 import { jsonRule } from './agentUtils';
 import { GEMINI_MODELS } from '../geminiProvider';
+import {
+	buildLocalStoryPromptView,
+	compactHistoryMessages,
+	promptViewToRequestMetadata,
+	reduceNpcStateForNames,
+	shouldUseLocalPromptViews
+} from '$lib/ai/localPromptViews';
 
 export type InventoryUpdate = {
 	type: 'add_item' | 'remove_item';
@@ -98,8 +105,29 @@ export type GameActionState = {
 };
 export type GameMasterAnswer = {
 	answerToPlayer: string;
-	rules_considered: Array<string>;
-	game_state_considered: string;
+	rules_considered?: Array<string>;
+	game_state_considered?: string;
+	availableDetails?: GameMasterDetailOption[];
+};
+
+export type GameMasterDetailType = 'rules' | 'game_state' | 'history' | 'npcs_inventory';
+
+export type GameMasterDetailOption = {
+	id: GameMasterDetailType;
+	title: string;
+};
+
+export type GameMasterDetail = {
+	id: GameMasterDetailType;
+	title: string;
+	content: string;
+};
+
+type TextStreamingLLM = LLM & {
+	generateTextStream: (
+		request: LLMRequest,
+		textUpdateCallback: (textChunk: string, isComplete: boolean) => void
+	) => Promise<string>;
 };
 
 export const SUDO_COMMAND =
@@ -118,6 +146,173 @@ export class GameAgent {
 	constructor(llm: LLM) {
 		this.llm = llm;
 	}
+
+	private getTextStreamingLLM(): TextStreamingLLM | undefined {
+		const maybeStreamingLLM = this.llm as Partial<TextStreamingLLM>;
+		if (typeof maybeStreamingLLM.generateTextStream !== 'function') return undefined;
+		return this.llm as TextStreamingLLM;
+	}
+
+	async generateNarrationStream(
+		storyUpdateCallback: (storyChunk: string, isComplete: boolean) => void,
+		action: Action,
+		additionalStoryInput: string,
+		customSystemInstruction: string,
+		customStoryAgentInstruction: string,
+		customCombatAgentInstruction: string,
+		historyMessages: Array<LLMMessage>,
+		storyState: Story,
+		characterState: CharacterDescription,
+		playerCharactersGameState: ResourcesWithCurrentValue,
+		inventoryState: InventoryState,
+		relatedHistory: string[],
+		gameSettings: GameSettings,
+		simulation: string
+	): Promise<string> {
+		const textStreamingLLM = this.getTextStreamingLLM();
+		if (!textStreamingLLM) {
+			throw new Error('Configured LLM does not support text streaming.');
+		}
+		let playerActionText = action.characterName + ': ' + action.text;
+		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+		if (cost > 0) {
+			playerActionText += `\n${action.resource_cost?.cost} ${action.resource_cost?.resource_key} cost`;
+		}
+		let combinedText = playerActionText;
+		if (additionalStoryInput) combinedText += '\n' + additionalStoryInput;
+		if (simulation) {
+			combinedText += `\nFollowing needs to be considered for the continuous progression of the story:\n${simulation}`;
+		}
+		const localPromptView = buildLocalStoryPromptView({
+			actionText: combinedText,
+			storyState,
+			characterState,
+			playerCharactersGameState,
+			inventoryState,
+			historyMessages,
+			relatedHistory
+		});
+		const relatedHistoryForPrompt = localPromptView.relatedHistory;
+		if (relatedHistoryForPrompt.length > 0) {
+			combinedText += PAST_STORY_PLOT_RULE + relatedHistoryForPrompt.join('\n');
+		}
+		const narrationAgent = this.getGameAgentSystemInstructionsFromStates(
+			localPromptView.storyState,
+			localPromptView.characterState,
+			localPromptView.playerCharactersGameState,
+			localPromptView.inventoryState,
+			customSystemInstruction,
+			customStoryAgentInstruction,
+			customCombatAgentInstruction,
+			gameSettings
+		);
+		narrationAgent.push(
+			'Return only the final story narration as HTML/text. Do not output JSON. Do not use markdown fences. Do not include analysis.'
+		);
+
+		const finalStory = await textStreamingLLM.generateTextStream(
+			{
+				userMessage: combinedText,
+				historyMessages: localPromptView.historyMessages,
+				systemInstruction: narrationAgent,
+				model: GEMINI_MODELS.FLASH_2_5,
+				strictJson: false,
+				debugMetadata: promptViewToRequestMetadata(localPromptView.debug)
+			},
+			storyUpdateCallback
+		);
+		if (!finalStory.trim()) {
+			throw new Error('Local narration stream returned an empty story.');
+		}
+		return finalStory;
+	}
+
+	async generateStateDelta(
+		action: Action,
+		finalStory: string,
+		additionalStoryInput: string,
+		customSystemInstruction: string,
+		customStoryAgentInstruction: string,
+		customCombatAgentInstruction: string,
+		historyMessages: Array<LLMMessage>,
+		storyState: Story,
+		characterState: CharacterDescription,
+		playerCharactersGameState: ResourcesWithCurrentValue,
+		inventoryState: InventoryState,
+		relatedHistory: string[],
+		gameSettings: GameSettings,
+		simulation: string
+	): Promise<{ newState: GameActionState; updatedHistoryMessages: Array<LLMMessage> }> {
+		let playerActionText = action.characterName + ': ' + action.text;
+		const cost = parseInt(action.resource_cost?.cost as unknown as string) || 0;
+		if (cost > 0) {
+			playerActionText += `\n${action.resource_cost?.cost} ${action.resource_cost?.resource_key} cost`;
+		}
+		const playerActionTextForHistory = playerActionText;
+		let combinedText =
+			'Player action:\n' +
+			playerActionText +
+			'\n\nFinal narration already shown to the player:\n' +
+			finalStory;
+		if (additionalStoryInput)
+			combinedText += '\n\nAdditional state context:\n' + additionalStoryInput;
+		if (simulation) {
+			combinedText += `\n\nSimulation to consider:\n${simulation}`;
+		}
+		const localPromptView = buildLocalStoryPromptView({
+			actionText: combinedText,
+			storyState,
+			characterState,
+			playerCharactersGameState,
+			inventoryState,
+			historyMessages,
+			relatedHistory
+		});
+		if (localPromptView.relatedHistory.length > 0) {
+			combinedText += PAST_STORY_PLOT_RULE + localPromptView.relatedHistory.join('\n');
+		}
+		const stateAgent = this.getGameAgentSystemInstructionsFromStates(
+			localPromptView.storyState,
+			localPromptView.characterState,
+			localPromptView.playerCharactersGameState,
+			localPromptView.inventoryState,
+			customSystemInstruction,
+			customStoryAgentInstruction,
+			customCombatAgentInstruction,
+			gameSettings
+		);
+		stateAgent.push(jsonSystemInstructionForStateDelta(gameSettings));
+
+		const stateDelta = (
+			await this.llm.generateContent({
+				userMessage: combinedText,
+				historyMessages: localPromptView.historyMessages,
+				systemInstruction: stateAgent,
+				returnFallbackProperty: true,
+				model: GEMINI_MODELS.FLASH_LITE_2_5,
+				debugMetadata: promptViewToRequestMetadata(localPromptView.debug),
+				validationContext: {
+					playerResourceKeys: Object.keys(playerCharactersGameState),
+					inventoryItemIds: Object.keys(inventoryState),
+					actionDifficulties: Object.keys(ActionDifficulty)
+				}
+			})
+		)?.content as Partial<GameActionState>;
+		const newState = {
+			...stateDelta,
+			story: finalStory,
+			image_prompt: ''
+		} as GameActionState;
+		const { userMessage, modelMessage } = this.buildHistoryMessages(
+			playerActionTextForHistory,
+			newState
+		);
+		if (simulation) {
+			userMessage.content += `\nFollowing needs to be considered for the continuous progression of the story:\n${simulation}`;
+		}
+		mapGameState(newState);
+		return { newState, updatedHistoryMessages: [...historyMessages, userMessage, modelMessage] };
+	}
 	async generateStateOnlyNoStory(
 		action: Action,
 		characterName: string,
@@ -125,6 +320,13 @@ export class GameAgent {
 		inventoryState: InventoryState,
 		ncState: NPCState
 	) {
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
+		const inventoryKeysForPrompt = useLocalPromptView
+			? reduceInventoryKeysForStateOnly(inventoryState, action.text, 25)
+			: Object.keys(inventoryState);
+		const npcNamesForPrompt = useLocalPromptView
+			? reduceNpcStateForNames(ncState, 25)
+			: Object.keys(ncState).map((key) => ncState[key].known_names?.join(', '));
 		const systemInstruction: string[] = [];
 		systemInstruction.push(jsonRule + '\n{' + jsonStoryCharacterStatusPart() + '}');
 		systemInstruction.push(
@@ -132,14 +334,13 @@ export class GameAgent {
 				stringifyPretty(playerCharactersGameState)
 		);
 		systemInstruction.push(
-			"The following is the character's inventory\n" + stringifyPretty(Object.keys(inventoryState))
+			"The following is the character's inventory\n" + stringifyPretty(inventoryKeysForPrompt)
 		);
-		const names = Object.keys(ncState).map((key) => ncState[key].known_names?.join(', '));
 		systemInstruction.push(
 			'Determine stats_update targetName from the player prompt, map it to one of NPC NAMES LIST, if none present use player character name ' +
 				characterName +
 				'\nNPC NAMES LIST: ' +
-				names.slice(-50)
+				npcNamesForPrompt
 		);
 		const request: LLMRequest = {
 			userMessage: action.text,
@@ -147,6 +348,21 @@ export class GameAgent {
 			systemInstruction,
 			returnFallbackProperty: true,
 			model: GEMINI_MODELS.FLASH_LITE_2_5,
+			debugMetadata: useLocalPromptView
+				? {
+						promptViewType: 'state-only',
+						promptPreview: stringifyPretty({
+							action: action.text,
+							resources: playerCharactersGameState,
+							inventoryKeys: inventoryKeysForPrompt,
+							npcNames: npcNamesForPrompt
+						}),
+						promptViewReductions: [
+							`state-only inventory keys: ${Object.keys(inventoryState).length} -> ${inventoryKeysForPrompt.length}`,
+							`state-only npc names: ${Object.keys(ncState).length} -> ${npcNamesForPrompt.length}`
+						]
+					}
+				: undefined,
 			validationContext: {
 				playerResourceKeys: Object.keys(playerCharactersGameState),
 				npcIds: Object.keys(ncState),
@@ -196,14 +412,33 @@ export class GameAgent {
 		let combinedText = playerActionText;
 		if (additionalStoryInput) combinedText += '\n' + additionalStoryInput;
 
-		if (relatedHistory.length > 0) {
-			combinedText += PAST_STORY_PLOT_RULE + relatedHistory.join('\n');
+		const localPromptView = shouldUseLocalPromptViews(this.llm)
+			? buildLocalStoryPromptView({
+					actionText: combinedText,
+					storyState,
+					characterState,
+					playerCharactersGameState,
+					inventoryState,
+					historyMessages,
+					relatedHistory
+				})
+			: undefined;
+		const storyStateForPrompt = localPromptView?.storyState ?? storyState;
+		const characterStateForPrompt = localPromptView?.characterState ?? characterState;
+		const playerCharactersGameStateForPrompt =
+			localPromptView?.playerCharactersGameState ?? playerCharactersGameState;
+		const inventoryStateForPrompt = localPromptView?.inventoryState ?? inventoryState;
+		const historyMessagesForPrompt = localPromptView?.historyMessages ?? historyMessages;
+		const relatedHistoryForPrompt = localPromptView?.relatedHistory ?? relatedHistory;
+
+		if (relatedHistoryForPrompt.length > 0) {
+			combinedText += PAST_STORY_PLOT_RULE + relatedHistoryForPrompt.join('\n');
 		}
 		const gameAgent = this.getGameAgentSystemInstructionsFromStates(
-			storyState,
-			characterState,
-			playerCharactersGameState,
-			inventoryState,
+			storyStateForPrompt,
+			characterStateForPrompt,
+			playerCharactersGameStateForPrompt,
+			inventoryStateForPrompt,
 			customSystemInstruction,
 			customStoryAgentInstruction,
 			customCombatAgentInstruction,
@@ -214,10 +449,11 @@ export class GameAgent {
 		console.log(combinedText);
 		const request: LLMRequest = {
 			userMessage: combinedText,
-			historyMessages: historyMessages,
+			historyMessages: historyMessagesForPrompt,
 			systemInstruction: gameAgent,
 			returnFallbackProperty: true,
 			model: GEMINI_MODELS.FLASH_2_5,
+			debugMetadata: promptViewToRequestMetadata(localPromptView?.debug),
 			validationContext: {
 				playerResourceKeys: Object.keys(playerCharactersGameState),
 				inventoryItemIds: Object.keys(inventoryState),
@@ -260,6 +496,58 @@ export class GameAgent {
 		customGmNotes?: string,
 		is_character_restrained_explanation?: string
 	): Promise<{ thoughts?: string; answer: GameMasterAnswer }> {
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
+		const historyMessagesForPrompt = useLocalPromptView
+			? compactHistoryMessages(historyMessages, 2, 1200)
+			: historyMessages;
+		const compactContext = buildGmQuestionContext({
+			question,
+			storyState,
+			characterState,
+			playerCharactersGameState,
+			inventoryState,
+			npcState,
+			relatedHistory,
+			campaignChapterState,
+			customGmNotes,
+			isCharacterRestrainedExplanation: is_character_restrained_explanation
+		});
+		if (useLocalPromptView) {
+			const request: LLMRequest = {
+				userMessage:
+					'Answer this player question outside of character. Give a clear general answer in 60-120 words.\n\nQUESTION:\n' +
+					question +
+					'\n\nCOMPACT GAME CONTEXT:\n' +
+					stringifyPretty(compactContext),
+				historyMessages: historyMessagesForPrompt,
+				systemInstruction: [
+					'You are an RPG Game Master reviewer. Answer directly without narrating new story events.',
+					'Do not expose hidden secrets unless the question asks about information the player already knows.',
+					'Choose only detail sections that could add useful information. Return JSON only.',
+					jsonSystemInstructionForPlayerQuestionOverview
+				],
+				responseJsonSchema: gameMasterOverviewJsonSchema,
+				debugMetadata: {
+					promptViewType: 'gm-question',
+					promptPreview: stringifyPretty({
+						question,
+						context: compactContext,
+						historyMessages: historyMessagesForPrompt
+					}),
+					promptViewReductions: [
+						`gm question history messages: ${historyMessages.length} -> ${historyMessagesForPrompt.length}`,
+						`gm question inventory items: ${Object.keys(inventoryState).length} -> ${Object.keys(compactContext.inventory).length}`,
+						`gm question npc entries: ${Object.keys(npcState).length} -> ${compactContext.npcs.length}`
+					]
+				}
+			};
+			const response = await this.llm.generateContent(request);
+			return {
+				thoughts: response?.thoughts,
+				answer: normalizeGameMasterAnswer(response?.content)
+			};
+		}
+
 		const gameAgent = [
 			'You are Reviewer Agent, your task is to answer a players question.\n' +
 				'You can refer to the internal state, rules and previous messages that the Game Master has considered',
@@ -310,19 +598,104 @@ export class GameAgent {
 			).join('\n');
 		const request: LLMRequest = {
 			userMessage: userMessage,
-			historyMessages: historyMessages,
+			historyMessages: historyMessagesForPrompt,
 			systemInstruction: gameAgent
 		};
 		const response = await this.llm.generateContent(request);
 		return {
 			thoughts: response?.thoughts,
-			answer: response?.content as GameMasterAnswer
+			answer: normalizeGameMasterAnswer(response?.content)
+		};
+	}
+
+	async generateAnswerForPlayerQuestionDetail(
+		detailType: GameMasterDetailType,
+		question: string,
+		generalAnswer: GameMasterAnswer,
+		customSystemInstruction: SystemInstructionsState,
+		historyMessages: Array<LLMMessage>,
+		storyState: Story,
+		characterState: CharacterDescription,
+		playerCharactersGameState: PlayerCharactersGameState | ResourcesWithCurrentValue,
+		inventoryState: InventoryState,
+		npcState: NPCState,
+		relatedHistory: string[],
+		gameSettings: GameSettings,
+		campaignChapterState?: CampaignChapter,
+		customGmNotes?: string,
+		isCharacterRestrainedExplanation?: string
+	): Promise<GameMasterDetail | undefined> {
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
+		const historyMessagesForPrompt = useLocalPromptView
+			? compactHistoryMessages(historyMessages, 2, 1000)
+			: historyMessages;
+		const compactContext = buildGmQuestionContext({
+			question,
+			storyState,
+			characterState,
+			playerCharactersGameState,
+			inventoryState,
+			npcState,
+			relatedHistory,
+			campaignChapterState,
+			customGmNotes,
+			isCharacterRestrainedExplanation
+		});
+		const detailInstruction = getGameMasterDetailInstruction(detailType);
+		const rules =
+			detailType === 'rules'
+				? selectRelevantGmQuestionRules(
+						question,
+						gameSettings,
+						customSystemInstruction,
+						customGmNotes
+					)
+				: '';
+		const request: LLMRequest = {
+			userMessage: stringifyPretty({
+				question,
+				generalAnswer: generalAnswer.answerToPlayer,
+				requestedDetail: detailType,
+				context: compactContext,
+				rules: rules || undefined
+			}),
+			historyMessages: historyMessagesForPrompt,
+			systemInstruction: [
+				'You are an RPG Game Master reviewer. Expand exactly one requested detail for an existing answer.',
+				'Do not repeat the whole general answer. Do not narrate new events or reveal unknown secrets.',
+				detailInstruction,
+				`${jsonRule} {"content": "Focused detail in 80-180 words."}`
+			],
+			responseJsonSchema: gameMasterDetailJsonSchema,
+			debugMetadata: useLocalPromptView
+				? {
+						promptViewType: `gm-question-${detailType}`,
+						promptPreview: stringifyPretty({
+							question,
+							generalAnswer: generalAnswer.answerToPlayer,
+							context: compactContext,
+							rules: rules || undefined
+						}),
+						promptViewReductions: [
+							`gm detail history messages: ${historyMessages.length} -> ${historyMessagesForPrompt.length}`
+						]
+					}
+				: undefined
+		};
+		const response = (await this.llm.generateContent(request))?.content as
+			| { content?: string }
+			| undefined;
+		if (!response?.content) return undefined;
+		return {
+			id: detailType,
+			title: gameMasterDetailTitles[detailType],
+			content: String(response.content)
 		};
 	}
 
 	private getGameAgentSystemInstructionsFromStates(
-		storyState: Story,
-		characterState: CharacterDescription,
+		storyState: Story | Partial<Story>,
+		characterState: CharacterDescription | Partial<CharacterDescription>,
 		playerCharactersGameState: PlayerCharactersGameState | ResourcesWithCurrentValue,
 		inventoryState: InventoryState,
 		customSystemInstruction: string,
@@ -526,9 +899,230 @@ const jsonSystemInstructionForGameAgent = (gameSettingsState: GameSettings) => `
   "currently_present_npcs": List of NPCs or party members that are present in the current situation. Format: ${currentlyPresentNPCSForPrompt}
 }`;
 
+const jsonSystemInstructionForStateDelta = (gameSettingsState: GameSettings) => `${jsonRule}
+{
+  "currentPlotPoint": VALUE MUST BE ALWAYS IN ENGLISH; Identify the most relevant plotId in ADVENTURE_AND_MAIN_EVENT that the story aligns with; Explain your reasoning briefly; Format "{Reasoning} - PLOT_ID: {plotId}",
+  "gradualNarrativeExplanation": "Reasoning how the already generated narration was broken down to meaningful narrative moments.",
+  "plotPointAdvancingNudgeExplanation": "VALUE MUST BE ALWAYS IN ENGLISH; Explain what could happen next to advance the story towards NEXT_PLOT_ID according to ADVENTURE_AND_MAIN_EVENT; Include brief explanation of NEXT_PLOT_ID; Format "CURRENT_PLOT_ID: {plotId}; NEXT_PLOT_ID: {currentPlotId + 1}; {Reasoning}",
+  "story_memory_explanation": "Explanation if the final narration has Long-term Impact: Remember events that significantly influence character arcs, plot direction, or the game world in ways that persist or resurface later; Format: {explanation} LONG_TERM_IMPACT: LOW, MEDIUM, HIGH",
+  "xpGainedExplanation": "Explain why or why not the CHARACTER gains xp in this situation",
+  "state_update_rules": "If no resource, XP, or inventory changed, return empty arrays for stats_update and inventory_update. Never create placeholder updates. Never use type N/A, none, null, or value null. For every stats_update value must be an object like {"result": number|string}; XP is awarded only for meaningful progress and must be omitted when no XP is gained.",
+  ${jsonStoryCharacterStatusPart()},
+  "is_character_in_combat": true if CHARACTER is in active combat else false,
+  "is_character_restrained_explanation": null | string; "If not restrained null, else briefly explain how the character has entered a TEMPORARY state or condition that SIGNIFICANTLY RESTRICTS their available actions, changes how they act, or puts them under external control.",
+  "currently_present_npcs_explanation": "For each NPC explain why they are or are not present in list currently_present_npcs",
+  "currently_present_npcs": List of NPCs or party members that are present in the current situation. Format: ${currentlyPresentNPCSForPrompt}
+}`;
+
 const jsonSystemInstructionForPlayerQuestion = `${jsonRule}
 {
   "game_state_considered": Brief explanation on how the game state is involved in the answer; mention relevant variables explicitly,
   "rules_considered": String Array; Identify the relevant Game Master's rules that are related to the question; Include the exact text of a rule,
   "answerToPlayer": Answer outside of character, do not describe the story, but give an explanation
 }`;
+
+const jsonSystemInstructionForPlayerQuestionOverview = `${jsonRule}
+{
+  "answerToPlayer": "Direct general answer outside of character.",
+  "availableDetails": [
+    {"id": "rules|game_state|history|npcs_inventory", "title": "Short localized title"}
+  ]
+}`;
+
+const gameMasterOverviewJsonSchema = {
+	name: 'game_master_answer_overview',
+	strict: true,
+	schema: {
+		type: 'object',
+		additionalProperties: false,
+		required: ['answerToPlayer', 'availableDetails'],
+		properties: {
+			answerToPlayer: { type: 'string', maxLength: 1200 },
+			availableDetails: {
+				type: 'array',
+				maxItems: 4,
+				items: {
+					type: 'object',
+					additionalProperties: false,
+					required: ['id', 'title'],
+					properties: {
+						id: {
+							type: 'string',
+							enum: ['rules', 'game_state', 'history', 'npcs_inventory']
+						},
+						title: { type: 'string', maxLength: 80 }
+					}
+				}
+			}
+		}
+	}
+};
+
+const gameMasterDetailJsonSchema = {
+	name: 'game_master_answer_detail',
+	strict: true,
+	schema: {
+		type: 'object',
+		additionalProperties: false,
+		required: ['content'],
+		properties: {
+			content: { type: 'string', maxLength: 2200 }
+		}
+	}
+};
+
+const gameMasterDetailTitles: Record<GameMasterDetailType, string> = {
+	rules: 'Relevant Rules',
+	game_state: 'Game State',
+	history: 'Previous Events',
+	npcs_inventory: 'NPCs and Inventory'
+};
+
+function normalizeGameMasterAnswer(content: unknown): GameMasterAnswer {
+	const answer = (content || {}) as Partial<GameMasterAnswer>;
+	const availableDetails = Array.isArray(answer.availableDetails)
+		? answer.availableDetails.filter(
+				(option): option is GameMasterDetailOption =>
+					Boolean(option?.title) && option?.id in gameMasterDetailTitles
+			)
+		: [];
+	return {
+		answerToPlayer: String(answer.answerToPlayer || ''),
+		game_state_considered: answer.game_state_considered,
+		rules_considered: Array.isArray(answer.rules_considered) ? answer.rules_considered : undefined,
+		availableDetails:
+			availableDetails.length > 0
+				? availableDetails
+				: [
+						{ id: 'game_state', title: gameMasterDetailTitles.game_state },
+						{ id: 'rules', title: gameMasterDetailTitles.rules }
+					]
+	};
+}
+
+function buildGmQuestionContext(input: {
+	question: string;
+	storyState: Story;
+	characterState: CharacterDescription;
+	playerCharactersGameState: PlayerCharactersGameState | ResourcesWithCurrentValue;
+	inventoryState: InventoryState;
+	npcState: NPCState;
+	relatedHistory: string[];
+	campaignChapterState?: CampaignChapter;
+	customGmNotes?: string;
+	isCharacterRestrainedExplanation?: string;
+}) {
+	const inventoryKeys = reduceInventoryKeysForStateOnly(input.inventoryState, input.question, 12);
+	return {
+		setting: {
+			game: input.storyState.game,
+			theme: input.storyState.theme,
+			tonality: input.storyState.tonality,
+			world_details: trimForGmQuestion(input.storyState.world_details, 900)
+		},
+		character: Object.fromEntries(
+			Object.entries(input.characterState || {})
+				.filter(([, value]) => value !== undefined && value !== null && value !== '')
+				.slice(0, 8)
+				.map(([key, value]) => [key, trimForGmQuestion(String(value), 500)])
+		),
+		resources: input.playerCharactersGameState,
+		inventory: Object.fromEntries(
+			inventoryKeys.map((key) => [
+				key,
+				{
+					description: trimForGmQuestion(input.inventoryState[key]?.description, 300),
+					effect: trimForGmQuestion(input.inventoryState[key]?.effect, 300)
+				}
+			])
+		),
+		npcs: reduceNpcStateForNames(input.npcState, 25),
+		relatedHistory: input.relatedHistory.slice(-4).map((entry) => trimForGmQuestion(entry, 900)),
+		campaignChapter: input.campaignChapterState
+			? trimForGmQuestion(stringifyPretty(input.campaignChapterState), 1200)
+			: undefined,
+		customGmNotes: trimForGmQuestion(input.customGmNotes, 1000),
+		restrained: input.isCharacterRestrainedExplanation
+	};
+}
+
+function getGameMasterDetailInstruction(detailType: GameMasterDetailType): string {
+	switch (detailType) {
+		case 'rules':
+			return 'Explain only the rules relevant to the question and how they apply.';
+		case 'game_state':
+			return 'Explain only which current state values and conditions affect the answer.';
+		case 'history':
+			return 'Explain only which known previous events affect the answer and why.';
+		case 'npcs_inventory':
+			return 'Explain only relevant visible NPC and inventory implications.';
+	}
+}
+
+function selectRelevantGmQuestionRules(
+	question: string,
+	gameSettings: GameSettings,
+	customSystemInstruction: SystemInstructionsState,
+	customGmNotes?: string
+): string {
+	const terms = question
+		.toLowerCase()
+		.split(/[^a-z0-9_]+/)
+		.filter((term) => term.length >= 4);
+	const ruleLines = systemBehaviour(gameSettings)
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line.startsWith('-'));
+	const scoredRules = ruleLines
+		.map((rule, index) => ({
+			rule,
+			index,
+			score: terms.filter((term) => rule.toLowerCase().includes(term)).length
+		}))
+		.toSorted((a, b) => b.score - a.score || a.index - b.index)
+		.slice(0, 8)
+		.map(({ rule }) => rule);
+	const customRules = [
+		customSystemInstruction.generalSystemInstruction,
+		customSystemInstruction.storyAgentInstruction,
+		customSystemInstruction.combatAgentInstruction,
+		customGmNotes
+	]
+		.filter(Boolean)
+		.map((rule) => trimForGmQuestion(rule, 800));
+	return [...customRules, ...scoredRules].join('\n');
+}
+
+function trimForGmQuestion(text: string | undefined, maxCharacters: number): string {
+	if (!text || text.length <= maxCharacters) return text || '';
+	return text.slice(0, maxCharacters) + '\n[...trimmed for GM question...]';
+}
+
+function reduceInventoryKeysForStateOnly(
+	inventoryState: InventoryState,
+	relevanceText: string,
+	limit: number
+): string[] {
+	const keys = Object.keys(inventoryState || {});
+	if (keys.length <= limit) return keys;
+	const terms = new Set(
+		relevanceText
+			.toLowerCase()
+			.split(/[^a-z0-9_]+/)
+			.filter((term) => term.length >= 4)
+	);
+	return keys
+		.map((key, index) => {
+			const item = inventoryState[key];
+			const text = [key, item?.description, item?.effect].join(' ').toLowerCase();
+			let score = 0;
+			terms.forEach((term) => {
+				if (text.includes(term)) score += 1;
+			});
+			return { key, index, score };
+		})
+		.toSorted((a, b) => b.score - a.score || b.index - a.index)
+		.slice(0, limit)
+		.toSorted((a, b) => a.index - b.index)
+		.map((entry) => entry.key);
+}

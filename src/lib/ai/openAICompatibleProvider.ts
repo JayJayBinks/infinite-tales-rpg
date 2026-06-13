@@ -8,6 +8,7 @@ import {
 	type ContentWithThoughts,
 	type LLMMessage,
 	type LLMRequest,
+	type LLMResponseJsonSchema,
 	type LLMconfig
 } from '$lib/ai/llm';
 import { sanitizeAnndParseJSON } from '$lib/ai/agents/agentUtils';
@@ -27,34 +28,176 @@ type ChatCreateResult<T> = {
 	result: T;
 	jsonModeAttempted: boolean;
 	jsonModeRetriedWithout: boolean;
+	jsonSchemaAttempted: boolean;
+	jsonSchemaRetriedWithout: boolean;
+	responseFormatCapabilityCacheHit: boolean;
+	responseFormatCapabilities: ResponseFormatCapabilities;
 };
+
+export type ResponseFormatCapability = 'unknown' | 'supported' | 'unsupported';
+
+export type ResponseFormatCapabilities = {
+	jsonSchema: ResponseFormatCapability;
+	jsonObject: ResponseFormatCapability;
+};
+
+const responseFormatCapabilityCache = new Map<string, ResponseFormatCapabilities>();
+
+function createUnknownResponseFormatCapabilities(): ResponseFormatCapabilities {
+	return { jsonSchema: 'unknown', jsonObject: 'unknown' };
+}
+
+function isUnsupportedResponseFormatError(error: unknown): boolean {
+	const record = error as { status?: unknown; message?: unknown; error?: { message?: unknown } };
+	const status = Number(record?.status);
+	const message = String(record?.message || record?.error?.message || error || '').toLowerCase();
+	const mentionsResponseFormat =
+		message.includes('response_format') ||
+		message.includes('json_schema') ||
+		message.includes('json schema') ||
+		message.includes('json_object') ||
+		message.includes('structured output') ||
+		message.includes('unsupported schema');
+	const indicatesUnsupported =
+		message.includes('unsupported') ||
+		message.includes('not support') ||
+		message.includes('unknown') ||
+		message.includes('invalid') ||
+		message.includes('not allowed');
+	return mentionsResponseFormat && (indicatesUnsupported || [400, 404, 415, 422].includes(status));
+}
 
 export async function createChatCompletionWithOptionalJsonMode<T>(
 	create: (body: any) => Promise<T>,
 	body: Record<string, any>,
-	useJsonObjectMode: boolean
+	useJsonObjectMode: boolean,
+	responseJsonSchema?: LLMResponseJsonSchema,
+	capabilities: ResponseFormatCapabilities = createUnknownResponseFormatCapabilities()
 ): Promise<ChatCreateResult<T>> {
 	if (!useJsonObjectMode) {
 		return {
 			result: await create(body),
 			jsonModeAttempted: false,
-			jsonModeRetriedWithout: false
+			jsonModeRetriedWithout: false,
+			jsonSchemaAttempted: false,
+			jsonSchemaRetriedWithout: false,
+			responseFormatCapabilityCacheHit: false,
+			responseFormatCapabilities: capabilities
+		};
+	}
+	if (responseJsonSchema) {
+		let jsonSchemaAttempted = false;
+		let capabilityCacheHit = capabilities.jsonSchema === 'unsupported';
+		if (capabilities.jsonSchema !== 'unsupported') {
+			jsonSchemaAttempted = true;
+			try {
+				const result = await create({
+					...body,
+					response_format: {
+						type: 'json_schema',
+						json_schema: {
+							name: responseJsonSchema.name,
+							strict: responseJsonSchema.strict ?? true,
+							schema: responseJsonSchema.schema
+						}
+					}
+				});
+				capabilities.jsonSchema = 'supported';
+				return {
+					result,
+					jsonModeAttempted: true,
+					jsonModeRetriedWithout: false,
+					jsonSchemaAttempted: true,
+					jsonSchemaRetriedWithout: false,
+					responseFormatCapabilityCacheHit: capabilityCacheHit,
+					responseFormatCapabilities: capabilities
+				};
+			} catch (error) {
+				if (isUnsupportedResponseFormatError(error)) {
+					capabilities.jsonSchema = 'unsupported';
+				}
+			}
+		}
+		if (capabilities.jsonObject === 'unsupported') {
+			capabilityCacheHit = true;
+			return {
+				result: await create(body),
+				jsonModeAttempted: false,
+				jsonModeRetriedWithout: false,
+				jsonSchemaAttempted,
+				jsonSchemaRetriedWithout: jsonSchemaAttempted,
+				responseFormatCapabilityCacheHit: capabilityCacheHit,
+				responseFormatCapabilities: capabilities
+			};
+		}
+		try {
+			const result = await create({
+				...body,
+				response_format: { type: 'json_object' }
+			});
+			capabilities.jsonObject = 'supported';
+			return {
+				result,
+				jsonModeAttempted: true,
+				jsonModeRetriedWithout: false,
+				jsonSchemaAttempted,
+				jsonSchemaRetriedWithout: jsonSchemaAttempted,
+				responseFormatCapabilityCacheHit: capabilityCacheHit,
+				responseFormatCapabilities: capabilities
+			};
+		} catch (error) {
+			if (isUnsupportedResponseFormatError(error)) {
+				capabilities.jsonObject = 'unsupported';
+			}
+			return {
+				result: await create(body),
+				jsonModeAttempted: true,
+				jsonModeRetriedWithout: true,
+				jsonSchemaAttempted,
+				jsonSchemaRetriedWithout: jsonSchemaAttempted,
+				responseFormatCapabilityCacheHit: capabilityCacheHit,
+				responseFormatCapabilities: capabilities
+			};
+		}
+	}
+	if (capabilities.jsonObject === 'unsupported') {
+		return {
+			result: await create(body),
+			jsonModeAttempted: false,
+			jsonModeRetriedWithout: false,
+			jsonSchemaAttempted: false,
+			jsonSchemaRetriedWithout: false,
+			responseFormatCapabilityCacheHit: true,
+			responseFormatCapabilities: capabilities
 		};
 	}
 	try {
+		const result = await create({
+			...body,
+			response_format: { type: 'json_object' }
+		});
+		capabilities.jsonObject = 'supported';
 		return {
-			result: await create({
-				...body,
-				response_format: { type: 'json_object' }
-			}),
+			result,
 			jsonModeAttempted: true,
-			jsonModeRetriedWithout: false
+			jsonModeRetriedWithout: false,
+			jsonSchemaAttempted: false,
+			jsonSchemaRetriedWithout: false,
+			responseFormatCapabilityCacheHit: false,
+			responseFormatCapabilities: capabilities
 		};
-	} catch {
+	} catch (error) {
+		if (isUnsupportedResponseFormatError(error)) {
+			capabilities.jsonObject = 'unsupported';
+		}
 		return {
 			result: await create(body),
 			jsonModeAttempted: true,
-			jsonModeRetriedWithout: true
+			jsonModeRetriedWithout: true,
+			jsonSchemaAttempted: false,
+			jsonSchemaRetriedWithout: false,
+			responseFormatCapabilityCacheHit: false,
+			responseFormatCapabilities: capabilities
 		};
 	}
 }
@@ -62,6 +205,7 @@ export async function createChatCompletionWithOptionalJsonMode<T>(
 export class OpenAICompatibleProvider extends LLM {
 	private readonly jsonFixingInterceptorAgent: JsonFixingInterceptorAgent;
 	private readonly client: OpenAI;
+	private readonly capabilityCacheBaseUrl: string;
 
 	constructor(llmConfig: LLMconfig) {
 		super(llmConfig);
@@ -72,6 +216,7 @@ export class OpenAICompatibleProvider extends LLM {
 			.replace(/\/+$/, '')
 			.replace(/\/v1\/chat\/completions$/, '')
 			.replace(/\/v1$/, '');
+		this.capabilityCacheBaseUrl = baseUrl;
 
 		this.client = new OpenAI({
 			apiKey: llmConfig.apiKey?.trim() || 'not-needed',
@@ -90,6 +235,16 @@ export class OpenAICompatibleProvider extends LLM {
 				return globalThis.fetch(url, init);
 			}
 		});
+	}
+
+	private getResponseFormatCapabilities(model: string): ResponseFormatCapabilities {
+		const cacheKey = `${this.capabilityCacheBaseUrl}|${model}`;
+		let capabilities = responseFormatCapabilityCache.get(cacheKey);
+		if (!capabilities) {
+			capabilities = createUnknownResponseFormatCapabilities();
+			responseFormatCapabilityCache.set(cacheKey, capabilities);
+		}
+		return capabilities;
 	}
 
 	getDefaultTemperature(): number {
@@ -176,9 +331,15 @@ export class OpenAICompatibleProvider extends LLM {
 		autoFix: boolean,
 		reportErrorToUser: boolean,
 		request: LLMRequest
-	): Promise<{ content?: object; sanitizingOrRepairUsed: boolean; validationErrors: string[] }> {
+	): Promise<{
+		content?: object;
+		sanitizingOrRepairUsed: boolean;
+		validationErrors: string[];
+		validationDetails: string[];
+	}> {
 		const cleaned = this.stripCodeFences(responseText);
 		let sanitizingOrRepairUsed = cleaned !== responseText;
+		const validationDetails: string[] = [];
 		let parsed: object | undefined;
 		try {
 			parsed = sanitizeAnndParseJSON(cleaned);
@@ -193,32 +354,47 @@ export class OpenAICompatibleProvider extends LLM {
 					)) as object | undefined;
 				} catch (secondError) {
 					if (reportErrorToUser) handleError(secondError as unknown as string);
-					return { sanitizingOrRepairUsed, validationErrors: [] };
+					return { sanitizingOrRepairUsed, validationErrors: [], validationDetails };
 				}
 			} else {
 				if (reportErrorToUser) handleError(firstError as unknown as string);
-				return { sanitizingOrRepairUsed, validationErrors: [] };
+				return { sanitizingOrRepairUsed, validationErrors: [], validationDetails };
 			}
 		}
-		if (!parsed) return { sanitizingOrRepairUsed, validationErrors: [] };
+		if (!parsed) return { sanitizingOrRepairUsed, validationErrors: [], validationDetails };
 		const validation = validateCriticalLLMResponse(parsed, request.validationContext);
 		if (validation.valid) {
-			return { content: parsed, sanitizingOrRepairUsed, validationErrors: [] };
+			validationDetails.push('Initial validation passed.');
+			return { content: parsed, sanitizingOrRepairUsed, validationErrors: [], validationDetails };
 		}
+		validationDetails.push('Initial validation failed: ' + validation.errors.join(' | '));
 		if (!autoFix) {
-			return { content: parsed, sanitizingOrRepairUsed, validationErrors: validation.errors };
+			validationDetails.push('Validation repair skipped because auto-fix is disabled.');
+			return {
+				content: parsed,
+				sanitizingOrRepairUsed,
+				validationErrors: validation.errors,
+				validationDetails
+			};
 		}
 		sanitizingOrRepairUsed = true;
+		validationDetails.push('Validation repair call executed.');
 		const repaired = await this.jsonFixingInterceptorAgent.repairJSONByInstruction(
 			JSON.stringify(parsed),
 			buildValidationRepairInstruction(validation.errors),
 			reportErrorToUser
 		);
 		const repairedValidation = validateCriticalLLMResponse(repaired, request.validationContext);
+		validationDetails.push(
+			repairedValidation.valid
+				? 'Validation repair passed.'
+				: 'Validation repair failed: ' + repairedValidation.errors.join(' | ')
+		);
 		return {
 			content: repairedValidation.valid && repaired ? repaired : parsed,
 			sanitizingOrRepairUsed,
-			validationErrors: repairedValidation.valid ? [] : repairedValidation.errors
+			validationErrors: repairedValidation.valid ? [] : repairedValidation.errors,
+			validationDetails
 		};
 	}
 
@@ -234,6 +410,10 @@ export class OpenAICompatibleProvider extends LLM {
 		let completion: OpenAI.Chat.Completions.ChatCompletion;
 		let jsonModeAttempted = false;
 		let jsonModeRetriedWithout = false;
+		let jsonSchemaAttempted = false;
+		let jsonSchemaRetriedWithout = false;
+		let responseFormatCapabilityCacheHit = false;
+		let responseFormatCapabilities = this.getResponseFormatCapabilities(model);
 		try {
 			const result = await createChatCompletionWithOptionalJsonMode(
 				(body) => this.client.chat.completions.create(body),
@@ -243,15 +423,25 @@ export class OpenAICompatibleProvider extends LLM {
 					temperature,
 					stream: false
 				},
-				useJsonObjectMode
+				useJsonObjectMode,
+				request.responseJsonSchema,
+				responseFormatCapabilities
 			);
 			completion = result.result;
 			jsonModeAttempted = result.jsonModeAttempted;
 			jsonModeRetriedWithout = result.jsonModeRetriedWithout;
+			jsonSchemaAttempted = result.jsonSchemaAttempted;
+			jsonSchemaRetriedWithout = result.jsonSchemaRetriedWithout;
+			responseFormatCapabilityCacheHit = result.responseFormatCapabilityCacheHit;
+			responseFormatCapabilities = result.responseFormatCapabilities;
 		} catch (e: any) {
 			this.writeDebug(request, model, startedAt, prepared, {
 				jsonModeAttempted,
 				jsonModeRetriedWithout,
+				jsonSchemaAttempted,
+				jsonSchemaRetriedWithout,
+				responseFormatCapabilityCacheHit,
+				responseFormatCapabilities,
 				lastError: e?.message ?? String(e)
 			});
 			if (request.reportErrorToUser !== false) {
@@ -279,11 +469,71 @@ export class OpenAICompatibleProvider extends LLM {
 		this.writeDebug(request, model, startedAt, prepared, {
 			jsonModeAttempted,
 			jsonModeRetriedWithout,
+			jsonSchemaAttempted,
+			jsonSchemaRetriedWithout,
+			responseFormatCapabilityCacheHit,
+			responseFormatCapabilities,
 			sanitizingOrRepairUsed: parsed.sanitizingOrRepairUsed,
-			validationErrors: parsed.validationErrors
+			validationErrors: parsed.validationErrors,
+			validationDetails: parsed.validationDetails
 		});
 		if (!parsed.content) return undefined;
 		return { thoughts: '', content: parsed.content };
+	}
+
+	async generateTextStream(
+		request: LLMRequest,
+		textUpdateCallback: (textChunk: string, isComplete: boolean) => void
+	): Promise<string> {
+		const startedAt = Date.now();
+		const requestWithoutJson: LLMRequest = { ...request, strictJson: false };
+		const prepared = applyLocalContextBudget(this.buildMessages(requestWithoutJson));
+		const messages = prepared.messages;
+		const model = this.getModelToUse(requestWithoutJson);
+		const temperature = this.clampTemperature(requestWithoutJson);
+
+		let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
+		try {
+			stream = (await this.client.chat.completions.create({
+				model,
+				messages,
+				temperature,
+				stream: true
+			})) as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
+		} catch (e: any) {
+			this.writeDebug(requestWithoutJson, model, startedAt, prepared, {
+				jsonModeAttempted: false,
+				jsonModeRetriedWithout: false,
+				lastError: e?.message ?? String(e)
+			});
+			if (request.reportErrorToUser !== false) {
+				handleError(`OpenAI-compatible text stream failed: ${e?.message ?? e}`);
+			}
+			return '';
+		}
+
+		let accumulatedText = '';
+		try {
+			for await (const chunk of stream) {
+				const deltaText = chunk.choices?.[0]?.delta?.content;
+				if (typeof deltaText !== 'string' || deltaText.length === 0) continue;
+				accumulatedText += deltaText;
+				textUpdateCallback(accumulatedText, false);
+			}
+		} catch (e: any) {
+			if (request.reportErrorToUser !== false) {
+				handleError(`OpenAI-compatible text stream error: ${e?.message ?? e}`);
+			}
+		}
+
+		textUpdateCallback(accumulatedText, true);
+		this.writeDebug(requestWithoutJson, model, startedAt, prepared, {
+			jsonModeAttempted: false,
+			jsonModeRetriedWithout: false,
+			sanitizingOrRepairUsed: false,
+			validationDetails: ['Text narration stream completed without JSON parsing.']
+		});
+		return accumulatedText;
 	}
 
 	async generateContentStream(
@@ -301,6 +551,10 @@ export class OpenAICompatibleProvider extends LLM {
 		let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
 		let jsonModeAttempted = false;
 		let jsonModeRetriedWithout = false;
+		let jsonSchemaAttempted = false;
+		let jsonSchemaRetriedWithout = false;
+		let responseFormatCapabilityCacheHit = false;
+		let responseFormatCapabilities = this.getResponseFormatCapabilities(model);
 		try {
 			const result = await createChatCompletionWithOptionalJsonMode(
 				(body) => this.client.chat.completions.create(body),
@@ -310,16 +564,26 @@ export class OpenAICompatibleProvider extends LLM {
 					temperature,
 					stream: true
 				},
-				useJsonObjectMode
+				useJsonObjectMode,
+				request.responseJsonSchema,
+				responseFormatCapabilities
 			);
 			stream =
 				result.result as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
 			jsonModeAttempted = result.jsonModeAttempted;
 			jsonModeRetriedWithout = result.jsonModeRetriedWithout;
+			jsonSchemaAttempted = result.jsonSchemaAttempted;
+			jsonSchemaRetriedWithout = result.jsonSchemaRetriedWithout;
+			responseFormatCapabilityCacheHit = result.responseFormatCapabilityCacheHit;
+			responseFormatCapabilities = result.responseFormatCapabilities;
 		} catch (e: any) {
 			this.writeDebug(request, model, startedAt, prepared, {
 				jsonModeAttempted,
 				jsonModeRetriedWithout,
+				jsonSchemaAttempted,
+				jsonSchemaRetriedWithout,
+				responseFormatCapabilityCacheHit,
+				responseFormatCapabilities,
 				lastError: e?.message ?? String(e)
 			});
 			if (request.reportErrorToUser !== false) {
@@ -407,8 +671,13 @@ export class OpenAICompatibleProvider extends LLM {
 		this.writeDebug(request, model, startedAt, prepared, {
 			jsonModeAttempted,
 			jsonModeRetriedWithout,
+			jsonSchemaAttempted,
+			jsonSchemaRetriedWithout,
+			responseFormatCapabilityCacheHit,
+			responseFormatCapabilities,
 			sanitizingOrRepairUsed: finalObj.sanitizingOrRepairUsed,
-			validationErrors: finalObj.validationErrors
+			validationErrors: finalObj.validationErrors,
+			validationDetails: finalObj.validationDetails
 		});
 		if (!finalObj.content) {
 			if (request.reportErrorToUser !== false && liveParserFailure) {
@@ -432,8 +701,13 @@ export class OpenAICompatibleProvider extends LLM {
 		update: {
 			jsonModeAttempted: boolean;
 			jsonModeRetriedWithout: boolean;
+			jsonSchemaAttempted?: boolean;
+			jsonSchemaRetriedWithout?: boolean;
+			responseFormatCapabilityCacheHit?: boolean;
+			responseFormatCapabilities?: ResponseFormatCapabilities;
 			sanitizingOrRepairUsed?: boolean;
 			validationErrors?: string[];
+			validationDetails?: string[];
 			lastError?: string;
 		}
 	) {
@@ -449,8 +723,17 @@ export class OpenAICompatibleProvider extends LLM {
 			strictJson: this.shouldUseStrictJson(request),
 			jsonModeAttempted: update.jsonModeAttempted,
 			jsonModeRetriedWithout: update.jsonModeRetriedWithout,
+			jsonSchemaAttempted: update.jsonSchemaAttempted || false,
+			jsonSchemaRetriedWithout: update.jsonSchemaRetriedWithout || false,
+			responseFormatCapabilityCacheHit: update.responseFormatCapabilityCacheHit || false,
+			jsonSchemaCapability: update.responseFormatCapabilities?.jsonSchema,
+			jsonObjectCapability: update.responseFormatCapabilities?.jsonObject,
 			sanitizingOrRepairUsed: update.sanitizingOrRepairUsed || false,
 			validationErrors: update.validationErrors || [],
+			validationDetails: update.validationDetails || [],
+			promptViewType: request.debugMetadata?.promptViewType,
+			promptPreview: request.debugMetadata?.promptPreview,
+			promptViewReductions: request.debugMetadata?.promptViewReductions || [],
 			lastError: update.lastError
 		});
 	}

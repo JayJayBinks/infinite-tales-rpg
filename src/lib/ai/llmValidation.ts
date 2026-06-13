@@ -63,8 +63,22 @@ function validateStatsUpdates(
 	if (!isRecord(value) || !Array.isArray(value.stats_update)) return;
 	for (const update of value.stats_update) {
 		if (!isRecord(update)) continue;
+		validateStatsUpdateShape(update, errors);
 		validateStatsUpdateType(update.type, context, errors);
 		validateStatsUpdateValue(update.type, update.value, errors);
+	}
+}
+
+function validateStatsUpdateShape(update: Record<string, any>, errors: string[]): void {
+	if (update.type === 'N/A' || update.type === 'none' || update.type === 'null') {
+		errors.push('stats_update must omit no-op updates instead of using type N/A/none/null.');
+	}
+	if (update.value === null || update.value === undefined) {
+		errors.push('stats_update.value must be an object like {"result": value}.');
+		return;
+	}
+	if (!isRecord(update.value)) {
+		errors.push('stats_update.value must be an object like {"result": value}, not a raw value.');
 	}
 }
 

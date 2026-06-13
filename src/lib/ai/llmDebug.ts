@@ -12,8 +12,17 @@ export type LlmDebugState = {
 	strictJson?: boolean;
 	jsonModeAttempted?: boolean;
 	jsonModeRetriedWithout?: boolean;
+	jsonSchemaAttempted?: boolean;
+	jsonSchemaRetriedWithout?: boolean;
+	responseFormatCapabilityCacheHit?: boolean;
+	jsonSchemaCapability?: string;
+	jsonObjectCapability?: string;
 	sanitizingOrRepairUsed?: boolean;
 	validationErrors?: string[];
+	validationDetails?: string[];
+	promptViewType?: string;
+	promptPreview?: string;
+	promptViewReductions?: string[];
 	lastError?: string;
 };
 

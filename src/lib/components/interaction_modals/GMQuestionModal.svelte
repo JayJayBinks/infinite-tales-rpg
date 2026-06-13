@@ -6,6 +6,8 @@
 		type GameActionState,
 		GameAgent,
 		type GameMasterAnswer,
+		type GameMasterDetail,
+		type GameMasterDetailType,
 		type GameSettings,
 		type InventoryState,
 		type PlayerCharactersGameState
@@ -75,6 +77,9 @@
 	let gmAnswerState: GameMasterAnswer | undefined = $state();
 	let gmThoughtsState: string | undefined = $state();
 	let isGeneratingState: boolean = $state(false);
+	let relatedQuestionHistory: string[] = $state([]);
+	let gmDetailsState: Partial<Record<GameMasterDetailType, GameMasterDetail>> = $state({});
+	let loadingDetailState: GameMasterDetailType | undefined = $state();
 
 	onMount(async () => {
 		const llm = LLMProvider.provideLLM(
@@ -91,7 +96,7 @@
 		gameAgent = new GameAgent(llm);
 		const summaryAgent = new SummaryAgent(llm);
 		isGeneratingState = true;
-		const relatedQuestionHistory = (
+		relatedQuestionHistory = (
 			await summaryAgent.retrieveRelatedHistory(question, gameActionsState.value)
 		)?.relatedDetails
 			.filter((detail) => detail.relevanceScore >= 0.7)
@@ -123,6 +128,35 @@
 			onclose(false);
 		}
 	});
+
+	async function loadDetail(detailType: GameMasterDetailType) {
+		if (!gameAgent || !gmAnswerState || gmDetailsState[detailType] || loadingDetailState) return;
+		loadingDetailState = detailType;
+		try {
+			const detail = await gameAgent.generateAnswerForPlayerQuestionDetail(
+				detailType,
+				question,
+				gmAnswerState,
+				systemInstructionsState.value,
+				historyMessagesState.value,
+				storyState.value,
+				characterState.value,
+				playerCharactersGameState,
+				inventoryState.value,
+				npcState.value,
+				relatedQuestionHistory,
+				gameSettingsState.value,
+				getCurrentCampaignChapter(),
+				customGMNotesState.value,
+				currentGameActionState.is_character_restrained_explanation
+			);
+			if (detail) {
+				gmDetailsState = { ...gmDetailsState, [detailType]: detail };
+			}
+		} finally {
+			loadingDetailState = undefined;
+		}
+	}
 </script>
 
 {#if isGeneratingState}
@@ -132,28 +166,36 @@
 		<div class="modal-box flex flex-col items-center text-center">
 			<span class="m-auto font-bold">Game Master Answer</span>
 			<p class="mt-4 max-h-48 overflow-y-scroll">{gmAnswerState?.answerToPlayer}</p>
-			<details
-				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
-			>
-				<summary class="collapse-title capitalize">
-					<p>Considered Game State</p>
-				</summary>
-				<p>{gmAnswerState?.game_state_considered || 'The AI did not return a response...'}</p>
-			</details>
-			<details
-				class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
-			>
-				<summary class="collapse-title capitalize">
-					<p>Considered Rules</p>
-				</summary>
-				<ul class="text-start">
-					{#each gmAnswerState?.rules_considered || [] as rule}
-						<li class="ml-2 mt-1 list-item">
-							{rule.startsWith('-') ? rule : '- ' + rule}
-						</li>
+			{#if gmAnswerState?.availableDetails?.length}
+				<div class="mt-4 flex w-full flex-wrap justify-center gap-2">
+					{#each gmAnswerState.availableDetails as option}
+						<button
+							class="btn btn-sm btn-outline"
+							disabled={Boolean(loadingDetailState || gmDetailsState[option.id])}
+							onclick={() => loadDetail(option.id)}
+						>
+							{loadingDetailState === option.id
+								? 'Loading...'
+								: gmDetailsState[option.id]
+									? `${option.title} loaded`
+									: option.title}
+						</button>
 					{/each}
-				</ul>
-			</details>
+				</div>
+			{/if}
+			{#each Object.values(gmDetailsState) as detail}
+				{#if detail}
+					<details
+						class="collapse collapse-arrow textarea-bordered mt-4 w-full overflow-y-scroll border bg-base-200"
+						open
+					>
+						<summary class="collapse-title capitalize">
+							<p>{detail.title}</p>
+						</summary>
+						<p class="px-4 pb-4 text-start whitespace-pre-wrap">{detail.content}</p>
+					</details>
+				{/if}
+			{/each}
 			{#if gmThoughtsState}
 				<details
 					class="collapse collapse-arrow textarea-bordered mt-4 overflow-y-scroll border bg-base-200"
@@ -167,7 +209,12 @@
 			<div class="mt-3 flex w-full flex-row gap-2">
 				<button
 					class="btn btn-info flex-1"
-					onclick={() => onclose(true, { question, ...gmAnswerState })}>Add to context</button
+					onclick={() =>
+						onclose(true, {
+							question,
+							...gmAnswerState,
+							details: Object.values(gmDetailsState)
+						})}>Add to context</button
 				>
 				<button class="btn btn-info flex-1" onclick={() => onclose(true)}>Close</button>
 			</div>

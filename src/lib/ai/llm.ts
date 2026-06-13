@@ -38,7 +38,9 @@ export interface LLMRequest {
 	englishText?: boolean;
 	reportErrorToUser?: boolean;
 	strictJson?: boolean;
+	responseJsonSchema?: LLMResponseJsonSchema;
 	validationContext?: LLMValidationContext;
+	debugMetadata?: LLMDebugMetadata;
 }
 
 export interface LLMconfig {
@@ -53,6 +55,18 @@ export interface LLMconfig {
 	model?: string;
 	returnFallbackProperty?: boolean;
 	strictJson?: boolean;
+}
+
+export interface LLMDebugMetadata {
+	promptViewType?: string;
+	promptPreview?: string;
+	promptViewReductions?: string[];
+}
+
+export interface LLMResponseJsonSchema {
+	name: string;
+	schema: Record<string, unknown>;
+	strict?: boolean;
 }
 
 export interface LLMValidationContext {

@@ -14,7 +14,7 @@
 		"lint:fix": "prettier --write . && eslint --fix .",
 		"format": "prettier --write .",
 		"test:integration": "playwright test",
-		"test:unit": "vitest",
+		"test:unit": "vitest run --pool=forks --poolOptions.forks.singleFork",
 		"release": "release-it"
 	},
 	"devDependencies": {

@@ -10,6 +10,11 @@ import { ActionDifficulty, getEmptyCriticalResourceKeys } from '../../../routes/
 import type { Story } from '$lib/ai/agents/storyAgent';
 import { mapStatsUpdates } from '$lib/ai/agents/mappers';
 import { jsonRule } from './agentUtils';
+import {
+	buildLocalCombatPromptView,
+	promptViewToRequestMetadata,
+	shouldUseLocalPromptViews
+} from '$lib/ai/localPromptViews';
 
 export type DiceRoll = {
 	result;
@@ -64,19 +69,35 @@ export class CombatAgent {
 		historyMessages: Array<LLMMessage>,
 		storyState: Story
 	) {
+		const localPromptView = shouldUseLocalPromptViews(this.llm)
+			? buildLocalCombatPromptView({
+					actionText: action.text,
+					playerCharResources,
+					inventoryState,
+					npcsList,
+					historyMessages,
+					storyState
+				})
+			: undefined;
+		const playerCharResourcesForPrompt =
+			localPromptView?.playerCharResources ?? playerCharResources;
+		const inventoryStateForPrompt = localPromptView?.inventoryState ?? inventoryState;
+		const npcsListForPrompt = localPromptView?.npcsList ?? npcsList;
+		const historyMessagesForPrompt = localPromptView?.historyMessages ?? historyMessages;
+		const storyStateForPrompt = localPromptView?.storyState ?? storyState;
 		const agent = [
 			"You are RPG combat agent, you decide which actions the NPCs take in response to the player character's action " +
 				'and what the consequences of these actions are. ' +
 				'\n You must not apply self damage to player character because of a failed action unless explicitly stated!' +
 				'\n You must include an action for each NPC from the list. You must also describe one action for player character, even if the action is a failure.' +
 				'\n You must include the results of the actions as stats_update for each action. NPCs can never be finished off with a single attack!',
-			`Only for the player character ${action.characterName} use the following resources:\n ${stringifyPretty(playerCharResources)}\n\nFor stats_update regarding NPC, you must exactly use resourceKey "hp" or "mp", and no deviations of that.`,
+			`Only for the player character ${action.characterName} use the following resources:\n ${stringifyPretty(playerCharResourcesForPrompt)}\n\nFor stats_update regarding NPC, you must exactly use resourceKey "hp" or "mp", and no deviations of that.`,
 			"The following is the character's inventory, if an item is relevant in the current situation then apply it's effect." +
 				'\n' +
-				stringifyPretty(inventoryState),
+				stringifyPretty(inventoryStateForPrompt),
 			'The following is a description of the story setting to keep the actions consistent on.' +
 				'\n' +
-				stringifyPretty(storyState),
+				stringifyPretty(storyStateForPrompt),
 			`${jsonRule}
                  {
                   "actions": [
@@ -106,12 +127,13 @@ export class CombatAgent {
 			'\n' +
 			'Decide the action and consequences for each of the following NPCs. It can be a spell, ability or any other action. Important: You must reuse the exact nameIds that are given!' +
 			'\n' +
-			stringifyPretty(npcsList);
+			stringifyPretty(npcsListForPrompt);
 		console.log('combat', actionToSend);
 		const request: LLMRequest = {
 			userMessage: actionToSend,
-			historyMessages: historyMessages,
+			historyMessages: historyMessagesForPrompt,
 			systemInstruction: agent,
+			debugMetadata: promptViewToRequestMetadata(localPromptView?.debug),
 			validationContext: {
 				playerResourceKeys: Object.keys(playerCharResources),
 				npcIds: npcsList

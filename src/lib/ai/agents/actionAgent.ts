@@ -13,6 +13,13 @@ import type { Story } from '$lib/ai/agents/storyAgent';
 import { GEMINI_MODELS, THINKING_BUDGET } from '../geminiProvider';
 import { CombatAgent } from './combatAgent';
 import { jsonRule } from './agentUtils';
+import {
+	buildLocalActionPromptView,
+	compactHistoryMessages,
+	promptViewToRequestMetadata,
+	shouldUseLocalPromptViews
+} from '$lib/ai/localPromptViews';
+import { buildLocalActionJsonSchema } from '$lib/ai/agents/actionSchema';
 export const diceRollPrompt = `"dice_roll": {
 						"modifier_explanation": "Keep the text short, max 15 words. Never based on attributes and skills, they are already applied! Instead based on situational factors specific to the story progression or passive attributes in spells_and_abilities and inventory. Give an in game story explanation why a modifier is applied or not and how you decided that.",
 						# If action_difficulty is difficult apply a bonus.
@@ -32,6 +39,29 @@ export interface TruthOracleResult {
 	state: boolean;
 	simulation: { discoverable_weakness_or_clue: string } & Record<string, string>;
 }
+
+const truthOracleJsonSchema = {
+	name: 'truth_oracle_result',
+	strict: false,
+	schema: {
+		type: 'object',
+		additionalProperties: false,
+		required: ['simulation_reasoning', 'impartiality_check', 'repetition_awareness', 'simulation'],
+		properties: {
+			simulation_reasoning: { type: 'string', maxLength: 500 },
+			impartiality_check: { type: 'string', maxLength: 400 },
+			repetition_awareness: { type: 'string', maxLength: 300 },
+			simulation: {
+				type: 'object',
+				additionalProperties: { type: 'string', maxLength: 300 },
+				required: ['discoverable_weakness_or_clue'],
+				properties: {
+					discoverable_weakness_or_clue: { type: 'string', maxLength: 300 }
+				}
+			}
+		}
+	}
+};
 
 export class ActionAgent {
 	llm: LLM;
@@ -74,6 +104,38 @@ export class ActionAgent {
 				}`;
 	};
 
+	private readonly localJsonFormatAndRules = (
+		attributes: string[],
+		skills: string[],
+		newSkillsAllowed: boolean
+	): string => {
+		const skillRule = newSkillsAllowed
+			? `Use an exact existing skill if it fits; otherwise create one reusable specific skill. Existing: ${skills.join(', ')}`
+			: `Use one exact existing skill or null. Never create new skills. Existing: ${skills.join(', ')}`;
+		return `{
+					"characterName": "Player character name",
+					"plausibility": "Max 12 words. Why this action fits now.",
+					"text": "Max 18 words. In-game action text only.",
+					"type": "Misc|Attack|Spell|Conversation|Social_Manipulation|Investigation|Travel|Crafting",
+					"related_attribute": "One exact attribute: ${attributes.join(', ')}",
+					"existing_related_skill_explanation": "Max 12 words. Why this skill fits or null fits.",
+					"related_skill": "One skill or null. ${skillRule}",
+					"difficulty_explanation": "Max 12 words. Reason before choosing difficulty.",
+					"action_difficulty": "${Object.keys(ActionDifficulty).join('|')}",
+					"is_possible": true|false,
+					"resource_cost": null or {"resource_key": "one character_stats.resources key", "cost": number},
+					"narration_details": {"reasoning": "Max 8 words.", "enum_english": "LOW|MEDIUM|HIGH"},
+					"actionSideEffects": "Max 12 words. Likely side effect or none.",
+					"enemyEncounterExplanation": {"reasoning": "Max 8 words.", "enum_english": "LOW|MEDIUM|HIGH"},
+					"is_interruptible": {"reasoning": "Max 8 words.", "enum_english": "${Object.keys(InterruptProbability).join('|')}"},
+					"dice_roll": {
+						"modifier_explanation": "Max 10 words. Situational factor only.",
+						"modifier": "none|bonus|malus",
+						"modifier_value": -2|-1|0|1|2
+					}
+				}`;
+	};
+
 	getRestrainingStatePrompt = (restraining_state: string) =>
 		`The character is currently affected by a restraining state: ${restraining_state}. Only suggest actions that are possible while under this effect.`;
 
@@ -108,10 +170,44 @@ export class ActionAgent {
 		restrainingState?: string,
 		additionalActionInputState?: string
 	): Promise<Action> {
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
+		const localPromptView = useLocalPromptView
+			? buildLocalActionPromptView({
+					currentGameState,
+					historyMessages,
+					storySettings,
+					characterDescription,
+					characterStats,
+					inventoryState,
+					relatedHistory,
+					actionText: action.text
+				})
+			: undefined;
+		const currentGameStateForPrompt =
+			(localPromptView?.currentGameState as GameActionState) ?? currentGameState;
+		const historyMessagesForPrompt = localPromptView?.historyMessages ?? historyMessages;
+		const storySettingsForPrompt = (localPromptView?.storySettings as Story) ?? storySettings;
+		const characterDescriptionForPrompt =
+			(localPromptView?.characterDescription as CharacterDescription) ?? characterDescription;
+		const characterStatsForPrompt =
+			(localPromptView?.characterStats as CharacterStats) ?? characterStats;
+		const inventoryStateForPrompt = localPromptView?.inventoryState ?? inventoryState;
+		const relatedHistoryForPrompt = localPromptView?.relatedHistory ?? relatedHistory;
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
-		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
+		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettingsForPrompt;
+		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameStateForPrompt);
+		const outputFormat = useLocalPromptView
+			? this.localJsonFormatAndRules(
+					Object.keys(characterStatsForPrompt.attributes || {}),
+					Object.keys(characterStatsForPrompt.skills || {}),
+					newSkillsAllowed
+				)
+			: this.jsonFormatAndRules(
+					Object.keys(characterStatsForPrompt.attributes || {}),
+					Object.keys(characterStatsForPrompt.skills || {}),
+					newSkillsAllowed
+				);
 
 		const agent = [
 			`You are RPG action agent, you are given a RPG story and one action the player wants to perform; Determine difficulty, resource cost etc. for this action; Consider the story, currently_present_npcs and character stats.
@@ -124,15 +220,32 @@ export class ActionAgent {
 				stringifyPretty(storySettingsMapped),
 			'dice_roll can be modified by following description of the character, e.g. acting smart or with force, ...' +
 				'\n' +
-				stringifyPretty(characterDescription),
+				stringifyPretty(characterDescriptionForPrompt),
 			'dice_roll can be modified by items from the inventory:' +
 				'\n' +
-				stringifyPretty(inventoryState),
+				stringifyPretty(inventoryStateForPrompt),
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
-				stringifyPretty(characterStats.resources),
-			`${jsonRule} ${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)}`
+				stringifyPretty(characterStatsForPrompt.resources),
+			`${jsonRule} ${outputFormat}`
 		];
+		if (useLocalPromptView) {
+			agent.splice(
+				0,
+				agent.length,
+				`You are RPG action agent. Determine one action's difficulty, cost, dice and plausibility. Keep all reasoning short because this runs on a local model.
+				Action Rules:
+				- Reason briefly inside the JSON explanation fields before dependent fields.
+				- Use only current story, visible NPCs, character stats, inventory and abilities.
+				- Never mention meta elements like stats or difficulty in action text.
+				- Any action may target anything if game rules and current fiction allow it.`,
+				'Setting JSON:\n' + stringifyPretty(storySettingsMapped),
+				'Character JSON:\n' + stringifyPretty(characterDescriptionForPrompt),
+				'Inventory JSON:\n' + stringifyPretty(inventoryStateForPrompt),
+				'Current resource JSON:\n' + stringifyPretty(characterStatsForPrompt.resources),
+				`${jsonRule} ${outputFormat}`
+			);
+		}
 		this.addRestrainingStateToAgent(agent, restrainingState);
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
@@ -156,17 +269,26 @@ export class ActionAgent {
 			additionalActionInputState
 		);
 
-		if (relatedHistory && relatedHistory.length > 0) {
+		if (relatedHistoryForPrompt && relatedHistoryForPrompt.length > 0) {
 			userMessage +=
 				'\n\nFollowing is related past story plot, check if the action is possible in this context, it must be plausible in this moment and not just hypothetically;\n' +
 				'If no history detail directly contradicts the action, it is possible.\n' +
-				relatedHistory.join('\n');
+				relatedHistoryForPrompt.join('\n');
 		}
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
-			historyMessages,
+			historyMessages: historyMessagesForPrompt,
 			systemInstruction: agent,
+			responseJsonSchema: useLocalPromptView
+				? buildLocalActionJsonSchema({
+						attributes: Object.keys(characterStatsForPrompt.attributes || {}),
+						skills: Object.keys(characterStatsForPrompt.skills || {}),
+						newSkillsAllowed,
+						array: false
+					})
+				: undefined,
+			debugMetadata: promptViewToRequestMetadata(localPromptView?.debug),
 			validationContext: {
 				playerResourceKeys: Object.keys(characterStats.resources),
 				inventoryItemIds: Object.keys(inventoryState),
@@ -195,6 +317,14 @@ export class ActionAgent {
 		- Do not suggest actions that include information the players do not know, such as undiscovered secrets or future plot points.
 		`;
 
+	private readonly localActionRules = `Action Rules:
+		- Return exactly 3 playable, branching actions.
+		- Keep action text max 18 words and in-world only.
+		- Keep every explanation field short; use it to improve the following field.
+		- Use visible NPCs, current story, resources, abilities and relevant inventory.
+		- Do not reveal undiscovered secrets or future plot points.
+		- Do not suggest instant-kill or impossible shortcut actions.`;
+
 	async generateActions(
 		currentGameState: GameActionState,
 		historyMessages: Array<LLMMessage>,
@@ -209,11 +339,44 @@ export class ActionAgent {
 		restrainingState?: string,
 		additionalActionInputState?: string
 	): Promise<{ thoughts: string; actions: Array<Action> }> {
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
+		const localPromptView = useLocalPromptView
+			? buildLocalActionPromptView({
+					currentGameState,
+					historyMessages,
+					storySettings,
+					characterDescription,
+					characterStats,
+					inventoryState,
+					relatedHistory
+				})
+			: undefined;
+		const currentGameStateForPrompt =
+			(localPromptView?.currentGameState as GameActionState) ?? currentGameState;
+		const historyMessagesForPrompt = localPromptView?.historyMessages ?? historyMessages;
+		const storySettingsForPrompt = (localPromptView?.storySettings as Story) ?? storySettings;
+		const characterDescriptionForPrompt =
+			(localPromptView?.characterDescription as CharacterDescription) ?? characterDescription;
+		const characterStatsForPrompt =
+			(localPromptView?.characterStats as CharacterStats) ?? characterStats;
+		const inventoryStateForPrompt = localPromptView?.inventoryState ?? inventoryState;
+		const relatedHistoryForPrompt = localPromptView?.relatedHistory ?? relatedHistory;
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
+		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettingsForPrompt;
 
-		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
+		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameStateForPrompt);
+		const outputFormat = useLocalPromptView
+			? this.localJsonFormatAndRules(
+					Object.keys(characterStatsForPrompt.attributes || {}),
+					Object.keys(characterStatsForPrompt.skills || {}),
+					newSkillsAllowed
+				)
+			: this.jsonFormatAndRules(
+					Object.keys(characterStatsForPrompt.attributes || {}),
+					Object.keys(characterStatsForPrompt.skills || {}),
+					newSkillsAllowed
+				);
 		const agent = [
 			'You are RPG action agent, you are given a RPG story and then suggest actions the player character can take, considering the story, currently_present_npcs and character stats.',
 			this.actionRules,
@@ -222,28 +385,47 @@ export class ActionAgent {
 				stringifyPretty(storySettingsMapped),
 			'Suggest actions according to the following description of the character temper, e.g. acting smart or with force, ...' +
 				'\n' +
-				stringifyPretty(characterDescription),
+				stringifyPretty(characterDescriptionForPrompt),
 			'As an action, the character can make use of items from the inventory:' +
 				'\n' +
-				stringifyPretty(inventoryState),
+				stringifyPretty(inventoryStateForPrompt),
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
-				stringifyPretty(characterStats.resources),
+				stringifyPretty(characterStatsForPrompt.resources),
 			`${jsonRule}
       [
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
+				${outputFormat},
 				...
   		]`
 		];
+		if (useLocalPromptView) {
+			agent.splice(
+				0,
+				agent.length,
+				'You are RPG action agent. Suggest compact next actions for a local model. Reason briefly inside JSON fields before the dependent choice.',
+				this.localActionRules,
+				'Setting JSON:\n' + stringifyPretty(storySettingsMapped),
+				'Character JSON:\n' + stringifyPretty(characterDescriptionForPrompt),
+				'Relevant inventory JSON:\n' + stringifyPretty(inventoryStateForPrompt),
+				'Current resource JSON:\n' + stringifyPretty(characterStatsForPrompt.resources),
+				`${jsonRule}
+      {
+        "actions": [
+				  ${outputFormat},
+				  ...
+  		  ]
+      }`
+			);
+		}
 
 		this.addRestrainingStateToAgent(agent, restrainingState);
-		if (relatedHistory && relatedHistory.length > 0) {
+		if (relatedHistoryForPrompt && relatedHistoryForPrompt.length > 0) {
 			agent.push(
 				'The actions must be plausible with PAST STORY PLOT;\n' +
 					'Never suggest actions to investigate PAST STORY PLOT as they are already known;\n' +
 					//make sure custom player history takes precedence
 					'If PAST STORY PLOT contradict each other, the earliest takes precedence, and the later conflicting detail must be ignored;\nPAST STORY PLOT:\n' +
-					relatedHistory.join('\n')
+					relatedHistoryForPrompt.join('\n')
 			);
 		}
 		if (customSystemInstruction) {
@@ -271,8 +453,17 @@ export class ActionAgent {
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
-			historyMessages,
+			historyMessages: historyMessagesForPrompt,
 			systemInstruction: agent,
+			responseJsonSchema: useLocalPromptView
+				? buildLocalActionJsonSchema({
+						attributes: Object.keys(characterStatsForPrompt.attributes || {}),
+						skills: Object.keys(characterStatsForPrompt.skills || {}),
+						newSkillsAllowed,
+						array: true
+					})
+				: undefined,
+			debugMetadata: promptViewToRequestMetadata(localPromptView?.debug),
 			validationContext: {
 				playerResourceKeys: Object.keys(characterStats.resources),
 				inventoryItemIds: Object.keys(inventoryState),
@@ -302,11 +493,43 @@ export class ActionAgent {
 		newSkillsAllowed: boolean = false,
 		additionalActionInputState?: string
 	): Promise<{ thoughts: string; actions: Array<Action> }> {
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
+		const localPromptView = useLocalPromptView
+			? buildLocalActionPromptView({
+					currentGameState,
+					historyMessages,
+					storySettings,
+					characterDescription,
+					characterStats,
+					inventoryState,
+					actionText: [item.description, item.effect].join('\n')
+				})
+			: undefined;
+		const currentGameStateForPrompt =
+			(localPromptView?.currentGameState as GameActionState) ?? currentGameState;
+		const historyMessagesForPrompt = localPromptView?.historyMessages ?? historyMessages;
+		const storySettingsForPrompt = (localPromptView?.storySettings as Story) ?? storySettings;
+		const characterDescriptionForPrompt =
+			(localPromptView?.characterDescription as CharacterDescription) ?? characterDescription;
+		const characterStatsForPrompt =
+			(localPromptView?.characterStats as CharacterStats) ?? characterStats;
+		const inventoryStateForPrompt = localPromptView?.inventoryState ?? inventoryState;
 		//remove knowledge of story secrets etc
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettings;
+		const { ['adventure_and_main_event']: _, ...storySettingsMapped } = storySettingsForPrompt;
 
-		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameState);
+		const currentGameStateMapped = this.getCurrentGameStateMapped(currentGameStateForPrompt);
+		const outputFormat = useLocalPromptView
+			? this.localJsonFormatAndRules(
+					Object.keys(characterStatsForPrompt.attributes || {}),
+					Object.keys(characterStatsForPrompt.skills || {}),
+					newSkillsAllowed
+				)
+			: this.jsonFormatAndRules(
+					Object.keys(characterStatsForPrompt.attributes || {}),
+					Object.keys(characterStatsForPrompt.skills || {}),
+					newSkillsAllowed
+				);
 		const agent = [
 			'You are RPG action agent, you are given an item description and then suggest the actions the player character can take with that item, considering the story, currently_present_npcs and character stats.',
 			this.actionRules,
@@ -315,19 +538,38 @@ export class ActionAgent {
 				stringifyPretty(storySettingsMapped),
 			'Suggest actions according to the following description of the character temper, e.g. acting smart or with force, ...' +
 				'\n' +
-				stringifyPretty(characterDescription),
+				stringifyPretty(characterDescriptionForPrompt),
 			'As an action, the character could also combine the item with other items from the inventory:' +
 				'\n' +
-				stringifyPretty(inventoryState),
+				stringifyPretty(inventoryStateForPrompt),
 			'dice_roll modifier can be applied based on high or low resources:' +
 				'\n' +
-				stringifyPretty(characterStats.resources),
+				stringifyPretty(characterStatsForPrompt.resources),
 			`${jsonRule}
       [
-				${this.jsonFormatAndRules(Object.keys(characterStats.attributes), Object.keys(characterStats.skills), newSkillsAllowed)},
+				${outputFormat},
 				...
   		]`
 		];
+		if (useLocalPromptView) {
+			agent.splice(
+				0,
+				agent.length,
+				'You are RPG action agent. Suggest compact item actions for a local model. Reason briefly inside JSON fields before the dependent choice.',
+				this.localActionRules,
+				'Setting JSON:\n' + stringifyPretty(storySettingsMapped),
+				'Character JSON:\n' + stringifyPretty(characterDescriptionForPrompt),
+				'Relevant inventory JSON:\n' + stringifyPretty(inventoryStateForPrompt),
+				'Current resource JSON:\n' + stringifyPretty(characterStatsForPrompt.resources),
+				`${jsonRule}
+      {
+        "actions": [
+				  ${outputFormat},
+				  ...
+  		  ]
+      }`
+			);
+		}
 		this.addRestrainingStateToAgent(agent, restrainingState);
 		if (customSystemInstruction) {
 			agent.push('Following instructions overrule all others: ' + customSystemInstruction);
@@ -353,9 +595,18 @@ export class ActionAgent {
 		console.log('actions prompt: ', userMessage);
 		const request: LLMRequest = {
 			userMessage,
-			historyMessages,
+			historyMessages: historyMessagesForPrompt,
 			systemInstruction: agent,
 			model: GEMINI_MODELS.FLASH_THINKING_2_0,
+			responseJsonSchema: useLocalPromptView
+				? buildLocalActionJsonSchema({
+						attributes: Object.keys(characterStatsForPrompt.attributes || {}),
+						skills: Object.keys(characterStatsForPrompt.skills || {}),
+						newSkillsAllowed,
+						array: true
+					})
+				: undefined,
+			debugMetadata: promptViewToRequestMetadata(localPromptView?.debug),
 			validationContext: {
 				playerResourceKeys: Object.keys(characterStats.resources),
 				inventoryItemIds: Object.keys(inventoryState),
@@ -439,20 +690,43 @@ RESPONSE:
 		storyState: Story,
 		relatedHistory?: string[]
 	): Promise<TruthOracleResult | null> => {
+		const useLocalPromptView = shouldUseLocalPromptViews(this.llm);
 		// Construct the prompt
-		const agent = [
-			this.TRUTH_ORACLE_PROMPT_TEMPLATE,
-			//"CHARACTER CONTEXT:\n" + JSON.stringify(characterState),
-			'WORLD CONTEXT:\n' + JSON.stringify(storyState)
-		];
+		const agent = useLocalPromptView
+			? [
+					`You are an impartial RPG truth oracle. Simulate hidden objective truths for the player's action.
+Return only JSON. Do not narrate. Do not help the player; decide what is logically true in the world.
+Always include simulation.discoverable_weakness_or_clue. Keep explanations short.`,
+					'WORLD CONTEXT:\n' + stringifyPretty(compactStoryForTruthOracle(storyState)),
+					`${jsonRule} {
+  "simulation_reasoning": "Brief cause-effect reasoning.",
+  "impartiality_check": "Why this is world logic, not help or punishment.",
+  "repetition_awareness": "Mention if recent similar events affect the decision.",
+  "simulation": {
+    "discoverable_weakness_or_clue": "A useful truth a success can reveal.",
+    "concrete_truth_key": "A concrete hidden fact."
+  }
+}`
+				]
+			: [
+					this.TRUTH_ORACLE_PROMPT_TEMPLATE,
+					//"CHARACTER CONTEXT:\n" + JSON.stringify(characterState),
+					'WORLD CONTEXT:\n' + JSON.stringify(storyState)
+				];
 		const userMessage = 'Simulate the hidden truths for following \nPLAYER ACTION:\n' + action.text;
 
 		//shallow clone array historyMessages
 		const historyMessagesClone: Array<LLMMessage> = [];
 		relatedHistory?.forEach((message) => {
-			historyMessagesClone.push({ role: 'user', content: message });
+			historyMessagesClone.push({
+				role: 'user',
+				content: useLocalPromptView ? trimMiddle(message, 900) : message
+			});
 		});
-		historyMessages.forEach((message) => {
+		const historyMessagesForPrompt = useLocalPromptView
+			? compactHistoryMessages(historyMessages, 2, 1200)
+			: historyMessages;
+		historyMessagesForPrompt.forEach((message) => {
 			historyMessagesClone.push({ role: 'user', content: message.content });
 		});
 		const request: LLMRequest = {
@@ -465,7 +739,23 @@ RESPONSE:
 				thinkingBudget: 0, //THINKING_BUDGET.DEFAULT,
 				includeThoughts: true
 			},
-			reportErrorToUser: false
+			reportErrorToUser: false,
+			responseJsonSchema: useLocalPromptView ? truthOracleJsonSchema : undefined,
+			debugMetadata: useLocalPromptView
+				? {
+						promptViewType: 'truth-oracle',
+						promptPreview: stringifyPretty({
+							action: action.text,
+							world: compactStoryForTruthOracle(storyState),
+							historyMessages: historyMessagesForPrompt,
+							relatedHistory
+						}),
+						promptViewReductions: [
+							`truth oracle history messages: ${historyMessages.length} -> ${historyMessagesForPrompt.length}`,
+							`truth oracle related history entries: ${relatedHistory?.length || 0}`
+						]
+					}
+				: undefined
 		};
 		try {
 			const response = await this.llm.generateContent(request);
@@ -478,7 +768,7 @@ RESPONSE:
 		}
 	};
 
-	private getCurrentGameStateMapped(currentGameState: GameActionState) {
+	private getCurrentGameStateMapped(currentGameState: GameActionState | Partial<GameActionState>) {
 		return {
 			currently_present_npcs_explanation: currentGameState['currently_present_npcs_explanation'],
 			currently_present_npcs: currentGameState.currently_present_npcs,
@@ -488,4 +778,21 @@ RESPONSE:
 			is_character_in_combat: currentGameState.is_character_in_combat
 		};
 	}
+}
+
+function compactStoryForTruthOracle(story: Story): Partial<Story> {
+	return {
+		game: story.game,
+		theme: story.theme,
+		tonality: story.tonality,
+		world_details: trimMiddle(story.world_details, 1000),
+		adventure_and_main_event: trimMiddle(story.adventure_and_main_event, 1400),
+		character_simple_description: trimMiddle(story.character_simple_description, 700)
+	};
+}
+
+function trimMiddle(text: string | undefined, maxCharacters: number): string {
+	if (!text || text.length <= maxCharacters) return text || '';
+	const half = Math.floor(maxCharacters / 2);
+	return text.slice(0, half) + '\n[...trimmed for local truth oracle...]\n' + text.slice(half * -1);
 }
